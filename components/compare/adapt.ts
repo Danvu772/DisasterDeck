@@ -43,10 +43,12 @@ export function toSites(tweets: Tweet[], bases: Site[], now: number): { site: Si
       address,
       region: "Malatya centre",
       peopleTrapped: i === 0 ? 1 : 2,
-      callStatus: "not_called",
+      callStatus: claimed ? "called" : "not_called",
       status: "open",
       sources: posts.map((p) => ({ source: "x" as const, eventId: p.id })),
       support: 1,
+      // Only a person in the history confirms a site. X alone leaves it unconfirmed.
+      confidence: claimed ? base.confidence : "unconfirmed",
       history: claimed
         ? [{ ts: new Date(now - 3 * 60000), by: "Zeynep", source: "person", reason: "Taking the call" }]
         : [],
