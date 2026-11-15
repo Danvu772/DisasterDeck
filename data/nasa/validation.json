@@ -1,0 +1,32 @@
+{
+  "ariaExtentMatches": true,
+  "landmark": {
+    "name": "Yeni Cami",
+    "coordsLngLat": [
+      38.3181102,
+      38.3495353
+    ],
+    "osmWayId": 296572992
+  },
+  "landmark500mEvidence": {
+    "damage": {
+      "damage": null,
+      "flaggedOverlayFraction": 0.982143,
+      "opaqueFraction": 0.982143,
+      "quality": "unflagged-validity-unknown"
+    },
+    "lights": {
+      "dark": null,
+      "renderedCoverage": 1.0,
+      "quality": "saturated-rendering",
+      "beforeMeanBrightness": 246.0595,
+      "afterMeanBrightness": 255.0,
+      "maxSaturatedFraction": 1.0
+    }
+  },
+  "independentReport": {
+    "url": "https://www.dha.com.tr/gundem/malatyada-depremde-yeni-cami-de-yikildi-2201455",
+    "publishedAt": "2023-02-06T10:47:00+03:00",
+    "finding": "The reporter documented collapse of Yeni Cami. The surrounding rendered overlay flags surface change; validity and power outage remain unresolved."
+  }
+}

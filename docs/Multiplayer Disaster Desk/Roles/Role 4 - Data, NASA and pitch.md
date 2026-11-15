@@ -6,6 +6,8 @@ owner: ""
 
 **Owner:** _write your name here_
 
+**Delivery status · 14 Nov 2026, 20:04 EST.** Replay/seed and NASA inputs are prepared for team integration. See [version notes](../../role-4-changelog.md), [handoff](../../role-4-handoff.md) and [NASA evidence](../../nasa-evidence.md). The current NASA cache supports cold alerts and retains unknown silent-zone evidence.
+
 Read first: [[Team contracts]] · Design: [[Final system design]] · Data background: [[Data sources]] · What changed in version 2: [[Design review 2026-11-14]]
 
 > [!abstract] Your mission
@@ -52,18 +54,18 @@ flowchart LR
 - [ ] Pick **one city** (e.g. Malatya or Hatay) and ~50–80 tweets with an address. Keep a few duplicates on purpose: the merge is part of the demo.
 - [ ] **Replace every phone number with a made-up one**, and keep a masked form (last two digits) for the board. The volunteer has to see a number to "call", so it must not be a real one. Drop full names if they are not needed.
 - [ ] Geocode addresses offline (Nominatim, 1 per second) → `coords`. Hand-fix the ones that fail.
-- [ ] Write `data/tweets_replay.json`: `{ id, text, ts_offset_seconds, coords?, region }`. `id` becomes the `dedupeKey`, so keep it stable between runs.
+- [x] Write `data/tweets_replay.json`: `{ id, text, ts_offset_seconds, coords?, region }`. Five synthetic messages were delivered in `6361419` on 14 Nov at 19:44 EST. Actual worker retry acceptance is pending.
 - [ ] Write `data/seed.json`: demo users (one per role, matching SSOJet accounts), regions, 3 shelters, **2 suppliers with blanket stock** (the second one is the rescue in the truck scene). Every user gets `deskId: "malatya-2023"`, a `trust` level, `coords`, and a `profile` (`vehicle`, `skills`, `stock`). Add **one volunteer with a van and the `mechanic` skill**, and **two coordinators**.
 
 **Done when:** Role 2's X agent can read the file, Role 1 can seed the database.
 
 ### 2. NASA silent zones (20:30 → 23:00)
-- [ ] **The old ARIA links are dead. Use the new service address in [[Data sources#Checked on 14 Nov|Data sources]].** It was tested on 14 Nov and covers Malatya. It returns a coloured picture, so "damage in a zone" is the share of flagged pixels.
+- [x] **Use the current ARIA service.** Cached and verified the Sentinel-1 product for 10 Feb 2023 at about 30 m. Transparent pixels leave valid unflagged coverage unresolved. Normalized damage stays unknown. Completed 14 Nov, 20:04 EST.
 - [ ] Grid the chosen city into zones (~500 m cells or neighborhoods). Per zone: mean damage (ARIA), dark or not after the quake (Black Marble), count of tweets.
-- [ ] Night lights: the gap-filled Black Marble layer through GIBS, 3 Jan and 8 Feb 2023. "Dark" = the zone is much less bright on 8 Feb than on 3 Jan.
-- [ ] **Cold flag (30 minutes, NASA POWER, no key):** one request per zone centre for 6–10 Feb 2023. Minimum below 0 °C → `cold: true`, `minTempC`. Malatya on 9 Feb: −14.4 °C. This feeds the priority of blankets and tents.
-- [ ] Write `public/data/zones.geojson` with `damage`, `dark`, `calls`, `silentZone`, `cold`, `minTempC`.
-- [ ] `workers/satellite-watcher.ts`: rule "heavy damage AND dark AND few calls" → `alert` event of kind `silent_zone`. Cold zone → `alert` of kind `cold`. **Plain code, no LLM.**
+- [x] Cached and compared Black Marble for 3 Jan and 8 Feb 2023. Saturated rendering leaves both selected cells' darkness unknown. Completed 14 Nov, 20:04 EST.
+- [x] **Cold flag.** Recorded POWER values for 6–10 Feb and read −14.38 °C for 9 Feb. Both cells reuse the regional observation. Completed 14 Nov, 19:55 EST. Brain priority acceptance is pending.
+- [x] Generated `public/data/zones.geojson` with matching seed IDs, two 500 m polygons, required properties, nullable unknown evidence, dates, sources and native scales. Completed 14 Nov, 20:04 EST.
+- [x] Added and tested `workers/satellite-watcher.ts`, deterministic rules, stable event keys and HTTP retries. The cache yields two cold alerts and zero silent-zone alerts. Live API acceptance is pending. Completed 14 Nov, 20:04 EST.
 - [ ] **One check against something known** (the NASA track asks for it): pick a district the news reported as destroyed, and show that it is red on the damage map and dark on 8 Feb.
 - [ ] Fallback if the NASA data fights you: hand-draw 2–3 zones from the NASA images, and say so in the pitch.
 

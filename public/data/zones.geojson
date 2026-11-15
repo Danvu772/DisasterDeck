@@ -1,0 +1,216 @@
+{
+  "type": "FeatureCollection",
+  "bbox": [
+    38.29,
+    38.33,
+    38.35,
+    38.39
+  ],
+  "metadata": {
+    "version": "malatya-nasa-v1",
+    "deskId": "malatya-2023",
+    "scenarioAt": "2023-02-11T06:00:00Z",
+    "bboxOrder": "west,south,east,north",
+    "coordinateOrder": "longitude,latitude",
+    "thresholds": {
+      "heavyDamageMinFraction": 0.2,
+      "darkMaxBrightnessRatio": 0.6,
+      "fewCallsMax": 1,
+      "minRenderedCoverage": 0.8,
+      "minBaselineBrightness": 10,
+      "maxSaturatedFraction": 0.2
+    },
+    "dates": {
+      "damageDate": "2023-02-10",
+      "lightsBeforeDate": "2023-01-03",
+      "lightsAfterDate": "2023-02-08",
+      "temperatureDate": "2023-02-09"
+    },
+    "nativeResolutionMeters": {
+      "damage": 30,
+      "nightLights": 500,
+      "temperatureApprox": 50000
+    },
+    "sourcesManifestRepositoryPath": "data/nasa/manifest.json",
+    "reportWindowSeconds": [
+      0,
+      20
+    ],
+    "sourceURLs": {
+      "damage": "https://gis.earthdata.nasa.gov/portal/rest/services/DISASTERS_202302_EARTHQUAKE_TURKIYE/2302_opera_dpm/ImageServer",
+      "nightLights": "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/1.0.0/WMTSCapabilities.xml",
+      "nightLightsColormap": "https://gibs.earthdata.nasa.gov/colormaps/v1.3/VIIRS_DayNightBand_At_Sensor_Radiance.xml",
+      "temperature": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MIN&community=RE&longitude=38.31&latitude=38.35&start=20230206&end=20230210&format=JSON"
+    },
+    "attribution": "NASA JPL/Caltech ARIA Team, Copernicus, ESA; NASA GIBS / Suomi NPP VIIRS Black Marble; NASA POWER / MERRA-2",
+    "whiteRadianceInterval": "[38.2,999999.0)",
+    "missingValue": null,
+    "observedAtMeaning": "Conservative UTC end-of-product-date label; exact acquisition time unavailable; POWER source days use LST"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "malatya-turuncu",
+      "bbox": [
+        38.30713635,
+        38.34775422,
+        38.31286365,
+        38.35224578
+      ],
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              38.30713635,
+              38.34775422
+            ],
+            [
+              38.31286365,
+              38.34775422
+            ],
+            [
+              38.31286365,
+              38.35224578
+            ],
+            [
+              38.30713635,
+              38.35224578
+            ],
+            [
+              38.30713635,
+              38.34775422
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "_id": "malatya-turuncu",
+        "name": "Turuncu Avlu demo cell",
+        "deskId": "malatya-2023",
+        "region": "malatya-merkez",
+        "damage": null,
+        "dark": null,
+        "calls": 1,
+        "silentZone": null,
+        "cold": true,
+        "minTempC": -14.38,
+        "reportPosts": 4,
+        "callsBasis": "synthetic-distinct-original-calls",
+        "geometryOrigin": "500m-demo-cell",
+        "observedAt": "2023-02-10T23:59:59Z",
+        "temperatureObservedAt": "2023-02-09T23:59:59Z",
+        "damageEvidence": {
+          "damage": null,
+          "flaggedOverlayFraction": 0.76875,
+          "opaqueFraction": 0.76875,
+          "quality": "unflagged-validity-unknown"
+        },
+        "lightsEvidence": {
+          "dark": null,
+          "renderedCoverage": 1.0,
+          "quality": "saturated-rendering",
+          "beforeMeanBrightness": 246.25,
+          "afterMeanBrightness": 255.0,
+          "maxSaturatedFraction": 1.0
+        },
+        "temperatureEvidence": {
+          "date": "2023-02-09",
+          "timeStandard": "LST",
+          "units": "C",
+          "source": "NASA POWER / MERRA-2",
+          "gridDegrees": [
+            0.5,
+            0.625
+          ],
+          "queryCoords": [
+            38.35,
+            38.31
+          ]
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "malatya-mor",
+      "bbox": [
+        38.32713595,
+        38.35775422,
+        38.33286405,
+        38.36224578
+      ],
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              38.32713595,
+              38.35775422
+            ],
+            [
+              38.33286405,
+              38.35775422
+            ],
+            [
+              38.33286405,
+              38.36224578
+            ],
+            [
+              38.32713595,
+              38.36224578
+            ],
+            [
+              38.32713595,
+              38.35775422
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "_id": "malatya-mor",
+        "name": "Mor Avlu demo cell",
+        "deskId": "malatya-2023",
+        "region": "malatya-merkez",
+        "damage": null,
+        "dark": null,
+        "calls": 1,
+        "silentZone": null,
+        "cold": true,
+        "minTempC": -14.38,
+        "reportPosts": 1,
+        "callsBasis": "synthetic-distinct-original-calls",
+        "geometryOrigin": "500m-demo-cell",
+        "observedAt": "2023-02-10T23:59:59Z",
+        "temperatureObservedAt": "2023-02-09T23:59:59Z",
+        "damageEvidence": {
+          "damage": null,
+          "flaggedOverlayFraction": 0.409375,
+          "opaqueFraction": 0.409375,
+          "quality": "unflagged-validity-unknown"
+        },
+        "lightsEvidence": {
+          "dark": null,
+          "renderedCoverage": 1.0,
+          "quality": "saturated-rendering",
+          "beforeMeanBrightness": 224.6,
+          "afterMeanBrightness": 255.0,
+          "maxSaturatedFraction": 1.0
+        },
+        "temperatureEvidence": {
+          "date": "2023-02-09",
+          "timeStandard": "LST",
+          "units": "C",
+          "source": "NASA POWER / MERRA-2",
+          "gridDegrees": [
+            0.5,
+            0.625
+          ],
+          "queryCoords": [
+            38.35,
+            38.31
+          ]
+        }
+      }
+    }
+  ]
+}

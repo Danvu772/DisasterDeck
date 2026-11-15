@@ -1,0 +1,269 @@
+{
+ "extent": {
+  "ymin": 35.577534246022708,
+  "xmin": 35.513944876000039,
+  "ymax": 38.79920091300005,
+  "xmax": 38.970611543000039,
+  "spatialReference": {
+   "latestWkid": 4326,
+   "wkid": 4326
+  }
+ },
+ "blockWidth": 2048,
+ "mosaicOperator": "First",
+ "serviceSourceType": "esriImageServiceSourceTypeMosaicDataset",
+ "hasMultidimensions": false,
+ "maxImageWidth": 15000,
+ "maxRecordCount": 1000,
+ "meanValues": [],
+ "hasColormap": false,
+ "compressionType": "None",
+ "defaultCompressionQuality": 75,
+ "maxValues": [],
+ "hasHistograms": false,
+ "datasetFormat": "AMD",
+ "maxImageHeight": 4100,
+ "sortField": "",
+ "bandNames": [
+  "Band_1",
+  "Band_2",
+  "Band_3",
+  "Band_4"
+ ],
+ "spatialReference": {
+  "latestWkid": 4326,
+  "wkid": 4326
+ },
+ "fullExtent": {
+  "ymin": 35.577534246022708,
+  "xmin": 35.513944876000039,
+  "ymax": 38.79920091300005,
+  "xmax": 38.970611543000039,
+  "spatialReference": {
+   "latestWkid": 4326,
+   "wkid": 4326
+  }
+ },
+ "bandCount": 4,
+ "rasterFunctionInfos": [{
+  "help": "",
+  "name": "None",
+  "description": ""
+ }],
+ "supportsStatistics": true,
+ "sortableFields": "",
+ "minValues": [],
+ "allowRasterFunction": true,
+ "allowComputeTiePoints": false,
+ "serviceDataType": "esriImageServiceDataTypeGeneric",
+ "supportsAdvancedQueries": true,
+ "maxDownloadSizeLimit": 2048,
+ "currentVersion": 12,
+ "sortValue": null,
+ "objectIdField": "objectid",
+ "blockHeight": 256,
+ "initialExtent": {
+  "ymin": 35.577534246022708,
+  "xmin": 35.513944876000039,
+  "ymax": 38.79920091300005,
+  "xmax": 38.970611543000039,
+  "spatialReference": {
+   "latestWkid": 4326,
+   "wkid": 4326
+  }
+ },
+ "pixelSizeX": 0.00027777777780456446,
+ "pixelSizeY": 0.00027777777780456473,
+ "defaultMosaicMethod": "Northwest",
+ "name": "DISASTERS_202302_EARTHQUAKE_TURKIYE/2302_opera_dpm",
+ "allowedMosaicMethods": "NorthWest,Center,LockRaster,ByAttribute,Nadir,Viewpoint,Seamline,None",
+ "maxDownloadImageCount": 20,
+ "fields": [
+  {
+   "domain": null,
+   "name": "objectid",
+   "alias": "OBJECTID",
+   "type": "esriFieldTypeOID"
+  },
+  {
+   "domain": null,
+   "name": "name",
+   "length": 200,
+   "alias": "Name",
+   "type": "esriFieldTypeString"
+  },
+  {
+   "domain": null,
+   "name": "minps",
+   "alias": "MinPS",
+   "type": "esriFieldTypeDouble"
+  },
+  {
+   "domain": null,
+   "name": "maxps",
+   "alias": "MaxPS",
+   "type": "esriFieldTypeDouble"
+  },
+  {
+   "domain": null,
+   "name": "lowps",
+   "alias": "LowPS",
+   "type": "esriFieldTypeDouble"
+  },
+  {
+   "domain": null,
+   "name": "highps",
+   "alias": "HighPS",
+   "type": "esriFieldTypeDouble"
+  },
+  {
+   "domain": {
+    "splitPolicy": "esriSPTDefaultValue",
+    "name": "MosaicCatalogItemCategoryDomain",
+    "description": "Catalog item categories.",
+    "type": "codedValue",
+    "codedValues": [
+     {
+      "code": 0,
+      "name": "Unknown"
+     },
+     {
+      "code": 1,
+      "name": "Primary"
+     },
+     {
+      "code": 2,
+      "name": "Overview"
+     },
+     {
+      "code": 3,
+      "name": "Unprocessed Overview"
+     },
+     {
+      "code": 4,
+      "name": "Partial Overview"
+     },
+     {
+      "code": 5,
+      "name": "Inactive"
+     },
+     {
+      "code": 253,
+      "name": "Uploaded"
+     },
+     {
+      "code": 254,
+      "name": "Incomplete"
+     },
+     {
+      "code": 255,
+      "name": "Custom"
+     }
+    ],
+    "mergePolicy": "esriMPTDefaultValue"
+   },
+   "name": "category",
+   "alias": "Category",
+   "type": "esriFieldTypeInteger"
+  },
+  {
+   "domain": null,
+   "name": "tag",
+   "length": 100,
+   "alias": "Tag",
+   "type": "esriFieldTypeString"
+  },
+  {
+   "domain": null,
+   "name": "groupname",
+   "length": 100,
+   "alias": "GroupName",
+   "type": "esriFieldTypeString"
+  },
+  {
+   "domain": null,
+   "name": "productname",
+   "length": 100,
+   "alias": "ProductName",
+   "type": "esriFieldTypeString"
+  },
+  {
+   "domain": null,
+   "name": "centerx",
+   "alias": "CenterX",
+   "type": "esriFieldTypeDouble"
+  },
+  {
+   "domain": null,
+   "name": "centery",
+   "alias": "CenterY",
+   "type": "esriFieldTypeDouble"
+  },
+  {
+   "domain": null,
+   "name": "zorder",
+   "alias": "ZOrder",
+   "type": "esriFieldTypeInteger"
+  },
+  {
+   "domain": null,
+   "name": "date",
+   "alias": "Date",
+   "type": "esriFieldTypeDateOnly"
+  },
+  {
+   "domain": null,
+   "name": "shape",
+   "alias": "Shape",
+   "type": "esriFieldTypeGeometry"
+  }
+ ],
+ "allowAnalysis": true,
+ "hasRasterAttributeTable": false,
+ "useStandardizedQueries": true,
+ "description": "<div style='text-align:Left;'><div><div><p><span style='font-weight:bold;'>Date of Image:<\/span><\/p><p><span>2/10/2023<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Date of Next Image:<\/span><\/p><p><span>Unknown<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Summary:<\/span><\/p><p><span>2/10/2023 (ARIA, Copernicus Sentinel-1)<\/span><\/p><p><span>The Advanced Rapid Imaging and Analysis (ARIA) team at NASA's Jet Propulsion Laboratory and California Institute of Technology in Southern California created this Damage Proxy Map (DPM) depicting areas that are likely damaged by the large earthquakes (Feb. 06, 2023) in Turkiye (Turkey) and Syria. The map was derived from synthetic aperture radar (SAR) images on Feb. 10, 2023 by the Copernicus Sentinel-1 satellites operated by the European Space Agency (ESA). The pre-event images were taken from Sep. 19, 2022 to Jan. 29, 2022).<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Suggested Use:<\/span><\/p><p><span>Standard Version: The color variation from pale yellow to red indicates increasingly more significant surface change (drop in radar reflection coherence). Preliminary validation was done by comparing with high-resolution optical imagery and media reports.<\/span><\/p><p><span>NOTE: This damage proxy map could be used as a guidance to identify damaged areas, and may be less reliable over vegetated and mountainous areas. Scattered pixels over vegetated areas may be false positives, and a lack of colored pixels over vegetated areas may not mean no damage.<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Satellite/Sensor:<\/span><\/p><p><span>Copernicus Sentinel-1 Synthetic Aperture Radar (SAR)<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Resolution:<\/span><\/p><p><span>30 meters<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Credits:<\/span><\/p><p><span>Sentinel-1 data were accessed through the Copernicus Open Hub and the Alaska Satellite Facility server. The product contains modified Copernicus Sentinel data (2022-2023), processed by ESA and analyzed by the NASA-JPL/Caltech ARIA team in collaboration with Earth Observatory of Singapore - Remote Sensing Lab (EOS-RS). Part of the funding was provided by NASA's Earth Applied Sciences Disasters Program.<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Service URL:<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>WMS Endpoint:<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Data Download:<\/span><\/p><p><span>https://aria-share.jpl.nasa.gov/20230206_Turkey_EQ/DPM/<\/span><\/p><\/div><\/div><\/div>",
+ "pixelType": "U8",
+ "meanPixelSize": 30.922080778891214,
+ "exportTilesAllowed": false,
+ "editFieldsInfo": null,
+ "rasterTypeInfos": [{
+  "help": "",
+  "name": "Raster Dataset",
+  "description": "Supports all ArcGIS Raster Datasets"
+ }],
+ "defaultResamplingMethod": "Bilinear",
+ "itemAccess": false,
+ "minScale": 0,
+ "serviceProperties": "<ImageServer><ImageServiceProperties><MosaicMethod>NorthWest<\/MosaicMethod><MosaicOperator>First<\/MosaicOperator><SortAscending>true<\/SortAscending><LockImageID><\/LockImageID><TileOrderField>Name<\/TileOrderField><TileOrderBase>0<\/TileOrderBase><AvgImageSpacingX>600.000000<\/AvgImageSpacingX><AvgImageSpacingY>300.000000<\/AvgImageSpacingY><ViewPointX>0.0<\/ViewPointX><ViewPointY>0.0<\/ViewPointY><ViewPointDefShiftX>0.0<\/ViewPointDefShiftX><ViewPointDefShiftY>0.0<\/ViewPointDefShiftY><CompressionMethod>None<\/CompressionMethod><CompressionQuality>75<\/CompressionQuality><CompressionTolerance>0.010000<\/CompressionTolerance><SamplingMethod>Bilinear<\/SamplingMethod><\/ImageServiceProperties><\/ImageServer>",
+ "advancedQueryCapabilities": {
+  "supportsStatistics": true,
+  "supportsSqlExpression": true,
+  "supportsOrderBy": true,
+  "useStandardizedQueries": true,
+  "supportsPagination": true,
+  "supportsDistinct": true
+ },
+ "serviceItemId": "4e684f9ad7e74e5d991cb011ca0d07ad",
+ "capabilities": "Catalog,Image,Metadata",
+ "maxScale": 0,
+ "stdvValues": [],
+ "allowedFields": "Name,MinPS,MaxPS,LowPS,HighPS,Tag,GroupName,ProductName,CenterX,CenterY,ZOrder,Shape_Length,Shape_Area,Date",
+ "minPixelSize": 0,
+ "noDataValues": [
+  0,
+  0,
+  0,
+  0
+ ],
+ "sortAscending": true,
+ "maxMosaicImageCount": 20,
+ "inspectionCapabilities": "",
+ "maxPixelSize": 0,
+ "noDataValue": 0,
+ "uncompressedSize": 577302048,
+ "serviceDescription": "<div style='text-align:Left;'><div><div><p><span style='font-weight:bold;'>Date of Image:<\/span><\/p><p><span>2/10/2023<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Date of Next Image:<\/span><\/p><p><span>Unknown<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Summary:<\/span><\/p><p><span>2/10/2023 (ARIA, Copernicus Sentinel-1)<\/span><\/p><p><span>The Advanced Rapid Imaging and Analysis (ARIA) team at NASA's Jet Propulsion Laboratory and California Institute of Technology in Southern California created this Damage Proxy Map (DPM) depicting areas that are likely damaged by the large earthquakes (Feb. 06, 2023) in Turkiye (Turkey) and Syria. The map was derived from synthetic aperture radar (SAR) images on Feb. 10, 2023 by the Copernicus Sentinel-1 satellites operated by the European Space Agency (ESA). The pre-event images were taken from Sep. 19, 2022 to Jan. 29, 2022).<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Suggested Use:<\/span><\/p><p><span>Standard Version: The color variation from pale yellow to red indicates increasingly more significant surface change (drop in radar reflection coherence). Preliminary validation was done by comparing with high-resolution optical imagery and media reports.<\/span><\/p><p><span>NOTE: This damage proxy map could be used as a guidance to identify damaged areas, and may be less reliable over vegetated and mountainous areas. Scattered pixels over vegetated areas may be false positives, and a lack of colored pixels over vegetated areas may not mean no damage.<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Satellite/Sensor:<\/span><\/p><p><span>Copernicus Sentinel-1 Synthetic Aperture Radar (SAR)<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Resolution:<\/span><\/p><p><span>30 meters<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Credits:<\/span><\/p><p><span>Sentinel-1 data were accessed through the Copernicus Open Hub and the Alaska Satellite Facility server. The product contains modified Copernicus Sentinel data (2022-2023), processed by ESA and analyzed by the NASA-JPL/Caltech ARIA team in collaboration with Earth Observatory of Singapore - Remote Sensing Lab (EOS-RS). Part of the funding was provided by NASA's Earth Applied Sciences Disasters Program.<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Service URL:<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>WMS Endpoint:<\/span><\/p><p><span /><\/p><p><span style='font-weight:bold;'>Data Download:<\/span><\/p><p><span>https://aria-share.jpl.nasa.gov/20230206_Turkey_EQ/DPM/<\/span><\/p><\/div><\/div><\/div>",
+ "allowCopy": true,
+ "copyrightText": "NASA JPL/Caltech ARIA Team, Copernicus, ESA",
+ "mensurationCapabilities": "None",
+ "ownershipBasedAccessControlForRasters": null
+}

@@ -80,6 +80,18 @@ flowchart LR
 - Exa: [Twitter/X post retrieval](https://docs.exa.ai/examples/live-demo-twitterx-post-retrieval)
 - X API pricing (third party): [opentweet.io/x-api-pricing](https://opentweet.io/x-api-pricing)
 
+## Build verification · 14 Nov 2026, 20:04 EST
+
+The sources are cached in `data/nasa/` with URLs, SHA-256 hashes and download timestamps. [NASA evidence and reproducible commands](../nasa-evidence.md)
+
+- [x] Verified the ARIA product as Sentinel-1 on 10 February 2023 at about 30 m. Transparent background leaves normalized damage unknown.
+- [x] Verified the gap-filled BRDF-corrected Suomi NPP layer on a 500 m tile matrix. Both selected city cells saturate at the white end of its linked scale, starting at 38.2 nW/(cm² sr). Darkness stays unknown.
+- [x] Read −14.38 °C for 9 February 2023 from POWER JSON, with LST as its time standard and 0.5° × 0.625° regional meteorology.
+- [x] Compared the Yeni Cami surroundings with DHA's 6 February field report. The overlay agrees with damage in the location. Power conditions remain unresolved.
+- [x] Collapsed four synthetic reposts to one original call and labeled all report counts as sample counts.
+
+The two-cell GeoJSON and watcher support two cold alerts. Silent-zone eligibility remains unknown for this cache. Team integration acceptance is recorded in the Role 4 handoff.
+
 ## Checked on 14 Nov
 
 Each line below was tested against the live service on 14 Nov between 18:35 and 19:10.
@@ -95,7 +107,7 @@ Each line below was tested against the live service on 14 Nov between 18:35 and 
   curl -o malatya_dpm.png "https://gis.earthdata.nasa.gov/portal/rest/services/DISASTERS_202302_EARTHQUAKE_TURKIYE/2302_opera_dpm/ImageServer/exportImage?bbox=38.21,38.25,38.41,38.45&bboxSR=4326&imageSR=4326&size=700,700&format=png&f=image"
   ```
   `bbox` is west, south, east, north. **Ask for boxes of 0.2° or smaller.** A box over the whole region came back blank.
-- `identify` at a point returns the pixel's colour. So "damage per zone" = the share of coloured (yellow to red) pixels inside the zone. Say this in the pitch: it is a share of flagged pixels, not a count of buildings.
+- `identify` returns the pixel's color. The build records colored overlay area separately. A valid unflagged-area denominator still needs to be established before publishing normalized damage per zone.
 - A second service in the same folder, `2302_opera_rs_dpm`, has the Earth Observatory of Singapore maps: ALOS-2 on 8 Feb, Sentinel-1 on 9 and 10 Feb. Wider area, same use.
 - The same maps as downloadable GeoTIFF + KMZ (about 50 MB each, CC BY): [HDX, EOS-RS Türkiye-Syria earthquake](https://data.humdata.org/dataset/eos-rs-turkiye-syria-earthquake-feb-2023). Only needed if we want the raw values.
 - Credit line from the service: "Contains modified Copernicus Sentinel data (2022-2023), processed by ESA and analyzed by the NASA-JPL/Caltech ARIA team in collaboration with Earth Observatory of Singapore - Remote Sensing Lab (EOS-RS)."
@@ -107,7 +119,7 @@ Each line below was tested against the live service on 14 Nov between 18:35 and 
   ```
   Here `BBOX` is south, west, north, east (the other order from the ARIA service). Change `TIME` for the date.
 - The raw layer `VIIRS_SNPP_DayNightBand_At_Sensor_Radiance` also works, but it shows moonlit clouds and snow as bright. Do not use it for "dark or not".
-- These are pictures, not radiance values. "Dark" = the zone's mean brightness on 8 Feb is much lower than on 3 Jan. Say so.
+- The images expose rendered brightness. Comparison requires comparable coverage, a usable baseline and an unsaturated scale. The selected city cells saturate and retain unknown darkness.
 
 **Temperature (NASA POWER, no key)**
 ```

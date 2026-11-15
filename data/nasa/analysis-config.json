@@ -1,0 +1,32 @@
+{
+  "version": "malatya-nasa-v1",
+  "deskId": "malatya-2023",
+  "bbox": [38.29, 38.33, 38.35, 38.39],
+  "imageSize": [216, 216],
+  "zoneSideMeters": 500,
+  "damageDate": "2023-02-10",
+  "lightsBeforeDate": "2023-01-03",
+  "lightsAfterDate": "2023-02-08",
+  "temperatureDate": "2023-02-09",
+  "scenarioAt": "2023-02-11T06:00:00Z",
+  "thresholds": {
+    "heavyDamageMinFraction": 0.2,
+    "darkMaxBrightnessRatio": 0.6,
+    "fewCallsMax": 1,
+    "minRenderedCoverage": 0.8,
+    "minBaselineBrightness": 10,
+    "maxSaturatedFraction": 0.2
+  },
+  "zones": [
+    {"id": "malatya-turuncu", "name": "Turuncu Avlu demo cell", "center": [38.35, 38.31]},
+    {"id": "malatya-mor", "name": "Mor Avlu demo cell", "center": [38.36, 38.33]}
+  ],
+  "reportWindowSeconds": [0, 20],
+  "reportOrigins": {
+    "demo-malatya-001": "synthetic-call-ayse",
+    "demo-malatya-002": "synthetic-call-ayse",
+    "demo-malatya-003": "synthetic-call-ayse",
+    "demo-malatya-004": "synthetic-call-ayse",
+    "demo-malatya-005": "synthetic-call-mor"
+  }
+}

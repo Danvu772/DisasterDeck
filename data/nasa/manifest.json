@@ -1,0 +1,76 @@
+{
+  "sources": [
+    {
+      "file": "data/nasa/aria-service.json",
+      "url": "https://gis.earthdata.nasa.gov/portal/rest/services/DISASTERS_202302_EARTHQUAKE_TURKIYE/2302_opera_dpm/ImageServer?f=pjson",
+      "sha256": "a12dbaa7a56306a522d57f1e4fedc1442796ba5f60f267f06d4c057a016d95e0",
+      "cachedAt": "2026-11-15T00:49:48.016134+00:00",
+      "transformation": "Unmodified HTTP body"
+    },
+    {
+      "file": "data/nasa/aria-catalog.json",
+      "url": "https://gis.earthdata.nasa.gov/portal/rest/services/DISASTERS_202302_EARTHQUAKE_TURKIYE/2302_opera_dpm/ImageServer/query?where=1%3D1&outFields=%2A&returnGeometry=false&f=pjson",
+      "sha256": "6a6a3fceb7dc860246f1132c41bb349cfb0fc0219425c90aee6588a25193c4e4",
+      "cachedAt": "2026-11-15T00:49:48.234312+00:00",
+      "transformation": "Unmodified HTTP body"
+    },
+    {
+      "file": "data/nasa/aria-malatya.png",
+      "url": "https://gis.earthdata.nasa.gov/portal/rest/services/DISASTERS_202302_EARTHQUAKE_TURKIYE/2302_opera_dpm/ImageServer/exportImage?bbox=38.29%2C38.33%2C38.35%2C38.39&bboxSR=4326&imageSR=4326&size=216%2C216&format=png32&interpolation=RSP_NearestNeighbor&adjustAspectRatio=false&f=image",
+      "sha256": "bd4cc427a4b6ba571e10e628c4e05609c23510ce57334eba7fe35d718c5d8b0c",
+      "cachedAt": "2026-11-15T00:49:48.955620+00:00",
+      "transformation": "Unmodified HTTP body"
+    },
+    {
+      "file": "data/nasa/aria-export.json",
+      "url": "https://gis.earthdata.nasa.gov/portal/rest/services/DISASTERS_202302_EARTHQUAKE_TURKIYE/2302_opera_dpm/ImageServer/exportImage?bbox=38.29%2C38.33%2C38.35%2C38.39&bboxSR=4326&imageSR=4326&size=216%2C216&format=png32&interpolation=RSP_NearestNeighbor&adjustAspectRatio=false&f=pjson",
+      "sha256": "c20e1a0adbe06b75e96559c69b81b6ccab3c4c834756c45548919af110972ab6",
+      "cachedAt": "2026-11-15T00:52:31.179984+00:00",
+      "transformation": "Unmodified HTTP body"
+    },
+    {
+      "file": "data/nasa/lights-layer.xml",
+      "url": "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/1.0.0/WMTSCapabilities.xml",
+      "sha256": "efac8e9be43d0458ebb65fa3413162e57f2650f539c1841174891ad2f3c1221c",
+      "cachedAt": "2026-11-15T00:51:07.264287+00:00",
+      "transformation": "Selected WMTS Layer element"
+    },
+    {
+      "file": "data/nasa/lights-colormap.xml",
+      "url": "https://gibs.earthdata.nasa.gov/colormaps/v1.3/VIIRS_DayNightBand_At_Sensor_Radiance.xml",
+      "sha256": "ee7d4269eef5006e2206e12d74b5b00bccefee960e96e4ca4eac88f3fdd08cf0",
+      "cachedAt": "2026-11-15T00:52:29.279499+00:00",
+      "transformation": "Unmodified HTTP body"
+    },
+    {
+      "file": "data/nasa/power-malatya.json",
+      "url": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MIN&community=RE&longitude=38.31&latitude=38.35&start=20230206&end=20230210&format=JSON",
+      "sha256": "94b9f531b0c5752ad6053a36326b258516e50b868f05223c2c1672bfd372afa6",
+      "cachedAt": "2026-11-15T00:49:51.040750+00:00",
+      "transformation": "Unmodified HTTP body"
+    },
+    {
+      "file": "data/nasa/landmark.json",
+      "url": "https://nominatim.openstreetmap.org/search?q=Yeni+Cami%2C+Malatya%2C+Turkey&format=json&limit=1",
+      "sha256": "d1debaf79b1bc875094badbed275c610cb24cf6146767e91d01c776a0eaec748",
+      "cachedAt": "2026-11-15T00:52:30.269489+00:00",
+      "transformation": "Unmodified HTTP body"
+    },
+    {
+      "file": "data/nasa/lights-before.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-01-03&BBOX=38.33%2C38.29%2C38.39%2C38.35&CRS=EPSG%3A4326&LAYERS=VIIRS_SNPP_GapFilled_BRDF_Corrected_DayNightBand_Radiance&FORMAT=image%2Fpng&WIDTH=216&HEIGHT=216",
+      "sha256": "dace7cf2e344be5eecaa2ad5da685d30cb9d87f9ba6d1cf8a1497c3768b1810e",
+      "cachedAt": "2026-11-15T00:49:49.830694+00:00",
+      "transformation": "Unmodified HTTP body"
+    },
+    {
+      "file": "data/nasa/lights-after.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-08&BBOX=38.33%2C38.29%2C38.39%2C38.35&CRS=EPSG%3A4326&LAYERS=VIIRS_SNPP_GapFilled_BRDF_Corrected_DayNightBand_Radiance&FORMAT=image%2Fpng&WIDTH=216&HEIGHT=216",
+      "sha256": "114908616807fb9545fd41ebe8b88a9736bd4f84739a5945dc070fa34edad4b1",
+      "cachedAt": "2026-11-15T00:49:50.438481+00:00",
+      "transformation": "Unmodified HTTP body"
+    }
+  ],
+  "cachedAtMeaning": "UTC modification time of the downloaded cache file",
+  "configurationSha256": "1f98e84633d1c10b2a787f333bc4c40961b1e5502add040031d8d434d43d8d88"
+}
