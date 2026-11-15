@@ -1,4 +1,4 @@
-# Disaster Desk
+# Disaster Deck
 
 [![CI](https://github.com/DarshalShetty/HackTheNest26/actions/workflows/ci.yml/badge.svg)](https://github.com/DarshalShetty/HackTheNest26/actions/workflows/ci.yml)
 

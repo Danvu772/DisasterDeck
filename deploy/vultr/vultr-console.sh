@@ -1,5 +1,5 @@
 #!/bin/bash
-# Disaster Desk on an IPv6-only Vultr VM, start to finish (#39). Run as root in the Vultr console.
+# Disaster Deck on an IPv6-only Vultr VM, start to finish (#39). Run as root in the Vultr console.
 # Safe to run again: each step checks first and skips what is done. Full log: /root/desk-setup.log
 # It stops and asks three times: the GitHub deploy key, the .env.local, the Cloudflare tunnel token.
 #   DOMAIN=other.example bash vultr-console.sh   serves another domain (default disasterdeck.us)
@@ -24,7 +24,7 @@ run() { "$@" >"$STEPLOG" 2>&1 || { tail -25 "$STEPLOG" | sed 's/^/   | /'; retur
 envval() { grep -E "^$1=" "$ENV" 2>/dev/null | tail -1 | cut -d= -f2- | sed -E 's/^"(.*)"$/\1/'; }
 export DEBIAN_FRONTEND=noninteractive
 cd /tmp
-echo "== Disaster Desk setup $(date -u +%H:%MZ) on $(hostname), $(. /etc/os-release; echo "$PRETTY_NAME")"
+echo "== Disaster Deck setup $(date -u +%H:%MZ) on $(hostname), $(. /etc/os-release; echo "$PRETTY_NAME")"
 
 step 1 "Network"
 if curl -4 -fsS -m5 -o /dev/null https://api.ipify.org 2>/dev/null; then
@@ -124,7 +124,7 @@ cd /tmp
 step 9 "Services: web, brain, auto-deploy from main"
 cat > /etc/systemd/system/desk-web.service <<'EOF'
 [Unit]
-Description=Disaster Desk web (Next.js on 127.0.0.1:3000)
+Description=Disaster Deck web (Next.js on 127.0.0.1:3000)
 After=network-online.target
 Wants=network-online.target
 [Service]
@@ -139,7 +139,7 @@ WantedBy=multi-user.target
 EOF
 cat > /etc/systemd/system/desk-brain.service <<'EOF'
 [Unit]
-Description=Disaster Desk Brain (one per database, holds a lease in meta)
+Description=Disaster Deck Brain (one per database, holds a lease in meta)
 After=network-online.target
 Wants=network-online.target
 [Service]
@@ -172,7 +172,7 @@ EOF
 chmod 755 /usr/local/bin/desk-deploy
 cat > /etc/systemd/system/desk-deploy.service <<'EOF'
 [Unit]
-Description=Disaster Desk: redeploy if origin/main moved
+Description=Disaster Deck: redeploy if origin/main moved
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/desk-deploy
@@ -212,7 +212,7 @@ else
 fi
 cat > /etc/systemd/system/desk-tunnel.service <<EOF
 [Unit]
-Description=Disaster Desk public URL (Cloudflare tunnel, $TUNNEL_MODE)
+Description=Disaster Deck public URL (Cloudflare tunnel, $TUNNEL_MODE)
 After=network-online.target desk-web.service
 Wants=network-online.target
 [Service]

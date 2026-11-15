@@ -1,6 +1,6 @@
 # Role 2: Agents — status and TODO
 
-Owner: Ömer until 15 Nov morning, **Göktürk from then on**. Design: `docs/Multiplayer Disaster Desk/Final system design.md` §6–7, `Personal agents.md`. Shapes: `lib/types.ts`.
+Owner: Ömer until 15 Nov morning, **Göktürk from then on**. Design: `docs/Multiplayer Disaster Deck/Final system design.md` §6–7, `Personal agents.md`. Shapes: `lib/types.ts`.
 
 **In one line:** every AI part of the desk. Research agents turn tweets and news into events. Every person has a personal agent that reads their slice of the desk and files what they say as events. **Agents never write records**: they read context and post events; Role 1's Brain does the rest.
 
@@ -105,7 +105,7 @@ Demo people on the real desk (from `data/seed.json`): `volunteer-callback`, `vol
 ## Google Sheets setup (once, ~15 min, Ömer)
 
 1. Use a **personal Gmail**, not the IU account (university Google accounts often block projects and keys).
-2. <https://console.cloud.google.com> → new project `disaster-desk`.
+2. <https://console.cloud.google.com> → new project `disaster-deck`.
 3. APIs & Services → Library → **Google Sheets API** → Enable.
 4. IAM & Admin → Service Accounts → Create: name `sheet-agent`, no roles → Done.
 5. Open it → Keys → Add key → Create new key → **JSON**. Save it as `agents/.secrets/google-sa.json` (git-ignored; the folder is hidden in Finder). **Never** leave it in `agents/` itself: git would pick it up. Never paste it in chat or Slack.

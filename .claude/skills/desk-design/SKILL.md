@@ -1,9 +1,9 @@
 ---
 name: desk-design
-description: The Disaster Desk visual system (theme v5, 15 Nov 2026) — shadcn/ui neutral on the Obra shadcn kit, Geist, Lucide, motion. Load before writing or changing any screen, component, map layer or copy in app/ or components/.
+description: The Disaster Deck visual system (theme v5, 15 Nov 2026) — shadcn/ui neutral on the Obra shadcn kit, Geist, Lucide, motion. Load before writing or changing any screen, component, map layer or copy in app/ or components/.
 ---
 
-# Disaster Desk design system (v5)
+# Disaster Deck design system (v5)
 
 One look for every screen: **shadcn/ui "neutral"** (the Obra shadcn/ui kit, Community edition, MIT),
 **Geist** type, **Lucide** icons, **motion** (`motion/react`) for movement, **MapLibre** for maps.

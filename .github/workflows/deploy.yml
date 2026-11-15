@@ -64,3 +64,5 @@ jobs:
           code=$(curl -s -o /dev/null -m 20 -w '%{http_code}' https://disasterdeck.us/login || true)
           echo "https://disasterdeck.us/login answers $code"
           [ "$code" = 200 ] || echo "::warning::The VM serves the release, but disasterdeck.us answers $code (tunnel or DNS)."
+      - name: Product name on the live site
+        run: node scripts/check-name.mjs --site https://disasterdeck.us

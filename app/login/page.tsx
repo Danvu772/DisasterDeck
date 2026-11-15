@@ -41,7 +41,7 @@ export default async function LoginPage({ searchParams }: {
             <LifeBuoy aria-hidden className="size-5" />
           </span>
           <div className="space-y-1">
-            <h1 className="text-xl font-semibold tracking-tight">Sign in to Disaster Desk</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Sign in to Disaster Deck</h1>
             <p className="text-sm text-muted-foreground">Use your work or agency account.</p>
           </div>
         </div>

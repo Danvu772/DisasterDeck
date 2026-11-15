@@ -48,7 +48,7 @@ export function Nav({ account }: { account?: React.ReactNode }) {
             <path d="M5 19l5-10 5 7 4-5 4 8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
-        Disaster Desk
+        Disaster Deck
       </Link>
       <span className="hidden rounded-full border px-2 py-0.5 text-[11px] font-medium text-muted-foreground xl:inline">Exercise · 6 Feb 2023 earthquake</span>
       <div className={cn("no-scrollbar order-last flex w-full min-w-0 items-center gap-0.5 overflow-x-auto whitespace-nowrap xl:order-none xl:w-auto xl:flex-1", path.startsWith("/field") && "max-sm:hidden")}>

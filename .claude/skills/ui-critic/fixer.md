@@ -1,6 +1,6 @@
 # Fixer brief (one round)
 
-You fix the findings in one UI critic report for the Disaster Desk (Next.js 15, Tailwind, shadcn/ui).
+You fix the findings in one UI critic report for the Disaster Deck (Next.js 15, Tailwind, shadcn/ui).
 Input: the report path `docs/ui-critic/round-NN.md`.
 
 ## Before you edit

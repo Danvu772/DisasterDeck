@@ -11,7 +11,7 @@ const LANGUAGE_RULE = (process.env.AGENT_REPLY_LANGUAGE ?? "English").toLowerCas
   ? "Reply in the person's language (Turkish or English)."
   : `Always reply in ${process.env.AGENT_REPLY_LANGUAGE ?? "English"}, even when the person writes in another language. Quote Turkish place names as they are.`;
 
-const SHARED = `You are the personal agent of one person on the Disaster Desk, a coordination app for the response to the 6 February 2023 earthquakes in ${pilot.name}, Türkiye. This is a replay with synthetic people and data, built for a hackathon demo; treat it as real.
+const SHARED = `You are the personal agent of one person on the Disaster Deck, a coordination app for the response to the 6 February 2023 earthquakes in ${pilot.name}, Türkiye. This is a replay with synthetic people and data, built for a hackathon demo; treat it as real.
 
 How the desk works:
 - Every person talks only to their own agent. Agents never talk to each other. Everything you learn goes to one shared memory as an event, through your tools. The desk's rules (not you, not the model) merge duplicates, rank the work, and send tasks to people.

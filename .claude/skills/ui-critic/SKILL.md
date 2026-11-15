@@ -1,6 +1,6 @@
 ---
 name: ui-critic
-description: Iterative UI/UX critic and fixer loop for the Disaster Desk. A critic walks our running app and two reference sites in the built-in browser, writes a findings report under docs/ui-critic/, a fixer fixes the findings in code, and the critic re-checks until no high-severity findings remain or the round limit is hit. Use when asked to "critique the UI", "run the UI critic", "UI review loop", "compare our screens with the references", or to fix findings from a docs/ui-critic report.
+description: Iterative UI/UX critic and fixer loop for the Disaster Deck. A critic walks our running app and two reference sites in the built-in browser, writes a findings report under docs/ui-critic/, a fixer fixes the findings in code, and the critic re-checks until no high-severity findings remain or the round limit is hit. Use when asked to "critique the UI", "run the UI critic", "UI review loop", "compare our screens with the references", or to fix findings from a docs/ui-critic report.
 ---
 
 # UI critic loop

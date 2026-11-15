@@ -1,4 +1,4 @@
-# Disaster Desk
+# Disaster Deck
 
 **Tagline**
 
@@ -6,7 +6,7 @@ Give volunteers, field teams and suppliers one place to see who owns the next ac
 
 ## Inspiration
 
-Imagine volunteering at a call desk. Four posts say Ayşe is trapped at Turuncu Avlu. Should you make a fourth call, or has someone already reached her? Meanwhile a fifth post describes two people at a different address. We built Disaster Desk around the question the next volunteer needs answered first: “Who is already on this?”
+Imagine volunteering at a call desk. Four posts say Ayşe is trapped at Turuncu Avlu. Should you make a fourth call, or has someone already reached her? Meanwhile a fifth post describes two people at a different address. We built Disaster Deck around the question the next volunteer needs answered first: “Who is already on this?”
 
 ## What it does
 

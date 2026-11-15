@@ -29,7 +29,7 @@ Unmarked areas are not declared safe. A valid optical observation still cannot s
 
 ## Buildings and human review
 
-The 743 HOT/OSM polygons are external historical mapped destroyed buildings, not a model run by Disaster Desk. Click for the mapping source. Optional review notes are local to the browser; export JSON to share them. They do not update MongoDB or send dispatches.
+The 743 HOT/OSM polygons are external historical mapped destroyed buildings, not a model run by Disaster Deck. Click for the mapping source. Optional review notes are local to the browser; export JSON to share them. They do not update MongoDB or send dispatches.
 
 ## Availability and cadence
 

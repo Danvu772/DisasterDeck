@@ -52,7 +52,7 @@ export function buildSpec() {
   return {
     openapi: "3.1.0",
     info: {
-      title: "Multiplayer Disaster Desk API",
+      title: "Multiplayer Disaster Deck API",
       version: "2.1",
       description: [
         "Every fact enters the desk as an **event**. The Brain reads events one at a time and",

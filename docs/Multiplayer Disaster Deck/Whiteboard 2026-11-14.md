@@ -6,7 +6,7 @@ tags: [hackathon, whiteboard]
 > [!info] This is a record of the whiteboard session, not a design
 > The design that came out of it is [[Final system design]]. Research, Action and Orchestration from the board became research agents, personal agents with the dispatcher, and the Brain.
 
-Main note: [[Multiplayer Disaster Desk]]
+Main note: [[Multiplayer Disaster Deck]]
 
 ![[whiteboard-2026-11-14.jpg]]
 

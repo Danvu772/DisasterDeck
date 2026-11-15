@@ -35,6 +35,8 @@ jobs:
         run: npm run check:replay
       - name: Lint
         run: npx eslint
+      - name: Product name is Disaster Deck
+        run: npm run check:name
       - name: Design tokens
         run: npm run check:tokens
       - name: Build

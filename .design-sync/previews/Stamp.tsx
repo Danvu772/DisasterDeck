@@ -1,4 +1,4 @@
-import { Stamp } from "disaster-desk";
+import { Stamp } from "disaster-deck";
 
 const now = Date.now();
 const ago = (min: number) => new Date(now - min * 60000);

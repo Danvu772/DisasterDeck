@@ -1,14 +1,14 @@
 {
   "projectId": "fc2be836-4cfa-4c92-8b51-389569b1953d",
   "shape": "package",
-  "pkg": "disaster-desk",
-  "globalName": "DisasterDesk",
+  "pkg": "disaster-deck",
+  "globalName": "DisasterDeck",
   "buildCmd": "node .design-sync/build-css.mjs && ./.design-sync/build-types.sh",
   "srcDir": "components",
   "tsconfig": ".design-sync/tsconfig.json",
   "cssEntry": ".design-sync/.cache/ds.css",
   "guidelinesGlob": [
-    "docs/Multiplayer Disaster Desk/Roles/Frontend visual language.md"
+    "docs/Multiplayer Disaster Deck/Roles/Frontend visual language.md"
   ],
   "libOverrides": {
     "dts.mjs": "no package.json types field; read dist/types/index.d.ts emitted by build-types.sh"

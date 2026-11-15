@@ -1,10 +1,10 @@
-# Disaster Desk: how to build with it
+# Disaster Deck: how to build with it
 
-Disaster Desk is built on USWDS 3.14 (U.S. Web Design System) tokens and patterns, rebuilt in Tailwind. It should look like a default government website. No `·` separators, no `→` arrows, no glyph dots, no `…`, no uppercase letter-spaced labels, no mono: separate fields with words and commas, and write headings in sentence case. Every screen answers five questions about a thing on the desk: how bad (`tier`), how sure (`confidence`), how old (`observedAt`), who is on it (`assignee`/`history`), where (`coords`). Each field owns exactly one visual channel. Never reuse a channel for something else.
+Disaster Deck is built on USWDS 3.14 (U.S. Web Design System) tokens and patterns, rebuilt in Tailwind. It should look like a default government website. No `·` separators, no `→` arrows, no glyph dots, no `…`, no uppercase letter-spaced labels, no mono: separate fields with words and commas, and write headings in sentence case. Every screen answers five questions about a thing on the desk: how bad (`tier`), how sure (`confidence`), how old (`observedAt`), who is on it (`assignee`/`history`), where (`coords`). Each field owns exactly one visual channel. Never reuse a channel for something else.
 
 ## Setup
 
-No provider. Load `styles.css` (it pulls in Source Sans 3 from Google Fonts, the tokens and every utility class below) and `_ds_bundle.js`, then use `window.DisasterDesk.*`. Put the page on `bg-paper text-ink` (white). Every component that shows an age takes `now` (epoch ms, e.g. `Date.now()`) and dates as `Date` or ISO strings.
+No provider. Load `styles.css` (it pulls in Source Sans 3 from Google Fonts, the tokens and every utility class below) and `_ds_bundle.js`, then use `window.DisasterDeck.*`. Put the page on `bg-paper text-ink` (white). Every component that shows an age takes `now` (epoch ms, e.g. `Date.now()`) and dates as `Date` or ISO strings.
 
 ## The encoding (do not break it)
 
@@ -63,7 +63,7 @@ Task    { _id; type; recordType; recordId; assignee?; tried: string[]; risk; tie
 ## Example
 
 ```jsx
-const { RecordCard, HealthLine } = window.DisasterDesk;
+const { RecordCard, HealthLine } = window.DisasterDeck;
 const now = Date.now();
 <main className="bg-paper text-ink p-4 space-y-3">
   <header className="flex items-baseline gap-3">

@@ -1,10 +1,10 @@
-# Worker brief: Disaster Desk frontend
+# Worker brief: Disaster Deck frontend
 
-You are one worker on the frontend (Role 3) of Multiplayer Disaster Desk, a hackathon app (Next.js 15 App Router, Tailwind v4, TypeScript). An orchestrator session gave you one task. It reviews, merges and pushes your work. You only do the task.
+You are one worker on the frontend (Role 3) of Multiplayer Disaster Deck, a hackathon app (Next.js 15 App Router, Tailwind v4, TypeScript). An orchestrator session gave you one task. It reviews, merges and pushes your work. You only do the task.
 
 ## Read before you write code
-- `docs/Multiplayer Disaster Desk/Roles/Frontend visual language.md`: the design rules. They are strict.
-- `docs/Multiplayer Disaster Desk/Roles/Role 3 - Frontend.md`: what the screens must do.
+- `docs/Multiplayer Disaster Deck/Roles/Frontend visual language.md`: the design rules. They are strict.
+- `docs/Multiplayer Disaster Deck/Roles/Role 3 - Frontend.md`: what the screens must do.
 - `lib/README.md` and `lib/types.ts`: the API and data shapes (Role 1 owns them).
 - The components your task names. Reuse them before you write new ones.
 

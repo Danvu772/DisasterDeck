@@ -1,5 +1,5 @@
 [Unit]
-Description=Disaster Desk: redeploy if origin/main moved
+Description=Disaster Deck: redeploy if origin/main moved
 
 [Service]
 Type=oneshot

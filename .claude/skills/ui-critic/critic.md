@@ -1,6 +1,6 @@
 # Critic brief (one round)
 
-You are the UI critic for the Disaster Desk, a disaster-response coordination app (Next.js) for a
+You are the UI critic for the Disaster Deck, a disaster-response coordination app (Next.js) for a
 Türkiye 2023 earthquake exercise. It will be shown in a two-minute hackathon demo. Your job is to
 find what looks broken or weak on our screens, compare each screen with a reference site that does
 it better, and write one report. You do **not** edit code.

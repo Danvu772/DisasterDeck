@@ -6,7 +6,7 @@ files: workers/brain.ts, workers/memory-keeper.ts, workers/dispatcher.ts, worker
 ---
 # The Brain handles every event a person sends, and the dispatcher makes tasks (closes #8, fills #3 to #7)
 
-Dan took over Role 1's blocking items (tracker #26). This task may edit the Role 1 files listed above. Build on Darshal's Brain (`76427c5`): one loop, the lease, the keeper as the only writer of records, the dispatcher as the only writer of tasks and inboxes. Read `workers/brain.ts`, `workers/memory-keeper.ts`, `workers/dispatcher.ts`, `workers/sweeper.ts`, `lib/rules/`, `lib/keeper-check.ts`, and `docs/Multiplayer Disaster Desk/Final system design.md` §4 (lifecycles), §5 (how the dispatcher decides), §6 (help desk) first.
+Dan took over Role 1's blocking items (tracker #26). This task may edit the Role 1 files listed above. Build on Darshal's Brain (`76427c5`): one loop, the lease, the keeper as the only writer of records, the dispatcher as the only writer of tasks and inboxes. Read `workers/brain.ts`, `workers/memory-keeper.ts`, `workers/dispatcher.ts`, `workers/sweeper.ts`, `lib/rules/`, `lib/keeper-check.ts`, and `docs/Multiplayer Disaster Deck/Final system design.md` §4 (lifecycles), §5 (how the dispatcher decides), §6 (help desk) first.
 
 ## The bug this fixes
 The Brain only takes events whose type is in `HANDLED` (memory-keeper), which is `report` only. Every `answer`, `approval`, `incident`, `need`, `claim` a person posts stays `pending` forever, and there are no tasks at all (the dispatcher is a stub), so every task button on every screen answers 404.

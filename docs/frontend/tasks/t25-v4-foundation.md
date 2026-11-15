@@ -2,7 +2,7 @@
 id: t25-v4-foundation
 effort: high
 checkpoint: redesign
-files: app/globals.css, app/layout.tsx, components/Nav.tsx, components/HealthLine.tsx, components/encode.ts, new components/StatusPill.tsx, package.json (check:tokens only), docs/Multiplayer Disaster Desk/Roles/Frontend visual language.md
+files: app/globals.css, app/layout.tsx, components/Nav.tsx, components/HealthLine.tsx, components/encode.ts, new components/StatusPill.tsx, package.json (check:tokens only), docs/Multiplayer Disaster Deck/Roles/Frontend visual language.md
 ---
 # Visual language v4: USWDS values, v2 look. Tokens, fonts, dark header
 
@@ -25,7 +25,7 @@ Reference: Ömer's v2 look. Read `git show origin/redesign/v2:app/v2/theme.css` 
 
 ## 3. Dark header (`components/Nav.tsx`)
 v2's TopBar composition on USWDS tokens:
-- Left: the v2 logo mark (inline SVG, `currentColor`), "Disaster Desk", and a pill "Malatya exercise, synthetic data" (`night-muted` border).
+- Left: the v2 logo mark (inline SVG, `currentColor`), "Disaster Deck", and a pill "Malatya exercise, synthetic data" (`night-muted` border).
 - Role tabs: Desk, Agent, Map, Coordinator, Field. Current tab: white pill with ink text (`aria-current="page"`). Others: `night-ink` text, hover underline. Keep "Design lab" at the far right, muted.
 - Right: who is acting (`?user=` or the signed-in name, as a pill) and the queue status pill (`components/StatusPill.tsx`): polls `GET /api/health` every 5 s through `usePolled`. Text: "Brain running, queue 0" (ok colours), or "Brain not running, queue 1, oldest 29 min" / "The desk is not answering" (act colours, because a person must act). A Brain counts as running when `lastLoopAt` is under 30 s old. Times in mono.
 - The `account` prop (`Account.tsx`, sign in/out) stays, styled for the dark bar.

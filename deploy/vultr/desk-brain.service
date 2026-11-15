@@ -1,5 +1,5 @@
 [Unit]
-Description=Disaster Desk Brain (one loop per database, holds a lease in meta)
+Description=Disaster Deck Brain (one loop per database, holds a lease in meta)
 After=network-online.target
 Wants=network-online.target
 

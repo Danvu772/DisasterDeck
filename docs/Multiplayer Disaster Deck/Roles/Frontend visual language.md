@@ -12,7 +12,7 @@ Dan compared v1 with Ömer's `redesign/v2` and kept v1's workflows with v2's lay
 
 - **Faces.** Public Sans for all text, headings included. Roboto Mono (`font-mono`) is back, but only for ids, times, scores, counts in pills and machine output, the way USWDS itself uses it. Never for labels, headings or prose. `check:tokens` still bans `font-serif`.
 - **Grey page.** `paper` is now `base-lightest` (`#f0f0f0`), so white cards sit on a light grey page like v2.
-- **Dark header.** `night` (`base-darkest`) bar on every page: logo, "Disaster Desk", the "Antakya exercise, synthetic data" pill, role tabs (current tab is a white pill with ink text), who is acting, and the queue status pill. Links on the bar are white and underlined, because `primary` blue does not pass contrast on `night`.
+- **Dark header.** `night` (`base-darkest`) bar on every page: logo, "Disaster Deck", the "Antakya exercise, synthetic data" pill, role tabs (current tab is a white pill with ink text), who is acting, and the queue status pill. Links on the bar are white and underlined, because `primary` blue does not pass contrast on `night`.
 - **One green.** `ok` (`success-dark`) and `ok-soft` (`success-lighter`) exist for the healthy queue pill and nothing else. "Brain running, queue 0" is green. "Brain not running, queue 1, oldest 96 min" and "The desk is not answering" are act red, because somebody has to go fix it.
 - **Pills and chips.** New `pill` radius (USWDS `pill`, `99rem`). `encode.ts` adds `chip(active)` for filter chips, `pill` for neutral labels, and `tierText(tier)` for v2's "T0 Danger to life" badge text (code in mono, word in sans).
 - **No shadows.** USWDS cards are flat with a border. The shadow scale is unset in `globals.css`.
@@ -128,7 +128,7 @@ Every screen is built from these and nothing else. If a screen needs something n
 4. **A `/lab` page.** Every primitive in every state on one screen, from the fixtures. This is the design review surface. Change a token, refresh, look at everything at once.
 5. **New screen ideas go in `app/lab/<name>/page.tsx`.** Compose primitives over fixtures. Promote to the real route once it reads right.
 6. **A guard script.** `npm run check:tokens` greps `app/` and `components/` for raw hex, raw Tailwind palette colours and `font-serif` in `.ts`, `.tsx` and `.css` files (except `app/globals.css`), and fails if it finds any. `font-mono` is allowed since v4.
-7. **Claude Design follows this file.** `.design-sync/` syncs `components/` to the Disaster Desk design-system project. After changing tokens or `encode.ts`, re-run the sync (see `.design-sync/NOTES.md`) so the design agent builds with the new rules.
+7. **Claude Design follows this file.** `.design-sync/` syncs `components/` to the Disaster Deck design-system project. After changing tokens or `encode.ts`, re-run the sync (see `.design-sync/NOTES.md`) so the design agent builds with the new rules.
 
 ## Open decisions (DECIDE)
 

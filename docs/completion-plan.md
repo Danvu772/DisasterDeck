@@ -1,4 +1,4 @@
-# Completing the live Disaster Desk pipeline
+# Completing the live Disaster Deck pipeline
 
 ## Current integration update - 15 November, 01:46 EST
 
@@ -49,7 +49,7 @@ flowchart TD
     J[Sweeper deadlines and check-ins] --> D
 ~~~
 
-The next steps follow the existing ownership model. Role 1 owns the Brain, database and API contract. Role 2 owns agents. Role 3 owns screens. Role 4 owns replay, NASA, scenarios and presentation evidence. Cross-owner changes should use the team's existing review process. [Team contracts](Multiplayer%20Disaster%20Desk/Roles/Team%20contracts.md) · [API coordination](../api_front_back_gap/README.md)
+The next steps follow the existing ownership model. Role 1 owns the Brain, database and API contract. Role 2 owns agents. Role 3 owns screens. Role 4 owns replay, NASA, scenarios and presentation evidence. Cross-owner changes should use the team's existing review process. [Team contracts](Multiplayer%20Disaster%20Deck/Roles/Team%20contracts.md) · [API coordination](../api_front_back_gap/README.md)
 
 1. **Make one event complete reliably. Role 1.**
 
@@ -99,7 +99,7 @@ The next steps follow the existing ownership model. Role 1 owns the Brain, datab
 
    An incident update with incidentId and resolved=true updates that incident. Repair must not revive a delivery already being performed by its replacement. Handle partial supply and coordinator escalation using the same accounting. Review claim events for declared work and authorized corrections so they cannot create duplicate assignments or bypass high-risk approval.
 
-   Extend the sweeper using the documented deadlines. Expired unanswered tasks select the next eligible person and update tried. An expired ETA creates an auditable check-in. Repeated timer turns create one effect. Keep event crash recovery and lease behavior intact. [System design](Multiplayer%20Disaster%20Desk/Final%20system%20design.md)
+   Extend the sweeper using the documented deadlines. Expired unanswered tasks select the next eligible person and update tried. An expired ETA creates an auditable check-in. Repeated timer turns create one effect. Keep event crash recovery and lease behavior intact. [System design](Multiplayer%20Disaster%20Deck/Final%20system%20design.md)
 
    **Accept when** Supplier A's accepted delivery becomes blocked, Supplier B gets the replacement, the field phone sees the revised ETA, and repair resolves the original incident without creating two active deliveries. If this extension is incomplete at rehearsal, the accepted primary-delivery ending remains the available presentation.
 

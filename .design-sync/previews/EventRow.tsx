@@ -1,4 +1,4 @@
-import { EventRow } from "disaster-desk";
+import { EventRow } from "disaster-deck";
 import { makeEvents, users } from "@/fixtures/desk";
 
 const now = Date.now();

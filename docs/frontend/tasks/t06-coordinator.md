@@ -6,7 +6,7 @@ files: new app/coordinator/page.tsx, new components/coordinator/*. Read-only: co
 ---
 # Coordinator screen
 
-The coordinator approves risky work and watches problems. Read `Final system design.md` §5 (Approvals, Picking a person) and §6 (Help desk) in `docs/Multiplayer Disaster Desk/`, and the Role 3 doc task 4.
+The coordinator approves risky work and watches problems. Read `Final system design.md` §5 (Approvals, Picking a person) and §6 (Help desk) in `docs/Multiplayer Disaster Deck/`, and the Role 3 doc task 4.
 
 Build `/coordinator` with three areas that fit one laptop screen without scrolling for the main thing:
 

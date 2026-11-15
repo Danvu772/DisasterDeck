@@ -1,4 +1,4 @@
-import { HealthLine } from "disaster-desk";
+import { HealthLine } from "disaster-deck";
 
 export const Healthy = () => <HealthLine pending={3} oldestPendingSeconds={2} />;
 // Normal queue, muted mono.

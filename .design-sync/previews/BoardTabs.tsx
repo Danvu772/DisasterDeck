@@ -1,4 +1,4 @@
-import { BoardTabs } from "disaster-desk";
+import { BoardTabs } from "disaster-deck";
 import { makeBoard } from "@/fixtures/board";
 
 const now = Date.now();

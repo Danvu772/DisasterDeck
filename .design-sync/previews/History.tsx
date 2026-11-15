@@ -1,4 +1,4 @@
-import { History } from "disaster-desk";
+import { History } from "disaster-deck";
 import { makeBoard } from "@/fixtures/board";
 
 const now = Date.now();

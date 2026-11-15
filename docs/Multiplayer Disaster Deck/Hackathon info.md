@@ -3,7 +3,7 @@ tags: [hackathon, rules]
 ---
 # Hackathon info: Hack The Nest 2026
 
-Main note: [[Multiplayer Disaster Desk]]
+Main note: [[Multiplayer Disaster Deck]]
 
 Eastern Michigan University, 14–15 November 2026. Teams of 1 to 4. Source: the Hacker Packet PDF.
 

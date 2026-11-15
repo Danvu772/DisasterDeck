@@ -1,5 +1,5 @@
 [Unit]
-Description=Disaster Desk web (Next.js), behind Caddy
+Description=Disaster Deck web (Next.js), behind Caddy
 After=network-online.target
 Wants=network-online.target
 

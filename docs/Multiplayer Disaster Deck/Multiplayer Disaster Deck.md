@@ -2,7 +2,7 @@
 tags: [hackathon, idea, multiplayer-ai]
 event: Hack The Nest 2026
 ---
-# Multiplayer Disaster Desk
+# Multiplayer Disaster Deck
 
 > [!abstract] In one sentence
 > A coordination app that brings the groups who work apart after a disaster (volunteers, field teams, logistics, shelters and the coordinator) **onto one desk**: everyone talks to their own agent, and all agents share one collective memory. Agents read X, Instagram, Facebook and the volunteers' Google Sheets, and the desk acts on what they find, all the way to splitting evacuation traffic across every open exit.
@@ -313,7 +313,7 @@ This is the Lahaina dashboard with the 10 people taken out of the copying loop.
 ### Desk view (coordinator and volunteers)
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ Disaster desk · Antakya · night shift        AY  MK  ZD + agent │
+│ Disaster deck · Antakya · night shift        AY  MK  ZD + agent │
 ├──────────────────────┬──────────────────────────────────────────┤
 │ INCOMING             │ SHARED LIST                              │
 │                      │                                          │

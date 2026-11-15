@@ -1,4 +1,4 @@
-import { ChatLine } from "disaster-desk";
+import { ChatLine } from "disaster-deck";
 
 export const Exchange = () => (
   <div className="space-y-1 rounded-card border border-line bg-card p-3" style={{ maxWidth: 420 }}>

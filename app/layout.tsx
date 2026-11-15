@@ -10,7 +10,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin", "lat
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin", "latin-ext"] });
 
 export const metadata: Metadata = {
-  title: "Disaster Desk",
+  title: "Disaster Deck",
   description: "One shared desk for disaster response: every report, task and shelter in one place.",
 };
 

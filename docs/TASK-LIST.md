@@ -1,6 +1,6 @@
 # Task list: original system vs current state
 
-Basis: the original is `docs/Multiplayer Disaster Desk/` (idea, Final system design, hackathon packet). The current state comes from `docs/completion-plan.md`, `agents/TODO.md`, `docs/frontend/TASKS.md`, `docs/nasa-requirements-audit.md`, `api_front_back_gap/ROLE1-HANDOFF.md`, and grep checks on the code. The app was not run for this list, so "unverified" means a doc or grep hit only.
+Basis: the original is `docs/Multiplayer Disaster Deck/` (idea, Final system design, hackathon packet). The current state comes from `docs/completion-plan.md`, `agents/TODO.md`, `docs/frontend/TASKS.md`, `docs/nasa-requirements-audit.md`, `api_front_back_gap/ROLE1-HANDOFF.md`, and grep checks on the code. The app was not run for this list, so "unverified" means a doc or grep hit only.
 
 Role 1 (Backend and Brain) moved from Darshal to Dan on 15 Nov. Darshal's handoff is in `api_front_back_gap/ROLE1-HANDOFF.md`.
 

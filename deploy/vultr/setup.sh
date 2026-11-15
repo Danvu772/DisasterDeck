@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time setup of the Disaster Desk on a fresh Ubuntu 22.04/24.04 Vultr VM (#39). Run as root.
+# One-time setup of the Disaster Deck on a fresh Ubuntu 22.04/24.04 Vultr VM (#39). Run as root.
 # Safe to run again. The first run stops after printing the deploy key, the second run finishes:
 #
 #   bash setup.sh                       # 1. prints the key: add it at GitHub > repo Settings > Deploy keys

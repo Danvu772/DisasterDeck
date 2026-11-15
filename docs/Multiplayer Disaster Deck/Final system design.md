@@ -8,7 +8,7 @@ version: 2
 > [!abstract] In one sentence
 > Every person talks only to **their own agent**. Agents never talk to each other: every fact goes into **one collective memory** (MongoDB). The **Brain** keeps that memory clean, ranks the work, and sends each new fact to the people who need it. When something goes wrong on the ground, the person tells their agent and the Brain **re-plans**: that is the help desk.
 
-**This is the only system design.** Older drafts (System design, Agent architecture, System map canvas, the whiteboard's architecture) were removed on 14 Nov so nothing conflicts. Background and story: [[Multiplayer Disaster Desk]]. Data: [[Data sources]]. Whiteboard photo: [[Whiteboard 2026-11-14]].
+**This is the only system design.** Older drafts (System design, Agent architecture, System map canvas, the whiteboard's architecture) were removed on 14 Nov so nothing conflicts. Background and story: [[Multiplayer Disaster Deck]]. Data: [[Data sources]]. Whiteboard photo: [[Whiteboard 2026-11-14]].
 
 > [!note] Version 2, 14 Nov 18:45
 > The design was reviewed against the three voice memos and the Hacker Packet. Every gap that was found, and the reason for each change, is in [[Design review 2026-11-14]]. Parts marked **(v2)** are new. The core did not change: five boxes, one memory, agents never talk to each other.

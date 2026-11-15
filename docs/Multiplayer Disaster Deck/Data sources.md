@@ -3,7 +3,7 @@ tags: [hackathon, data]
 ---
 # Data sources
 
-Main note: [[Multiplayer Disaster Desk]]
+Main note: [[Multiplayer Disaster Deck]]
 
 > [!info] Hackathon rule
 > Only public, synthetic or our own data. No real patient data and no medical advice. Tweets are public, but names, addresses and phone numbers are sensitive: **mask phone numbers in the demo and never publish personal addresses on a public map.**

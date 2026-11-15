@@ -33,7 +33,7 @@ export function getDb(): Promise<Db> {
     }
     // Not `ignoreUndefined`: it also drops undefined keys from FILTERS, so a findOne({ _id: x })
     // with x undefined would match an arbitrary document. postEvent() strips undefined instead.
-    const client = new MongoClient(uri, { appName: "disaster-desk" });
+    const client = new MongoClient(uri, { appName: "disaster-deck" });
     const db = client
       .connect()
       .then(async (c) => {

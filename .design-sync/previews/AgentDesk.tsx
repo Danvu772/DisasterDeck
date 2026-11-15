@@ -1,4 +1,4 @@
-import { AgentDesk } from "disaster-desk";
+import { AgentDesk } from "disaster-deck";
 import { makeBoard } from "@/fixtures/board";
 import { makeEvents, makeMessages, users } from "@/fixtures/desk";
 

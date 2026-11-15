@@ -7,7 +7,7 @@
 | Use | Material |
 |---|---|
 | Devpost project story | [Project name, tagline, story, tools and NASA credit](devpost.md). Use the same name and tagline in the event app. |
-| Demo video | [Disaster Desk, 1:39, English narration and captions](submission-media/disaster-desk-demo.mp4). Captured from the local app with demo records and a separate real, offline NASA worker run. |
+| Demo video | [Disaster Deck, 1:39, English narration and captions](submission-media/disaster-deck-demo.mp4). Captured from the local app with demo records and a separate real, offline NASA worker run. |
 | Gallery image 1 | [Antakya comparison](submission-media/compare.png). Caption: “Five synthetic reports, two addresses. The first callback has an owner. The second still needs one.” |
 | Gallery image 2 | [Coordinator view](submission-media/coordinator.png). Caption: “Fixture examples of an approval, an unassigned task and a vehicle breakdown.” |
 | Table pitch | [Two-minute operator script and acceptance checklist](demo.md). Run the live ending only after it passes with the team. |
@@ -23,7 +23,7 @@ Both screenshots were captured on 14 November 2026 from application revision `27
 
 ## Event-app short description
 
-Disaster Desk gives volunteers, field teams and suppliers a shared case view. In a synthetic Antakya earthquake exercise, five reports describe two addresses. The desk shows who owns the callback and where a coordinator decision is needed. An offline NASA worker adds a cold alert from the historical regional temperature record.
+Disaster Deck gives volunteers, field teams and suppliers a shared case view. In a synthetic Antakya earthquake exercise, five reports describe two addresses. The desk shows who owns the callback and where a coordinator decision is needed. An offline NASA worker adds a cold alert from the historical regional temperature record.
 
 ## Track and team fields
 

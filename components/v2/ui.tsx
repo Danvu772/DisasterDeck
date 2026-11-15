@@ -33,7 +33,7 @@ export function TopBar({ health, live, approvals, who, demo }: {
           <rect x="1" y="1" width="26" height="26" rx="7" stroke="currentColor" strokeOpacity=".9" strokeWidth="2" />
           <path d="M8 18l4-8 4 6 3-4 2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <span className="text-base font-bold tracking-tight">Disaster Desk</span>
+        <span className="text-base font-bold tracking-tight">Disaster Deck</span>
         <span className="pill rounded-full px-2 py-1 text-xs">Antakya historical exercise</span>
       </div>
       <nav aria-label="Screens" className="flex flex-wrap gap-1">
