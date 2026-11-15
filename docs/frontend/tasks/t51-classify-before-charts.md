@@ -1,8 +1,8 @@
 ---
 id: t51-classify-before-charts
-effort: medium
+effort: high
 checkpoint: metrics
-files: components/metrics/router.ts, new components/metrics/intent.ts, components/agent/VizSpace.tsx, components/AgentDesk.tsx (send handler and chat column only), components/metrics/useMetrics.ts
+files: components/metrics/router.ts, new components/metrics/intent.ts, new components/metrics/MapCard.tsx, components/agent/VizSpace.tsx, components/AgentDesk.tsx (send handler and chat column only), components/metrics/useMetrics.ts
 ---
 # Open the chart space only for quantitative asks
 
@@ -20,3 +20,14 @@ Dan: "before opening the charts animation, check if the request falls under the 
 A throwaway tsx script over these and the expected result, delete it after: "How full are the shelters?" (capacity, shelters), "which roads are closed" (status, lifelines), "sitrep" (status, ics209), "can we trust the Kale report" (trust, credibility), "is it getting worse" (trend, no metric, no open), "pull map" (not quantitative), "I need 20 blankets" (not quantitative), "Barınaklar dolu mu?" (capacity, shelters), "hello" (not quantitative).
 
 Accept when: the script matches, tsc, eslint and check:tokens pass.
+
+## Also: the map modality (Dan, 02:45). This task is now high effort.
+Dan: "I need map modality. When I ask geographical locations I need you to handle all of those and point it on maps. 'give me location of all shelters'."
+
+- **A 13th intent, `location`:** where, location, locate, map, address, near, nearest, closest, show me on the map, Turkish nerede, konum, en yakın, harita. It is quantitative-adjacent: it opens the space, with a **map card** instead of a chart.
+- `classifyAsk` returns, for a location ask, a **map query**: `{ kinds: ("site"|"shelter"|"road"|"need"|"incident"|"task")[]; filter?: { text?: string; region?: string; status?: string }; near?: "me" | LatLng }`. "location of all shelters" gives kinds [shelter]. "where is Örnek St. 12" gives kinds [site], text "Örnek St. 12". "closed roads near Kale" gives kinds [road], status closed, text "Kale". "nearest shelter" gives kinds [shelter], near "me" (the person's `coords` from the context file or the browser position, else drop `near`). Plurals and Turkish names map to kinds (barınak, yol, enkaz).
+- **`MapCard`** (`components/metrics/MapCard.tsx`): a small Leaflet map (client only, `next/dynamic` with `ssr: false`) with the records that match, drawn with `components/map/markers.ts` so they look exactly like `/map`, the basemap from `components/map/basemap.tsx` (satellite by default), fitted to show every match (one match: zoom 16 on it). With `near`, a dashed line from the person to the nearest match and its distance in mono. Under the map, a short list: each match with its name, a one-line state (beds free, closed or open, people trapped) and a link to `/?open=<kind>:<id>`. "Open on the full map" links to `/map?focus=<first match>`. Zero matches: say so in one line and show the person's area. Records without coordinates are listed under the map as "No location yet", never guessed.
+- **Live:** the map card follows the polled board like the charts do, markers update in place.
+- **Agent action:** the reply may carry `{ type: "show_map", kinds, ids?, text? }` (task t52 adds the agent tool). Handle it like `show_metric`: late open straight to the map card.
+- History chips work for map cards too ("Shelters on map, 02:45").
+- Extend the check script: "give me location of all shelters" (location, kinds [shelter]), "where is Örnek St. 12" (location, site, text), "nearest shelter" (location, near me), "show closed roads on the map" (location, road, closed), "harita barınaklar" (location, shelter).
