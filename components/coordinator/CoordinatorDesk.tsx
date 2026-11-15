@@ -6,7 +6,7 @@ import { CircleCheck, Gavel, Send, TriangleAlert, UserX, type LucideIcon } from 
 import type { User } from "@/lib/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { actorLabel, statusWord } from "../detail/fields";
+import { actorLabel, plainStep, statusWord } from "../detail/fields";
 import { RecordCard } from "../RecordCard";
 import { IncidentCards } from "../BoardCards";
 import { ageText } from "../encode";
@@ -137,7 +137,7 @@ export function CoordinatorDesk({ initial, userId, people }: {
         <aside aria-label="Problems in the field" className="flex flex-col gap-3 lg:sticky lg:top-4">
           <SectionHead icon={TriangleAlert} title="Problems in the field" count={problems.length} />
           {problems.length === 0 && <Empty>No open problems.</Empty>}
-          <IncidentCards items={problems} now={now} />
+          <IncidentCards items={problems} now={now} nameOf={nameOf} />
         </aside>
       </div>
     </main>
@@ -161,7 +161,7 @@ function EscalatedCard({ item, now, nameOf }: {
           ? task.tried.map((id) => <Badge key={id} variant="secondary">{nameOf(id)}</Badge>)
           : <span className="text-xs text-muted-foreground">nobody yet</span>}
       </div>
-      {last && <p className="mt-2 text-sm text-muted-foreground">{plainReason(last.reason)}</p>}
+      {last && <p className="mt-2 text-sm text-muted-foreground">{plainStep(plainReason(last.reason), nameOf)}</p>}
     </RecordCard>
   );
 }

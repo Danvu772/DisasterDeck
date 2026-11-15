@@ -63,8 +63,31 @@ export function actorLabel(by: string): string {
   return [head, ...rest].join(" ");
 }
 
-/** Task text for people: the dispatcher keeps the team's id in "Proposed team: Name (id)", the screen does not show it. */
-export const plainDetail = (detail: string) => detail.replace(/(Proposed team: [^()]*?) \([^()]+\)/, "$1");
+/** Task text for people: the dispatcher keeps the team's id in "Proposed team: Name (id)", the screen does not show it.
+ *  A task proposed twice can carry the sentence twice; only the last one is shown. */
+export function plainDetail(detail: string): string {
+  const text = detail.replace(/(Proposed team: [^()]*?) \([^()]+\)/g, "$1");
+  const proposals = text.match(/Proposed team: [^.]*(?:\.\d[^.]*)*\./g) ?? [];
+  if (proposals.length < 2) return text;
+  const rest = text.replace(/\s*Proposed team: [^.]*(?:\.\d[^.]*)*\./g, "").trim();
+  return `${rest} ${proposals.at(-1)}`.trim();
+}
+
+// A database id (24 hex characters) or a fixture id ("task-12").
+const RECORD_ID = String.raw`(?:[0-9a-f]{24}|[a-z]+-\d+)`;
+const PERSON_ID = /\b(?:coordinator|volunteer|field|supplier|shelter|public)-[a-z0-9]+(?:-[a-z0-9]+)*\b/g;
+
+/** One line of what the desk did about a problem, for people. The desk writes it with record ids
+ *  ("task 6af9… blocked", "call task 6af9… sent to volunteer-callback"); the screen says "the task"
+ *  and the person's name instead. `nameOf` finds a person's name; the fixture people stand in. */
+export function plainStep(what: string, nameOf: (id: string) => string = actorLabel): string {
+  const text = what
+    .replace(new RegExp(String.raw`\b((?:call|deliver|rescue|assist) )?task ${RECORD_ID}\b`, "g"), (_, kind = "") => `the ${kind}task`)
+    .replace(new RegExp(String.raw`\breplacement ${RECORD_ID}\b`, "g"), "a replacement")
+    .replace(new RegExp(String.raw`\bincident ${RECORD_ID}\b`, "g"), "this problem")
+    .replace(PERSON_ID, (id) => nameOf(id));
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 /** "Call about Turuncu Avlu, Turuncu Avlu" shows as "Call about Turuncu Avlu": old tasks repeat the place. */
 export const taskTitle = (title: string) => title.replace(/^(.*?\s|)([^\s,][^,]*),\s*\2$/, "$1$2");

@@ -1,6 +1,6 @@
 // One renderer per record type. /lab, /map and /coordinator use these, so a card looks the same everywhere.
 import type { Incident, Need, Road, Shelter, Site, Task } from "@/lib/types";
-import { CALL_WORD, plural } from "./detail/fields";
+import { CALL_WORD, plainStep, plural } from "./detail/fields";
 import { INCIDENT_WORD } from "./detail/locate";
 import { LOOP_LABELS, loopStep } from "./loopStep";
 import { RecordCard } from "./RecordCard";
@@ -74,14 +74,14 @@ export function RoadCards({ items, now }: { items: Road[]; now: number }) {
   ));
 }
 
-export function IncidentCards({ items, now }: { items: Incident[]; now: number }) {
+export function IncidentCards({ items, now, nameOf }: { items: Incident[]; now: number; nameOf?: (id: string) => string }) {
   return items.map((i) => (
     <RecordCard key={i._id} type="incident" title={INCIDENT_WORD[i.kind] ?? i.kind.replaceAll("_", " ")} detail={i.textEn}
       tier={0} actNow={i.severity === "critical"} caseNo={i.caseNo} confidence="confirmed" status={i.status}
       at={i.actions[0]?.ts ?? new Date(now)} source="person" now={now}>
       {i.actions.length > 0 && (
         <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-          {i.actions.map((a, k) => <li key={k} className="flex gap-2"><span aria-hidden>→</span>{a.what}</li>)}
+          {i.actions.map((a, k) => <li key={k} className="flex gap-2"><span aria-hidden>→</span>{plainStep(a.what, nameOf)}</li>)}
         </ul>
       )}
     </RecordCard>
