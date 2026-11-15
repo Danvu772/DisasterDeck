@@ -1,5 +1,7 @@
 # API gaps: what the frontend waits on, what the API lacks
 
+> **Tracked on GitHub (15 Nov).** Every gap below is an issue: G-01 #19, G-02 #20, G-03 #1, G-04 #2, G-05 #3, G-06 #4, G-07 #5, G-08 #6, G-09 #7, G-10 #13, G-11 #21, G-12 #18, G-13 #22, D-01 #23, D-02 #25, D-03 #24, M-01 #25, M-02 #16, S-01 #11. Overview and checklist: #26 (pinned). Comment and close there. Keep this file as the detailed record, and say `Closes #N` in the commit that fixes a gap.
+
 Measured on 14 Nov 2026 at repo commit `c6063da`. Commit `77e7752` landed after that and changes only docs, and commit `26f9c3f` changed `auth.ts` and login only, so the gaps below hold at the current head. The current state of each route is in [API.md](API.md). The decisions behind the status column are in [DECISIONS.md](DECISIONS.md).
 
 Three facts explain most of the list.

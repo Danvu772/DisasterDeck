@@ -73,3 +73,7 @@ Every worker gets `scripts/orchestra/brief.md` first: the design rules, ownershi
 | `docs/frontend/TASKS.md` | the board: what is done, running, next, blocked |
 | `docs/frontend/tasks/*.md` | one file per task |
 | `docs/frontend/LOG.md` | what merged, when, and anything worth knowing |
+
+## Asking another role for something
+
+Open a GitHub issue, label it with the owner's role (`role:1-backend`, `role:2-agents`, `role:4-data`), assign the owner, and add it to the pinned tracker #26. Write it as context, what is needed, what waits on it, and when it is done. When the fix lands, the commit says `Closes #N`. Chat is for "look at #8", not for the request itself, so nothing gets lost in a scroll.

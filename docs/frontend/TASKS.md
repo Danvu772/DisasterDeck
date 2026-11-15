@@ -32,6 +32,8 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 
 ## Blocked on other roles
 
+Every item is a GitHub issue now. Overview: [#26](https://github.com/DarshalShetty/HackTheNest26/issues/26). Frontend waits on #1 (inbox, t05), #2 and #3 (Modify, t17), #4 (score parts, t04), #5 (case numbers, t13), #8 (real tasks, the `/agent` and `/field` buttons).
+
 - **Role 1 (Darshal):** `GET /api/board`, `/api/health` and `/api/events?since=` are live (`76427c5`). Still missing: `GET /api/inbox`, the Brain running with replayed data, and the contract fields in `p-002-contract` (score parts, case numbers, approve with another assignee) that t04, t13 and t17 wait on. Also asked: `GET /api/users` (the coordinator's person picker), and a way to approve with a different person (Modify).
 - **Role 2 (Ömer):** `/api/chat` answers audio with "can't listen yet". Speech-to-text on the server, or text from the browser?
 - **Dan, SSOJet dashboard (t10):** the app is rejected as `invalid_client`. Register the callback `http://localhost:3000/api/auth/callback/ssojet`, enable authorization code with PKCE, copy the client id and secret from the same environment, turn on one connection, set `SSO_USER_MAP` in `.env.local`. `ANTHROPIC_API_KEY` in `.env.local`, or `/api/chat` throws and Ask the desk, `/agent` and hold to talk get no answer. (`DEMO_MODE=1` is set, 21:30.)
