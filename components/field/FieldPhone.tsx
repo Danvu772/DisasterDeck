@@ -1,7 +1,7 @@
 "use client";
 // The field team's phone. One task, big buttons, works with one thumb and a bad network.
 // Polls GET /api/board, falls back to the demo board and says so.
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { IncidentKind, LatLng } from "@/lib/types";
 import { usePolled } from "@/components/map/usePolled";
 import { History } from "@/components/History";
@@ -10,25 +10,11 @@ import { button, confidenceBorder, statusTag, statusText, tierBadge, tierBar, ti
 import { CaseNo } from "@/components/ScoreBreakdown";
 import { openTasksFor, type FieldBoard, type FieldTask } from "./pickTask";
 import { useOutbox, type FieldEvent } from "./useOutbox";
-import { useHoldToTalk } from "./useHoldToTalk";
-import { useVoiceAgent, type AgentState } from "./useVoiceAgent";
-import type { AgentAction } from "./voiceClient";
-
-// What the voice agent is doing, in words. "off" shows nothing.
-const AGENT_STATE: Record<AgentState, string> = {
-  off: "", starting: "Starting the microphone", listening: "Listening", hearing: "Hearing you",
-  thinking: "Your agent is working", speaking: "Your agent is speaking", waiting: "Waiting a minute",
-};
-
-// What the agent did with the last message: the tools it ran, done or not.
-function Actions({ list }: { list: AgentAction[] }) {
-  if (!list.length) return null;
-  return (
-    <ul className="space-y-1 text-base">
-      {list.map((a, i) => <li key={i}><span className="font-bold">{a.ok ? "Done" : "Not done"}:</span> {a.summary}</li>)}
-    </ul>
-  );
-}
+import { useDictation } from "./useDictation";
+import { askDesk } from "@/components/agent/askDesk";
+import { VizSpace, type Ask } from "@/components/agent/VizSpace";
+import { chatErrorText } from "@/components/chatError";
+import { fromBoard, type MapSource } from "@/components/map/mapItems";
 
 type Panel = "eta" | "done" | "problem" | null;
 
@@ -81,14 +67,40 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
 }) {
   const { data, live, now } = usePolled<FieldBoard>("/api/board", initial, 1000, initialLive);
   const { send, waiting } = useOutbox(user);
-  const talk = useHoldToTalk(user);
-  const agent = useVoiceAgent(user);
   const [panel, setPanel] = useState<Panel>(null);
   const [details, setDetails] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
+  // Hold to talk only dictates: the words go into the prompt box, after anything already typed there.
+  // Send asks the agent exactly as the agents tab does (agent/askDesk.ts), charts and map answers included.
+  const dictation = useDictation((text) => setTyped((t) => (t.trim() ? `${t.trim()} ${text}` : text)));
+  const [chat, setChat] = useState<{ id: string; from: "user" | "agent"; text: string }[]>([]);
+  const [asking, setAsking] = useState(false);
+  const [asks, setAsks] = useState<Ask[]>([]);
+  const [vizOpen, setVizOpen] = useState(false);
+  const askSeq = useRef(0);
+  // The board as map records for map answers. The field board may leave out shelters, roads and incidents.
+  const mapItems = useMemo(
+    () => fromBoard({ incidents: [], shelters: [], roads: [], ...data } as MapSource, { showClosed: true }),
+    [data],
+  );
+
+  async function ask() {
+    const question = typed.trim();
+    if (!question || asking) return;
+    setTyped("");
+    const id = `f-${askSeq.current++}`;
+    setChat((c) => [...c, { id: `${id}-q`, from: "user", text: question }]);
+    setAsks((xs) => [...xs, { id, question, at: Date.now(), ids: null }]);
+    setVizOpen(true);
+    setAsking(true);
+    const a = await askDesk(user, question, () => chatErrorText(0, null));
+    setAsks((xs) => xs.map((x) => (x.id === id ? { ...x, ids: a.ids, pins: a.pins } : x)));
+    setChat((c) => [...c, { id, from: "agent", text: a.reply }]);
+    setAsking(false);
+  }
   // What this phone already sent, so the next button lights up before the board catches up.
   const [local, setLocal] = useState<{ id: string; step: number } | null>(null);
 
@@ -271,65 +283,41 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
 
       <section className="space-y-2 border-t border-line pt-4">
         <h2 className="text-xl font-bold">Your agent</h2>
-        <p className="text-base text-muted">
-          {talk.engine === null ? "Checking the voice service."
-            : talk.engine === "elevenlabs" ? "Voice: ElevenLabs. Your voice note goes to the desk and the answer is read aloud."
-            : "Voice: this phone's own speech. Voice notes and the voice agent need ElevenLabs on the server."}
-        </p>
-
-        <button type="button" aria-pressed={agent.on} onClick={agent.toggle}
-          className={big(agent.on ? button.primary : button.outline)}
-          disabled={talk.engine !== "elevenlabs" || talk.state === "recording" || talk.state === "starting" || talk.state === "sending"}>
-          {agent.on ? "Voice agent on, tap to stop" : "Start voice agent (hands-free)"}
-        </button>
-        {agent.on && <p className="text-lg font-bold">{AGENT_STATE[agent.state]}</p>}
-        <p aria-live="polite" className="text-base">{agent.note}</p>
-        {agent.last && (
-          <div className="space-y-2">
-            {agent.last.said && <ChatLine m={{ from: "user", text: agent.last.said }} name="You" />}
-            <ChatLine m={{ from: "agent", text: agent.last.reply }} name="" />
-            <Actions list={agent.last.actions} />
-          </div>
-        )}
-
         <button
-          className={`${big(talk.state === "recording" ? `${button.primary} bg-primary-dark!` : button.primary)} rounded-pill! min-h-24 touch-none select-none [-webkit-touch-callout:none]`}
-          disabled={talk.engine === null || talk.state === "unsupported" || talk.state === "sending" || agent.on}
-          onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); talk.start(); }}
-          onPointerUp={talk.stop}
-          onPointerCancel={talk.stop}
+          className={`${big(dictation.state === "recording" ? `${button.primary} bg-primary-dark!` : button.primary)} rounded-pill! min-h-24 touch-none select-none [-webkit-touch-callout:none]`}
+          disabled={dictation.state === "unsupported"}
+          onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); dictation.start(); }}
+          onPointerUp={dictation.stop}
+          onPointerCancel={dictation.stop}
           onKeyDown={(e) => {
-            if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); talk.start(); }
+            if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); dictation.start(); }
           }}
-          onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") talk.stop(); }}
+          onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") dictation.stop(); }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          {talk.state === "recording" ? "Recording, let go to send"
-            : talk.state === "starting" ? "Starting the microphone"
-            : talk.state === "sending" ? "Sending"
-            : "Hold to talk"}
+          {dictation.state === "recording" ? "Listening, let go to stop" : "Hold to talk"}
         </button>
-        {talk.state === "unsupported" && (
-          <p className="text-base text-muted">The microphone only works on an HTTPS page. Type to your agent instead.</p>
+        {dictation.state === "unsupported" && (
+          <p className="text-base text-muted">Talking needs the phone&apos;s speech recognition on an HTTPS page. Type to your agent instead.</p>
         )}
-        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); talk.sendText(typed); setTyped(""); }}>
+        {dictation.error && <p className="text-base">{dictation.error}</p>}
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void ask(); }}>
           <label htmlFor="agent-text" className="sr-only">Tell your agent</label>
-          <input id="agent-text" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Or type to your agent"
+          <input id="agent-text" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Hold to talk, or type to your agent"
             className="min-w-0 flex-1 rounded-button border-2 border-ink p-3 text-lg" />
           <button type="submit" className={`${button.outline} px-4! text-lg!`}
-            disabled={!typed.trim() || talk.state === "sending" || talk.state === "recording"}>
+            disabled={!typed.trim() || asking || dictation.state === "recording"}>
             Send
           </button>
         </form>
         <div aria-live="polite" className="space-y-2">
-          {talk.said && <ChatLine m={{ from: "user", text: talk.said }} name="You" />}
-          {talk.state === "sending" && <p className="text-base text-muted">Your agent is answering</p>}
-          {talk.error && <p className="text-base">{talk.error}</p>}
-          {talk.reply && <ChatLine m={{ from: "agent", text: talk.reply }} name="" />}
-          <Actions list={talk.actions} />
+          {chat.map((m) => <ChatLine key={m.id} m={{ from: m.from, text: m.text }} name={m.from === "user" ? "You" : ""} />)}
+          {asking && <p className="text-base text-muted">Your agent is answering</p>}
         </div>
-        {talk.speaking && <button className={quiet} onClick={talk.hush}>Stop reading aloud</button>}
       </section>
+
+      {/* The agents tab's chart space, under everything: metric cards and map answers for each question. */}
+      <VizSpace asks={asks} open={vizOpen} onClose={() => setVizOpen(false)} user={user} mapItems={mapItems} now={now} />
     </main>
   );
 }

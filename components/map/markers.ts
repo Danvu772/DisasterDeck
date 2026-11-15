@@ -14,7 +14,8 @@ export const roadLine = (closed: boolean) => (closed ? "border-4 border-solid bo
 
 // `context`: drawn faded, behind the one record the panel is about.
 // `motion`: a one-pass class from globals.css (map-ring, map-flash). Empty when nothing should move.
-export function icon(it: MapItem, selected: boolean, now: number, context = false, motion = ""): L.DivIcon {
+// `delayMs`: starts `motion` later, so a row of pins can drop in one after another.
+export function icon(it: MapItem, selected: boolean, now: number, context = false, motion = "", delayMs = 0): L.DivIcon {
   const fade = context ? "opacity-50" : staleInk(isStale(it.staleType, it.at, now));
   const ring = selected ? "ring-4 ring-primary" : "";
   if (it.kind === "road") {
@@ -31,7 +32,7 @@ export function icon(it: MapItem, selected: boolean, now: number, context = fals
     className: "",
     iconSize: [s, s],
     iconAnchor: [s / 2, s / 2],
-    html: `<span class="block ${shape} ${tierBar(it.tier, it.actNow)} ${confidenceBorder(it.confidence)} ${ring} ${fade} ${motion}" style="width:${s}px;height:${s}px"></span>`,
+    html: `<span class="block ${shape} ${tierBar(it.tier, it.actNow)} ${confidenceBorder(it.confidence)} ${ring} ${fade} ${motion}" style="width:${s}px;height:${s}px${delayMs ? `;animation-delay:${delayMs}ms` : ""}"></span>`,
   });
 }
 

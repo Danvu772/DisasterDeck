@@ -13,7 +13,7 @@ import { METRIC_IDS, metric } from "@/components/metrics/registry";
 import type { MetricId } from "@/components/metrics/types";
 import { desk, type NewEvent, type UserContext } from "../desk";
 import { haversineMeters } from "@/lib/geo";
-import { askDesk, distance, topicsFor, type Topic } from "../desk/view";
+import { age, askDesk, distance, topicsFor, type Topic } from "../desk/view";
 import { maskPhones } from "../shared/privacy";
 import { writeHandoff } from "./handoff";
 
@@ -151,12 +151,13 @@ const DEFS: Record<string, Tool> = {
   },
   show_on_map: {
     name: "show_on_map",
-    description: "Show places on the person's map. Call it when they ask where something is, want locations, the nearest thing, or anything on a map. At most 1 per turn. It returns a short list of what matched, with distance when near_me is true. Say the answer in one sentence: the map carries the rest.",
+    description: "Show places on the person's map. Call it when they ask where something is, where something started or hit first, want locations, the nearest thing, or anything on a map. At most 1 per turn. The map flies to the first match and selects it. It returns what matched in that order, with distance when near_me is true and first-report time when order is set. Explain in one or two sentences where the map is pointing and why that place comes first.",
     input_schema: obj({
-      kinds: { type: "array", items: { type: "string", enum: MAP_KINDS }, description: "What to show: one or more kinds." },
-      text: { ...str, description: "Words the name, address, item or region must contain, or an empty string for all. (Not nullable: see ask_desk page.)" },
+      kinds: { type: "array", items: { type: "string", enum: MAP_KINDS }, description: "What to show: one or more kinds. A fire, gas leak or falling wall is a site hazard: use site." },
+      text: { ...str, description: "Words the name, address, item, region or hazard (fire, gas...) must contain, or an empty string for all. (Not nullable: see ask_desk page.)" },
       status: { ...str, description: "Only records in this state (open, closed, free, assigned...), or an empty string for any." },
       near_me: { type: "boolean", description: "Sort by distance from the person." },
+      order: { type: "string", enum: ["any", "earliest", "latest"], description: "Sort by when the desk first heard of each place. earliest for 'where did it start', 'first hit', 'first reported'. latest for 'newest'. any keeps board order, or distance with near_me." },
       why: { ...str, description: "One short line: what the person asked that this map answers." },
     }),
   },
@@ -355,19 +356,23 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       const d = desk();
       const b = await d.getBoard(u.deskId);
       const siteAt = new Map(b.sites.map((x) => [x._id, x]));
-      type Hit = { id: string; line: string; state: string; coords?: LatLng };
+      // first: when the desk first heard of it (the first history entry), for "where did it start".
+      type Hit = { id: string; line: string; state: string; coords?: LatLng; first?: Date | string };
       const hits: Hit[] = [];
       for (const x of kinds.includes("site") ? b.sites : []) hits.push({ id: x._id, state: x.status, coords: x.coords,
-        line: `${x.address}, ${x.region}: ${x.peopleTrapped} trapped, ${x.status}` });
+        first: x.history[0]?.ts ?? x.observedAt,
+        line: `${x.address}, ${x.region}: ${x.peopleTrapped} trapped, ${x.status}${x.hazard ? `, hazard: ${x.hazard}` : ""}` });
       for (const x of kinds.includes("shelter") ? b.shelters : []) hits.push({ id: x._id,
-        state: x.bedsTotal - x.bedsUsed > 0 ? "free" : "full", coords: x.coords,
+        state: x.bedsTotal - x.bedsUsed > 0 ? "free" : "full", coords: x.coords, first: x.history[0]?.ts ?? x.observedAt,
         line: `${x.name}, ${x.region}: ${x.bedsTotal - x.bedsUsed} of ${x.bedsTotal} beds free` });
       for (const x of kinds.includes("road") ? b.roads : []) hits.push({ id: x._id, state: x.state, coords: x.coords,
+        first: x.history[0]?.ts ?? x.observedAt,
         line: `${x.road}: ${x.state}${x.reason ? `, ${x.reason}` : ""}` });
       for (const x of kinds.includes("need") ? b.needs : []) hits.push({ id: x._id, state: x.status,
-        coords: x.siteIds.map((sid) => siteAt.get(sid)?.coords).find(Boolean),
+        coords: x.siteIds.map((sid) => siteAt.get(sid)?.coords).find(Boolean), first: x.history[0]?.ts,
         line: `${x.quantity} ${x.item}, ${x.region}: ${x.status}` });
       for (const x of kinds.includes("incident") ? b.incidents : []) hits.push({ id: x._id, state: x.status, coords: x.coords,
+        first: x.history[0]?.ts,
         line: `${x.kind}: ${x.severity}, ${x.status}` });
       for (const x of kinds.includes("task") ? b.tasks.filter((t) => t.open) : []) hits.push({ id: x._id, state: x.status,
         coords: (x.recordType === "site" ? siteAt.get(x.recordId)?.coords : undefined),
@@ -376,13 +381,25 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       let found = hits.filter((h) => h.coords && (!text || h.line.toLowerCase().includes(text)) &&
         (!status || h.state.toLowerCase() === status));
       const dist = (h: Hit) => (from && h.coords ? haversineMeters(from, h.coords) : Infinity);
-      if (from) found = found.sort((a, c) => dist(a) - dist(c));
+      // Time order wins over distance. A place with no first-report time goes last either way.
+      const order = i.order === "earliest" || i.order === "latest" ? i.order : undefined;
+      const at = (h: Hit) => (h.first ? +new Date(h.first) : undefined);
+      if (order) {
+        found = found.sort((a, c) => {
+          const x = at(a), y = at(c);
+          if (x === undefined || y === undefined) return (x === undefined ? 1 : 0) - (y === undefined ? 1 : 0);
+          return order === "earliest" ? x - y : y - x;
+        });
+      } else if (from) found = found.sort((a, c) => dist(a) - dist(c));
+      const now = new Date(deskNow());
       const ids = found.slice(0, 50).map((h) => h.id);
-      const shown = found.slice(0, 8).map((h) => `${h.line}${from ? `, ${distance(dist(h))} away` : ""}`);
+      const shown = found.slice(0, 8).map((h) =>
+        `${h.line}${order ? `, first reported ${age(h.first, now)}` : ""}${from ? `, ${distance(dist(h))} away` : ""}`);
       const asked = kinds.join(", ");
+      const listed = order === "earliest" ? "earliest 8 listed" : order === "latest" ? "newest 8 listed" : "first 8 listed";
       const content = found.length === 0
-        ? `Nothing on the map for ${asked}${text ? ` matching "${text}"` : ""}. Say so.`
-        : `Map shown: ${found.length} ${asked} on the map${found.length > 8 ? ", nearest 8 listed" : ""}. ${shown.join(". ")}.${i.near_me === true && !from ? " Distance unknown: the person's position is not shared." : ""}`;
+        ? `Nothing on the map for ${asked}${text ? ` matching "${text}"` : ""}. Say so, and say the map shows nothing for it.`
+        : `Map shown: ${found.length} ${asked} on the map${found.length > 8 ? `, ${listed}` : ""}. The map flies to and selects the first: ${shown[0]}. ${shown.slice(1).join(". ")}${shown.length > 1 ? "." : ""}${i.near_me === true && !from ? " Distance unknown: the person's position is not shared." : ""}`;
       return { content, summary: `Map: ${found.length} ${asked}`, showMap: { kinds, ids, text } };
     }
   }

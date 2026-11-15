@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Event, Message, User } from "@/lib/types";
 import type { makeBoard } from "@/fixtures/board";
@@ -8,13 +8,14 @@ import { EventReport } from "./event/EventReport";
 import { TaskCard } from "./TaskCard";
 import { getCoords, sendTaskEvent, taskEventBody, type ProblemKind, type TaskAction } from "./taskEvents";
 import { ChatLine } from "./ChatLine";
-import { pickMetrics } from "./metrics/useMetrics";
+import { askDesk } from "./agent/askDesk";
 import { VizSpace, type Ask } from "./agent/VizSpace";
 import { stubReply } from "./stubAgent";
 import { chatErrorText } from "./chatError";
 import { cursorOf, feedUrl, mergeServer, shownEvents } from "./agentFeed";
 import { YourNeeds } from "./YourNeeds";
 import { usePolled } from "./map/usePolled";
+import { fromBoard } from "./map/mapItems";
 import { isRealTask, needsFor, nextLocalStatus, viewTask, type LocalTask } from "./taskState";
 import { rankOpen } from "@/lib/rules/top";
 import { button, statusTag, statusText } from "./encode";
@@ -30,6 +31,8 @@ export function AgentDesk(props: {
 }) {
   const { user } = props;
   const { data: board, live, now } = usePolled<DeskBoard>("/api/board", props.initial, 1000, props.initialLive);
+  // Every record a map answer can pin, closed ones too: the agent's show_on_map does not filter them.
+  const mapItems = useMemo(() => fromBoard(board, { showClosed: true }), [board]);
   // Server events (null until the first answer), the lines the buttons add, and fixtures as the start.
   const [server, setServer] = useState<FeedEvent[] | null>(null);
   const [locals, setLocals] = useState<FeedEvent[]>([]);
@@ -102,24 +105,11 @@ export function AgentDesk(props: {
     const id = `a-${chatSeq.current++}`;
     setAsks((xs) => [...xs, { id, question: said, at: Date.now(), ids: null }]);
     setVizOpen(true);
-    let reply: string;
-    let body: unknown = null;
-    try {
-      const r = await fetch(`/api/chat?user=${user._id}`, {
-        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: said }),
-      });
-      body = await r.json().catch(() => null);
-      const got = (body as { reply?: unknown } | null)?.reply;
-      reply = r.ok && typeof got === "string" ? got : chatErrorText(r.ok ? 502 : r.status, body);
-      setStub(false);
-    } catch {
-      // Only an unreachable route gets the stub. A 502 is shown as what it is.
-      reply = stubReply(user, top?.task, said);
-      setStub(true);
-    }
-    const ids = pickMetrics(said, body);
-    setAsks((xs) => xs.map((a) => (a.id === id ? { ...a, ids } : a)));
-    setMessages((m) => [...m, { _id: id, userId: user._id, from: "agent", text: reply, ts: new Date() }]);
+    // The same path as the field phone (agent/askDesk.ts). Only an unreachable route gets the stub.
+    const a = await askDesk(user._id, said, () => stubReply(user, top?.task, said));
+    setStub(a.stub);
+    setAsks((xs) => xs.map((x) => (x.id === id ? { ...x, ids: a.ids, pins: a.pins } : x)));
+    setMessages((m) => [...m, { _id: id, userId: user._id, from: "agent", text: a.reply, ts: new Date() }]);
   }
 
   const note = (id: string, text: string) => setNotes((n) => ({ ...n, [id]: text }));
@@ -224,7 +214,8 @@ export function AgentDesk(props: {
         </div>
       </div>
       {/* Full page width under both columns, so the charts use the space the left column leaves. */}
-      <VizSpace asks={asks} open={vizOpen} onClose={closeViz} events={server ? events : undefined} user={user._id} />
+      <VizSpace asks={asks} open={vizOpen} onClose={closeViz} events={server ? events : undefined} user={user._id}
+        mapItems={mapItems} now={now} />
 
       <section ref={feedRef} className={`${card} max-h-[28rem] min-h-0 overflow-y-auto p-4`}>
         {report ? <EventReport e={report} now={now} actorName={nameOf(report.actor)} onBack={closeReport}

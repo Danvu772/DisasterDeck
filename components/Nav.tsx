@@ -14,6 +14,7 @@ const LINKS = [
   { href: "/map", label: "Map" },
   { href: "/coordinator", label: "Coordinator" },
   { href: "/field", label: "Field" },
+  { href: "/voice", label: "Voice" },
 ];
 
 const nightPill = "whitespace-nowrap rounded-pill border border-night-muted px-2.5 py-1 text-xs";
