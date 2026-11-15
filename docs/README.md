@@ -1,6 +1,6 @@
 # Team notes
 
-The [live pipeline completion plan](completion-plan.md) reviews main at `5fb51ba` and gives the implementation order, owners, recovery requirements and live acceptance checks for the remaining work.
+The [live pipeline completion plan](completion-plan.md) reviews main at `f235d43` and gives the implementation order, owners, recovery requirements and live acceptance checks for the remaining work.
 
 Start with [Multiplayer Disaster Desk](Multiplayer%20Disaster%20Desk/Multiplayer%20Disaster%20Desk.md). It explains the whole idea, the main flow and the demo plan.
 

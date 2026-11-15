@@ -1,6 +1,6 @@
 # Completing the live Disaster Desk pipeline
 
-Reviewed on 15 November 2026 at 00:41 EST against main revision **5fb51ba**. This plan comes from source inspection and the local checks listed below. Atlas connectivity, deployed role sessions and the complete live workflow still need an integration run.
+Reviewed on 15 November 2026 against main revision **f235d43**, including the contract, metrics and agent-feed changes merged during this review. This plan comes from source inspection and the local checks listed below. Atlas connectivity, deployed role sessions and the complete live workflow still need an integration run.
 
 The working core is report ingestion, MongoDB event storage, report-to-site processing and board reads. The next deliverable is a live callback, approved field dispatch and accepted blanket delivery with an ETA visible to the requesting field team.
 
@@ -13,9 +13,9 @@ The working core is report ingestion, MongoDB event storage, report-to-site proc
 | Timers | [sweeper.ts](../workers/sweeper.ts) retries stuck events | Add task deadlines, reassignment, ETA check-ins and stale-capacity follow-up. |
 | Read APIs | Board, health and event feed routes exist under [app/api](../app/api/README.md) | Add user-scoped inbox reads/mark-read and the permitted people list. |
 | Agents | Research workers, personal-agent tools, chat memory and versioned board caching exist under [agents](../agents/TODO.md) | Exercise the tools against real tasks and consume their results through the completed Brain. |
-| Screens | Original routes and [v2 screens](../components/v2/boardModel.ts) read board data and contain task/chat controls | Complete missing contract fields and actions. Verify live state independently of fixture previews. |
+| Screens and contract | Original routes and [v2 screens](../components/v2/boardModel.ts) read board data. Contract v2.2 adds assignee, progress, posts, score parts and case numbers | Populate and apply the accepted fields in the Brain. Verify live state independently of fixture previews. |
 | NASA and replay | [Scenario player](scenario-player.md), [NASA evidence](nasa-evidence.md) and [satellite atlas](nasa-atlas.md) are available | Consume cold events in the Brain and demonstrate a real priority consequence. |
-| Metrics | [MetricResult contract](../components/metrics/types.ts) and [metric definitions](frontend/METRICS.md) exist | Engine, charts and chat integration are queued. Two evaluation metrics also require scenario ground truth. |
+| Metrics | [Engine](../components/metrics/registry.ts), [router](../components/metrics/router.ts), charts and [definitions](frontend/METRICS.md) exist | Connect metrics to live chat/screens and their actual inputs. Two evaluation metrics also require scenario ground truth. |
 
 A live demonstration should follow this sequence.
 
@@ -51,9 +51,9 @@ The next steps follow the existing ownership model. Role 1 owns the Brain, datab
 
    Handle answer events for acceptance, decline and completion. Agree a machine-readable callback outcome between the contract and personal-agent tools. Completion alone does not establish verification. A verified callback, an unanswered phone, an incorrect address and an already-rescued report need distinct state transitions. Preserve existing clients that send accepted/declined/done and an optional note.
 
-   After a trusted callback verifies the site, create one high-risk rescue task in waiting_approval and an approval inbox item for a coordinator. An approved task becomes assigned. A rejected task retains an auditable reason. The coordinator's Modify path needs an optional replacement-assignee field accepted by types, Zod, API authorization and dispatcher logic. Validate the new person's eligibility.
+   After a trusted callback verifies the site, create one high-risk rescue task in waiting_approval and an approval inbox item for a coordinator. An approved task becomes assigned. A rejected task retains an auditable reason. Contract v2.2 already accepts ApprovalPayload.assignee. Apply that value in the dispatcher, validate the replacement person's eligibility and wire the remaining Modify controls to the implemented behavior.
 
-   The field operator can then accept, report en_route and report arrived. The optional progress field must survive validation and update the relevant site to team_on_site on arrival. Existing clients without progress keep their current behavior. Review both [original approval controls](../components/coordinator/ApprovalCard.tsx) and [v2 coordinator controls](../components/v2/CoordinatorV2.tsx).
+   The field operator can then accept, report en_route and report arrived. AnswerPayload.progress already survives validation when result is accepted; apply it to Task.progress and update the relevant site to team_on_site on arrival. Existing clients without progress keep their current behavior. Review both [original approval controls](../components/coordinator/ApprovalCard.tsx) and [v2 coordinator controls](../components/v2/CoordinatorV2.tsx).
 
    **Accept when** Zeynep receives an actual call task, the callback changes the real site, a coordinator approves the actual rescue task, and Field Team A sees and accepts it. Repeating an answer or approval leaves one transition. A public repost cannot independently confirm a site or close a rescue case.
 
@@ -93,9 +93,9 @@ The next steps follow the existing ownership model. Role 1 owns the Brain, datab
    |---|---|
    | Inbox | Add GET /api/inbox and an explicit mark-read operation. Bind requests to the authenticated/demo caller and permitted recipients. Test persistence and unread-count clearing. |
    | People | Add GET /api/users with the agreed caller roles and minimum fields. Coordinates are needed if the coverage metric is selected. Avoid exposing profile notes through the people picker. |
-   | Contract | Approval assignee, answer progress, callback outcome, masked post text, short case number and priority explanation need agreed producers and consumers. Update types, schemas, OpenAPI and clients together. Allocate short numbers atomically. |
+   | Contract | Assignee, progress, posts, score parts and caseNo are on main through P-002. Implement their producers and effects. Agree callback outcomes, update OpenAPI and clients for any further contract change, and allocate short numbers atomically. |
    | Desk selector | Scenario-player GET requests use deskId, while the board route reads desk. Agree the canonical parameter and handle existing callers. A nondefault-desk test must return only that desk. |
-   | Event feed | Implement queued [t35](frontend/tasks/t35-api-integration.md) against the current /agent code. Merge server events with local echoes by actual IDs/dedupe keys and preserve report-detail links. |
+   | Event feed | [t35](frontend/tasks/t35-api-integration.md) has landed. Its timestamp cursor receives inserted events, while Brain changes status/result without changing ts. Refresh a recent window or provide an update-aware cursor so existing rows show pending → done/merged. Preserve ID/dedupe reconciliation and report-detail links. Test equal-timestamp pagination as well. |
    | Role identity | Use seeded database IDs in role sessions. lib-desk currently falls back to fixture users, and boardModel uses fixture display names. Acceptance needs the same actual user and task IDs across UI, chat and database. |
    | Task links | Enforce actor, task and record desk consistency. Test an unknown task, a different assignee and a cross-desk target. |
    | Preview mode | /v2?demo=1 returns fixture state. The v2 board also has its own map implementation. Verify the selected presentation route against live data and decide how it links to /map's NASA evidence. |
@@ -123,17 +123,17 @@ The next steps follow the existing ownership model. Role 1 owns the Brain, datab
    | Recovery | Restart after a partial write and repeat a cue. Task, inbox and stock effects remain consistent. |
    | Evidence | Save commit, run ID, real record/task/event IDs, screenshots and test results. Complete three timed four-person runs for the selected ending. |
 
-The existing proposal branches contain reusable work. Local remote-tracking refs inspected during this review were p-001-read-routes at 2570d0b, p-002-contract at 52db9f4 and p-003-keeper at 327a64a. Their proposal records still say proposed. Fetch and inspect their latest state before applying a patch. Main now has its own Brain, cache invalidation, board, health and feed implementations, so reconcile overlapping changes individually.
+The existing proposal branches contain reusable work. Local remote-tracking refs inspected during this review were p-001-read-routes at 2570d0b, p-002-contract at 52db9f4 and p-003-keeper at 327a64a. P-002 was merged into main by f235d43, although its proposal metadata still says proposed. Fetch and inspect current branch/merge state before applying another patch. Main has its own Brain, cache invalidation, board, health and feed implementations, so reconcile overlapping changes individually.
 
 | Candidate | Useful material to inspect | Reconciliation needed |
 |---|---|---|
 | P-001 | Inbox/users reads and their OpenAPI entries | Board/health/feed already exist on main. Existing approval records refer to older SHAs. |
-| P-002 | Optional contract fields and corresponding controls | Current main still has the smaller approval/answer schemas. Preserve existing serialized events. |
+| P-002 | Contract fields and corresponding controls, already merged | Complete the Brain producers/effects and correct the stale proposal status. Preserve existing serialized events. |
 | P-003 | Assignment rules, event handlers and pure tests | Different keeper/loop design. Its proposal describes claim/correction/plan as completed without effects; unsupported operations must have an explicit observable outcome. Recheck crash recovery, stock accounting and writer ownership. |
 
 The issue overview and gap register help locate ownership discussions. Several narrative paragraphs in the gap documents predate the working board/health/feed routes and Brain. Use the source snapshot table above when deciding what remains. [Issue overview #26](https://github.com/DarshalShetty/HackTheNest26/issues/26) · [Gap register](../api_front_back_gap/GAPS.md) · [Existing handoff](../api_front_back_gap/HANDOFF.md)
 
-Run the core acceptance before spending the remaining build window on optional features. The metrics engine/charts/chat follow the shared MetricResult contract. Keep agent_fidelity and triage_order unavailable until scenario ground truth and an evaluation method exist. Aftershock push needs a quake event contract and inbox routing; the current worker supplies warnings to subsequent agent turns. Prithvi inference, building-level damage classification, automatic live satellite ingestion, evacuation and additional social platforms remain later extensions. [Metrics](frontend/METRICS.md) · [Agent backlog](../agents/TODO.md) · [NASA atlas](nasa-atlas.md)
+Run the core acceptance before spending the remaining build window on optional features. The metrics engine and charts are now implemented against MetricResult. Finish live chat integration and supply the required users, event histories and scenario time. Keep agent_fidelity and triage_order unavailable until scenario ground truth and an evaluation method exist. Aftershock push needs a quake event contract and inbox routing; the current worker supplies warnings to subsequent agent turns. Prithvi inference, building-level damage classification, automatic live satellite ingestion, evacuation and additional social platforms remain later extensions. [Metrics](frontend/METRICS.md) · [Agent backlog](../agents/TODO.md) · [NASA atlas](nasa-atlas.md)
 
 For a local or team integration run, the server and workers need the same current MONGODB_URI, MONGODB_DB, DESK_ID and AGENT_KEY. Real agent turns additionally require ANTHROPIC_API_KEY. Demo sessions use DEMO_MODE=1 and a local AUTH_SECRET; a real login uses the SSOJet settings in .env.example. Keep actual values in the local environment. On Windows, node and the package-manager commands must resolve in each terminal.
 
@@ -153,16 +153,17 @@ npx tsx --env-file=.env.local workers/x-agent.ts --mock --speed 1
 
 Only one Brain processes the shared database at a time; the existing lease makes another instance wait. Confirm the seed step with the database owner because it replaces existing users and shelter snapshots. The app that is already running must be restarted to pick up a newly created environment file.
 
-Open /api/health and verify an advancing lastLoopAt, then /api/board and the event feed. A heartbeat shows that the loop is alive; event results and resulting records establish that a workflow completed. Run the role pages without ?demo=1 for live acceptance. Set BASE_URL=http://127.0.0.1:3672 for scenario and satellite HTTP workers. Use the preview before each presenter cue. Currently, non-report event types stay pending until the handlers above are implemented.
+Open /api/health and verify an advancing lastLoopAt, then /api/board and the event feed. A heartbeat shows that the loop is alive; event results and resulting records establish that a workflow completed. Run the role pages without ?demo=1 for live acceptance. Set BASE_URL=http://127.0.0.1:3672 for the HTTP workers and contract check. Use the preview before each presenter cue. Currently, non-report event types stay pending until the handlers above are implemented.
 
 ~~~sh
 npm run api:check
 npm run keeper:check
+npm run check:contract
 node --env-file=.env.local workers/satellite-watcher.ts --dry-run
 node --env-file=.env.local workers/scenario-player.ts --run integration-01 --step blankets --dry-run
 ~~~
 
-api:check and keeper:check exercise MongoDB and use throwaway desks with cleanup. Their results must be collected against the configured environment. The local HTTP harnesses for the NASA/scenario workers verify payloads, retries and journals; they do not exercise the real dispatcher.
+api:check and keeper:check exercise MongoDB and use throwaway desks with cleanup. check:contract calls the running server, uses nonexistent task IDs for payload checks and can invoke a real chat turn. Collect their results against the configured environment. The local HTTP harnesses for the NASA/scenario workers verify payloads, retries and journals; they do not exercise the real dispatcher.
 
 Local checks completed for this document were TypeScript checking and the replay/seed validator. Shared Atlas tests, live Claude calls, SSOJet login, task dispatch and four-person acceptance were not executed in this review. Retain that distinction in Devpost and the recorded demo.
 

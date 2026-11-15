@@ -4,9 +4,9 @@ All timestamps use America/New_York, EST (UTC−05:00).
 
 ## Pipeline completion review · 2026-11-15 00:41 EST
 
-- Reviewed main at `5fb51ba`, including the report-only Brain, empty dispatcher, read routes, original/v2 role screens, agent context caching, proposal refs and queued metrics work.
+- Reviewed main through `f235d43`, including the report-only Brain, empty dispatcher, read routes, original/v2 role screens, agent context caching and proposal refs. Updated the plan for the newly merged P-002 contract, metrics engine/charts and agent feed.
 - Added an English completion plan with seven implementation steps, ownership, event/retry consistency, callback/approval/delivery/incident transitions, API contracts, replay provenance and live acceptance criteria.
-- Verified TypeScript, replay/seed validation and the plan's 27 local source links. Shared Atlas, live model, SSO and end-to-end task execution were outside this documentation review's performed checks.
+- Verified TypeScript, replay/seed validation and the plan's 28 local source links. Shared Atlas, live model, SSO and end-to-end task execution were outside this documentation review's performed checks.
 
 ## v0.9 city view and simpler controls · 2026-11-14 23:52 EST
 
