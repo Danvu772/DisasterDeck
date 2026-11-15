@@ -78,6 +78,18 @@ flowchart LR
 
 **Who sets the priority: the rules, not the LLM.** This is the part to get right in the pitch, because judges will ask. The agent's job is narrow: hear the need, split it into clean events, set `lifeThreatening` honestly, and leave fields empty when unsure. Priority comes from the plain-code score in [[Final system design#Priority: tier first, then score (v2)|§5]]: tier first (danger to life always wins), then 10 × different people asking, minutes waiting, +30 silent zone, +20 warmth in a cold zone. Same inputs, same order, every time, and anyone can read why. The model never decides who gets help first.
 
+### Rule: all needs are updated by the AI
+
+> [!important] For every role
+> **No screen creates or edits a need by hand.** There is no "add need" form, no quantity field, no status dropdown. Every new need and every change to one ("make it 30 blankets", "we got them", "cancel the tent, we found one") starts as something a person says to their own agent. The agent turns it into a `need` event (or an `answer` / `correction`), and the memory keeper, the only writer of `needs`, applies it.
+>
+> - **Role 1:** `POST /api/events` with `type: "need"` from a browser session is rejected unless it comes through `/api/chat`. The memory keeper stays the only writer of `needs`.
+> - **Role 2:** the personal agent owns need intake and need updates: new needs, quantity changes, "received", "cancel". One sentence can touch several needs.
+> - **Role 3:** "Your needs" on `/agent` is read only. To change one, you tell your agent. The task buttons (Accept / Decline / Done / Problem) stay, because they answer **tasks**, not needs.
+> - **Role 4:** the demo never shows anyone typing a need into a form.
+>
+> The AI updates the need. The priority still comes from the dispatcher's rules, as above.
+
 ### The person's own list
 
 Each agent keeps the person's own list in front of them: their open tasks **and the needs they filed**, sorted by the same tier and score. The agent names the top one first, and when a need changes state it tells them without being asked:
@@ -106,7 +118,7 @@ That list is computed from the shared memory every turn. The agent stores none o
 
 **Role 3, Frontend (Dan)**
 - [x] `/agent` and `/board` skeleton on fake data.
-- [ ] A "your needs" list on `/agent` under the top task, once `requestedBy` exists.
+- [x] A read-only "your needs" list on `/agent` under the top task (fixture `requestedBy` until Role 1 adds it).
 - [ ] Hold-to-talk button on the chat, tested on a phone over HTTPS.
 - [ ] Swap fixtures for `/api/board`, `/api/inbox`, `/api/chat` and the feed as each one lands.
 

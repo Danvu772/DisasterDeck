@@ -33,16 +33,43 @@ export function makeBoard(now: number) {
     },
   ];
 
-  const needs: Need[] = [
+  // requestedBy is not in the contract yet (asked Role 1 in "Personal agents"). Fixture-only until then.
+  const needs: (Need & { requestedBy: string[] })[] = [
     {
       _id: "need-1", item: "blankets", quantity: 20, region: "Battalgazi", siteIds: ["site-52"],
-      status: "on_the_way", history: [], deskId: DESK, confidence: "confirmed", lifeThreatening: true,
-      lines: [{ siteId: "site-52", quantity: 20 }], tier: 0, priority: 62, support: 1,
+      status: "on_the_way", deskId: DESK, confidence: "confirmed", lifeThreatening: true,
+      lines: [{ siteId: "site-52", quantity: 20 }], tier: 0, priority: 62, support: 1, requestedBy: ["team-4"],
+      history: [
+        { ts: ago(6), by: "Army Team 4", source: "person", reason: "Need 20 blankets, one person has hypothermia" },
+        { ts: ago(5), by: "dispatcher", source: "system", reason: "Kızılay depot 2 is bringing them, ETA 1 h" },
+      ],
+    },
+    {
+      _id: "need-4", item: "food for the team", quantity: 6, region: "Battalgazi", siteIds: ["site-52"],
+      status: "assigned", deskId: DESK, confidence: "confirmed", lifeThreatening: false,
+      lines: [{ siteId: "site-52", quantity: 6 }], tier: 1, priority: 28, support: 1, requestedBy: ["team-4"],
+      history: [
+        { ts: ago(20), by: "Army Team 4", source: "person", reason: "We haven't eaten in 14 hours" },
+        { ts: ago(15), by: "dispatcher", source: "system", reason: "Volunteer Ali picks up 6 meals from the mosque kitchen" },
+      ],
     },
     {
       _id: "need-2", item: "hot meals", quantity: 40, region: "Yeşilyurt", siteIds: [],
-      status: "proposed", history: [], deskId: DESK, confidence: "unconfirmed", lifeThreatening: false,
-      lines: [{ quantity: 40 }], tier: 2, priority: 12, support: 1,
+      status: "proposed", deskId: DESK, confidence: "unconfirmed", lifeThreatening: false,
+      lines: [{ quantity: 40 }], tier: 2, priority: 12, support: 1, requestedBy: ["zeynep"],
+      history: [{ ts: ago(25), by: "Zeynep", source: "person", reason: "Families at the Yeşilyurt park have had no hot food" }],
+    },
+    {
+      _id: "need-3", item: "power bank", quantity: 1, region: "Battalgazi", siteIds: [],
+      status: "open", deskId: DESK, confidence: "confirmed", lifeThreatening: false,
+      lines: [{ quantity: 1 }], tier: 2, priority: 18, support: 1, requestedBy: ["zeynep"],
+      history: [{ ts: ago(8), by: "Zeynep", source: "person", reason: "My phone is at 8%" }],
+    },
+    {
+      _id: "need-5", item: "fuel", quantity: 40, region: "Yeşilyurt", siteIds: [],
+      status: "open", deskId: DESK, confidence: "confirmed", lifeThreatening: false,
+      lines: [{ quantity: 40 }], tier: 1, priority: 33, support: 1, requestedBy: ["supplier-2"],
+      history: [{ ts: ago(12), by: "Kızılay depot 2", source: "person", reason: "Van is almost out of fuel" }],
     },
   ];
 

@@ -11,9 +11,13 @@ export default async function AgentPage({ searchParams }: { searchParams: Promis
   const { user: id } = await searchParams;
   const user = users.find((u) => u._id === id) ?? users[0];
   const now = Date.now();
-  const tasks = makeBoard(now).tasks
-    .filter((t) => t.open && t.assignee === user._id)
-    .sort((a, b) => a.tier - b.tier || b.priority - a.priority);
+  const board = makeBoard(now);
+  const byPriority = (a: { tier: number; priority: number }, b: { tier: number; priority: number }) =>
+    a.tier - b.tier || b.priority - a.priority;
+  const tasks = board.tasks.filter((t) => t.open && t.assignee === user._id).sort(byPriority);
+  const needs = board.needs
+    .filter((n) => n.requestedBy.includes(user._id) && n.status !== "cancelled")
+    .sort(byPriority);
 
   return (
     <main className="mx-auto flex h-dvh max-w-6xl flex-col gap-4 p-4">
@@ -28,7 +32,7 @@ export default async function AgentPage({ searchParams }: { searchParams: Promis
         ))}
       </nav>
       <AgentDesk key={user._id} user={user} users={users} events={makeEvents(now)}
-        messages={makeMessages(user._id, now)} tasks={tasks} now={now} />
+        messages={makeMessages(user._id, now)} tasks={tasks} needs={needs} now={now} />
     </main>
   );
 }

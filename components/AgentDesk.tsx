@@ -5,12 +5,14 @@ import { EventRow } from "./EventRow";
 import { TaskCard, type TaskAction } from "./TaskCard";
 import { ChatLine } from "./ChatLine";
 import { stubReply } from "./stubAgent";
+import { YourNeeds, type MyNeed } from "./YourNeeds";
 
 type FeedEvent = Event & { _id: string };
 
 // Left: everything entering the desk, from anyone. Right: this person and their own agent.
 export function AgentDesk(props: {
-  user: User; users: User[]; events: FeedEvent[]; messages: Message[]; tasks: Task[]; now: number;
+  user: User; users: User[]; events: FeedEvent[]; messages: Message[]; tasks: Task[]; needs: MyNeed[];
+  now: number;
 }) {
   const { user, now } = props;
   const [events, setEvents] = useState(props.events);
@@ -85,6 +87,13 @@ export function AgentDesk(props: {
           </h2>
           {top ? <TaskCard task={top} now={now} onAction={onAction} />
                : <p className="text-sm text-muted">Nothing assigned to you.</p>}
+        </div>
+
+        <div>
+          <h2 className="mb-2 font-mono text-xs uppercase tracking-wide text-muted">
+            Your needs {props.needs.length > 0 && `· ${props.needs.length}`}
+          </h2>
+          <YourNeeds needs={props.needs} now={now} />
         </div>
 
         <div className="flex min-h-48 flex-1 flex-col rounded-card border border-line bg-card">
