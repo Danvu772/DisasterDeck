@@ -2,7 +2,8 @@
 // /talk: one person and their own agent, voice first, laid out like a phone voice mode.
 // A big orb sits at the bottom centre: hold it (or the space bar) and talk, it grows and follows
 // your voice; let go and the note goes to your agent. The conversation flows top to bottom above it.
-// The agent's answer shows as plain text, whole, and is read out loud at the same time.
+// While you talk, your words show live (ElevenLabs Scribe realtime). The agent's answer streams in
+// as it is written, and each finished sentence is read out loud while the next is still coming.
 // Nothing reaches the desk yet: the agent only prepares it, and once the answer has been read a
 // card asks "Send this to the desk?". Send files it, Don't send drops it.
 // Pressing while the agent speaks talks over it. Typing still works. Tasks, the person switcher
@@ -21,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { IntensitySlider } from "@/components/motion/IntensitySlider";
 import { PinnedList, type PinnedItem } from "@/components/motion/PinnedList";
 import { VoiceOrb } from "./VoiceOrb";
-import { useVoice, type LoadedReply, type VoiceState } from "./useVoice";
+import { useVoice, type VoiceState } from "./useVoice";
 
 export interface TalkTask { id: string; title: string; detail: string; tier: Tier; status: string }
 export interface TalkQuake { line: string; mag: number; minutesAgo: number }
@@ -93,7 +94,7 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
   me: TalkPerson; people: TalkPerson[]; tasks: TalkTask[]; quakes: TalkQuake[]; voiceOn: boolean;
 }) {
   const router = useRouter();
-  const voice = useVoice();
+  const voice = useVoice(me.id);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [state, setStateRaw] = useState<VoiceState>("idle");
   const stateRef = useRef<VoiceState>("idle");
@@ -105,6 +106,8 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
   const [panel, setPanel] = useState<"people" | "tasks" | "settings" | null>(null);
   const seq = useRef(0);
   const holding = useRef(false);
+  const talkId = useRef(0);          // the current send(); a newer one (or talking over) retires the old
+  const [answering, setAnswering] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
 
   // Keep the newest line in view while it flows.
@@ -113,7 +116,7 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, []);
   const lastTurn = turns.at(-1);
-  useEffect(toBottom, [turns.length, state, toBottom, lastTurn?.speaking, lastTurn?.pending?.state]);
+  useEffect(toBottom, [turns.length, state, toBottom, lastTurn?.speaking, lastTurn?.pending?.state, lastTurn?.text, voice.partial]);
   // Aftershocks and the task list come from the server: refresh them every 30 s.
   useEffect(() => { const t = setInterval(() => router.refresh(), 30_000); return () => clearInterval(t); }, [router]);
 
@@ -124,37 +127,77 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
     setTurns((xs) => xs.map((t) => (t.speaking && (id === undefined || t.id === id) ? { ...t, speaking: false } : t))), []);
   const patchTurn = (id: number, f: (t: Turn) => Turn) => setTurns((xs) => xs.map((t) => (t.id === id ? f(t) : t)));
 
+  /** One turn, streamed: text as it is written, each sentence's voice as soon as it is ready. */
   async function send(body: { text?: string; audioBase64?: string }) {
+    const my = ++talkId.current;
+    const mine = () => talkId.current === my;
+    if (speakReplies && voiceOn) voice.prime();   // still inside the click: lets the reply play
     setState("thinking");
+    setAnswering(false);
+    let agentId: number | null = null;
+    let text = "";
+    let spoke = false;
     try {
       const res = await fetch(`/api/chat?user=${encodeURIComponent(me.id)}`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...body, speak: speakReplies && voiceOn, speechSpeed: speed, confirm: true }),
+        body: JSON.stringify({ ...body, speak: speakReplies && voiceOn, speechSpeed: speed, confirm: true, stream: true }),
       });
-      const r = await res.json();
-      if (!res.ok) throw new Error(r.error ?? `HTTP ${res.status}`);
-      if (body.audioBase64) add({ from: "person", text: r.heard || "(nothing heard)", voice: true });
-      let reply: LoadedReply | null = null;
-      if (r.replyAudio) reply = await voice.load(r.replyAudio).catch(() => null);
-      const id = add({ from: "agent", text: r.reply, actions: r.actions, speaking: Boolean(reply),
-        pending: r.pending ? { ...r.pending, state: "ask" } : undefined });
-      if (reply) {
-        setState("speaking");
-        await reply.play().catch(() => {});
-        stopSpeaking(id);
+      if (!res.ok || !res.body) {
+        const r = await res.json().catch(() => ({}));
+        throw new Error(r.error ?? `HTTP ${res.status}`);
       }
+      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += value;
+        for (let nl = buf.indexOf("\n"); nl >= 0; nl = buf.indexOf("\n")) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          const m = JSON.parse(line) as { type: string; [k: string]: unknown };
+          if (m.type === "heard") {
+            add({ from: "person", text: String(m.text || "(nothing heard)"), voice: true });
+          } else if (m.type === "text") {
+            text += String(m.delta);
+            const now = text.trimStart();
+            if (agentId === null) { agentId = add({ from: "agent", text: now, speaking: true }); setAnswering(true); }
+            else { const id = agentId; patchTurn(id, (t) => ({ ...t, text: now })); }
+          } else if (m.type === "audio") {
+            if (!mine()) continue;   // talked over: the rest of this answer stays silent
+            voice.enqueue(String(m.audio));
+            spoke = true;
+            if (stateRef.current === "thinking") setState("speaking");
+          } else if (m.type === "done") {
+            const r = m as unknown as { reply: string; actions?: Turn["actions"]; pending?: { id: string; items: string[] } };
+            const fields = { text: r.reply, actions: r.actions, pending: r.pending ? { ...r.pending, state: "ask" as const } : undefined };
+            if (agentId === null) agentId = add({ from: "agent", speaking: true, ...fields });
+            else { const id = agentId; patchTurn(id, (t) => ({ ...t, ...fields })); }
+          } else if (m.type === "error") {
+            throw new Error(String(m.error));
+          }
+        }
+      }
+      if (spoke && mine()) {
+        if (stateRef.current === "thinking") setState("speaking");
+        await voice.drained();
+      }
+      if (agentId !== null) stopSpeaking(agentId);
     } catch (e) {
+      if (agentId !== null) stopSpeaking(agentId);
       add({ from: "agent", text: `Something went wrong: ${(e as Error).message}. Try again.` });
     } finally {
+      setAnswering(false);
       // Only settle if nobody started talking over the answer meanwhile.
-      if (stateRef.current === "thinking" || stateRef.current === "speaking") setState("idle");
+      if (mine() && (stateRef.current === "thinking" || stateRef.current === "speaking")) setState("idle");
     }
   }
 
   async function pressStart() {
     const s = stateRef.current;
     if (s === "thinking" || s === "listening" || !voiceOn) return;
-    if (s === "speaking") { voice.stopPlayback(); stopSpeaking(); }
+    if (s === "speaking") { talkId.current++; voice.stopPlayback(); stopSpeaking(); }
     holding.current = true;
     setState("listening");           // the orb grows at once, even while the mic is still opening
     const ok = await voice.start();
@@ -169,18 +212,23 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
     if (!holding.current) return;
     holding.current = false;
     if (stateRef.current !== "listening") return;
-    const note = await voice.stop();
-    if (!note) {
+    const got = await voice.stop();
+    if (!got) {
       // stop() returns null both for a tap and while the mic is still opening (pressStart handles that).
       if (stateRef.current === "listening") { setState("idle"); voice.setError("Hold the orb while you talk."); }
       return;
     }
-    await send({ audioBase64: note });
+    if ("text" in got) {
+      add({ from: "person", text: got.text, voice: true });
+      await send({ text: got.text });
+    } else {
+      await send({ audioBase64: got.note });
+    }
   }
   async function submit(text: string) {
     const t = text.trim();
     if (!t || stateRef.current === "thinking" || stateRef.current === "listening") return;
-    if (stateRef.current === "speaking") { voice.stopPlayback(); stopSpeaking(); }
+    if (stateRef.current === "speaking") { talkId.current++; voice.stopPlayback(); stopSpeaking(); }
     setTyped("");
     add({ from: "person", text: t });
     await send({ text: t });
@@ -303,7 +351,7 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
       {/* The conversation, top to bottom. Older lines fade out under the top edge. */}
       <div ref={scroller} aria-live="polite"
         className="min-h-0 flex-1 overflow-y-auto py-6 [mask-image:linear-gradient(to_bottom,transparent,black_3rem,black_calc(100%-1.5rem),transparent)]">
-        {turns.length === 0 && state === "idle" ? (
+        {turns.length === 0 && state !== "listening" && state !== "thinking" ? (
           <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
             <p className="text-balance text-xl font-medium sm:text-2xl">What do you see, or what do you need?</p>
             <div className="flex flex-wrap justify-center gap-2">
@@ -355,7 +403,13 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
                   <Dots />
                 </motion.p>
               )}
-              {state === "thinking" && lastFrom !== "person" && (
+              {state === "listening" && voice.partial && (
+                <motion.p key="live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="max-w-[85%] self-end rounded-3xl rounded-br-lg bg-secondary/70 px-4 py-2.5 text-base text-secondary-foreground">
+                  <Mic className="mr-1.5 mb-0.5 inline size-3.5 opacity-60" />{voice.partial}
+                </motion.p>
+              )}
+              {state === "thinking" && lastFrom !== "person" && !answering && (
                 <motion.p key="thinking2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   className="flex items-center gap-1 self-end text-base text-muted-foreground">
                   Writing down what you said<Dots />
