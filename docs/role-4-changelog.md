@@ -2,6 +2,12 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## Compact imagery cards - 2026-11-15 08:02 EST
+
+- [x] Reduced the default imagery panel to layer/date selection, comparison controls, scale, source and coverage. Weather and detailed quality information open on demand.
+- [x] Shortened building-reference and radiance popups. Review export appears with building references enabled.
+- [x] TypeScript, scoped ESLint and production build pass. Edge desktop/mobile checks cover layers, comparison slider, review export visibility, quality mask and weather controls. The default high-resolution panel has 94 visible words, with no page errors or horizontal mobile overflow.
+
 ## Antakya operational alignment - 2026-11-15 07:56 EST
 
 - [x] Centralized pilot and desk defaults in `lib/pilot.ts`, backed by `data/pilot.json`. Aligned map centres, operations replay, extra fixture roles, personal-agent prompts/searches, official news domains, worker defaults and health checks.

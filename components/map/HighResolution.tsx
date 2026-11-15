@@ -62,7 +62,7 @@ export function BuildingReferences({ visible }: { visible: boolean }) {
     const title = document.createElement("strong");
     title.textContent = `Mapped destroyed building · ${p.referenceId}`;
     const detail = document.createElement("p");
-    detail.textContent = `HOT / OpenStreetMap historical reference. Event: 6 Feb 2023. Mapping source: ${p.source ?? "unspecified"}. This is an external reference, with no prediction by our app. View-angle and positional differences need human review.`;
+    detail.textContent = `HOT / OpenStreetMap · 6 Feb 2023. Source: ${p.source ?? "unspecified"}. Historical mapping · Human review required.`;
     const label = document.createElement("label");
     label.textContent = "Your local review ";
     const select = document.createElement("select");
@@ -70,14 +70,14 @@ export function BuildingReferences({ visible }: { visible: boolean }) {
       const option = document.createElement("option"); option.value = value; option.textContent = text; select.append(option);
     }
     try { select.value = JSON.parse(localStorage.getItem(STORAGE) ?? "{}")[p.referenceId]?.status ?? ""; } catch {}
-    const saved = document.createElement("p"); saved.textContent = "Saved on this browser. Export notes to share with the team.";
+    const saved = document.createElement("p"); saved.textContent = "Saved in this browser. Export to share.";
     select.addEventListener("change", () => {
       try {
         const reviews = JSON.parse(localStorage.getItem(STORAGE) ?? "{}");
         if (select.value) reviews[p.referenceId] = { status: select.value, reviewedAt: new Date().toISOString(), referenceId: p.referenceId, pilot: "antakya-2023" };
         else delete reviews[p.referenceId];
         localStorage.setItem(STORAGE, JSON.stringify(reviews));
-        saved.textContent = "Local note saved; no field confirmation or dispatch was created.";
+        saved.textContent = "Review saved in this browser.";
       } catch { saved.textContent = "Browser storage unavailable; this note was not saved."; }
     });
     label.append(select); el.append(title, detail, label, saved); layer.bindPopup(el, { maxWidth: 320 });
@@ -93,7 +93,7 @@ export function ExportBuildingReviews() {
     const blob = new Blob([JSON.stringify({ pilot: "antakya-2023", exportedAt: new Date().toISOString(), scope: "Local human notes; not field-validated damage or model output", reviews }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob); const link = document.createElement("a");
     link.href = url; link.download = "antakya-building-reviews.json"; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }}>Export local building review notes</button>;
+  }}>Export reviews</button>;
 }
 
 export function RadiancePairs() {
@@ -108,7 +108,7 @@ export function RadiancePairs() {
   return <GeoJSON data={data} style={{ className: "stroke-ink fill-none", weight: 0.5 }} onEachFeature={(feature, layer) => {
     const p = feature.properties!;
     const el = document.createElement("p");
-    el.textContent = `Black Marble · ~500 m pixel. ${p.beforeDate}: ${p.before} → ${p.afterDate}: ${p.after} nW/(cm² sr). Change: ${p.changePct}%. Both observations passed the conservative QA filter. Regional light change does not establish building damage or people trapped.`;
+    el.textContent = `Black Marble · 500 m · QA passed. ${p.beforeDate}: ${p.before} → ${p.afterDate}: ${p.after} nW/(cm² sr). Change ${p.changePct}%. Regional light change.`;
     layer.bindPopup(el);
   }} />;
 }
