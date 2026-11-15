@@ -57,8 +57,10 @@ function OtherRow({ o, now, onPick }: { o: FieldTask; now: number; onPick: (id: 
   );
 }
 
-export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: string; initial: FieldBoard }) {
-  const { data, live, now } = usePolled<FieldBoard>("/api/board", initial);
+export function FieldPhone({ user, wanted, initial, initialLive = false }: {
+  user: string; wanted?: string; initial: FieldBoard; initialLive?: boolean;
+}) {
+  const { data, live, now } = usePolled<FieldBoard>("/api/board", initial, 1000, initialLive);
   const { send, waiting } = useOutbox(user);
   const talk = useHoldToTalk(user);
   const [panel, setPanel] = useState<Panel>(null);
@@ -66,6 +68,7 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
+  const [typed, setTyped] = useState("");
   // What this phone already sent, so the next button lights up before the board catches up.
   const [local, setLocal] = useState<{ id: string; step: number } | null>(null);
 
@@ -260,11 +263,24 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
             : "Hold to talk"}
         </button>
         {talk.state === "unsupported" && (
-          <p className="text-base text-muted">The microphone only works on an HTTPS page.</p>
+          <p className="text-base text-muted">The microphone only works on an HTTPS page. Type to your agent instead.</p>
         )}
-        <p className="text-base text-muted">Voice is not wired yet. The desk gets the recording but cannot listen to it.</p>
-        {talk.error && <p className="text-base">{talk.error}</p>}
-        {talk.reply && <ChatLine m={{ from: "agent", text: talk.reply }} name="" />}
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); talk.sendText(typed); setTyped(""); }}>
+          <label htmlFor="agent-text" className="sr-only">Tell your agent</label>
+          <input id="agent-text" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Or type to your agent"
+            className="min-w-0 flex-1 rounded-button border-2 border-ink p-3 text-lg" />
+          <button type="submit" className={`${button.outline} px-4! text-lg!`}
+            disabled={!typed.trim() || talk.state === "sending" || talk.state === "recording"}>
+            Send
+          </button>
+        </form>
+        <div aria-live="polite" className="space-y-2">
+          {talk.said && <ChatLine m={{ from: "user", text: talk.said }} name="You" />}
+          {talk.state === "sending" && <p className="text-base text-muted">Your agent is answering</p>}
+          {talk.error && <p className="text-base">{talk.error}</p>}
+          {talk.reply && <ChatLine m={{ from: "agent", text: talk.reply }} name="" />}
+        </div>
+        {talk.speaking && <button className={quiet} onClick={talk.hush}>Stop reading aloud</button>}
       </section>
     </main>
   );

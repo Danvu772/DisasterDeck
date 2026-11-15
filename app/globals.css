@@ -113,3 +113,26 @@ body .leaflet-container .leaflet-control-zoom-out {
   .map-flash,
   .map-fade-in { animation: none; }
 }
+
+/* Loading blocks (components/ui). The one motion that loops: a sweep of light across a grey block,
+   for as long as the block is on screen. The real content replaces the block when data arrives.
+   Reduced motion keeps the grey block and drops the sweep. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-line);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-card) 70%, transparent), transparent);
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  to { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { display: none; }
+}
