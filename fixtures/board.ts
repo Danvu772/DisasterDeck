@@ -20,14 +20,14 @@ export function makeBoard(now: number) {
       deskId: DESK, confidence: "corroborated", observedAt: ago(14), tier: 0, priority: 54, support: 4,
     },
     {
-      _id: "site-52", address: "Çınar St. 3", region: "Yeşilyurt", peopleTrapped: 3,
+      _id: "site-52", address: "Çınar St. 3", region: "Yeşilyurt", coords: [38.343, 38.296], peopleTrapped: 3,
       callStatus: "verified", status: "team_on_site",
       sources: [{ source: "person", eventId: "ev-9" }],
       history: [{ ts: ago(40), by: "Zeynep", source: "person", reason: "Called back, voices heard" }],
       deskId: DESK, confidence: "confirmed", observedAt: ago(40), tier: 0, priority: 70, support: 1,
     },
     {
-      _id: "site-61", address: "near the mosque, Kale", region: "Kale", peopleTrapped: 0,
+      _id: "site-61", address: "Near the mosque, Kale", region: "Kale", peopleTrapped: 0,
       callStatus: "not_called", status: "open", sources: [{ source: "x", eventId: "ev-20" }],
       history: [], deskId: DESK, confidence: "unconfirmed", observedAt: ago(95), tier: 1, priority: 31, support: 1,
     },
@@ -90,7 +90,7 @@ export function makeBoard(now: number) {
   const incidents: Incident[] = [
     {
       _id: "inc-1", deskId: DESK, kind: "vehicle_breakdown", reportedBy: "supplier-2", taskId: "task-3",
-      severity: "critical", canContinue: false,
+      severity: "critical", canContinue: false, coords: [38.336, 38.322],
       text: "Lastik patladı, 14. km'deyim", textEn: "Flat tire, I'm stuck at km 14, 30 blankets on board",
       status: "helping",
       actions: [
@@ -103,6 +103,14 @@ export function makeBoard(now: number) {
   ];
 
   const tasks: Task[] = [
+    {
+      _id: "task-3", type: "deliver", recordType: "need", recordId: "need-1", assignee: "supplier-2",
+      tried: [], risk: "low", tier: 0, priority: 62, status: "blocked", open: false, blockedBy: "inc-1",
+      title: "Bring 20 blankets to Çınar St. 3", detail: "Kızılay depot 2. Blocked: flat tire at km 14.",
+      deadline: new Date(now + 40 * 60000),
+      history: [{ ts: ago(2), by: "help-desk", source: "system", reason: "Blocked by a vehicle breakdown" }],
+      deskId: DESK,
+    },
     {
       _id: "task-1", type: "call", recordType: "site", recordId: "site-57", assignee: "zeynep",
       tried: [], risk: "low", tier: 0, priority: 54, status: "assigned", open: true,
