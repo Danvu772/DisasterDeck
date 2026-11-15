@@ -6,7 +6,7 @@ owner: ""
 
 **Owner:** _write your name here_
 
-**Delivery status · 14 Nov 2026, 20:04 EST.** Replay/seed and NASA inputs are prepared for team integration. See [version notes](../../role-4-changelog.md), [handoff](../../role-4-handoff.md) and [NASA evidence](../../nasa-evidence.md). The current NASA cache supports cold alerts and retains unknown silent-zone evidence.
+**Delivery status · 14 Nov 2026, 20:56 EST.** Replay/seed, NASA inputs and the scenario player are prepared for team integration. See [version notes](../../role-4-changelog.md), [handoff](../../role-4-handoff.md), [NASA evidence](../../nasa-evidence.md) and [the demo script](../../demo.md). The current NASA cache supports cold alerts and retains unknown silent-zone evidence.
 
 Read first: [[Team contracts]] · Design: [[Final system design]] · Data background: [[Data sources]] · What changed in version 2: [[Design review 2026-11-14]]
 
@@ -75,10 +75,10 @@ flowchart LR
 - [ ] The NASA credit line is on the page: "Supported by the Michigan Space Grant Consortium, NASA grant 80NSSC20M0124." Full list: [[Hackathon info#NASA checklist (Role 4 owns it)|NASA checklist]].
 
 ### 4. Scenario player (00:00 → 04:00): CP3
-- [ ] `workers/scenario-player.ts` plays scripted events on a timer for the roles nobody is acting live: a second field team, a shelter filling up, a road closing. It sends `x-agent-key`, and gives each scripted event a `dedupeKey` so a second run does not double them.
-- [ ] **The truck scene (CP4, 06:00):** a script line that posts an `incident` of kind `vehicle_breakdown` for the supplier's open delivery, in case nobody is free to press Problem live. Then a line that resolves it.
+- [x] `workers/scenario-player.ts` supports five manual cues and optional delays, with `x-agent-key`, stable event keys and actual record IDs. The field fallback uses the delivered `field-alpha` identity. Completed 14 Nov, 20:56 EST. [Runbook](../../scenario-player.md)
+- [x] **The truck scene.** The player posts `vehicle_breakdown` for the accepted primary delivery and resolves the same incident by its actual ID. Seventeen scenario tests pass. Live CP4 acceptance remains pending. Completed 14 Nov, 20:56 EST.
 - [ ] Decide with the team: **is Ayşe the trapped person or the volunteer?** The design and the whiteboard say trapped; the story in the main note says volunteer. Pick one before you write the demo script.
-- [ ] A **demo script** in `docs/demo.md`: who clicks what on which laptop, minute by minute, for the 2-minute table demo.
+- [x] A [two-minute demo script](../../demo.md) with proposed team-role/device assignments, manual fallback cues and a rehearsal checklist. Drafted 14 Nov, 20:56 EST. The team still needs to confirm operators and rehearse.
 
 ### 5. Pitch, video, rehearsal (07:00 → 11:00)
 - [ ] Pitch: Türkiye 2023 story → the gap (groups do not talk) → the desk → live demo → **the truck breaks down and the desk re-plans** → NASA silent zones and the −14 °C night → what's next (Lahaina, evacuation, real platforms).

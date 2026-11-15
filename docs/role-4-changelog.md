@@ -2,6 +2,14 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v0.4 scenario player · 2026-11-14 20:56 EST
+
+- Added `data/scenarios/malatya.json` and `workers/scenario-player.ts` with blanket, shelter, road, breakdown and repair cues. The configuration reuses the seed and historical observation clock.
+- The player reads the actual board, waits for prerequisites and binds site/need/task/incident IDs before posting. Atomic local journals and stable event keys support process restart and concurrent invocations. Prepared state is ignored by Git.
+- Extracted the existing worker HTTP sender into `scripts/event-api.mjs` for reuse by the NASA watcher and scenario player. The existing NASA sender export and behavior are preserved.
+- Seventeen scenario tests and four NASA tests pass, including local HTTP retry, acknowledgement loss, first-writer binding, normal CLI sending, read-only preview, delayed cues and invalid input. TypeScript, repository lint and the replay/seed validator pass. The repo's tsx entry point also runs.
+- Added the player runbook and proposed two-minute table demo. Updated the Obsidian scenario checkboxes. Actual API/Brain acceptance, operator confirmation, reset agreement and live rehearsals remain pending.
+
 ## v0.3 requirements audit · 2026-11-14 20:17 EST
 
 - Read the full NASA track guide, relevant Hacker Packet pages and the public event site. Confirmed the three selected NASA products fit the stated data scope and documented their source/sensor provenance.

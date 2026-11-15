@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import type { AlertPayload } from "../lib/types";
+import { postWorkerEvents as postSatelliteAlerts } from "../scripts/event-api.mjs";
+
+export { postSatelliteAlerts };
 
 export interface SatelliteZones {
   type: "FeatureCollection";
@@ -91,41 +93,6 @@ export function buildSatelliteAlerts(zones: SatelliteZones): SatelliteAlert[] {
     }
   }
   return alerts;
-}
-
-export async function postSatelliteAlerts(alerts: SatelliteAlert[], options: { url: string; agentKey: string }) {
-  assert(options.agentKey.trim(), "AGENT_KEY is required to send alerts");
-  const ids: string[] = [];
-  for (const alert of alerts) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      let response: Response;
-      try {
-        response = await fetch(options.url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-agent-key": options.agentKey },
-          body: JSON.stringify(alert), signal: AbortSignal.timeout(10000),
-        });
-      } catch (error) {
-        if (attempt === 2) throw error;
-        await delay(1000 * (attempt + 1));
-        continue;
-      }
-      if ((response.status === 429 || response.status >= 500) && attempt < 2) {
-        await response.body?.cancel();
-        await delay(1000 * (attempt + 1));
-        continue;
-      }
-      if (!response.ok) {
-        await response.body?.cancel();
-        throw new Error(`Event API returned HTTP ${response.status} for ${alert.dedupeKey}`);
-      }
-      const result = await response.json() as { id?: unknown };
-      assert(typeof result.id === "string" && result.id.trim(), "Event API did not return an ID. Retry with the same keys.");
-      ids.push(result.id);
-      break;
-    }
-  }
-  return ids;
 }
 
 async function main() {
