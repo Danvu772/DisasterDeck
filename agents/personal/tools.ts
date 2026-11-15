@@ -6,13 +6,14 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type {
   AnswerPayload, ApprovalPayload, CapacityPayload, ClaimPayload, ClosurePayload, CorrectionPayload,
-  IncidentKind, IncidentPayload, NeedPayload, RecordType, ReportPayload, Role,
+  IncidentKind, IncidentPayload, LatLng, NeedPayload, RecordType, ReportPayload, Role,
 } from "@/lib/types";
 import { deskNow, observeBoard } from "@/components/clock";
 import { METRIC_IDS, metric } from "@/components/metrics/registry";
 import type { MetricId } from "@/components/metrics/types";
 import { desk, type NewEvent, type UserContext } from "../desk";
-import { askDesk, topicsFor, type Topic } from "../desk/view";
+import { haversineMeters } from "@/lib/geo";
+import { askDesk, distance, topicsFor, type Topic } from "../desk/view";
 import { maskPhones } from "../shared/privacy";
 import { writeHandoff } from "./handoff";
 
@@ -28,6 +29,9 @@ function obj(properties: Record<string, unknown>): Tool["input_schema"] {
 const INCIDENT_KINDS: IncidentKind[] = ["vehicle_breakdown", "road_blocked", "cannot_find", "short_supply",
   "unsafe", "injury", "handover", "unreachable", "other"];
 const RECORD_TYPES: RecordType[] = ["site", "need", "road", "shelter", "zone", "incident"];
+
+const MAP_KINDS = ["site", "shelter", "road", "need", "incident", "task"] as const;
+type MapKind = (typeof MAP_KINDS)[number];
 
 const DEFS: Record<string, Tool> = {
   ask_desk: {
@@ -145,14 +149,25 @@ const DEFS: Record<string, Tool> = {
       why: { ...str, description: "One short line: what the person asked that this chart answers." },
     }),
   },
+  show_on_map: {
+    name: "show_on_map",
+    description: "Show places on the person's map. Call it when they ask where something is, want locations, the nearest thing, or anything on a map. At most 1 per turn. It returns a short list of what matched, with distance when near_me is true. Say the answer in one sentence: the map carries the rest.",
+    input_schema: obj({
+      kinds: { type: "array", items: { type: "string", enum: MAP_KINDS }, description: "What to show: one or more kinds." },
+      text: { ...str, description: "Words the name, address, item or region must contain, or an empty string for all. (Not nullable: see ask_desk page.)" },
+      status: { ...str, description: "Only records in this state (open, closed, free, assigned...), or an empty string for any." },
+      near_me: { type: "boolean", description: "Sort by distance from the person." },
+      why: { ...str, description: "One short line: what the person asked that this map answers." },
+    }),
+  },
 };
 
 const ROLE_TOOLS: Record<Role, string[]> = {
-  volunteer: ["ask_desk", "answer_task", "file_need", "file_report", "file_closure", "report_problem", "declare_work", "correct_record", "visualize_metric"],
-  field: ["ask_desk", "answer_task", "file_need", "file_report", "file_closure", "report_problem", "declare_work", "correct_record", "visualize_metric"],
-  supplier: ["ask_desk", "answer_task", "file_need", "file_closure", "report_problem", "declare_work", "visualize_metric"],
-  shelter: ["ask_desk", "answer_task", "file_need", "file_report", "file_capacity", "report_problem", "correct_record", "visualize_metric"],
-  coordinator: ["ask_desk", "decide_approval", "shift_handoff", "file_report", "file_closure", "file_need", "correct_record", "visualize_metric"],
+  volunteer: ["ask_desk", "answer_task", "file_need", "file_report", "file_closure", "report_problem", "declare_work", "correct_record", "visualize_metric", "show_on_map"],
+  field: ["ask_desk", "answer_task", "file_need", "file_report", "file_closure", "report_problem", "declare_work", "correct_record", "visualize_metric", "show_on_map"],
+  supplier: ["ask_desk", "answer_task", "file_need", "file_closure", "report_problem", "declare_work", "visualize_metric", "show_on_map"],
+  shelter: ["ask_desk", "answer_task", "file_need", "file_report", "file_capacity", "report_problem", "correct_record", "visualize_metric", "show_on_map"],
+  coordinator: ["ask_desk", "decide_approval", "shift_handoff", "file_report", "file_closure", "file_need", "correct_record", "visualize_metric", "show_on_map"],
   public: ["ask_desk", "file_need", "file_report", "file_closure"],
 };
 
@@ -167,7 +182,10 @@ export function toolsFor(ctx: UserContext): Anthropic.Beta.BetaToolUnion[] {
   return tools;
 }
 
-export interface ToolOutcome { content: string; eventId?: string; isError?: boolean; summary?: string; showMetric?: MetricId }
+export interface ToolOutcome { content: string; eventId?: string; isError?: boolean; summary?: string; showMetric?: MetricId; showMap?: { kinds: string[]; ids: string[]; text?: string } }
+
+// show_map calls per turn: a turn builds one context, so this caps the map at 1 per turn.
+const mapCalls = new WeakMap<UserContext, number>();
 
 class ToolInputError extends Error {}
 
@@ -325,6 +343,47 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       const status = r.status === "unknown" ? `unknown: ${r.unknownReason ?? "no data"}` : r.status;
       return { content: `Chart shown: ${r.title}. ${r.headline} Status ${status}. Basis: ${r.basis}. Source: ${r.source.name}.`,
         summary: `Chart: ${r.title}`, showMetric: id };
+    }
+
+    case "show_on_map": {
+      const kinds = (Array.isArray(i.kinds) ? i.kinds : []).filter((k): k is MapKind => MAP_KINDS.includes(k as MapKind));
+      if (kinds.length === 0) throw new ToolInputError(`kinds needs at least one of: ${MAP_KINDS.join(", ")}.`);
+      if ((mapCalls.get(ctx) ?? 0) >= 1) throw new ToolInputError("The map was already shown this turn. Answer from what it returned.");
+      mapCalls.set(ctx, 1);
+      const text = s(i.text)?.toLowerCase(), status = s(i.status)?.toLowerCase();
+      const from = i.near_me === true ? u.coords : undefined;
+      const d = desk();
+      const b = await d.getBoard(u.deskId);
+      const siteAt = new Map(b.sites.map((x) => [x._id, x]));
+      type Hit = { id: string; line: string; state: string; coords?: LatLng };
+      const hits: Hit[] = [];
+      for (const x of kinds.includes("site") ? b.sites : []) hits.push({ id: x._id, state: x.status, coords: x.coords,
+        line: `${x.address}, ${x.region}: ${x.peopleTrapped} trapped, ${x.status}` });
+      for (const x of kinds.includes("shelter") ? b.shelters : []) hits.push({ id: x._id,
+        state: x.bedsTotal - x.bedsUsed > 0 ? "free" : "full", coords: x.coords,
+        line: `${x.name}, ${x.region}: ${x.bedsTotal - x.bedsUsed} of ${x.bedsTotal} beds free` });
+      for (const x of kinds.includes("road") ? b.roads : []) hits.push({ id: x._id, state: x.state, coords: x.coords,
+        line: `${x.road}: ${x.state}${x.reason ? `, ${x.reason}` : ""}` });
+      for (const x of kinds.includes("need") ? b.needs : []) hits.push({ id: x._id, state: x.status,
+        coords: x.siteIds.map((sid) => siteAt.get(sid)?.coords).find(Boolean),
+        line: `${x.quantity} ${x.item}, ${x.region}: ${x.status}` });
+      for (const x of kinds.includes("incident") ? b.incidents : []) hits.push({ id: x._id, state: x.status, coords: x.coords,
+        line: `${x.kind}: ${x.severity}, ${x.status}` });
+      for (const x of kinds.includes("task") ? b.tasks.filter((t) => t.open) : []) hits.push({ id: x._id, state: x.status,
+        coords: (x.recordType === "site" ? siteAt.get(x.recordId)?.coords : undefined),
+        line: `${maskPhones(x.title).text}: ${x.status}` });
+      // Only things that can be drawn: a record without coords has no pin.
+      let found = hits.filter((h) => h.coords && (!text || h.line.toLowerCase().includes(text)) &&
+        (!status || h.state.toLowerCase() === status));
+      const dist = (h: Hit) => (from && h.coords ? haversineMeters(from, h.coords) : Infinity);
+      if (from) found = found.sort((a, c) => dist(a) - dist(c));
+      const ids = found.slice(0, 50).map((h) => h.id);
+      const shown = found.slice(0, 8).map((h) => `${h.line}${from ? `, ${distance(dist(h))} away` : ""}`);
+      const asked = kinds.join(", ");
+      const content = found.length === 0
+        ? `Nothing on the map for ${asked}${text ? ` matching "${text}"` : ""}. Say so.`
+        : `Map shown: ${found.length} ${asked} on the map${found.length > 8 ? ", nearest 8 listed" : ""}. ${shown.join(". ")}.${i.near_me === true && !from ? " Distance unknown: the person's position is not shared." : ""}`;
+      return { content, summary: `Map: ${found.length} ${asked}`, showMap: { kinds, ids, text } };
     }
   }
   return { content: `Unknown tool ${name}.`, isError: true };

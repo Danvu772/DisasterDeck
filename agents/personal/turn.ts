@@ -25,7 +25,8 @@ export interface TurnResult {
   reply: string;
   eventIds: string[];
   // For the screen: what the agent filed, and the charts it asked for (type "show_metric", id).
-  actions: { tool: string; summary: string; ok: boolean; type?: "show_metric"; id?: string }[];
+  actions: { tool: string; summary: string; ok: boolean; type?: "show_metric" | "show_map"; id?: string;
+    kinds?: string[]; ids?: string[]; text?: string }[];
   model?: string;
 }
 
@@ -104,7 +105,8 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
           .catch((e: Error) => ({ content: `Tool failed: ${e.message}`, isError: true, eventId: undefined, summary: undefined }));
         if (out.eventId) eventIds.push(out.eventId);
         if (c.name !== "ask_desk") actions.push({ tool: c.name, summary: out.summary ?? out.content.slice(0, 120), ok: !out.isError,
-          ...("showMetric" in out && out.showMetric ? { type: "show_metric" as const, id: out.showMetric } : {}) });
+          ...("showMetric" in out && out.showMetric ? { type: "show_metric" as const, id: out.showMetric } : {}),
+          ...("showMap" in out && out.showMap ? { type: "show_map" as const, ...out.showMap } : {}) });
         return { type: "tool_result", tool_use_id: c.id, content: out.content, is_error: out.isError || undefined };
       }));
       messages.push({ role: "user", content: results });
