@@ -8,6 +8,8 @@ const LINKS = [
   { href: "/", label: "Desk" },
   { href: "/agent", label: "Agent" },
   { href: "/map", label: "Map" },
+  { href: "/coordinator", label: "Coordinator" },
+  { href: "/field", label: "Field" },
 ];
 
 export function Nav({ account }: { account?: React.ReactNode }) {

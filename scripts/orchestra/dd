@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# dd: run frontend tasks as headless Claude workers in tmux. Docs: docs/frontend/README.md
+#
+#   dd up              tmux session "dd": stream window (every worker's thoughts), dev server, shell
+#   dd run <id>        start docs/frontend/tasks/<id>.md in its own worktree and tmux session dd-<id>
+#   dd ls              workers, their branches and whether they are still running
+#   dd peek <id> [n]   last n lines of a worker's window (default 40)
+#   dd check <id>      tsc, lint and the token guard inside the worker's worktree
+#   dd merge <id>      rebase on origin/main, check, fast-forward main, push, clean up
+#   dd kill <id>       stop a worker and delete its worktree and branch
+set -euo pipefail
+
+REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+HOME_DIR="${DD_HOME:-$(dirname "$REPO")/HACKTHENEST-orchestra}"   # outside the repo on purpose:
+WT="$HOME_DIR/wt"                                                 # tsc, eslint and .next never see it
+LOG="$HOME_DIR/logs"
+STREAM="$HOME_DIR/stream.log"
+TASKS="$REPO/docs/frontend/tasks"
+BRIEF="$REPO/scripts/orchestra/brief.md"
+mkdir -p "$WT" "$LOG"
+touch "$STREAM"
+JQ="$HOME_DIR/fmt.jq"
+
+# effort → model. A task file can override with `model:`.
+model_for() { case "$1" in low) echo haiku ;; medium) echo sonnet ;; *) echo opus ;; esac; }
+field() { sed -n "s/^$2:[[:space:]]*//p" "$1" | head -1; }
+
+# One line per thought, tool call or result, prefixed with time and task id.
+FMT='def s: tostring | gsub("\\s+";" ") | .[0:180];
+if .type=="assistant" then (.message.content[]? |
+    if .type=="thinking" and (.thinking|length)>0 then "think  " + (.thinking|s)
+    elif .type=="text" then "say    " + (.text|s)
+    elif .type=="tool_use" then "tool   " + .name + " " + ((.input.file_path // .input.command // .input.pattern // .input.description // "")|s)
+    else empty end)
+elif .type=="result" then "DONE   " + .subtype + ", $" + ((.total_cost_usd // 0)*100|round/100|tostring) + ", " + ((.duration_ms // 0)/1000|round|tostring) + " s. " + ((.result // "")|s)
+else empty end'
+printf '%s\n' "$FMT" > "$JQ"
+
+cmd="${1:-help}"; id="${2:-}"
+
+case "$cmd" in
+up)
+  if ! tmux has-session -t dd 2>/dev/null; then
+    tmux new-session -d -s dd -n stream "tail -n 200 -F '$STREAM'"
+    tmux new-window -t dd -n dev -c "$REPO" "lsof -iTCP:3000 -sTCP:LISTEN >/dev/null && echo 'port 3000 is taken: stop the other dev server (Claude Desktop preview?)' ; npm run dev; exec \$SHELL"
+    tmux new-window -t dd -n shell -c "$REPO"
+    tmux select-window -t dd:stream
+  fi
+  echo "tmux attach -t dd    (stream, dev, shell)"
+  ;;
+
+run)
+  f="$TASKS/$id.md"; [ -f "$f" ] || { echo "no task file $f"; exit 1; }
+  tmux has-session -t "dd-$id" 2>/dev/null && { echo "dd-$id is already running"; exit 1; }
+  effort="$(field "$f" effort)"; effort="${effort:-medium}"
+  model="$(field "$f" model)"; model="${model:-$(model_for "$effort")}"
+  dir="$WT/$id"
+  git -C "$REPO" fetch -q origin
+  if [ ! -d "$dir" ]; then
+    git -C "$REPO" worktree add -q -B "fe/$id" "$dir" origin/main
+    ln -s "$REPO/node_modules" "$dir/node_modules"
+  fi
+  prompt="$LOG/$id.prompt.md"
+  { cat "$BRIEF"; echo; echo "---"; echo; echo "# Your task ($id)"; echo; cat "$f"; } > "$prompt"
+  echo "$(date +%H:%M:%S) [$id] START  $model, effort $effort, branch fe/$id" >> "$STREAM"
+  tmux new-session -d -s "dd-$id" -c "$dir" \
+    "claude -p \"\$(cat '$prompt')\" --model $model --effort $effort --permission-mode auto --output-format stream-json --verbose \
+       | tee '$LOG/$id.jsonl' \
+       | jq --unbuffered -r -f '$JQ' \
+       | while IFS= read -r l; do printf '%s [%s] %s\n' \"\$(date +%H:%M:%S)\" '$id' \"\$l\"; done \
+       | tee -a '$STREAM'; echo; echo 'worker finished. dd merge $id, or dd kill $id'; exec \$SHELL"
+  echo "started dd-$id ($model, $effort). tmux attach -t dd-$id"
+  ;;
+
+ls)
+  for d in "$WT"/*/; do
+    [ -d "$d" ] || continue
+    t="$(basename "$d")"
+    state="finished"; tmux has-session -t "dd-$t" 2>/dev/null && pgrep -f "$LOG/$t.prompt.md" >/dev/null && state="running"
+    ahead="$(git -C "$d" rev-list --count origin/main..HEAD 2>/dev/null || echo ?)"
+    dirty="$(git -C "$d" status --porcelain | wc -l | tr -d ' ')"
+    printf '%-28s %-9s %s commits, %s uncommitted files\n' "$t" "$state" "$ahead" "$dirty"
+  done
+  ;;
+
+peek) tmux capture-pane -p -t "dd-$id" -S "-${3:-40}" ;;
+
+check)
+  d="$WT/$id"
+  (cd "$d" && npx tsc --noEmit && npx eslint >/dev/null && npm run -s check:tokens >/dev/null && echo "checks pass: $id")
+  ;;
+
+merge)
+  d="$WT/$id"
+  [ -z "$(git -C "$d" status --porcelain)" ] || { echo "$id has uncommitted changes"; exit 1; }
+  git -C "$d" fetch -q origin && git -C "$d" rebase -q origin/main
+  "$0" check "$id"
+  git -C "$REPO" pull -q --rebase --autostash
+  git -C "$REPO" merge -q --ff-only "fe/$id"
+  git -C "$REPO" push -q
+  echo "$(date +%H:%M:%S) [$id] MERGED $(git -C "$REPO" log --oneline -1)" >> "$STREAM"
+  "$0" kill "$id"
+  ;;
+
+kill)
+  tmux kill-session -t "dd-$id" 2>/dev/null || true
+  git -C "$REPO" worktree remove --force "$WT/$id" 2>/dev/null || true
+  git -C "$REPO" branch -D "fe/$id" -q 2>/dev/null || true
+  echo "removed $id"
+  ;;
+
+*) sed -n '2,11p' "$0" ;;
+esac
