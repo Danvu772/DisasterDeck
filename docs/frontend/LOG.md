@@ -2,6 +2,14 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 21:45 t12, t14, t19, t20 merged, a mojibake fix
+- **t12** Ask the desk box above the board tabs, posts to `/api/chat`. On this laptop the route throws `ANTHROPIC_API_KEY is not set`, so it shows the error. Needs the key in `.env.local`.
+- **t14** site cards say where they are in the loop: "Step 1 of 5: reported." up to "Step 5 of 5: reported back." Text only, the visual language bans progress dots.
+- **t19** the map legend folds behind a "Legend" button on a phone. `/field` says "Acting as field-alpha (demo)".
+- **t20** `/compare` no longer says "Zeynep is calling" next to "Call status: not called".
+- **Fix (`ec32582`):** t16 wrote the seed coordinator's name double-encoded ("Demo NÃ¶betÃ§i KoordinatÃ¶r"). Caught on a screenshot, not by any check. Turkish names need a look in the browser after every fixture change.
+- **Queued t21 (opus):** Dan wants every board card to open all its metadata and pin it on a map.
+
 ### 21:35 t11, t15, t16 merged, Atlas, demo mode
 - **t16** fixtures use the seeded people (`volunteer-callback`, `field-alpha`, `supplier-primary`, `coordinator-duty`) and region `malatya-merkez`. Before this, every screen would have lost its tasks the moment `/api/board` served real records. The seed has one field team, so the team that declined in the story is now `volunteer-mechanic`.
 - **t15** the nav row scrolls sideways on a phone, "Malatya" and "Design lab" hide below `sm`.

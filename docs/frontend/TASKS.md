@@ -6,15 +6,12 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 
 | Task | Effort | What |
 |---|---|---|
-| [t12-ask-the-desk](tasks/t12-ask-the-desk.md) | medium | Ask the desk box on the board |
-| [t14-loop-step](tasks/t14-loop-step.md) | medium | "Step 3 of 5: team approved." on site cards |
-| [t19-phone-polish](tasks/t19-phone-polish.md) | medium | map legend collapses on a phone, field says "Acting as" in demo |
+| [t21-record-detail](tasks/t21-record-detail.md) | high | click any card on any tab: all its metadata, pinned on a map. `/map?focus=` |
 
 ## Next (queued)
 
 | Task | Effort | Waits on |
 |---|---|---|
-| [t20-compare-consistency](tasks/t20-compare-consistency.md) | low | ready. `/compare` says "Zeynep is calling" next to "not called" |
 | t17 Modify on approvals posts a real change | medium | Role 1: an approval with another `assignee` |
 | t18 hold to talk turns speech into text | medium | Role 2: does `/api/chat` take audio, or text from the browser? |
 | t04 priority breakdown on click | medium | Role 1: the score parts per record, so the screen does not guess them |
@@ -26,7 +23,7 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 
 - **Role 1 (Darshal):** `GET /api/board`, `GET /api/inbox`, `GET /api/health` are still "Not yet" in `lib/README.md`. Every screen falls back to fixtures until then. Also asked: `GET /api/users` (the coordinator's person picker), and a way to approve with a different person (Modify).
 - **Role 2 (Ömer):** `/api/chat` answers audio with "can't listen yet". Speech-to-text on the server, or text from the browser?
-- **Dan:** SSOJet credentials for t10. (`DEMO_MODE=1` is set, 21:30.)
+- **Dan:** SSOJet credentials for t10. `ANTHROPIC_API_KEY` in `.env.local`, or `/api/chat` throws and Ask the desk, `/agent` and hold to talk get no answer. (`DEMO_MODE=1` is set, 21:30.)
 
 ## Done
 
@@ -45,3 +42,7 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 | [t15-nav-phone](tasks/t15-nav-phone.md): nav scrolls sideways on a phone | `c953b29` |
 | [t16-fixtures-seed-ids](tasks/t16-fixtures-seed-ids.md): fixtures use the seed's people | `d0d5d61` |
 | [t11-today-vs-desk](tasks/t11-today-vs-desk.md): `/compare` for the pitch | `bcad602` |
+| [t20-compare-consistency](tasks/t20-compare-consistency.md): `/compare` agrees with itself | `04bdcf2` |
+| [t12-ask-the-desk](tasks/t12-ask-the-desk.md): Ask the desk box | `4562601` |
+| [t14-loop-step](tasks/t14-loop-step.md): "Step 4 of 5: team on site." | `7e0bdc3` |
+| [t19-phone-polish](tasks/t19-phone-polish.md): legend collapses on a phone, "Acting as" on `/field` | `40ad010` |
