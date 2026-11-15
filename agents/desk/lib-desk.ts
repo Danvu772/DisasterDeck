@@ -10,7 +10,7 @@
 // fallback so the chat answers, but the real database has no tasks for them.
 
 import { closeDb, cols, getBoard, getDeskVersion, newId, postEvent } from "../../lib/db";
-import { payloadSchemas } from "../../lib/schemas";
+import { eventBody } from "../../lib/schemas";
 import type { Event, User } from "../../lib/types";
 import { loadChat } from "./chat-memory";
 import { fixtureDesk } from "./fixture-desk";
@@ -107,16 +107,18 @@ export const libDesk: DeskPort = {
   },
 
   async postEvent(e: NewEvent) {
-    // Same check POST /api/events runs: model output is untrusted until it fits the schema.
-    const schema = payloadSchemas[e.type as keyof typeof payloadSchemas];
-    const parsed = schema ? schema.safeParse(e.payload) : { success: true as const, data: e.payload };
+    // The whole event, not only its payload, goes through the same schema as POST /api/events
+    // (lib/schemas.ts eventBody, shown in Swagger at /api/docs): type, source, ids, dates, payload.
+    // Model output is untrusted until it fits. `actor` is ours to set: this is server code.
+    const parsed = eventBody.safeParse(e);
     if (!parsed.success) {
-      throw new Error(`${e.type} payload rejected: ${parsed.error.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
+      throw new Error(`${e.type} event rejected by the schema: ${parsed.error.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
     }
+    const b = parsed.data;
     return postEvent({
       // JSON round trip drops undefined fields, which the driver would store as null.
-      type: e.type, source: e.source, actor: e.actor, payload: JSON.parse(JSON.stringify(parsed.data)), deskId: e.deskId,
-      observedAt: e.observedAt ? new Date(e.observedAt) : undefined, dedupeKey: e.dedupeKey,
+      type: b.type, source: b.source, actor: e.actor, payload: JSON.parse(JSON.stringify(b.payload)), deskId: b.deskId,
+      observedAt: b.observedAt, dedupeKey: b.dedupeKey,
     });
   },
 

@@ -1,4 +1,5 @@
-// News agent worker: live web searches for a region, findings posted as events.
+// News agent worker: live web searches for a region, findings posted as events
+// (closure, need, report, capacity).
 // Owner: Role 2. Run it by hand, or every 15–30 min during the demo.
 //
 //   npx tsx --env-file=.env.local workers/news-agent.ts                      both channels

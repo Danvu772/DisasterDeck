@@ -16,6 +16,7 @@ export interface SatelliteZones {
   };
   features: {
     id: string;
+    geometry?: { type: string; coordinates: unknown };
     properties: {
       _id: string;
       deskId: string;
@@ -97,9 +98,27 @@ export function buildSatelliteAlerts(zones: SatelliteZones): SatelliteAlert[] {
 
 async function main() {
   const arguments_ = process.argv.slice(2);
-  assert(arguments_.every((value) => value === "--dry-run"), "Supported option is --dry-run");
+  assert(arguments_.every((value) => value === "--dry-run" || value === "--live-calls"),
+    "Supported options are --dry-run and --live-calls");
   const collection = JSON.parse(await readFile(new URL("../public/data/zones.geojson", import.meta.url), "utf8")) as SatelliteZones;
   if (process.env.DESK_ID) assert.equal(collection.metadata.deskId, process.env.DESK_ID);
+  // --live-calls: count calls per zone from the desk's sites (what the X and news agents found)
+  // instead of the fixed number in the file. Reads the desk set by DESK_API_URL, else the fixture desk.
+  if (arguments_.includes("--live-calls")) {
+    // Loaded only with --live-calls, so the plain-Node test (scripts/satellite-watcher.test.mjs) keeps working.
+    const { desk } = await import("../agents/desk");
+    const { callsByZone } = await import("../agents/research/zone-calls");
+    const d = desk();
+    const counts = callsByZone(collection.features, (await d.getBoard(collection.metadata.deskId)).sites);
+    await d.close?.();
+    for (const zone of collection.features) {
+      const live = counts[zone.id];
+      if (live === undefined || live === zone.properties.calls) continue;
+      console.error(`[satellite] ${zone.id}: calls ${zone.properties.calls} in the file → ${live} on the desk`);
+      zone.properties.calls = live;
+      zone.properties.silentZone = null; // the file's flag was worked out from the old count
+    }
+  }
   const alerts = buildSatelliteAlerts(collection);
   if (arguments_.includes("--dry-run")) {
     console.log(JSON.stringify(alerts, null, 2));

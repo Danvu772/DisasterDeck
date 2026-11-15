@@ -1,5 +1,7 @@
 // X agent worker: replays tweets as if they arrived live. Each call for help becomes a
-// `report` event, each supply request a `need` event. Other tweets are skipped. Owner: Role 2.
+// `report` event, each supply request a `need` event, each closed or reopened road a `closure`
+// event, and a shelter's fullness, when the tweet gives numbers, a `capacity` event.
+// Other tweets are skipped. Owner: Role 2.
 //
 //   npx tsx --env-file=.env.local workers/x-agent.ts --mock      no key, no cost
 //   npx tsx --env-file=.env.local workers/x-agent.ts --limit 3   real Claude (about $0.006 per tweet)
@@ -35,7 +37,7 @@ async function main() {
   log(`${tweets.length} tweets from ${file}, speed ${speed}×, ${mock ? "MOCK" : "Claude"}, desk: ${d.name}`);
 
   const start = Date.now();
-  let reports = 0, unclear = 0, needs = 0, skipped = 0, failed = 0;
+  let reports = 0, unclear = 0, hazards = 0, needs = 0, closures = 0, capacities = 0, skipped = 0, failed = 0;
 
   for (const t of tweets) {
     const due = start + (t.ts_offset_seconds * 1000) / speed;
@@ -46,15 +48,27 @@ async function main() {
       if (x.report) {
         const id = await d.postEvent({ ...base, type: "report", dedupeKey: `x:${t.id}`, payload: x.report });
         reports++;
-        log(`report ${t.id} → ${id} (${x.report.kind}, ${x.report.address ?? "no address"}${x.unclear ? `, UNCLEAR: ${x.unclear}` : ""}, ${x.report.textEn.slice(0, 60)})`);
+        log(`report ${t.id} → ${id} (${x.report.kind}, ${x.report.address ?? "no address"}${x.unclear ? `, UNCLEAR: ${x.unclear}` : ""}${x.hazard ? `, HAZARD: ${x.hazard}` : ""}, ${x.report.textEn.slice(0, 60)})`);
         if (x.unclear) unclear++;
+        if (x.hazard) hazards++;
       }
       for (const [i, n] of x.needs.entries()) {
         const id = await d.postEvent({ ...base, type: "need", dedupeKey: `x:${t.id}:need:${i}`, payload: n });
         needs++;
         log(`need   ${t.id} → ${id} (${n.quantity} ${n.item}${n.lifeThreatening ? ", life-threatening" : ""})`);
       }
-      if (!x.report && x.needs.length === 0) {
+      for (const [i, c] of x.closures.entries()) {
+        const id = await d.postEvent({ ...base, type: "closure", dedupeKey: `x:${t.id}:closure:${i}`, payload: c });
+        closures++;
+        log(`road   ${t.id} → ${id} (${c.road}: ${c.state}, ${c.reason})`);
+      }
+      for (const [i, c] of x.capacities.entries()) {
+        const id = await d.postEvent({ ...base, type: "capacity", dedupeKey: `x:${t.id}:capacity:${i}`, payload: c });
+        capacities++;
+        log(`beds   ${t.id} → ${id} (${c.shelter}: ${c.bedsUsed}/${c.bedsTotal})`);
+      }
+      for (const name of x.capacityNoNumbers) log(`beds   ${t.id}: "${name}" said to be full, no numbers, not posted`);
+      if (x.skipReason) {
         skipped++;
         log(`skip   ${t.id}: ${x.skipReason}`);
       }
@@ -64,7 +78,8 @@ async function main() {
       log(`FAIL   ${t.id}: ${(err as Error).message}`);
     }
   }
-  log(`done: ${reports} reports (${unclear} need a call), ${needs} needs, ${skipped} skipped, ${failed} failed · cost $${(spentUsd() - spentAtStart).toFixed(4)}`);
+  log(`done: ${reports} reports (${unclear} need a call, ${hazards} with a hazard), ${needs} needs, ${closures} roads, ` +
+    `${capacities} shelter counts, ${skipped} skipped, ${failed} failed · cost $${(spentUsd() - spentAtStart).toFixed(4)}`);
   await d.close?.();
 }
 
