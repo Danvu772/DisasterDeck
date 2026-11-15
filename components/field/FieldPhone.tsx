@@ -36,7 +36,7 @@ function Actions({ list }: { list: AgentAction[] }) {
       {list.map((a, i) => (
         <li key={i} className="flex items-start gap-2">
           {a.ok ? <CircleCheck className="mt-0.5 size-4 shrink-0 text-success" /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />}
-          <span>{`${a.ok ? "Done" : "Not done"}: ${a.summary}`}</span>
+<span><span className="font-medium">{a.ok ? "Done" : "Not done"}:</span> {a.summary}</span>
         </li>
       ))}
     </ul>
