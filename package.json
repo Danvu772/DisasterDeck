@@ -25,10 +25,14 @@
     "check:pilot": "node scripts/validate-demo-data.mjs && node scripts/check-antakya.mjs",
     "replay:real": "node --env-file-if-exists=.env.local --import tsx workers/x-agent.ts --file data/replays/antakya-real-tweets.json --require-live",
     "replay:synthetic": "node --env-file-if-exists=.env.local --import tsx workers/x-agent.ts --file data/tweets_replay.json",
-    "check:replay": "node --import tsx --test scripts/real-replay.test.mjs"
+    "check:replay": "node --import tsx --test scripts/real-replay.test.mjs",
+    "check:voice": "node --import tsx --test scripts/family-voice.test.mjs",
+    "voice:setup": "node --env-file=.env.local scripts/setup-family-voice.mjs",
+    "voice:smoke": "node scripts/smoke-family-voice.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
+    "@elevenlabs/client": "^1.36.1",
     "leaflet": "^1.9.4",
     "mongodb": "^6.22.0",
     "next": "15.5.4",

@@ -195,6 +195,19 @@ export function buildSpec() {
       },
     },
     paths: {
+      "/api/voice/updates": {
+        get: { tags: ["agents"], summary: "Coordinator-only approved family updates and selectable cases", responses: { "200": { description: "Updates without PIN hashes, desk-scoped case choices and storage mode" }, "403": errorResponse("Coordinator required") } },
+        post: { tags: ["agents"], summary: "Publish a 24-hour family update or revoke access (coordinator only, same origin)", requestBody: { required: true, content: { "application/json": { schema: { oneOf: [
+          { type: "object", required: ["siteId", "alias", "summary", "sourceAt"], properties: { siteId: { type: "string" }, alias: { type: "string", maxLength: 80 }, summary: { type: "string", maxLength: 1500 }, sourceAt: { type: "string", format: "date-time" } } },
+          { type: "object", required: ["reference", "revoke"], properties: { reference: { type: "string" }, revoke: { const: true } } },
+        ] } } } }, responses: { "201": { description: "Reference, one-time PIN display and expiry" }, "200": { description: "Revoked" }, "403": errorResponse("Coordinator required"), "404": errorResponse("Case outside your desk"), "400": errorResponse("Invalid update") } },
+      },
+      "/api/voice/session": {
+        post: { tags: ["agents"], summary: "Exchange a family reference and PIN for a private WebRTC session (same origin)", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["reference", "pin"], properties: { reference: { type: "string", pattern: "^[a-f0-9]{16}$" }, pin: { type: "string", pattern: "^[0-9]{8}$" } } } } } }, responses: { "200": { description: "Short-lived ElevenLabs token, 10-minute signed ticket, demo marker" }, "403": errorResponse("Invalid or revoked access"), "429": errorResponse("Attempt limit"), "503": errorResponse("Voice setup unavailable") } },
+      },
+      "/api/voice/answer": {
+        post: { tags: ["agents"], summary: "Read-only Claude answer scoped to one signed family grant (same origin)", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["ticket", "question"], properties: { ticket: { type: "string", maxLength: 1024 }, question: { type: "string", maxLength: 2000 } } } } } }, responses: { "200": { description: "Grounded answer, sourceAt and demo marker" }, "403": errorResponse("Expired or revoked grant"), "429": errorResponse("Turn limit"), "502": errorResponse("Assistant unavailable") } },
+      },
       "/api/board": {
         get: {
           tags: ["desk"],
