@@ -27,6 +27,7 @@ people ── /api/chat ───┘          ▲
 | `/api/chat` | `app/api/chat/route.ts` | `POST /api/chat?user=<id>` `{ text?, imageBase64?, coords? }` → `{ reply, eventIds, actions }`. Rate limit 8/min. Photo checked (type, 5 MB) | ✅ from Dan's `/agent` screen |
 | X agent | `agents/research/x-extract.ts`, `workers/x-agent.ts` | Tweet → `report` and/or `need` events. Phones masked in code first | ✅ 15 tweets, $0.002 each |
 | News agent | `agents/research/news-search.ts`, `workers/news-agent.ts` | Claude web search for one region → `closure` / `need` / `report`, each with a source URL the search really returned. Two channels: `news` (any site) and `official` (AFAD, Karayolları, governor, municipality, Interior Ministry, Kızılay, Anadolu Ajansı, TRT Haber) | ✅ ~$0.06 per channel. Official found the Feb 2023 Erkenek–Gölbaşı closure (AA) |
+| Google Sheets sync | `agents/research/sheets.ts`, `workers/sheet-sync.ts` | Volunteers' shelter sheet ↔ desk. A row a person changes → `capacity` event (source `sheet`). A newer number the desk got elsewhere → written into the row with source and time; never over a person's edit from the last 5 min (goes to the Note column), never echoing the sheet's own numbers. No model call | ✅ both ways on the real sheet (15 Nov): 3 shelters written in, a person's edit (24 → 31) became a `capacity` event, own writes not read back |
 | Aftershock warnings | `agents/research/quakes.ts`, `workers/quake-watcher.ts` | Replay: the real Feb 2023 sequence from USGS (cached in `agents/fixtures/`) on a scenario clock. Live: AFAD + USGS every minute. A quake worth a warning (M5 ≤100 km, M6 ≤200 km, M7 ≤400 km) goes into every personal agent's context, and the agent's next reply starts with the warning. No model call, no cost | ✅ field team got "M6.0, 40 km, 2 min ago, get out" |
 | Desk connection | `agents/desk/` | `MONGODB_URI` set → **Role 1's `lib/db.ts` functions in the same process** (`lib-desk.ts`): every payload checked with Role 1's `payloadSchemas`, `actor` = the person talking. Else `DESK_API_URL` → HTTP. Else fake data | ✅ MongoDB (15 Nov 01:40) · ✅ fake |
 | Spend meter | `agents/shared/cost.ts`, `agents/scripts/spend.ts` | Every call priced and logged to `agents/.usage/usage.jsonl`. Stops at `AGENT_BUDGET_USD` (default $15) | ✅ |
@@ -69,6 +70,24 @@ npm run dev                                                      # then /agent?u
 `.env.local` needs `ANTHROPIC_API_KEY`, `DEMO_MODE=1` (the chat accepts `?user=` only then) and, for the real desk, `MONGODB_URI` / `MONGODB_DB` / `DESK_ID` from `.env.example`, then `npm run db:up` and `npm run db:seed`. Check: `npx tsx --env-file=.env.local agents/scripts/lib-check.ts` (~$0.03).
 
 Demo people on the real desk (from `data/seed.json`): `volunteer-callback`, `volunteer-mechanic`, `field-alpha`, `supplier-primary`, `supplier-backup`, `shelter-desk`, `coordinator-duty`, `coordinator-backup`, `public-demo`. On the fake desk also Dan's `zeynep`, `team-4`, `supplier-2`, `coord-1`, plus `shelter-b-staff`, `citizen-1`.
+
+---
+
+## Google Sheets setup (once, ~15 min, Ömer)
+
+1. Use a **personal Gmail**, not the IU account (university Google accounts often block projects and keys).
+2. <https://console.cloud.google.com> → new project `disaster-desk`.
+3. APIs & Services → Library → **Google Sheets API** → Enable.
+4. IAM & Admin → Service Accounts → Create: name `sheet-agent`, no roles → Done.
+5. Open it → Keys → Add key → Create new key → **JSON**. Save it as `agents/.secrets/google-sa.json` (git-ignored; the folder is hidden in Finder). **Never** leave it in `agents/` itself: git would pick it up. Never paste it in chat or Slack.
+6. A blank sheet ([sheets.new](https://sheets.new)), shared with the `client_email` from the JSON (`sheet-agent@hackathon-514802.iam.gserviceaccount.com`) as **Editor**.
+7. `.env.local`: `GOOGLE_SHEET_ID=<the part of the sheet URL between /d/ and /edit>` and `GOOGLE_SERVICE_ACCOUNT_FILE=agents/.secrets/google-sa.json`.
+8. `npx tsx --env-file=.env.local agents/scripts/sheet-init.ts` writes the header row (`Barınak | Dolu | Kapasite | Kaynak | Güncelleme | Not`).
+9. `npx tsx --env-file=.env.local workers/sheet-sync.ts` keeps it in sync every 30 s. `--dry` shows what it would do. `agents/scripts/sheet-edit.ts "Demo Barınak B" 31` changes a cell like a person would.
+
+Done on 15 Nov: project `hackathon-514802`, the team's demo sheet is in Ömer's Drive.
+
+No key? Publish the sheet (File → Share → Publish to web → CSV) and set `GOOGLE_SHEET_CSV_URL` instead: read only, about 5 minutes behind.
 
 ---
 

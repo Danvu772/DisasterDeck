@@ -2,3 +2,7 @@
 .usage/
 # Scenario clock of a running replay, local to each machine.
 .replay/
+# Google service account keys. Never commit.
+.secrets/
+# Sheet sync memory, local to each machine.
+.sheet/
