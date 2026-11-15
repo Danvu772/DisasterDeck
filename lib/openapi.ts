@@ -126,6 +126,27 @@ export function buildSpec() {
             health: { $ref: "#/components/schemas/Health" },
           },
         },
+        InboxItem: {
+          type: "object", description: "One line in a person's inbox. Fields: `InboxItem` in lib/types.ts",
+          required: ["_id", "userId", "message", "status", "ts", "kind", "priority"],
+          properties: {
+            _id: { type: "string" }, userId: { type: "string" }, message: { type: "string" },
+            status: { type: "string", enum: ["unread", "read"] }, ts: { type: "string", format: "date-time" },
+            kind: { type: "string", enum: ["task", "notice", "approval", "incident", "checkin"] },
+            priority: { type: "number" }, taskId: { type: "string" }, incidentId: { type: "string" },
+          },
+        },
+        Person: {
+          type: "object", description: "A desk user without `profile` (stock counts and notes stay on the server)",
+          required: ["_id", "name", "role", "region", "status"],
+          properties: {
+            _id: { type: "string" }, name: { type: "string" },
+            role: { type: "string", enum: ["volunteer", "field", "supplier", "shelter", "coordinator", "public"] },
+            region: { type: "string" }, status: { type: "string", enum: ["available", "busy", "offline"] },
+            coords: { type: "array", items: { type: "number" }, minItems: 2, maxItems: 2, description: "[lat, lng]" },
+            lastSeen: { type: "string", format: "date-time", description: "Last time this person's screen read their inbox" },
+          },
+        },
         Id: { type: "object", required: ["id"], properties: { id: { type: "string" } } },
         Error: {
           type: "object", required: ["error"],
@@ -202,6 +223,70 @@ export function buildSpec() {
               description: "Queue health",
               content: { "application/json": { schema: { $ref: "#/components/schemas/Health" } } },
             },
+          },
+        },
+      },
+      "/api/inbox": {
+        get: {
+          tags: ["desk"],
+          summary: "Your unread inbox",
+          description: [
+            "The caller's unread items, newest first, at most 100. Each call stamps the caller's",
+            "`lastSeen`, so a screen that polls the inbox also says the person is there.",
+            "An inbox belongs to a person: the agent key gets 400.",
+          ].join("\n"),
+          security: [{ session: [] }, { demoUser: [] }],
+          responses: {
+            200: {
+              description: "Unread items, newest first",
+              content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/InboxItem" } } } },
+            },
+            400: errorResponse("Called with the agent key"),
+            401: errorResponse("Not signed in, or unknown demo user"),
+          },
+        },
+        post: {
+          tags: ["desk"],
+          summary: "Mark inbox items read",
+          description: "Marks the listed `ids` read, or every unread item when `ids` is missing or the body is empty. Only the caller's own items change.",
+          security: [{ session: [] }, { demoUser: [] }],
+          requestBody: {
+            required: false,
+            content: {
+              "application/json": {
+                schema: { type: "object", properties: { ids: { type: "array", items: { type: "string" }, maxItems: 500 } } },
+                examples: { some: { summary: "Two items", value: { ids: ["6740a1...", "6740a2..."] } }, all: { summary: "Everything", value: {} } },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: "How many items changed from unread to read",
+              content: { "application/json": { schema: { type: "object", required: ["read"], properties: { read: { type: "integer" } } } } },
+            },
+            400: errorResponse("Body is not JSON, ids is not a list of strings, or called with the agent key"),
+            401: errorResponse("Not signed in, or unknown demo user"),
+          },
+        },
+      },
+      "/api/users": {
+        get: {
+          tags: ["desk"],
+          summary: "The people on this desk",
+          description: [
+            "`_id`, `name`, `role`, `region`, `status`, `coords` and `lastSeen` of every user on the desk,",
+            "by name. Never `profile`. Citizens (role `public`) get 403. Every other role and the agent key",
+            "may read it.",
+          ].join("\n"),
+          security: [{ agentKey: [] }, { session: [] }, { demoUser: [] }],
+          parameters: [deskParam],
+          responses: {
+            200: {
+              description: "People, by name",
+              content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Person" } } } },
+            },
+            401: errorResponse("Not signed in, unknown demo user, or wrong x-agent-key"),
+            403: errorResponse("Citizens do not see the people list"),
           },
         },
       },

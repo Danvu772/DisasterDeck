@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { POST } from "../app/api/events/route";
+import { GET as getInbox, POST as postInbox } from "../app/api/inbox/route";
+import { GET as getUsers } from "../app/api/users/route";
 import { closeDb, cols } from "./db";
 import { buildSpec, UNDOCUMENTED } from "./openapi";
 
@@ -71,6 +73,32 @@ async function expect(name: string, p: ReturnType<typeof post>, status: number) 
   console.log(`ok  ${status}  ${name}${r.error ? `  (${r.error})` : ""}`);
   return r;
 }
+
+/** Calls a GET or POST handler directly, for the inbox and users cases. */
+async function call(
+  handler: (req: Request) => Promise<Response>, path: string,
+  opts: { user?: string; key?: string; body?: string; method?: "GET" | "POST" } = {},
+) {
+  const url = new URL(`http://localhost${path}`);
+  if (opts.user) url.searchParams.set("user", opts.user);
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (opts.key !== undefined) headers["x-agent-key"] = opts.key;
+  const res = await handler(new Request(url, { method: opts.method ?? "GET", headers, body: opts.body }));
+  return { status: res.status, json: (await res.json()) as unknown };
+}
+
+async function expectCall(name: string, p: ReturnType<typeof call>, status: number) {
+  const r = await p;
+  const error = (r.json as { error?: string } | null)?.error;
+  assert.equal(r.status, status, `${name}: expected ${status}, got ${r.status} ${error ?? ""}`);
+  passed++;
+  console.log(`ok  ${status}  ${name}${error ? `  (${error})` : ""}`);
+  return r.json;
+}
+
+// Throwaway people on the throwaway desk, so the inbox and users cases never touch a seeded user.
+const PERSON = "check-person";
+const OTHER = "check-other";
 
 async function main() {
   await checkSpecMatchesRoutes();
@@ -145,6 +173,62 @@ async function main() {
   await expect("unknown event type", post({ type: "launch", source: "person", payload: {} }, { user: "field-alpha" }), 400);
   await expect("broken JSON", post(null, { user: "field-alpha", raw: "{oops" }), 400);
 
+  // --- inbox (#1) ---
+  const ago = (s: number) => new Date(Date.now() - s * 1000);
+  await c.users.deleteMany({ _id: { $in: [PERSON, OTHER] } });
+  await c.users.insertMany([
+    { _id: PERSON, name: "Check person", role: "volunteer", region: "check", status: "offline", deskId: DESK,
+      trust: "public", coords: [38.35, 38.31], profile: { stock: { blankets: 5 }, notes: "secret" } },
+    { _id: OTHER, name: "Check other", role: "public", region: "check", status: "offline", deskId: DESK, trust: "public" },
+  ]);
+  await c.inbox.deleteMany({ userId: { $in: [PERSON, OTHER] } });
+  await c.inbox.insertMany([
+    { _id: "check-inbox-old", userId: PERSON, message: "old", status: "unread", ts: ago(60), kind: "notice", priority: 0 },
+    { _id: "check-inbox-new", userId: PERSON, message: "new", status: "unread", ts: ago(1), kind: "task", priority: 0 },
+    { _id: "check-inbox-read", userId: PERSON, message: "read", status: "read", ts: ago(30), kind: "notice", priority: 0 },
+    { _id: "check-inbox-other", userId: OTHER, message: "not yours", status: "unread", ts: ago(5), kind: "notice", priority: 0 },
+  ]);
+
+  await expectCall("agent reads an inbox", call(getInbox, "/api/inbox", { key }), 400);
+  await expectCall("nobody signed in reads an inbox", call(getInbox, "/api/inbox"), 401);
+  const before = new Date();
+  const unread = (await expectCall("person reads their inbox", call(getInbox, "/api/inbox", { user: PERSON }), 200)) as { _id: string }[];
+  assert.deepEqual(unread.map((i) => i._id), ["check-inbox-new", "check-inbox-old"], "unread only, newest first, own only");
+  const seen = await c.users.findOne({ _id: PERSON });
+  assert(seen?.lastSeen instanceof Date && seen.lastSeen >= before, "GET stamps lastSeen");
+  console.log("    unread only, newest first, nobody else's, lastSeen stamped");
+
+  const mark = (body: unknown, user = PERSON) =>
+    call(postInbox, "/api/inbox", { user, method: "POST", body: typeof body === "string" ? body : JSON.stringify(body) });
+  const own = (await expectCall("person marks one item read", mark({ ids: ["check-inbox-old"] }), 200)) as { read: number };
+  assert.equal(own.read, 1);
+  const theirs = (await expectCall("person marks someone else's item read", mark({ ids: ["check-inbox-other"] }), 200)) as { read: number };
+  assert.equal(theirs.read, 0, "only the caller's own items change");
+  assert.equal((await c.inbox.findOne({ _id: "check-inbox-other" }))?.status, "unread");
+  await expectCall("ids is not a list of strings", mark({ ids: [1, 2] }), 400);
+  await expectCall("broken JSON to the inbox", mark("{oops"), 400);
+  await expectCall("agent marks an inbox read", call(postInbox, "/api/inbox", { key, method: "POST", body: "{}" }), 400);
+  const all = (await expectCall("person marks everything read (empty body)", mark(""), 200)) as { read: number };
+  assert.equal(all.read, 1);
+  assert.deepEqual(await expectCall("inbox is empty after", call(getInbox, "/api/inbox", { user: PERSON }), 200), []);
+  console.log("    { read: n } counts only the caller's unread items");
+
+  // --- users (#2) ---
+  const people = (await expectCall("coordinator reads the people list",
+    call(getUsers, `/api/users?desk=${DESK}`, { user: "coordinator-duty" }), 200)) as Record<string, unknown>[];
+  assert.deepEqual(people.map((u) => u._id), [OTHER, PERSON], "this desk's users, by name");
+  for (const u of people) assert(!("profile" in u) && !("trust" in u) && !("deskId" in u), `${u._id}: only the listed fields`);
+  assert.deepEqual(Object.keys(people[1]).sort(), ["_id", "coords", "lastSeen", "name", "region", "role", "status"]);
+  console.log("    _id, name, role, region, status, coords, lastSeen. No profile");
+  await expectCall("volunteer reads the people list", call(getUsers, `/api/users?desk=${DESK}`, { user: "volunteer-callback" }), 200);
+  await expectCall("agent reads the people list", call(getUsers, `/api/users?desk=${DESK}`, { key }), 200);
+  await expectCall("citizen reads the people list", call(getUsers, `/api/users?desk=${DESK}`, { user: "public-demo" }), 403);
+  await expectCall("nobody signed in reads the people list", call(getUsers, "/api/users"), 401);
+  const seeded = (await expectCall("people list of the real desk",
+    call(getUsers, "/api/users", { user: "coordinator-duty" }), 200)) as Record<string, unknown>[];
+  assert(seeded.length >= 9 && seeded.every((u) => !("profile" in u)), "the seeded people, without profile");
+  console.log(`    ${seeded.length} people on the real desk, none with profile`);
+
   console.log(`\nAll ${passed} checks passed.`);
 }
 
@@ -158,5 +242,7 @@ main()
     await c.events.deleteMany({ $or: [{ _id: { $in: created } }, { deskId: DESK }] });
     await c.sites.deleteMany({ deskId: DESK }); // a running Brain may have made one from the test report
     await c.tasks.deleteOne({ _id: "check-task" });
+    await c.inbox.deleteMany({ userId: { $in: [PERSON, OTHER] } });
+    await c.users.deleteMany({ _id: { $in: [PERSON, OTHER] }, deskId: DESK });
     await closeDb();
   });

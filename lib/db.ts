@@ -257,6 +257,27 @@ export async function getBoard(desk: string = deskId()): Promise<Board> {
   return { sites, needs, roads, shelters, zones, incidents, tasks, health };
 }
 
+/** GET /api/inbox: one person's unread items, newest first. */
+export async function getInbox(userId: string, limit = 100): Promise<InboxItem[]> {
+  const { inbox } = await cols();
+  return inbox.find({ userId, status: "unread" }).sort({ ts: -1 }).limit(limit).toArray();
+}
+
+/** What GET /api/users shows of a person. Never `profile`: it holds stock counts and notes. */
+export type Person = Pick<User, "_id" | "name" | "role" | "region" | "status" | "coords" | "lastSeen">;
+
+/** GET /api/users: the people on one desk, by name. */
+export async function listUsers(desk: string = deskId()): Promise<Person[]> {
+  const { users } = await cols();
+  const people = await users
+    .find({ deskId: desk }, { projection: { _id: 1, name: 1, role: 1, region: 1, status: 1, coords: 1, lastSeen: 1 } })
+    .sort({ name: 1 })
+    .toArray();
+  // Rebuilt field by field, so a field added to User later does not leak out by default.
+  return people.map(({ _id, name, role, region, status, coords, lastSeen }) =>
+    ({ _id, name, role, region, status, ...(coords ? { coords } : {}), ...(lastSeen ? { lastSeen } : {}) }));
+}
+
 // Which fields `text` is matched against, per collection.
 const TEXT_FIELDS: Record<SearchCollection, string[]> = {
   sites: ["address", "region"],
