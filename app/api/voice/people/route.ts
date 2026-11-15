@@ -6,5 +6,5 @@ export const dynamic = "force-dynamic";
 // Published family updates are public. No account, reference entry or PIN is required.
 export async function GET() {
   try { return voiceJson({ people: await listPublicUpdates() }); }
-  catch { return voiceJson({ error: "Yayımlanmış bilgilere şu anda ulaşılamıyor. Lütfen tekrar deneyin." }, 503); }
+  catch { return voiceJson({ error: "Published updates are currently unavailable. Please try again." }, 503); }
 }

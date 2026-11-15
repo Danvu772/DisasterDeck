@@ -2,6 +2,12 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## English-only family voice - 2026-11-15 04:09 EST
+
+- Translated family search, call controls, transcripts, dates, disclosures and API/fallback messages into English. Changed the provider language/greeting and both the ElevenLabs and Claude instructions to English-only responses.
+- Updated and read back the existing private provider agent to verify `language=en` and an English greeting. Restored all seven active local publications with their original observation times; translated the original fictional Ayşe summary into English while retaining the original backup locally.
+- Nine voice tests, scoped ESLint and isolated production build passed. A live Edge/WebRTC test with a synthetic microphone verified the English greeting, a real English Claude answer to a Turkish language-switch request, English narrator output, mute/end and no page errors. No human microphone or shared Atlas write was used.
+
 ## English family examples - 2026-11-15 04:02 EST
 
 - Added six clearly fictional English family-information examples covering shelter registration, an unverified inquiry, pending transport, a family check-in, an old observation and an equipment request.
