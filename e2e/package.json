@@ -1,0 +1,12 @@
+{
+  "name": "disaster-desk-e2e",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "report": "node -e \"console.log(require('path').resolve('report/index.html'))\""
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1"
+  }
+}

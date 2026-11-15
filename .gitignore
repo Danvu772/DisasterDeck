@@ -53,3 +53,8 @@ ds-bundle/
 .design-sync/learnings/
 .design-sync/node_modules
 /dist/types/
+
+# e2e output (headless Playwright runs)
+e2e/test-results/
+e2e/report/
+e2e/node_modules/
