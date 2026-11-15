@@ -4,6 +4,7 @@
 import { desk } from "@/agents/desk";
 import { quakeLine, recentQuakesNear } from "@/agents/research/quakes";
 import { voiceEnabled } from "@/agents/shared/voice";
+import { plainDetail } from "@/components/detail/fields";
 import { TalkScreen, type TalkPerson, type TalkQuake, type TalkTask } from "@/components/talk/TalkScreen";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export default async function TalkPage({ searchParams }: { searchParams: Promise
 
   const ctx = await d.getUserContext(meId);
   const tasks: TalkTask[] = ctx.tasks.slice(0, 5).map((t) => ({
-    id: t._id, title: t.title, detail: t.detail.replace(/\d[\d\s]{8,}\d/g, "•••"), tier: t.tier, status: t.status,
+    id: t._id, title: t.title, detail: plainDetail(t.detail).replace(/\d[\d\s]{8,}\d/g, "•••"), tier: t.tier, status: t.status,
   }));
   const near = await recentQuakesNear(ctx.user.coords, 60).catch(() => undefined);
   const quakes: TalkQuake[] = (near?.quakes ?? []).map((q) => ({ line: quakeLine(q), mag: q.mag, minutesAgo: q.minutesAgo }));

@@ -27,6 +27,7 @@ function Badge() {
       try {
         const r = await fetch(url, { cache: "no-store" });
         if (!stop) setItems(r.ok ? ((await r.json()) as InboxItem[]) : null);
+        if (r.status === 401) return; // nobody signed in: stop polling
       } catch {
         if (!stop) setItems(null);
       }

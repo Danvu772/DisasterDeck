@@ -382,8 +382,11 @@ export default function DeskGlMap({
   // to the new extent whenever the records move somewhere else (the fixtures give way to the live
   // desk), until the person moves the map themselves.
   const userMoved = useRef(false);
-  const lng = placed.map((i) => i.coords![1]), lat = placed.map((i) => i.coords![0]);
-  const box = placed.length ? [Math.min(...lng), Math.min(...lat), Math.max(...lng), Math.max(...lat)].map((v) => v.toFixed(2)).join(",") : "";
+  // Frame the desk's own records, not far-away hazards; a box wider than ~0.3 degrees falls back to Antakya.
+  const framed = placed.filter((i) => !hazardOf(i));
+  const lng = framed.map((i) => i.coords![1]), lat = framed.map((i) => i.coords![0]);
+  const tooWide = framed.length > 0 && (Math.max(...lng) - Math.min(...lng) > 0.3 || Math.max(...lat) - Math.min(...lat) > 0.3);
+  const box = framed.length && !tooWide ? [Math.min(...lng), Math.min(...lat), Math.max(...lng), Math.max(...lat)].map((v) => v.toFixed(2)).join(",") : "";
   const lastBox = useRef(box);
   const [firstView] = useState(() => {
     if (!box) return ANTAKYA;

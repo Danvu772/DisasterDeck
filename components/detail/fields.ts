@@ -49,17 +49,25 @@ export function trustWord(c: Confidence | string, support?: number): string {
   return c === "corroborated" ? "Corroborated" : "Unconfirmed";
 }
 
+const ACTOR_WORD: Record<string, string> = { "synthetic-news": "News", "synthetic-sheet": "Shelter sheet", "synthetic-feed": "Social post" };
 const ACRONYM: Record<string, string> = { x: "X", ig: "Instagram", nasa: "NASA", fb: "Facebook", usgs: "USGS" };
 
 // A person's name for an id ("volunteer-callback" → "Zeynep"), or the id made readable ("memory-keeper" → "Memory keeper").
 export function actorLabel(by: string): string {
   const u = users.find((x) => x._id === by);
   if (u) return u.name;
+  if (ACTOR_WORD[by]) return ACTOR_WORD[by];
   if (!/^[a-z0-9]+([-_][a-z0-9]+)*$/.test(by)) return by;
   const [first, ...rest] = by.split(/[-_]/);
   const head = ACRONYM[first] ?? first.charAt(0).toUpperCase() + first.slice(1);
   return [head, ...rest].join(" ");
 }
+
+/** Task text for people: the dispatcher keeps the team's id in "Proposed team: Name (id)", the screen does not show it. */
+export const plainDetail = (detail: string) => detail.replace(/(Proposed team: [^()]*?) \([^()]+\)/, "$1");
+
+/** "Call about Turuncu Avlu, Turuncu Avlu" shows as "Call about Turuncu Avlu": old tasks repeat the place. */
+export const taskTitle = (title: string) => title.replace(/^(.*?\s|)([^\s,][^,]*),\s*\2$/, "$1$2");
 
 export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 

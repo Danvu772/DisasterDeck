@@ -22,6 +22,10 @@ with), `maxRounds`, `reportDir`, `models`. Change it there, not in these briefs.
 2. Check the app answers: `curl -s -o /dev/null -w '%{http_code}' <baseUrl>/coordinator`. If not 200,
    start it with `preview_start {name: app.launchName}` and use that port as `baseUrl` for this run.
    The pages are ungated only on this laptop with `DEMO_MODE=1` (see `lib/localDemo.ts`).
+   **One dev server per checkout.** Two `next dev` processes in the same folder share `.next` and
+   delete each other's page scripts: pages render but never hydrate (buttons dead, scripts 404).
+   Before a round, `lsof -iTCP -sTCP:LISTEN | grep node` and check page scripts return 200. If they
+   404, stop the extra server and restart the one you use after moving `.next` aside.
 3. Find the last round: the highest `reportDir/round-NN.md`. The next round is NN+1. A request to
    "continue" or "fix the report" starts from that file; do not redo a round that already exists.
 

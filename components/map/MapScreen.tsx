@@ -77,8 +77,9 @@ const PHASE_TEXT: Record<WorkState, string> = {
   stuck: "text-foreground", waiting: "text-muted-foreground", moving: "text-foreground", done: "text-muted-foreground",
 };
 
-function titleFor(it: MapItem): string {
+function titleFor(it: MapItem, siteNo?: number): string {
   if (it.kind === "shelter") return (it.record as Shelter).name;
+  if (it.kind === "site" && siteNo && /^(address unknown|unknown|bilinmiyor)?$/i.test(it.title.trim())) return `Site ${siteNo} · address unknown`;
   return it.title;
 }
 
@@ -88,6 +89,7 @@ export function MapScreen({ initial, initialLive = false, focus, quakes, names }
   const [mode, setMode] = useState<"live" | "imagery">("live");
   const { data, live, now } = usePolled<MapSource>("/api/board", initial, 1000, initialLive);
   const items = useMemo(() => fromBoard(data, { names }), [data, names]);
+  const siteNo = useMemo(() => new Map(items.filter((i) => i.kind === "site").map((i, n) => [i.key, n + 1] as const)), [items]);
   const [selected, setSelected] = useState<string | null>(focus ?? null);
   const [flyKey, setFlyKey] = useState<string | undefined>(focus);
   const [filter, setFilter] = useState<Filter>("all");
@@ -144,7 +146,7 @@ export function MapScreen({ initial, initialLive = false, focus, quakes, names }
               </div>
             ))}
           </div>
-          <div className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4">
+          <div className="flex flex-wrap gap-1.5">
             {FILTERS.map((f) => (
               <button key={f.id} type="button" aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}
                 className={cn("inline-flex h-7 shrink-0 items-center rounded-full border px-3 text-xs font-medium transition-colors",
@@ -165,7 +167,7 @@ export function MapScreen({ initial, initialLive = false, focus, quakes, names }
                     isStale(it.staleType, it.at, now) && "opacity-70")}>
                   <KindIcon it={it} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium first-letter:uppercase">{titleFor(it)}</span>
+                    <span className="block truncate text-sm font-medium first-letter:uppercase">{titleFor(it, siteNo.get(it.key))}</span>
                     <span className="block truncate text-xs text-muted-foreground">
                       {lineFor(it)}
                       {it.work && (

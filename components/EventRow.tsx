@@ -21,6 +21,11 @@ const ANSWER_WORD = { accepted: "Accepted the task", declined: "Declined the tas
 // Client only (motion): imported by the feed, the agent screen and the event report.
 // One line per event, whatever the type: what came in, in English, plus the original when there is one.
 export function summary(e: Event): { said: string; original?: string } {
+  const r = summaryRaw(e);
+  return { ...r, said: r.said.replace(/\s*\(#[^)]*\)\s*$/, "").replace(/: simulated news update, pass \d+$/, "").replace(/^\[mock, not translated\]\s*/, "") };
+}
+
+function summaryRaw(e: Event): { said: string; original?: string } {
   switch (e.type) {
     case "report": { const p = e.payload as ReportPayload; return { said: p.textEn, original: p.text !== p.textEn ? p.text : undefined }; }
     case "incident": { const p = e.payload as IncidentPayload; return { said: p.textEn, original: p.text !== p.textEn ? p.text : undefined }; }

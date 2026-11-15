@@ -97,7 +97,7 @@ export function makeBoard(now: number) {
       status: "helping",
       actions: [
         { ts: ago(2), what: "Blocked the delivery, need back to open" },
-        { ts: ago(2), what: "Relay task to supplier-backup (6 km away)", taskId: "task-4" },
+        { ts: ago(2), what: "Asked the backup depot to take it over (6 km away)", taskId: "task-4" },
         { ts: ago(1), what: "Told field team 4: new ETA 45 min" },
       ],
       history: [],

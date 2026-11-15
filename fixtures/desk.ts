@@ -38,7 +38,7 @@ export function makeEvents(now: number): FeedEvent[] {
   return [
     e(1, { _id: "ev-30", type: "incident", source: "person", actor: "supplier-primary", status: "done",
       payload: { kind: "vehicle_breakdown", text: "Lastik patladı, 14. km'deyim", textEn: "Flat tire, stuck at km 14, 30 blankets on board", canContinue: false, taskId: "task-3" },
-      result: { recordIds: ["inc-1"], reason: "Delivery blocked, relay task to supplier-backup" } }),
+      result: { recordIds: ["inc-1"], reason: "Delivery blocked, relay task to the backup depot" } }),
     e(3, { _id: "ev-29", type: "capacity", source: "instagram", actor: "ig-agent", status: "done", observedAt: ago(120),
       payload: { shelter: "Shelter A, school gym", bedsUsed: 58, bedsTotal: 60 },
       result: { recordIds: ["sh-a"], reason: "Shelter A now 58/60 (photo taken 2 h ago)" } }),

@@ -1,7 +1,7 @@
 import type { Confidence, HistoryEntry, RecordType, ScorePart, Source, Tier } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { thingIcon } from "./icons/things";
-import { KIND_ICON, statusWord, TIER_WORD, trustWord } from "./detail/fields";
+import { KIND_ICON, plainDetail, statusWord, taskTitle, TIER_WORD, trustWord } from "./detail/fields";
 import { CaseNo, ScoreBreakdown } from "./ScoreBreakdown";
 import { History } from "./History";
 import { Stamp } from "./Stamp";
@@ -68,9 +68,9 @@ export function RecordCard(props: {
       <header className="flex items-start gap-3">
         <KindIcon type={props.type} tier={props.tier} actNow={props.actNow} />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold">
+          <h3 className="line-clamp-2 text-sm font-semibold">
             {props.caseNo !== undefined && <span className="mr-1.5 font-normal text-muted-foreground"><CaseNo kind={props.type} no={props.caseNo} /></span>}
-            <span className="first-letter:uppercase">{props.title}</span>
+            <span className="first-letter:uppercase">{taskTitle(props.title)}</span>
           </h3>
           <Stamp type={props.type} at={props.at} source={props.source} sources={props.sources} now={props.now} />
         </div>
@@ -79,7 +79,7 @@ export function RecordCard(props: {
           {props.priority !== undefined && <ScoreBreakdown priority={props.priority} parts={props.scoreParts} />}
         </div>
       </header>
-      {props.detail && <p className="mt-3 text-sm text-foreground/90">{props.detail}</p>}
+      {props.detail && <p className="mt-3 text-sm text-foreground/90">{plainDetail(props.detail)}</p>}
       {props.children}
       <footer className="mt-3 flex flex-wrap items-center gap-2">
         <span className="inline-flex h-5 items-center rounded-full border px-2 text-xs font-medium">{statusWord(props.status)}</span>
