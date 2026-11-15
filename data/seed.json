@@ -1,0 +1,251 @@
+{
+  "deskId": "malatya-2023",
+  "regions": [
+    {
+      "_id": "malatya-merkez",
+      "name": "Malatya Merkez",
+      "deskId": "malatya-2023",
+      "zoneIds": [
+        "malatya-turuncu",
+        "malatya-mor"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "_id": "volunteer-callback",
+      "name": "Zeynep",
+      "role": "volunteer",
+      "region": "malatya-merkez",
+      "status": "available",
+      "deskId": "malatya-2023",
+      "trust": "vetted",
+      "coords": [
+        38.351,
+        38.311
+      ],
+      "profile": {
+        "vehicle": "none",
+        "skills": [
+          "callback"
+        ]
+      }
+    },
+    {
+      "_id": "volunteer-mechanic",
+      "name": "Demo Mekanik",
+      "role": "volunteer",
+      "region": "malatya-merkez",
+      "status": "available",
+      "deskId": "malatya-2023",
+      "trust": "vetted",
+      "coords": [
+        38.356,
+        38.315
+      ],
+      "profile": {
+        "vehicle": "van",
+        "skills": [
+          "mechanic"
+        ]
+      }
+    },
+    {
+      "_id": "field-alpha",
+      "name": "Saha Ekibi A",
+      "role": "field",
+      "region": "malatya-merkez",
+      "status": "available",
+      "deskId": "malatya-2023",
+      "trust": "official",
+      "coords": [
+        38.353,
+        38.313
+      ],
+      "profile": {
+        "vehicle": "van",
+        "skills": [
+          "field_response"
+        ]
+      }
+    },
+    {
+      "_id": "supplier-primary",
+      "name": "Demo Depo A",
+      "role": "supplier",
+      "region": "malatya-merkez",
+      "status": "available",
+      "deskId": "malatya-2023",
+      "trust": "vetted",
+      "coords": [
+        38.352,
+        38.311
+      ],
+      "profile": {
+        "vehicle": "truck",
+        "skills": [],
+        "stock": {
+          "blankets": 200
+        }
+      }
+    },
+    {
+      "_id": "supplier-backup",
+      "name": "Demo Depo B",
+      "role": "supplier",
+      "region": "malatya-merkez",
+      "status": "available",
+      "deskId": "malatya-2023",
+      "trust": "vetted",
+      "coords": [
+        38.357,
+        38.317
+      ],
+      "profile": {
+        "vehicle": "truck",
+        "skills": [],
+        "stock": {
+          "blankets": 120
+        }
+      }
+    },
+    {
+      "_id": "shelter-desk",
+      "name": "Demo Barınak Görevlisi",
+      "role": "shelter",
+      "region": "malatya-merkez",
+      "status": "available",
+      "deskId": "malatya-2023",
+      "trust": "vetted",
+      "coords": [
+        38.352,
+        38.313
+      ],
+      "profile": {
+        "vehicle": "none",
+        "skills": [
+          "shelter_intake"
+        ]
+      }
+    },
+    {
+      "_id": "coordinator-duty",
+      "name": "Demo Nöbetçi Koordinatör",
+      "role": "coordinator",
+      "region": "malatya-merkez",
+      "status": "available",
+      "deskId": "malatya-2023",
+      "trust": "official",
+      "coords": [
+        38.353,
+        38.31
+      ],
+      "profile": {
+        "vehicle": "none",
+        "skills": []
+      }
+    },
+    {
+      "_id": "coordinator-backup",
+      "name": "Demo Yedek Koordinatör",
+      "role": "coordinator",
+      "region": "malatya-merkez",
+      "status": "available",
+      "deskId": "malatya-2023",
+      "trust": "official",
+      "coords": [
+        38.354,
+        38.31
+      ],
+      "profile": {
+        "vehicle": "none",
+        "skills": []
+      }
+    },
+    {
+      "_id": "public-demo",
+      "name": "Demo Katılımcı",
+      "role": "public",
+      "region": "malatya-merkez",
+      "status": "available",
+      "deskId": "malatya-2023",
+      "trust": "public",
+      "coords": [
+        38.36,
+        38.33
+      ],
+      "profile": {
+        "vehicle": "none",
+        "skills": []
+      }
+    }
+  ],
+  "shelters": [
+    {
+      "_id": "shelter-a",
+      "name": "Demo Barınak A",
+      "region": "malatya-merkez",
+      "coords": [
+        38.352,
+        38.313
+      ],
+      "bedsUsed": 38,
+      "bedsTotal": 50,
+      "deskId": "malatya-2023",
+      "observedAt": "2023-02-11T09:00:00+03:00",
+      "updated": "2023-02-11T09:00:00+03:00",
+      "history": [
+        {
+          "ts": "2023-02-11T09:00:00+03:00",
+          "by": "scenario-player",
+          "source": "system",
+          "reason": "Synthetic starting occupancy for the exercise."
+        }
+      ]
+    },
+    {
+      "_id": "shelter-b",
+      "name": "Demo Barınak B",
+      "region": "malatya-merkez",
+      "coords": [
+        38.356,
+        38.315
+      ],
+      "bedsUsed": 24,
+      "bedsTotal": 40,
+      "deskId": "malatya-2023",
+      "observedAt": "2023-02-11T09:00:00+03:00",
+      "updated": "2023-02-11T09:00:00+03:00",
+      "history": [
+        {
+          "ts": "2023-02-11T09:00:00+03:00",
+          "by": "scenario-player",
+          "source": "system",
+          "reason": "Synthetic starting occupancy for the exercise."
+        }
+      ]
+    },
+    {
+      "_id": "shelter-c",
+      "name": "Demo Barınak C",
+      "region": "malatya-merkez",
+      "coords": [
+        38.36,
+        38.331
+      ],
+      "bedsUsed": 12,
+      "bedsTotal": 30,
+      "deskId": "malatya-2023",
+      "observedAt": "2023-02-11T09:00:00+03:00",
+      "updated": "2023-02-11T09:00:00+03:00",
+      "history": [
+        {
+          "ts": "2023-02-11T09:00:00+03:00",
+          "by": "scenario-player",
+          "source": "system",
+          "reason": "Synthetic starting occupancy for the exercise."
+        }
+      ]
+    }
+  ]
+}
