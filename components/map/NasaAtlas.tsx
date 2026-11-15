@@ -40,13 +40,27 @@ export function useNasaAtlas() {
   return atlas;
 }
 
+function useBeforeCoverage() {
+  const [fraction, setFraction] = useState<number | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/data/antakya/imagery.json", { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => { if (typeof data?.before?.coverageFraction === "number") setFraction(data.before.coverageFraction); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  return fraction;
+}
+
 export function NasaAtlasOverlay({ atlas, selection }: { atlas: NasaAtlas; selection: AtlasSelection }) {
   const frame = atlas.frames.find((item) => item.id === selection.frameId);
   const highres = frame?.tileURL ? (selection.compare ? atlas.frames.filter(item => item.tileURL) : [frame]) : [];
+  const beforeFill = highres.some(item => item.kind === "highres-before") ? atlas.frames.find(item => item.id === "hls-before-2023-02-01") : undefined;
   const events = selection.eventScope === "off" ? [] : atlas.events.filter((event) => selection.eventScope === "global" || event.regional);
   return <>
     {frame && !frame.tileURL && <ImageOverlay key={frame.id} url={frame.image} bounds={frame.bounds} opacity={frame.kind.startsWith("hls") ? 1 : 0.75} zIndex={210} />}
-    {highres.length > 0 && <HighResolution key={highres.map(f => f.id).join()} frames={highres} split={selection.compare ? selection.split ?? 50 : undefined} />}
+    {highres.length > 0 && <HighResolution key={highres.map(f => f.id).join()} frames={highres} split={selection.compare ? selection.split ?? 50 : undefined} fill={beforeFill} />}
     <BuildingReferences visible={!!selection.showBuildings && highres.length > 0} />
     {frame?.kind === "radiance-change" && <RadiancePairs />}
     {frame && selection.showLimits && frame.limitation && <ImageOverlay key={frame.id + "-limits"} url={frame.limitsImage} bounds={frame.bounds} opacity={0.85} zIndex={220} />}
@@ -69,6 +83,8 @@ export function NasaAtlasControls({ atlas, selection, onChange, onLocate, onCity
   onLocate: (coords: LatLng) => void; onCityView: () => void;
 }) {
   const frame = atlas.frames.find((item) => item.id === selection.frameId);
+  const beforeCoverage = useBeforeCoverage();
+  const hlsBefore = atlas.frames.find((item) => item.id === "hls-before-2023-02-01");
   const group = PRIMARY_LAYERS.find((item) => item.kinds.includes(frame?.kind ?? ""));
   const frames = atlas.frames.filter((item) => group?.kinds.includes(item.kind));
   const analysisFrames = atlas.frames.filter((item) => !PRIMARY_LAYERS.some((layer) => layer.kinds.includes(item.kind)));
@@ -121,6 +137,10 @@ export function NasaAtlasControls({ atlas, selection, onChange, onLocate, onCity
       {frame.scale} · {frame.date}.{" "}
       <a className="text-primary underline" href={frame.sourceURL} target="_blank" rel="noreferrer">{frame.tileURL ? "Maxar source & license" : "NASA source"}</a>
       {frame.legendURL && <> · <a className="text-primary underline" href={frame.legendURL} target="_blank" rel="noreferrer">Color scale</a></>}
+    </p>}
+    {frame?.tileURL && beforeCoverage !== null && hlsBefore && <p className="mt-2 text-xs">
+      Before: Maxar 22 Dec 2022 (0.5 m) covers {Math.round(beforeCoverage * 100)}% of this area. The rest is NASA HLS 1 Feb 2023 (30 m), the only pre-quake image there.{" "}
+      <a className="text-primary underline" href={hlsBefore.sourceURL} target="_blank" rel="noreferrer">NASA HLS source</a>
     </p>}
     {selection.showLimits && frame?.limitation && <p className="mt-2 text-xs">Purple marks selected observation limits. {frame.limitation}</p>}
     <details className="mt-4 text-xs">

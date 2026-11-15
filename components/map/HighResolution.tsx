@@ -1,32 +1,39 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { GeoJSON, Pane, TileLayer, useMap } from "react-leaflet";
+import { GeoJSON, ImageOverlay, Pane, TileLayer, useMap } from "react-leaflet";
 import type L from "leaflet";
 import type { FeatureCollection, Geometry } from "geojson";
 import type { AtlasFrame } from "./NasaAtlas";
 
-export function HighResolution({ frames, split }: { frames: AtlasFrame[]; split?: number }) {
+export function HighResolution({ frames, split, fill }: { frames: AtlasFrame[]; split?: number; fill?: AtlasFrame }) {
   const map = useMap();
   const afterPane = useRef<HTMLElement | null>(null);
+  const fillPane = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    const pane = afterPane.current;
-    if (!pane || split === undefined) return;
+    if (split === undefined) return;
     const clip = () => {
       const size = map.getSize();
-      const points = [[size.x * split / 100, 0], [size.x, 0], [size.x, size.y], [size.x * split / 100, size.y]]
-        .map(([x,y]) => map.containerPointToLayerPoint([x,y])).map(p => `${p.x}px ${p.y}px`);
-      pane.style.clipPath = `polygon(${points.join(",")})`;
+      const side = (x0: number, x1: number) => [[x0, 0], [x1, 0], [x1, size.y], [x0, size.y]]
+        .map(([x, y]) => map.containerPointToLayerPoint([x, y])).map(p => `${p.x}px ${p.y}px`);
+      const cut = size.x * split / 100;
+      if (afterPane.current) afterPane.current.style.clipPath = `polygon(${side(cut, size.x)})`;
+      if (fillPane.current) fillPane.current.style.clipPath = `polygon(${side(0, cut)})`;
     };
     clip();
     map.on("move zoom resize", clip);
     return () => { map.off("move zoom resize", clip); };
   }, [map, split]);
-  return <>{frames.map((frame, index) => <Pane key={frame.id} name={`antakya-${frame.id}`}
-    ref={index === 1 ? (pane) => { afterPane.current = pane; } : undefined} style={{ zIndex: 210 + index }}>
-    <TileLayer url={frame.tileURL!} bounds={frame.bounds} minNativeZoom={11} maxNativeZoom={17} maxZoom={21}
-      noWrap attribution='Imagery © Maxar Open Data, CC BY-NC 4.0' />
-  </Pane>)}</>;
+  return <>
+    {fill && <Pane name="antakya-before-fill" ref={(pane) => { fillPane.current = pane; }} style={{ zIndex: 209 }}>
+      <ImageOverlay url={fill.image} bounds={fill.bounds} pane="antakya-before-fill" />
+    </Pane>}
+    {frames.map((frame, index) => <Pane key={frame.id} name={`antakya-${frame.id}`}
+      ref={index === 1 ? (pane) => { afterPane.current = pane; } : undefined} style={{ zIndex: 210 + index }}>
+      <TileLayer url={frame.tileURL!} bounds={frame.bounds} minNativeZoom={11} maxNativeZoom={17} maxZoom={21}
+        noWrap attribution='Imagery © Maxar Open Data, CC BY-NC 4.0' />
+    </Pane>)}
+  </>;
 }
 
 interface BuildingProperties { referenceId: string; assessment: string; source?: string; [key: string]: unknown }
