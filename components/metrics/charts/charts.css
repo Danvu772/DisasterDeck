@@ -1,19 +1,5 @@
-/* Motion for metric charts. Everything is a CSS transition, React only flips the target value.
-   --mc-n is a registered integer, so the browser tweens it and a counter prints it (the count-up). */
-@property --mc-n {
-  syntax: "<integer>";
-  inherits: false;
-  initial-value: 0;
-}
-
-.mc-num {
-  counter-reset: mc-n var(--mc-n);
-  transition: --mc-n 400ms ease-out;
-}
-.mc-num::after {
-  content: counter(mc-n);
-}
-
+/* Motion for metric charts. Bars and shades are CSS transitions, React only flips the target value.
+   Numbers count up in JavaScript (Count in motion.tsx), so every browser prints them. */
 .mc-fill {
   transform-origin: left center;
   transition: transform 400ms ease-out;
@@ -24,7 +10,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mc-num,
   .mc-fill,
   .mc-shade {
     transition: none !important;
