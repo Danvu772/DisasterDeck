@@ -1,7 +1,7 @@
 import type { RecordType, Source } from "@/lib/types";
 import { ageText, isStale, staleInk } from "./encode";
 
-const SOURCE_LABEL: Record<Source, string> = {
+export const SOURCE_LABEL: Record<Source, string> = {
   x: "X", news: "news", reddit: "Reddit", instagram: "IG", facebook: "FB",
   sheet: "sheet", nasa: "NASA", person: "person", system: "desk",
 };

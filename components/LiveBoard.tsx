@@ -43,7 +43,7 @@ export function LiveBoard({ initial }: { initial: DeskBoard }) {
       <AskDesk />
 
       <div className="mt-6">
-        <BoardTabs board={b} now={now} />
+        <BoardTabs board={b} now={now} live={live} />
       </div>
     </>
   );

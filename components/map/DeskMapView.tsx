@@ -11,40 +11,10 @@ import type { Incident, LatLng, Site } from "@/lib/types";
 import validation from "../../data/nasa/validation.json";
 import { IncidentCards, SiteCards } from "../BoardCards";
 import { Stamp } from "../Stamp";
-import {
-  button, confidenceBorder, isStale, markerSize, staleInk, statusTag, statusText, tierBadge, tierBar,
-} from "../encode";
+import { button, statusTag, statusText, tierBadge, tierBar } from "../encode";
 import type { MapItem } from "./mapItems";
+import { icon, roadLine, TILES, TILES_ATTR } from "./markers";
 import { HatchDefs, useZones, ZoneLayer, type ZoneMeta } from "./ZoneLayer";
-
-// Esri World Light Gray Canvas, the USGS default basemap. Gray, so no hue competes with ours.
-const TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
-const TILES_ATTR = "Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors";
-
-// Road: a short bar at one point. Closed is a thick solid ink outline, unconfirmed is dashed.
-const ROAD_W = 24, ROAD_H = 10;
-const roadLine = (closed: boolean) => (closed ? "border-4 border-solid border-ink" : "border-2 border-dashed border-ink");
-
-function icon(it: MapItem, selected: boolean, now: number): L.DivIcon {
-  const fade = staleInk(isStale(it.staleType, it.at, now));
-  const ring = selected ? "ring-4 ring-primary" : "";
-  if (it.kind === "road") {
-    return L.divIcon({
-      className: "",
-      iconSize: [ROAD_W, ROAD_H],
-      iconAnchor: [ROAD_W / 2, ROAD_H / 2],
-      html: `<span class="block bg-card ${roadLine(it.status === "closed")} ${ring} ${fade}" style="width:${ROAD_W}px;height:${ROAD_H}px"></span>`,
-    });
-  }
-  const s = markerSize(it.support);
-  const shape = it.kind === "incident" ? "rotate-45 rounded-tag" : it.kind === "shelter" ? "rounded-tag" : "rounded-full";
-  return L.divIcon({
-    className: "",
-    iconSize: [s, s],
-    iconAnchor: [s / 2, s / 2],
-    html: `<span class="block ${shape} ${tierBar(it.tier, it.actNow)} ${confidenceBorder(it.confidence)} ${ring} ${fade}" style="width:${s}px;height:${s}px"></span>`,
-  });
-}
 
 // The NASA check: one ink ring on the Yeni Cami landmark. JSON stores [lng, lat].
 const CHECK_AT: LatLng = [validation.landmark.coordsLngLat[1], validation.landmark.coordsLngLat[0]];
@@ -199,12 +169,21 @@ function Legend({ meta, zones }: { meta?: ZoneMeta; zones: boolean }) {
   );
 }
 
-export default function DeskMapView({ items, now, live, zonesUrl }: {
+export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
   items: MapItem[]; now: number; live: boolean; zonesUrl?: string;
+  focus?: string;                 // "<kind>:<id>" from /map?focus=, selected and flown to on load
 }) {
   const zones = useZones(zonesUrl ?? "");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(focus ?? null);
   const [flyTarget, setFlyTarget] = useState<LatLng | undefined>();
+  const focused = useRef(false);
+  const focusAt = items.find((i) => i.key === focus)?.coords;
+  // Fly once, as soon as the focused item has a position (the live board may answer after the fixtures).
+  useEffect(() => {
+    if (focused.current || !focusAt) return;
+    focused.current = true;
+    setFlyTarget([...focusAt] as LatLng);
+  }, [focusAt]);
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
   const [onlyInView, setOnlyInView] = useState(false);
 

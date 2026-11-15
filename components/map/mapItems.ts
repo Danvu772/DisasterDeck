@@ -29,21 +29,20 @@ export type MapSource = Pick<Board, "sites" | "incidents" | "tasks" | "needs" | 
 
 const CLOSED_SITE = new Set(["closed", "retracted"]);
 
-export function fromBoard(b: MapSource, opts: { showClosed?: boolean } = {}): MapItem[] {
-  const siteById = new Map(b.sites.map((s) => [s._id, s]));
-
-  // incident → task → site (directly, or through the need the task delivers)
-  function siteOfTask(taskId?: string): Site | undefined {
-    const t = taskId ? b.tasks.find((x) => x._id === taskId) : undefined;
-    if (!t) return undefined;
-    if (t.recordType === "site") return siteById.get(t.recordId);
-    if (t.recordType === "need") {
-      const n = b.needs.find((x) => x._id === t.recordId);
-      return n?.siteIds[0] ? siteById.get(n.siteIds[0]) : undefined;
-    }
-    return undefined;
+// incident → task → site (directly, or through the need the task delivers).
+// The board's "Incident sites" tab and the detail panel use the same chain.
+export function siteOfTask(b: Pick<MapSource, "sites" | "tasks" | "needs">, taskId?: string): Site | undefined {
+  const t = taskId ? b.tasks.find((x) => x._id === taskId) : undefined;
+  if (!t) return undefined;
+  if (t.recordType === "site") return b.sites.find((s) => s._id === t.recordId);
+  if (t.recordType === "need") {
+    const n = b.needs.find((x) => x._id === t.recordId);
+    return n?.siteIds[0] ? b.sites.find((s) => s._id === n.siteIds[0]) : undefined;
   }
+  return undefined;
+}
 
+export function fromBoard(b: MapSource, opts: { showClosed?: boolean } = {}): MapItem[] {
   const sites: MapItem[] = b.sites
     .filter((s) => opts.showClosed || !CLOSED_SITE.has(s.status))
     .map((s) => ({
@@ -57,7 +56,7 @@ export function fromBoard(b: MapSource, opts: { showClosed?: boolean } = {}): Ma
   const incidents: MapItem[] = b.incidents
     .filter((i) => opts.showClosed || i.status !== "resolved")
     .map((i) => {
-      const site = siteOfTask(i.taskId);
+      const site = siteOfTask(b, i.taskId);
       const coords = i.coords ?? site?.coords;
       return {
         key: `incident:${i._id}`, kind: "incident", title: i.kind.replaceAll("_", " "),
