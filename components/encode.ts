@@ -1,6 +1,7 @@
 // The encoding table from "Frontend visual language", as code.
 // Components ask this file how something looks. They never pick a colour themselves.
 import type { Confidence, RecordType, Tier } from "@/lib/types";
+import { TIER_WORD } from "./detail/fields";
 
 // Tier → the left bar. Act-now overrides everything and is the only red.
 export function tierBar(tier: Tier, actNow = false): string {
@@ -17,6 +18,12 @@ export function severityTier(s: "low" | "high" | "critical"): Tier {
 // A filled square with the priority number in it (the magnitude box on the USGS list).
 export function tierBadge(tier: Tier, actNow = false): string {
   return `${tierBar(tier, actNow)} ${actNow || tier === 0 ? "text-card" : "text-ink"}`;
+}
+
+// v2's tier badge as text: the code ("T0") goes in font-mono, the word stays sans.
+// <span className={tierBadge(t)}><span className="font-mono">{tierText(t).code}</span> {tierText(t).word}</span>
+export function tierText(tier: Tier): { code: string; word: string } {
+  return { code: `T${tier}`, word: TIER_WORD[tier] };
 }
 
 // Map marker size from support (different reporters), like magnitude on the USGS map.
@@ -70,6 +77,15 @@ export const button = {
   outline: "rounded-button px-3 py-1.5 text-sm font-bold text-primary shadow-[inset_0_0_0_2px_var(--color-primary)] hover:text-primary-dark hover:shadow-[inset_0_0_0_2px_var(--color-primary-dark)]",
   act: "rounded-button bg-act px-3 py-1.5 text-sm font-bold text-card",
 };
+
+// v2's filter chip, on USWDS values. Clickable, so the active one gets the primary border and text.
+export function chip(active: boolean): string {
+  return `inline-flex items-center gap-1 whitespace-nowrap rounded-pill border-2 px-3 py-1 text-sm font-bold ${
+    active ? "border-primary bg-primary-lighter text-primary-dark" : "border-line bg-card text-ink hover:border-primary hover:text-primary"}`;
+}
+
+// v2's neutral pill: a label or a count, nothing clickable. Counts inside go in font-mono.
+export const pill = "inline-flex items-center gap-1 whitespace-nowrap rounded-pill border border-line bg-card px-2 py-0.5 text-xs text-ink";
 
 // Links → USWDS link: primary, underlined.
 export const link = "text-primary underline hover:text-primary-dark";

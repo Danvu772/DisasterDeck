@@ -1,10 +1,24 @@
 ---
 tags: [hackathon, frontend, design]
-status: v3.1, default USWDS look, all sans (14 Nov)
+status: v4, USWDS values in Ömer's v2 layout (15 Nov)
 ---
 # Frontend visual language
 
 Read with: [[Role 3 - Frontend]] · [[Team contracts]] · [[Final system design]]
+
+## v4 (15 Nov, Dan)
+
+Dan compared v1 with Ömer's `redesign/v2` and kept v1's workflows with v2's layout. Every value still comes from USWDS. The reasoning is in [`docs/frontend/DECISIONS.md`](../../frontend/DECISIONS.md). What changed from v3:
+
+- **Faces.** Public Sans for all text, headings included. Roboto Mono (`font-mono`) is back, but only for ids, times, scores, counts in pills and machine output, the way USWDS itself uses it. Never for labels, headings or prose. `check:tokens` still bans `font-serif`.
+- **Grey page.** `paper` is now `base-lightest` (`#f0f0f0`), so white cards sit on a light grey page like v2.
+- **Dark header.** `night` (`base-darkest`) bar on every page: logo, "Disaster Desk", the "Malatya exercise, synthetic data" pill, role tabs (current tab is a white pill with ink text), who is acting, and the queue status pill. Links on the bar are white and underlined, because `primary` blue does not pass contrast on `night`.
+- **One green.** `ok` (`success-dark`) and `ok-soft` (`success-lighter`) exist for the healthy queue pill and nothing else. "Brain running, queue 0" is green. "Brain not running, queue 1, oldest 96 min" and "The desk is not answering" are act red, because somebody has to go fix it.
+- **Pills and chips.** New `pill` radius (USWDS `pill`, `99rem`). `encode.ts` adds `chip(active)` for filter chips, `pill` for neutral labels, and `tierText(tier)` for v2's "T0 Danger to life" badge text (code in mono, word in sans).
+- **No shadows.** USWDS cards are flat with a border. The shadow scale is unset in `globals.css`.
+- **`check:tokens` scans CSS too.** Every `*.css` under `app/` and `components/` except `app/globals.css`. v2's `theme.css` hid 42 hex values (lmao), so that hole is closed.
+
+Anything below that contradicts this section is v3 and loses.
 
 ## Background
 
@@ -24,7 +38,7 @@ The fourth rule: **no decoration pretending to be structure.** No `·` separator
 
 | Ours | USWDS token | Value | Used for |
 |---|---|---|---|
-| `paper` | white | `#ffffff` | page background, the default .gov page |
+| `paper` | base-lightest | `#f0f0f0` | page background, grey behind the white cards (v4) |
 | `card` | white | `#ffffff` | cards, panels |
 | `ink` | ink | `#1b1b1b` | all text |
 | `muted` | base-dark | `#565c65` | secondary text, tags. The lightest gray that still passes AA for small text |
@@ -36,9 +50,14 @@ The fourth rule: **no decoration pretending to be structure.** No `·` separator
 | `primary` | primary | `#005ea2` | anything you can click |
 | `primary-dark` | primary-dark | `#1a4480` | hover |
 | `focus` | blue-40v | `#2491ff` | keyboard focus ring |
+| `night` | base-darkest | `#1b1b1b` | header bar only (v4) |
+| `night-ink` | white | `#ffffff` | text on the header (v4) |
+| `night-muted` | base-light | `#a9aeb1` | muted text and pill borders on the header (v4) |
+| `ok` | success-dark | `#4d8055` | the healthy queue pill only (v4) |
+| `ok-soft` | success-lighter | `#ecf3ec` | the dot inside the healthy queue pill only (v4) |
 | `hatch` | base-dark | `#565c65` | NASA zones, as a hatch pattern only |
 
-Type is **Source Sans** (Source Sans 3 on Google Fonts) for everything, headings and card titles included. No serif, no mono. v3 put Merriweather on headings because the USWDS `usa-prose` component pairs it that way, and it made the clickable person cards look like a 2014 blog (lmao). Real .gov pages use sans headings. `--font-serif` and `--font-mono` are set to `initial` in `globals.css` so the utilities don't exist, and `check:tokens` fails on `font-serif` or `font-mono`. USWDS only uses Roboto Mono for code samples, and Public Sans is just the USWDS docs site's own branding. Radii: card `0.5rem`, button `0.25rem`, tag `2px`, all USWDS defaults.
+(v3, replaced by v4 above.) Type was **Source Sans** (Source Sans 3 on Google Fonts) for everything, headings and card titles included. No serif, no mono. v3 put Merriweather on headings because the USWDS `usa-prose` component pairs it that way, and it made the clickable person cards look like a 2014 blog (lmao). Real .gov pages use sans headings. `--font-serif` and `--font-mono` are set to `initial` in `globals.css` so the utilities don't exist, and `check:tokens` fails on `font-serif` or `font-mono`. USWDS only uses Roboto Mono for code samples, and Public Sans is just the USWDS docs site's own branding. Radii: card `0.5rem`, button `0.25rem`, tag `2px`, pill `99rem` (v4), all USWDS defaults.
 
 We skipped USWDS `emergency` (`#9c3d10`). It is the semantically right token, but it is burnt orange-brown, and on a projector it sits too close to the gold tier-1 bar. `error` (`#d54309`) reads as "form error", not "person in danger".
 
@@ -63,7 +82,7 @@ This table is the visual language. Everything else is layout. It lives in code a
 | NASA silent / cold zone | Gray hatch pattern on the map, never a fill colour | hatch + legend line "Sentinel-1, 10 Feb 2023, NASA JPL ARIA" | Moved from blue to gray in v2, because blue now means clickable |
 | phone number | Masked text | `•••• •• 42` | Unmasked only inside the caller's own task |
 
-Four hues carry meaning: act red, urgent gold, interactive blue, and the gray hatch on the map. Everything else is ink on paper. If a fifth colour shows up, something is wrong.
+Four hues carry meaning: act red, urgent gold, interactive blue, and the gray hatch on the map. v4 adds one green, for the healthy queue pill only. Everything else is ink on paper. If a fifth colour shows up, something is wrong.
 
 ---
 
@@ -77,7 +96,9 @@ Four hues carry meaning: act red, urgent gold, interactive blue, and the gray ha
 | Card | `usa-card` (white, 0.5rem radius) | `RecordCard` | Card border style is taken by confidence, so we keep that instead of the USWDS gray border |
 | Link | `usa-link` | `link` | Primary, underlined |
 | Focus | 0.25rem solid `#2491ff` | global `:focus-visible` in `globals.css` | Never `outline-none` |
-| Current nav / tab | primary bottom border | `Nav`, `BoardTabs` | Current item is bold with a primary underline. The rest are muted, primary on hover |
+| Current nav / tab | primary bottom border | `Nav`, `BoardTabs` | v4 header: current tab is a white pill with ink text (`aria-current="page"`), the rest are white, underline on hover. `BoardTabs` keeps the primary underline until t26 |
+| Chip / pill | v2 composition, `pill` radius | `chip(active)`, `pill` in `encode.ts` | Active chip has the primary border. Counts inside go in mono |
+| Queue status | none (v2 health pill) | `StatusPill` in the header, `HealthLine` on screens | Same words and colours in both. Green only when the Brain is running and nothing is stuck |
 
 ---
 
@@ -93,7 +114,8 @@ Every screen is built from these and nothing else. If a screen needs something n
 | `TaskCard` | a RecordCard plus Accept / Decline / Done / Problem. Accept is primary until accepted, then Done |
 | `History` | `history[]` as a timeline, bold actor name per line |
 | `ChatLine` | "**Agent:**" or "**Name:**" then the message |
-| `HealthLine` | "Queue: 3 waiting, oldest 2 seconds", act red when stuck |
+| `StatusPill` | the header pill, polls `/api/health` every 5 s. "Brain running, queue 0" in `ok`, anything wrong in `act` |
+| `HealthLine` | the same pill, fed from the board's `health`. Without `lastLoopAt` (fixtures) it reads "Queue 3, oldest 2 s" |
 | `MapLayer` | pins use the same TierBar colour, zones use the gray hatch |
 
 ---
@@ -101,11 +123,11 @@ Every screen is built from these and nothing else. If a screen needs something n
 ## How to prototype fast and keep control
 
 1. **Tokens live in one file.** `app/globals.css`, Tailwind v4 `@theme` block, every value commented with its USWDS token name. Changing a value here changes the whole app. Nobody writes a hex anywhere else.
-2. **The encoding table is code.** `components/encode.ts` exports `tierBar`, `confidenceBorder`, `isStale`, `ageText`, `statusTag`, `statusText`, `button`, `link`. Components call these. They never write `bg-red-600` or a button style themselves.
+2. **The encoding table is code.** `components/encode.ts` exports `tierBar`, `confidenceBorder`, `isStale`, `ageText`, `statusTag`, `statusText`, `button`, `link`, and since v4 `chip`, `pill`, `tierText`. Components call these. They never write `bg-red-600` or a button style themselves.
 3. **Fixtures with the nasty states.** `fixtures/board.ts`, typed against `lib/types.ts`. It holds the ugly cases: a stale shelter, a proposed need at 1 of 3, an overdue task, a critical incident, a site with 4 sources, a Turkish tweet with its `textEn`.
 4. **A `/lab` page.** Every primitive in every state on one screen, from the fixtures. This is the design review surface. Change a token, refresh, look at everything at once.
 5. **New screen ideas go in `app/lab/<name>/page.tsx`.** Compose primitives over fixtures. Promote to the real route once it reads right.
-6. **A guard script.** `npm run check:tokens` greps `app/` and `components/` for raw hex, raw Tailwind palette colours and `font-serif`/`font-mono` outside `globals.css` and `encode.ts`, and fails if it finds any.
+6. **A guard script.** `npm run check:tokens` greps `app/` and `components/` for raw hex, raw Tailwind palette colours and `font-serif` in `.ts`, `.tsx` and `.css` files (except `app/globals.css`), and fails if it finds any. `font-mono` is allowed since v4.
 7. **Claude Design follows this file.** `.design-sync/` syncs `components/` to the Disaster Desk design-system project. After changing tokens or `encode.ts`, re-run the sync (see `.design-sync/NOTES.md`) so the design agent builds with the new rules.
 
 ## Open decisions (DECIDE)
@@ -113,4 +135,4 @@ Every screen is built from these and nothing else. If a screen needs something n
 - Density on the board: how many cards fit before "no scrolling for the main thing" breaks.
 - Whether the act-now banner (`act-soft` fill) is worth adding above the board, or whether the red tab counts are enough.
 
-Settled: the red and the amber (USWDS secondary-dark and warning), light theme on a white page (USWDS is light-first and projectors kill dark), the face (Source Sans only, v3.1, Merriweather dropped), and the stale thresholds (already in `encode.ts`).
+Settled: the red and the amber (USWDS secondary-dark and warning), light theme on a grey page with white cards (USWDS is light-first and projectors kill dark, the dark header is the one exception), the faces (Public Sans plus Roboto Mono for machine text, v4), and the stale thresholds (already in `encode.ts`).

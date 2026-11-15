@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 export function usePolled<T>(url: string, initial: T, everyMs = 1000) {
   const [data, setData] = useState<T>(initial);
   const [live, setLive] = useState(false);
+  const [checked, setChecked] = useState(false); // false until the first answer or failure
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -26,6 +27,7 @@ export function usePolled<T>(url: string, initial: T, everyMs = 1000) {
       }
       if (stop) return;
       setLive(ok);
+      setChecked(true);
       setNow(Date.now());
       timer = setTimeout(tick, ok ? everyMs : 10000);
     }
@@ -33,5 +35,5 @@ export function usePolled<T>(url: string, initial: T, everyMs = 1000) {
     return () => { stop = true; clearTimeout(timer); };
   }, [url, everyMs]);
 
-  return { data, live, now };
+  return { data, live, now, checked };
 }

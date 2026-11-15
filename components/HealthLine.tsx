@@ -1,12 +1,10 @@
-// "Queue: 3 waiting, oldest 2 seconds". Red only when the Brain is stuck (> 30 s).
-export function HealthLine({ pending, oldestPendingSeconds, failed = 0 }: {
-  pending: number; oldestPendingSeconds: number; failed?: number;
+// The queue health pill, for screens that already have the board's health in hand.
+// Same words and colours as the header's StatusPill, so both say the same thing.
+// Without lastLoopAt (fixtures) it says nothing about the Brain and goes red when the oldest job is over 30 s.
+import { HealthPill } from "./StatusPill";
+
+export function HealthLine({ pending, oldestPendingSeconds, failed = 0, lastLoopAt, now }: {
+  pending: number; oldestPendingSeconds: number; failed?: number; lastLoopAt?: Date | string | null; now?: number;
 }) {
-  const stuck = oldestPendingSeconds > 30;
-  return (
-    <p className={`text-sm ${stuck ? "font-bold text-act" : "text-muted"}`}>
-      Queue: {pending} waiting, oldest {oldestPendingSeconds} {oldestPendingSeconds === 1 ? "second" : "seconds"}
-      {failed > 0 && `, ${failed} failed`}
-    </p>
-  );
+  return <HealthPill health={{ pending, oldestPendingSeconds, failed, lastLoopAt }} now={now ?? Date.now()} />;
 }

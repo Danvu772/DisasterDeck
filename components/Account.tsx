@@ -1,11 +1,14 @@
 // Who is signed in, and a way out. Server component: reads the session itself.
+// Lives on the dark header, so it uses the night tokens. Links stay underlined white there.
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
+
+const nightLink = "text-night-ink underline hover:no-underline";
 
 export async function Account() {
   const session = await auth();
   if (!session?.user) {
-    return <Link href="/login" className="text-primary underline hover:text-primary-dark">Sign in</Link>;
+    return <Link href="/login" className={`whitespace-nowrap ${nightLink}`}>Sign in</Link>;
   }
 
   async function signOutAction() {
@@ -14,9 +17,11 @@ export async function Account() {
   }
 
   return (
-    <form action={signOutAction} className="flex items-baseline gap-2">
-      <span className="text-muted">Signed in as <span className="font-bold text-ink">{session.user.name ?? session.user.email}</span></span>
-      <button type="submit" className="text-primary underline hover:text-primary-dark">Sign out</button>
+    <form action={signOutAction} className="flex items-center gap-2">
+      <span className="hidden whitespace-nowrap rounded-pill border border-night-muted px-2.5 py-1 text-xs text-night-ink sm:inline">
+        {session.user.name ?? session.user.email}
+      </span>
+      <button type="submit" className={`whitespace-nowrap ${nightLink}`}>Sign out</button>
     </form>
   );
 }

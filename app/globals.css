@@ -2,23 +2,29 @@
 
 /*
   TOKENS. The only place a colour, font or radius is written.
-  Owner: Dan (frontend). See docs/Multiplayer Disaster Desk/Roles/Frontend visual language.md
-  Values are USWDS 3.14 theme tokens (named in the comments) so the app looks like a default .gov site:
-  white page, Source Sans for everything (headings too), no serif, no mono, no decorative glyphs.
+  Owner: Dan (frontend). See docs/Multiplayer Disaster Desk/Roles/Frontend visual language.md (v4)
+  and docs/frontend/DECISIONS.md. Values are USWDS 3 theme tokens, each named in its comment.
+  Layout follows Ömer's v2 (white cards on a light grey page, dark header). Values do not.
   One meaning, one channel:
-    act      = a person should act now (tier 0, overdue, critical). Nothing else is red.
+    act      = a person should act now (tier 0, overdue, critical, Brain down). Nothing else is red.
     urgent   = tier 1
     calm     = tier 2
-    primary  = you can click this (buttons, links, focus, the current tab). Nothing else is blue.
+    primary  = you can click this (buttons, links, focus, chips). Nothing else is blue.
+    ok       = the healthy queue pill in the header. Nothing else is green.
     hatch    = NASA zones on the map only, never on cards
-  Everything else is ink on paper.
+    night    = the header bar only
+  Everything else is ink on card, cards on paper.
 */
 @theme {
-  --color-paper: #ffffff; /* white, the default .gov page */
+  --color-paper: #f0f0f0; /* base-lightest, the grey page behind the cards */
   --color-card: #ffffff; /* white */
   --color-ink: #1b1b1b; /* ink */
   --color-muted: #565c65; /* base-dark, the lightest gray that passes AA for small text */
   --color-line: #dfe1e2; /* base-lighter */
+
+  --color-night: #1b1b1b; /* base-darkest, header background */
+  --color-night-ink: #ffffff; /* white, text on the header */
+  --color-night-muted: #a9aeb1; /* base-light, muted text and pill borders on the header */
 
   --color-act: #b50909; /* secondary-dark */
   --color-act-soft: #f3e1e4; /* secondary-lighter */
@@ -26,27 +32,34 @@
   --color-calm: #a9aeb1; /* base-light */
   --color-hatch: #565c65; /* base-dark, drawn as a hatch pattern, never a fill */
 
+  --color-ok: #4d8055; /* success-dark, the healthy queue pill only */
+  --color-ok-soft: #ecf3ec; /* success-lighter, the healthy queue pill only */
+
   --color-primary: #005ea2; /* primary */
   --color-primary-dark: #1a4480; /* primary-dark, hover */
   --color-primary-lighter: #d9e8f6; /* primary-lighter */
   --color-focus: #2491ff; /* focus, blue-40v */
 
-  --radius-card: 0.5rem; /* card-border-radius lg */
-  --radius-button: 0.25rem; /* button-border-radius md */
-  --radius-tag: 2px; /* border-radius-sm */
+  --radius-card: 0.5rem; /* border-radius lg, cards */
+  --radius-button: 0.25rem; /* border-radius md, buttons */
+  --radius-tag: 2px; /* border-radius-sm, tags */
+  --radius-pill: 99rem; /* border-radius pill, chips and pills */
+
+  --shadow-*: initial; /* no shadows. USWDS cards are flat with a border */
 }
 
-/* One face. Inline because Next sets the vars on <body>, not :root. */
+/* Two faces, both USWDS. Inline because Next sets the vars on <body>, not :root. */
 @theme inline {
-  --font-sans: var(--font-source-sans), "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif; /* all text */
+  --font-sans: var(--font-public-sans), "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif; /* all text, headings too */
   --font-serif: initial; /* no serif anywhere. font-serif is a no-op */
-  --font-mono: initial; /* no mono anywhere */
+  /* Mono ONLY for ids, times, scores, counts in pills and machine output. Never for labels or prose. */
+  --font-mono: var(--font-roboto-mono), "Roboto Mono", ui-monospace, monospace;
 }
 
 body {
   background: var(--color-paper);
   color: var(--color-ink);
-  font-family: var(--font-source-sans), "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
+  font-family: var(--font-public-sans), "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
   line-height: 1.5;
   font-variant-numeric: tabular-nums;
 }

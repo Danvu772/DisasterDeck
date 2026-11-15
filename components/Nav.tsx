@@ -1,9 +1,12 @@
 "use client";
+// One dark bar on every page, v2's TopBar composition on USWDS tokens.
+// Desk is home, Agent is the end-user screen. Lab is a design tool, so it sits apart on the right.
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { users } from "@/fixtures/desk";
+import { StatusPill } from "./StatusPill";
 
-// One bar on every page. Desk is home, Agent is the end-user screen.
-// Lab is a design tool, not a product page, so it sits apart on the right.
 const LINKS = [
   { href: "/", label: "Desk" },
   { href: "/agent", label: "Agent" },
@@ -12,28 +15,54 @@ const LINKS = [
   { href: "/field", label: "Field" },
 ];
 
+const nightPill = "whitespace-nowrap rounded-pill border border-night-muted px-2.5 py-1 text-xs";
+
+// ?user=<id> is who presses the buttons on Agent, Coordinator and Field (demo only).
+// The name comes from the demo roster, an unknown id shows as the id.
+function ActingAs() {
+  const id = useSearchParams().get("user");
+  if (!id) return null;
+  const name = users.find((u) => u._id === id)?.name;
+  return (
+    <span className={`hidden sm:inline ${nightPill} text-night-ink`}>
+      Acting as {name ?? <span className="font-mono">{id}</span>}
+    </span>
+  );
+}
+
 export function Nav({ account }: { account?: React.ReactNode }) {
   const path = usePathname();
   return (
-    <nav className="flex shrink-0 items-baseline gap-4 border-b border-line bg-card px-4 py-2 text-sm">
-      <Link href="/" className="shrink-0 font-bold">Disaster Desk</Link>
-      <div className="flex min-w-0 flex-1 items-baseline gap-4 overflow-x-auto whitespace-nowrap">
-        <span className="hidden text-muted sm:inline">Malatya</span>
+    // The outer <nav> is what useNavBottom (detail/DetailPanel.tsx) measures, so it must stay the first <nav> on the page.
+    <nav aria-label="Main" className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-night px-4 py-2 text-sm text-night-ink">
+      <Link href="/" className="flex shrink-0 items-center gap-2 font-bold text-night-ink">
+        <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="26" height="26" rx="7" stroke="currentColor" strokeOpacity=".9" strokeWidth="2" />
+          <path d="M8 18l4-8 4 6 3-4 2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Disaster Desk
+      </Link>
+      <span className={`hidden sm:inline ${nightPill} text-night-muted`}>Malatya exercise, synthetic data</span>
+      <div className="order-last flex w-full min-w-0 items-center gap-1 overflow-x-auto whitespace-nowrap lg:order-none lg:w-auto lg:flex-1">
         {LINKS.map((l) => {
           const on = l.href === "/" ? path === "/" : path.startsWith(l.href);
           return (
-            <Link key={l.href} href={l.href}
-              className={`font-bold ${on ? "text-primary underline decoration-2 underline-offset-8" : "text-muted hover:text-primary"}`}>
+            <Link key={l.href} href={l.href} aria-current={on ? "page" : undefined}
+              className={`rounded-pill px-3 py-1 font-bold ${on ? "bg-night-ink text-ink" : "text-night-ink hover:underline"}`}>
               {l.label}
             </Link>
           );
         })}
-        <Link href="/lab"
-          className={`ml-auto hidden sm:inline ${path.startsWith("/lab") ? "text-primary underline" : "text-muted hover:text-primary"}`}>
+        <Link href="/lab" aria-current={path.startsWith("/lab") ? "page" : undefined}
+          className={`ml-auto hidden rounded-pill px-3 py-1 sm:inline-block ${path.startsWith("/lab") ? "bg-night-ink text-ink" : "text-night-muted hover:underline"}`}>
           Design lab
         </Link>
       </div>
-      {account}
+      <div className="ml-auto flex shrink-0 items-center gap-3 lg:ml-0">
+        <Suspense fallback={null}><ActingAs /></Suspense>
+        {account}
+        <StatusPill />
+      </div>
     </nav>
   );
 }
