@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { planScenarioStep, runScenarioStep, StepNotReady, STEPS } from "../workers/scenario-player.ts";
+import { eventBody } from "../lib/schemas.ts";
 
 const execFileAsync = promisify(execFile);
 const config = JSON.parse(await readFile(new URL("../data/scenarios/malatya.json", import.meta.url), "utf8"));
@@ -174,6 +175,7 @@ test("all five cues use the worker contract and stable, separate keys", () => {
     assert.equal(first.event.source, "system");
     assert.equal(first.event.status, undefined);
     assert.equal(first.event.lane, undefined);
+    assert.equal(eventBody.safeParse(first.event).success, true, "Cue must match the real event API schema");
     keys.add(first.event.dedupeKey);
   }
   assert.equal(keys.size, 5);
@@ -191,6 +193,7 @@ test("real HTTP retry retains one key and a completed step survives process rest
   assert.equal(first.status, "posted");
   assert.equal(h.state.posts.length, 2);
   assert.deepEqual(h.state.posts[0], h.state.posts[1]);
+  assert(Math.abs(Date.now() - Date.parse(h.state.posts[0].observedAt)) < 60000, "New synthetic observations use the exercise clock");
   assert.equal(h.state.stored.size, 1);
   const again = await runScenarioStep(config, h.options);
   assert.equal(again.eventId, first.eventId);

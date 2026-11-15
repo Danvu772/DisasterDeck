@@ -1,6 +1,6 @@
 # Malatya scenario player
 
-The player sends synthetic exercise observations through the event API. Its five cues reuse the delivered seed and the historical scene of 11 February 2023 at 09:00 Türkiye time. The volunteer, coordinator, field team and suppliers use the app for their live actions. The player supplies unattended reports and explicit presenter fallback cues.
+The player sends synthetic exercise observations through the event API. Its five cues reuse the delivered seed and the Türkiye 2023 story. The volunteer, coordinator, field team and suppliers use the app for their live actions. The player supplies unattended reports and explicit presenter fallback cues.
 
 ## Run one cue
 
@@ -30,7 +30,9 @@ node --env-file=.env.local workers/scenario-player.ts --run rehearsal-01 --step 
 | `truck-breakdown` | The primary supplier's unique delivery for the site's blanket need is accepted and open | `vehicle_breakdown`, actual delivery task ID, `canContinue: false`. An existing breakdown is recorded as observed. |
 | `truck-repaired` | An actual vehicle-breakdown incident associated with that original delivery | An update with the existing `incidentId`, original `taskId`, `resolved: true` and `canContinue: true`. Use the cue when the presenter confirms the scripted repair. |
 
-The configuration is `data/scenarios/malatya.json`. It contains proposed demo identities, synthetic observation text, locations and a historical observation clock. Offsets 20, 30, 40, 60 and 90 seconds follow the original five-post replay. The receipt timestamp is set by the API as usual. The script's observation dates remain the historical scene's dates.
+The configuration is `data/scenarios/malatya.json`. It contains proposed demo identities, synthetic observation text, locations and the historical reference scene. The offline planning helper can use the reference offsets of 20, 30, 40, 60 and 90 seconds. The live CLI timestamps each new synthetic observation at the exercise time, matching the current X agent and personal-agent flow. Prepared timestamps are reused on retries. NASA evidence cards show the products' historical observation dates.
+
+The committed seed's shelter timestamps still describe the reference scene. If shelter capacity enters the live demo, use a fresh scripted capacity observation or agree on a synthetic-seed clock refresh with Role 1. `shelter-filling` supplies a fresh observation for Shelter A.
 
 ## Repetition and interrupted runs
 
@@ -48,7 +50,7 @@ The player uses `GET /api/board?deskId=malatya-2023` and `POST /api/events`, bot
 
 The event API identifies the authenticated worker and returns `{ id }`. Its unique dedupe index handles a repeated key. The Keeper owns records, and the Dispatcher owns replacement work and notices. Human task acceptance and coordinator approval use the existing app sessions and buttons.
 
-At this delivery, `lib/db.ts` is present. The HTTP routes, Keeper and Dispatcher remain team integration dependencies. The local HTTP tests exercise the published contract, interruption handling and repeatability. Live CP3/CP4 acceptance still needs the actual Brain and role sessions.
+The latest main includes `lib/db.ts`, `lib/seed.ts` and `POST /api/events`. Its actual Zod request schema is used by the scenario and satellite tests. `GET /api/board`, the Keeper and Dispatcher remain team integration dependencies. The local HTTP tests exercise interruption handling and repeatability. Live CP3/CP4 acceptance still needs the board endpoint, Brain and role sessions.
 
 ## Verification
 

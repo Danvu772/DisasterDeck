@@ -4,7 +4,7 @@
 
 1. **Replay and seed ready for integration.** Five synthetic Turkish posts, nine demo users and three shelters are in `data/`. Local validation passes. The X worker, database loader and live CP1 acceptance remain with Roles 1 and 2.
 2. **NASA cache, map and watcher ready for integration.** Two 500 m polygons, source metadata and hashes, a reproducible offline preparation script, regression checks and the event sender are implemented. The real cache yields two cold alerts. Damage and night-light evidence remain unknown because of transparency and saturation. See [NASA evidence](nasa-evidence.md) and [the track requirements audit](nasa-requirements-audit.md). Live priority and approval acceptance still requires Role 1's API and Brain.
-3. **Scenario player ready for API integration.** Five synthetic cues use real board IDs, explicit manual advance, optional delays and durable per-run receipts. Seventeen scenario tests cover restart, retry and concurrent execution. See [the runbook](scenario-player.md). Live CP3/CP4 acceptance requires the actual event API and Brain.
+3. **Scenario player ready for board/Brain integration.** Five synthetic cues use real board IDs, explicit manual advance, optional delays and durable per-run receipts. Seventeen scenario tests cover restart, retry and concurrent execution. The latest POST event schema is checked by the tests. See [the runbook](scenario-player.md). Live CP3/CP4 acceptance requires the board endpoint and Brain.
 4. **Pitch and submission pending.** The [two-minute demo script](demo.md) is drafted with proposed operator/device assignments. The Devpost draft, operator confirmation, live rehearsal and video recording remain pending. Use verified integrations in the submitted pitch.
 
 ## Files and validation
@@ -37,7 +37,7 @@ Read offsets as seconds from playback start. The schedule is 0, 4, 8, 12 and 16 
 
 The first four posts repeat one simulated original call. Keep that provenance when interpreting support or satellite call counts. Record a curated sample count for NASA comparisons. The separate control is another help call so the grouping check exercises two valid sites.
 
-The replay clock starts at zero. For a historical scene, map offsets to the seed observation clock of 11 February 2023 at 09:00 Türkiye time (`2023-02-11T09:00:00+03:00`). Record that time as `observedAt` and let the event API set receipt time. This clock was chosen after the planned satellite acquisitions. A later rehearsal can explicitly rebase the exercise timestamps together when it needs fresh tasks and presence.
+The replay clock starts at zero. The historical reference scene is 11 February 2023 at 09:00 Türkiye time (`2023-02-11T09:00:00+03:00`), after the selected satellite acquisitions. The current X and personal agents timestamp synthetic reports at the exercise time. The scenario CLI follows that convention and preserves the first prepared timestamp on retry. NASA evidence cards carry the products' original dates. The committed shelter seed still has reference-scene timestamps. Before displaying shelter capacity live, refresh the synthetic observations or agree on a seed-clock update with Role 1.
 
 ## Role 1 seed handoff
 

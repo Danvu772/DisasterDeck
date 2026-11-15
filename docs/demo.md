@@ -1,6 +1,6 @@
 # Two-minute table demo
 
-This is a retrospective Türkiye 2023 exercise. Tweets, people, callbacks, shelter counts and scripted field/supplier observations are synthetic. NASA observations retain their historical dates. Use the run that passed the live integration checklist below.
+This is a retrospective Türkiye 2023 exercise. Tweets, people, callbacks, shelter counts and scripted field/supplier observations are synthetic. Scripted observations use the current exercise clock for freshness and task timing. NASA data is presented with its historical product dates. Use the run that passed the live integration checklist below.
 
 ## Proposed people and devices
 
@@ -42,10 +42,12 @@ The full command and checkpoint behavior is in [the player runbook](scenario-pla
 ## Rehearsal acceptance
 
 - [ ] Role 1 loads the seed and supplies working board/events endpoints with worker authentication.
+- [ ] Confirm the synthetic exercise clock and refresh any shelter-capacity observations used in the live story.
 - [ ] Five replay posts produce two sites. Replaying a source ID leaves source and task counts stable.
 - [ ] Zeynep completes the callback, a coordinator approves field dispatch and Field Team A accepts.
 - [ ] The live field request creates one 20-blanket need. Supplier A accepts and the field team sees the ETA.
 - [ ] One real Exa lookup is visible in the product before the presenter mentions it.
+- [ ] Confirm track entry and AI-tool attribution. The current agent implementation uses Claude and Claude web search, while the written Future of Intelligence plan specifies OpenAI and Exa. Resolve that difference before entering the track or naming those integrations in the pitch.
 - [ ] A NASA cold event is consumed by the actual Brain. The same-tier warmth priority change is verified with other terms fixed.
 - [ ] CP4 extension passes with the primary delivery blocked, Supplier B's replacement, revised ETA and coordinator incident.
 - [ ] `truck-repaired` updates the existing incident. Repeating each cue leaves one effect.

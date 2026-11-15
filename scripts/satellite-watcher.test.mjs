@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import test from "node:test";
 import { buildSatelliteAlerts, postSatelliteAlerts } from "../workers/satellite-watcher.ts";
+import { eventBody } from "../lib/schemas.ts";
 
 const cached = JSON.parse(await readFile(new URL("../public/data/zones.geojson", import.meta.url), "utf8"));
 
@@ -12,6 +13,7 @@ test("cached evidence produces two cold alerts and retains unknown silence", () 
   assert.equal(alerts.length, 2);
   assert(alerts.every((alert) => alert.type === "alert" && alert.source === "nasa" && alert.payload.kind === "cold"));
   assert(alerts.every((alert) => alert.payload.evidence.minTempC === -14.38));
+  assert(alerts.every((alert) => eventBody.safeParse(alert).success));
   assert.deepEqual(buildSatelliteAlerts(cached), alerts);
   assert.equal(new Set(alerts.map((alert) => alert.dedupeKey)).size, 2);
 });

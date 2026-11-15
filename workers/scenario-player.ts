@@ -95,11 +95,12 @@ function quantityAtSite(need: Need, siteId: string) {
   return Math.max(0, ...quantities);
 }
 
-export function planScenarioStep(config: ScenarioConfig, step: Step, runId: string, board: Snapshot, bound: Bindings = {}): Action {
+export function planScenarioStep(config: ScenarioConfig, step: Step, runId: string, board: Snapshot, bound: Bindings = {}, observationTime?: string): Action {
   validateSnapshot(board, config.deskId);
   assert(STEPS.includes(step), "Unknown scenario step");
   assert(/^[A-Za-z0-9_-]{1,64}$/.test(runId), "Run ID must contain 1–64 letters, numbers, underscores or hyphens");
-  const observedAt = new Date(Date.parse(config.observationBase) + config.stepOffsetsSeconds[step] * 1000).toISOString();
+  const observedAt = observationTime ?? new Date(Date.parse(config.observationBase) + config.stepOffsetsSeconds[step] * 1000).toISOString();
+  assert(Number.isFinite(Date.parse(observedAt)), "Invalid observation time");
   const event = (type: ScenarioEvent["type"], payload: Payload): ScenarioEvent => ({
     deskId: config.deskId, type, source: "system", actor: "scenario-player", observedAt,
     dedupeKey: `scenario:${config.deskId}:${config.id}:${runId}:${step}`, payload,
@@ -255,7 +256,8 @@ export async function runScenarioStep(config: ScenarioConfig, options: RunOption
     boardUrl.searchParams.set("deskId", config.deskId);
     const board = await requestJson({ url: boardUrl.href, agentKey: options.agentKey }) as Snapshot;
     try {
-      action = planScenarioStep(config, options.step, options.runId, board, prepared?.action.bindings ?? inherited);
+      const observedAt = prepared?.action.event?.observedAt ?? new Date().toISOString();
+      action = planScenarioStep(config, options.step, options.runId, board, prepared?.action.bindings ?? inherited, observedAt);
       break;
     } catch (error) {
       if (!(error instanceof StepNotReady) || Date.now() >= deadline) throw error;

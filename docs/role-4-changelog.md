@@ -2,6 +2,14 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v0.4 integration update · 2026-11-14 21:11 EST
+
+- Rebased onto the team's new POST event endpoint and agent implementation. All five scenario event shapes and the real NASA alerts pass the actual `lib/schemas.ts` request schema.
+- New synthetic observations use the current exercise clock, matching the X/personal agents. Retry timestamps stay bound to the prepared action. The configuration keeps the historical reference scene, and NASA evidence cards show the products' acquisition dates.
+- Documented the historical shelter-seed timestamps as a remaining live-rehearsal setup item. `shelter-filling` can refresh the synthetic observation for Shelter A.
+- Twenty-one local tests, full TypeScript checking, repository lint and replay/seed validation pass after integration. GET board and Brain acceptance remain pending.
+- Added an explicit demo gate for the current Claude/web-search implementation versus the written OpenAI/Exa track plan. Operator and track decisions are recorded for team confirmation.
+
 ## v0.4 scenario player · 2026-11-14 20:56 EST
 
 - Added `data/scenarios/malatya.json` and `workers/scenario-player.ts` with blanket, shelter, road, breakdown and repair cues. The configuration reuses the seed and historical observation clock.
