@@ -36,7 +36,8 @@ jobs:
       - name: Build
         run: npx next build
         env:
-          DEMO_MODE: "1"
+          # Production has no demo shortcuts: the VM's env says DEMO_MODE=0 too.
+          DEMO_MODE: "0"
           # Build-only placeholder so Auth.js can load, as in ci.yml. The VM has the real one.
           AUTH_SECRET: ci-build-placeholder-not-a-secret
           DESK_ID: antakya-2023

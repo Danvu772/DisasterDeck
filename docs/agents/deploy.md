@@ -56,6 +56,7 @@ The VM is **IPv6-only**. Vultr gave it `100.68.113.147/18` with no IPv4 default 
 - One Brain per database. The prod VM runs it. Do not start a laptop Brain against the shared Atlas cluster, or the VM's Brain waits on the lease and the board stops moving.
 - `?user=` demo identity must stay refused through the tunnel (`lib/localDemo.ts`). Check `https://disasterdeck.us/api/board?user=coordinator-duty` answers 401 after changes to auth or middleware.
 - A new `NEXT_PUBLIC_*` variable needs a GitHub secret and a line in the Build step of `deploy.yml`.
+- Production runs with `DEMO_MODE=0` (VM env and the Deploy build): no `?user=`, no open board, no demo link, even from the VM itself. Keep it that way.
 - Never remove `AUTH_URL` from the VM's env, and never set it on a laptop (local login would go to the domain).
 - A new server variable goes into `/etc/desk/env.local` on the VM. Tell the person, since only Dan can reach the VM.
 
