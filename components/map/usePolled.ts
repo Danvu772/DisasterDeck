@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { observeBoard } from "../clock";
 
 // Poll any JSON endpoint. Until it answers, show `initial` (fixtures) and say so.
 // A failing endpoint is asked every 10 s instead of every second, so a missing route
@@ -19,6 +20,7 @@ export function usePolled<T>(url: string, initial: T, everyMs = 1000) {
         const r = await fetch(url, { cache: "no-store" });
         if (r.ok) {
           const body = (await r.json()) as T;
+          observeBoard(body);
           if (!stop) setData(body);
           ok = true;
         }

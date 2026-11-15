@@ -2,6 +2,7 @@
 // Components ask this file how something looks. They never pick a colour themselves.
 import type { Confidence, RecordType, Tier } from "@/lib/types";
 import { TIER_WORD } from "./detail/fields";
+import { deskNow } from "./clock";
 
 // Tier → the left bar. Act-now overrides everything and is the only red.
 export function tierBar(tier: Tier, actNow = false): string {
@@ -48,8 +49,9 @@ export const STALE_AFTER_MIN: Record<RecordType, number> = {
   incident: 15,
 };
 
+// `now` is real time. Ages are measured against the scenario clock (see clock.ts).
 export function minutesSince(at: Date | string, now: number): number {
-  return Math.max(0, Math.round((now - new Date(at).getTime()) / 60000));
+  return Math.max(0, Math.round((deskNow(now) - new Date(at).getTime()) / 60000));
 }
 
 export function isStale(type: RecordType, at: Date | string, now: number): boolean {
