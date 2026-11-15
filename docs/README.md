@@ -7,12 +7,14 @@ Start with [Multiplayer Disaster Desk](Multiplayer%20Disaster%20Desk/Multiplayer
 | Note | What it covers |
 |---|---|
 | [Multiplayer Disaster Desk](Multiplayer%20Disaster%20Desk/Multiplayer%20Disaster%20Desk.md) | The idea, roles, the life of one case, NASA silent zones, demo plan |
+| [Personal agents](Multiplayer%20Disaster%20Desk/Personal%20agents.md) | **New.** Every user has an agent. What asking it (summaries) and telling it (personal needs) does, and what each role must build for it |
 | [Final system design](Multiplayer%20Disaster%20Desk/Final%20system%20design.md) | The only system design (version 2): components, data model, lifecycles, dispatcher rules, help desk, flows, build plan |
 | [Design review 2026-11-14](Multiplayer%20Disaster%20Desk/Design%20review%202026-11-14.md) | What changed between version 1 and version 2 of the design, and why |
 | [Team contracts](Multiplayer%20Disaster%20Desk/Roles/Team%20contracts.md) | TypeScript data shapes, API routes, folder ownership, keys, checkpoints |
 | [Role 1: Backend and Brain](Multiplayer%20Disaster%20Desk/Roles/Role%201%20-%20Backend%20and%20Brain.md) | MongoDB, event queue, memory keeper, dispatcher, help desk playbook |
 | [Role 2: Agents](Multiplayer%20Disaster%20Desk/Roles/Role%202%20-%20Agents.md) | Research agents, personal agents, chat, voice and photo |
 | [Role 3: Frontend](Multiplayer%20Disaster%20Desk/Roles/Role%203%20-%20Frontend.md) | Login, role screens, shared board, map |
+| [Frontend visual language](Multiplayer%20Disaster%20Desk/Roles/Frontend%20visual%20language.md) | How every screen encodes tier, confidence, age, source. Tokens, `/lab` |
 | [Role 4: Data, NASA and pitch](Multiplayer%20Disaster%20Desk/Roles/Role%204%20-%20Data%2C%20NASA%20and%20pitch.md) | Tweet replay, seed data, NASA layers, scenario player, Devpost |
 | [Data sources](Multiplayer%20Disaster%20Desk/Data%20sources.md) | Tweet dataset, NASA data with tested requests, links, open questions |
 | [Hackathon info](Multiplayer%20Disaster%20Desk/Hackathon%20info.md) | Deadlines, submission rules, track fit, resources, checklists |

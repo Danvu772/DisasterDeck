@@ -23,15 +23,18 @@
   --color-calm: #9a968d;
   --color-hatch: #4b5fa8;
 
+  --radius-card: 6px;
+}
+
+/* Fonts are inline because Next sets --font-geist-* on <body>, not :root. DECIDE the faces. */
+@theme inline {
   --font-sans: var(--font-geist-sans), system-ui, sans-serif; /* people */
   --font-mono: var(--font-geist-mono), ui-monospace, monospace; /* machine + provenance */
-
-  --radius-card: 6px;
 }
 
 body {
   background: var(--color-paper);
   color: var(--color-ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }

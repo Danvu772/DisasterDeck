@@ -77,7 +77,7 @@ export function makeBoard(now: number) {
 
   const tasks: Task[] = [
     {
-      _id: "task-1", type: "call", recordType: "site", recordId: "site-57", assignee: "Zeynep",
+      _id: "task-1", type: "call", recordType: "site", recordId: "site-57", assignee: "zeynep",
       tried: [], risk: "low", tier: 0, priority: 54, status: "assigned", open: true,
       title: "Call about Örnek St. 12", detail: "4 people posted about her, nobody has called yet. Phone •••• •• 42",
       deadline: new Date(now + 5 * 60000),
@@ -90,6 +90,13 @@ export function makeBoard(now: number) {
       deadline: ago(3),
       history: [{ ts: ago(18), by: "dispatcher", source: "system", reason: "Team 2 declined, next nearest is Team 4" }],
       deskId: DESK,
+    },
+    {
+      _id: "task-5", type: "rescue", recordType: "site", recordId: "site-52", assignee: "team-4",
+      tried: [], risk: "high", tier: 0, priority: 70, status: "accepted", open: true,
+      title: "Rescue at Çınar St. 3", detail: "3 people, voices heard (Zeynep, 40 min ago). Approved by Mehmet.",
+      deadline: new Date(now + 20 * 60000),
+      history: [{ ts: ago(4), by: "Mehmet", source: "person", reason: "Approved dispatch" }], deskId: DESK,
     },
   ];
 

@@ -1,8 +1,9 @@
 // /lab: every primitive in every state, from fixtures. Change a token in globals.css,
 // refresh, look at everything at once. New screen ideas go in app/lab/<name>/page.tsx.
 import { makeBoard } from "@/fixtures/board";
-import { RecordCard } from "@/components/RecordCard";
-import { TaskCard } from "@/components/TaskCard";
+import {
+  IncidentCards, NeedCards, RoadCards, ShelterCards, SiteCards, TaskCards,
+} from "@/components/BoardCards";
 import { HealthLine } from "@/components/HealthLine";
 import { ChatLine } from "@/components/ChatLine";
 
@@ -27,65 +28,12 @@ export default function Lab() {
       <p className="text-sm text-muted">Fixtures only. Tier = bar colour, confidence = border, machine = mono.</p>
 
       <div className="mt-6 grid gap-6 md:grid-cols-3">
-        <Section title="Sites">
-          {b.sites.map((s) => (
-            <RecordCard key={s._id} type="site" title={s.address}
-              detail={`${s.peopleTrapped} ${s.peopleTrapped === 1 ? "person" : "people"} · call: ${s.callStatus.replace("_", " ")}`}
-              tier={s.tier} priority={s.priority} confidence={s.confidence} status={s.status}
-              at={s.observedAt} source={s.sources[0]?.source} sources={s.sources.length}
-              history={s.history} now={now} />
-          ))}
-        </Section>
-
-        <Section title="Needs">
-          {b.needs.map((n) => (
-            <RecordCard key={n._id} type="need" title={`${n.quantity} ${n.item}`} detail={n.region}
-              tier={n.tier} priority={n.priority} confidence={n.confidence} status={n.status}
-              at={new Date(now)} now={now}>
-              {n.status === "proposed" && (
-                <p className="mt-1 font-mono text-xs text-muted">
-                  {"●".repeat(n.support)}{"○".repeat(Math.max(0, 3 - n.support))} {n.support} of 3 asked
-                </p>
-              )}
-            </RecordCard>
-          ))}
-        </Section>
-
-        <Section title="Shelters">
-          {b.shelters.map((s) => (
-            <RecordCard key={s._id} type="shelter" title={s.name}
-              tier={s.bedsUsed / s.bedsTotal > 0.9 ? 1 : 2} confidence="confirmed"
-              status={`${s.bedsUsed}/${s.bedsTotal}`} at={s.observedAt} source="instagram" now={now}>
-              <div className="mt-2 h-1.5 w-full rounded bg-line">
-                <div className="h-1.5 rounded bg-ink" style={{ width: `${(100 * s.bedsUsed) / s.bedsTotal}%` }} />
-              </div>
-            </RecordCard>
-          ))}
-        </Section>
-
-        <Section title="Roads">
-          {b.roads.map((r) => (
-            <RecordCard key={r._id} type="road" title={r.road} detail={r.reason} tier={1}
-              confidence={r.confidence} status={r.state} at={r.observedAt} source="person" now={now} />
-          ))}
-        </Section>
-
-        <Section title="Incidents">
-          {b.incidents.map((i) => (
-            <RecordCard key={i._id} type="incident" title={i.kind.replace("_", " ")} detail={i.textEn}
-              tier={0} actNow={i.severity === "critical"} confidence="confirmed" status={i.status}
-              at={i.actions[0].ts} source="person" now={now}>
-              <p className="mt-1 text-xs italic text-muted">{i.text}</p>
-              <ul className="mt-2 space-y-0.5 font-mono text-xs">
-                {i.actions.map((a, k) => <li key={k}>→ {a.what}</li>)}
-              </ul>
-            </RecordCard>
-          ))}
-        </Section>
-
-        <Section title="Tasks">
-          {b.tasks.map((t) => <TaskCard key={t._id} task={t} now={now} />)}
-        </Section>
+        <Section title="Sites"><SiteCards items={b.sites} now={now} /></Section>
+        <Section title="Needs"><NeedCards items={b.needs} now={now} /></Section>
+        <Section title="Shelters"><ShelterCards items={b.shelters} now={now} /></Section>
+        <Section title="Roads"><RoadCards items={b.roads} now={now} /></Section>
+        <Section title="Incidents"><IncidentCards items={b.incidents} now={now} /></Section>
+        <Section title="Tasks"><TaskCards items={b.tasks} now={now} /></Section>
 
         <Section title="Chat">
           <div className="space-y-1 rounded-card border border-line bg-card p-3">
