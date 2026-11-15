@@ -39,7 +39,7 @@ export function BoardTabs({ board, now, initial = "sites" }: { board: Board; now
         })}
       </div>
       <div role="tabpanel" className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {tab === "sites" && <SiteCards items={board.sites} now={now} />}
+        {tab === "sites" && <SiteCards items={board.sites} now={now} tasks={board.tasks} />}
         {tab === "needs" && <NeedCards items={board.needs} now={now} />}
         {tab === "shelters" && <ShelterCards items={board.shelters} now={now} />}
         {tab === "roads" && <RoadCards items={board.roads} now={now} />}

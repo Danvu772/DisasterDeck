@@ -2,12 +2,13 @@
 import type { Incident, Need, Road, Shelter, Site, Task } from "@/lib/types";
 import { RecordCard } from "./RecordCard";
 import { TaskCard } from "./TaskCard";
+import { loopLine } from "./loopStep";
 
 export type Board = {
   sites: Site[]; needs: Need[]; shelters: Shelter[]; roads: Road[]; incidents: Incident[]; tasks: Task[];
 };
 
-export function SiteCards({ items, now }: { items: Site[]; now: number }) {
+export function SiteCards({ items, now, tasks }: { items: Site[]; now: number; tasks?: Task[] }) {
   return items.map((s) => {
     const posts = s.sources.length;
     const unseen = !s.history.some((h) => h.source === "person");
@@ -17,6 +18,7 @@ export function SiteCards({ items, now }: { items: Site[]; now: number }) {
         tier={s.tier} priority={s.priority} confidence={s.confidence} status={s.status}
         at={s.observedAt} source={s.sources[0]?.source} sources={s.sources.length}
         history={s.history} now={now}>
+        <p className="mt-1 text-xs text-muted">{loopLine(s, tasks)}</p>
         {!(posts === 1 && s.support === 1) && (
           <p className="mt-1 text-xs text-muted">
             {posts} {posts === 1 ? "post" : "posts"} from {s.support} {s.support === 1 ? "person" : "people"}
