@@ -32,7 +32,7 @@ export function NasaEvidence({ fc, children }: { fc: ZoneFC; children?: ReactNod
   const withheld = fc.features.some((feature) => feature.properties.silentZone === null);
 
   return (
-    <section aria-label="NASA evidence" className="absolute right-3 top-3 z-[1000] flex max-h-[calc(100%-1.5rem)] w-72 max-w-[calc(100%-4.5rem)] flex-col overflow-hidden rounded-card border border-line bg-card shadow-md md:w-80">
+    <section aria-label="NASA evidence" className="absolute right-3 top-3 z-[1000] flex max-h-[calc(100%-1.5rem)] w-64 max-w-[calc(100%-4.5rem)] flex-col overflow-hidden rounded-card border border-line bg-card shadow-md md:w-72">
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="nasa-evidence"
         className="w-full shrink-0 p-3 text-left">
         <span className="flex justify-between gap-3 text-sm font-bold">

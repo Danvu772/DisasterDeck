@@ -366,3 +366,26 @@ body .leaflet-container .leaflet-control-zoom-out {
 @media (prefers-reduced-motion: reduce) {
   .loading-surface { animation-duration: 1ms; }
 }
+
+/* The thumb centre follows the image divider across the full map width. */
+.imagery-divider-range {
+  left: -22px;
+  width: calc(100% + 44px);
+  margin: 0;
+  appearance: none;
+  background: transparent;
+}
+.imagery-divider-range::-webkit-slider-runnable-track { height: 44px; background: transparent; }
+.imagery-divider-range::-webkit-slider-thumb {
+  width: 44px;
+  height: 44px;
+  appearance: none;
+  background: transparent;
+  border: 0;
+}
+.imagery-divider-range::-moz-range-track { height: 44px; background: transparent; }
+.imagery-divider-range::-moz-range-thumb { width: 44px; height: 44px; border: 0; background: transparent; }
+[data-imagery-comparison]:has(input:focus-visible) [data-imagery-divider] > span {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}

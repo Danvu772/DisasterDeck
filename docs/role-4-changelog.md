@@ -2,6 +2,13 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## Imagery layout and on-map comparison - 2026-11-15 08:10 EST
+
+- [x] Removed the duplicate imagery record sidebar inside /map. The shared list controls selection, while marker popups retain record details. Standalone DeskMap callers retain their own list.
+- [x] Replaced the settings-panel slider with a draggable handle on the actual image boundary. The native range supports keyboard and touch input. The divider and image clipping share one percentage value across map movement and resize.
+- [x] Reduced the settings-panel width, grouped city/zoom actions and moved optional building references into a collapsed section, initially off.
+- [x] Production build, TypeScript and scoped ESLint pass. Edge tests confirm full-range clipping alignment, dragging from 25% to 75%, keyboard adjustment, zoom, mobile layout and return to Live mode. Light/dark screenshots inspected. Zero page errors.
+
 ## Compact imagery cards - 2026-11-15 08:02 EST
 
 - [x] Reduced the default imagery panel to layer/date selection, comparison controls, scale, source and coverage. Weather and detailed quality information open on demand.

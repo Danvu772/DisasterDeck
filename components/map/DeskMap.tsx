@@ -11,8 +11,10 @@ const DeskMapView = dynamic(() => import("./DeskMapView"), {
   loading: () => <Loading label="Loading the map" />,
 });
 
-export function DeskMap<T = MapSource>({ initial, initialLive = false, url = "/api/board", zonesUrl = "/data/zones.geojson", adapt, focus }: {
+export function DeskMap<T = MapSource>({ initial, initialLive = false, url = "/api/board", zonesUrl = "/data/zones.geojson", adapt, focus, embedded = false, onPick }: {
   initial: T;
+  embedded?: boolean;
+  onPick?: (key: string | null) => void;
   initialLive?: boolean;          // true when the server rendered `initial` from the database
   focus?: string;                 // "<kind>:<id>", select and fly to it on load
   url?: string;
@@ -21,5 +23,5 @@ export function DeskMap<T = MapSource>({ initial, initialLive = false, url = "/a
 }) {
   const { data, live, now } = usePolled<T>(url, initial, 1000, initialLive);
   const items = adapt ? adapt(data) : fromBoard(data as MapSource);
-  return <DeskMapView items={items} now={now} live={live} zonesUrl={zonesUrl} focus={focus} />;
+  return <DeskMapView items={items} now={now} live={live} zonesUrl={zonesUrl} focus={focus} embedded={embedded} onPick={onPick} />;
 }

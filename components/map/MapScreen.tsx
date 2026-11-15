@@ -193,7 +193,7 @@ export function MapScreen({ initial, initialLive = false, focus, quakes, names }
       <div className="relative order-1 h-[55vh] md:order-2 md:h-auto md:flex-1">
         {mode === "live"
           ? <DeskGlMap items={items} now={now} selected={selected} onPick={pick} flyKey={flyKey} quakes={quakes} ringKeys={ringKeys} />
-          : <DeskMap initial={initial} initialLive={initialLive} focus={selected ?? undefined} />}
+          : <DeskMap embedded onPick={pick} initial={initial} initialLive={initialLive} focus={selected ?? undefined} />}
       </div>
     </div>
   );

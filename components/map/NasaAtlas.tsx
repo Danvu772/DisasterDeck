@@ -116,31 +116,33 @@ export function NasaAtlasControls({ atlas, selection, onChange, onLocate, onCity
     </div>}
     {frame?.tileURL && <div className="mt-3 space-y-2 text-xs">
       <label className="flex items-center gap-2"><input type="checkbox" checked={selection.compare ?? true} onChange={e => onChange({ ...selection, compare: e.target.checked })} />Compare before / after</label>
-      {selection.compare && <>
-        <label htmlFor="imagery-swipe" className="block">22 Dec 2022 ← → 11 Feb 2023</label>
-        <input id="imagery-swipe" aria-label="Before and after image divider" className="w-full" type="range" min="0" max="100" value={selection.split ?? 50} onChange={e => onChange({ ...selection, split: Number(e.target.value) })} />
-      </>}
-      <button type="button" className="rounded-button border border-line px-3 py-2 text-primary" onClick={() => onLocate([36.194, 36.157])}>Zoom to buildings</button>
-      <label className="flex items-start gap-2"><input type="checkbox" checked={!!selection.showBuildings} onChange={e => onChange({ ...selection, showBuildings: e.target.checked })} />Building references · zoom 15+</label>
-      {selection.showBuildings && <>
-        <p className="text-muted">{atlas.highResolution?.buildingCount ?? 0} HOT/OSM references. Click an outline to review.</p>
-        <ExportBuildingReviews />
-      </>}
-      <p className="text-muted">Historical imagery · Human review required</p>
+
+      <div className="flex gap-2">
+        <button type="button" className="rounded-button border border-line px-3 py-2 text-primary" onClick={() => onLocate([36.194, 36.157])}>Zoom to buildings</button>
+        <button type="button" onClick={onCityView} className="rounded-button border border-line px-3 py-2 text-primary">Fit city</button>
+      </div>
+      <details className="pt-1">
+        <summary className="cursor-pointer font-medium">Building overlays</summary>
+        <label className="mt-2 flex items-start gap-2"><input type="checkbox" checked={!!selection.showBuildings} onChange={e => onChange({ ...selection, showBuildings: e.target.checked })} />Building references · zoom 15+</label>
+        {selection.showBuildings && <>
+          <p className="text-muted">{atlas.highResolution?.buildingCount ?? 0} HOT/OSM references. Click an outline to review.</p>
+          <ExportBuildingReviews />
+        </>}
+      </details>
     </div>}
     {group?.id === "lights" && <div className="mt-3 space-y-1 text-xs">
       <p><strong>{atlas.originalMeasurements?.pairedRadiance?.lightLossPixels ?? 0} / {atlas.originalMeasurements?.pairedRadiance?.eligiblePixels ?? 0}</strong> valid pixels with ≥40% light loss</p>
       <p className="text-muted">Orange · light loss. Blue · other valid pixels. Click for values.</p>
       <p className="text-muted">500 m grid · Regional light change</p>
     </div>}
-    <button type="button" onClick={onCityView} className="mt-3 rounded-button border border-line px-3 py-2 text-sm text-primary hover:bg-primary-lighter">Fit city</button>
+    {!frame?.tileURL && <button type="button" onClick={onCityView} className="mt-3 rounded-button border border-line px-3 py-2 text-sm text-primary hover:bg-primary-lighter">Fit city</button>}
     {frame && <p className="mt-2 text-xs">
       {frame.tileURL ? "Map tiles · ~1 m" : frame.scale} ·{" "}
       <a className="text-primary underline" href={frame.sourceURL} target="_blank" rel="noreferrer">{frame.tileURL ? "Maxar source" : "NASA source"}</a>
       {frame.legendURL && <> · <a className="text-primary underline" href={frame.legendURL} target="_blank" rel="noreferrer">Legend</a></>}
     </p>}
     {frame?.tileURL && beforeCoverage !== null && hlsBefore && <p className="mt-2 text-xs">
-      Before image · {Math.round(beforeCoverage * 100)}% Maxar coverage. Remaining area uses 30 m HLS.
+      Before · {Math.round(beforeCoverage * 100)}% high-res, remainder 30 m HLS.
     </p>}
     {selection.showLimits && frame?.limitation && <p className="mt-2 text-xs text-muted">Purple · limited observations</p>}
     <details className="mt-4 text-xs">

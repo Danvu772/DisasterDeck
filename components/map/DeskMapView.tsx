@@ -7,7 +7,7 @@ import { pilotCenter } from "@/lib/pilot";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, Marker, Polyline, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
 import type { Incident, LatLng, Site } from "@/lib/types";
 import { IncidentCards, SiteCards } from "../BoardCards";
 import { Stamp } from "../Stamp";
@@ -165,25 +165,33 @@ function Legend({ meta, zones }: { meta?: ZoneMeta; zones: boolean }) {
   );
 }
 
-export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
+export default function DeskMapView({ items, now, live, zonesUrl, focus, embedded = false, onPick }: {
   items: MapItem[]; now: number; live: boolean; zonesUrl?: string;
+  embedded?: boolean;
+  onPick?: (key: string | null) => void;
   focus?: string;                 // "<kind>:<id>" from /map?focus=, selected and flown to on load
 }) {
   const zones = useZones(zonesUrl ?? "");
   const atlas = useNasaAtlas();
-  const [atlasSelection, setAtlasSelection] = useState<AtlasSelection>({ frameId: "maxar-after-2023-02-11", showLimits: false, eventScope: "off", showDemoCells: false, compare: true, split: 50, showBuildings: true });
+  const [atlasSelection, setAtlasSelection] = useState<AtlasSelection>({ frameId: "maxar-after-2023-02-11", showLimits: false, eventScope: "off", showDemoCells: false, compare: true, split: 50, showBuildings: false });
   const [atlasTarget, setAtlasTarget] = useState<LatLng>();
   const [cityBounds, setCityBounds] = useState<[LatLng, LatLng]>();
   const [selected, setSelected] = useState<string | null>(focus ?? null);
   const [flyTarget, setFlyTarget] = useState<LatLng | undefined>();
-  const focused = useRef(false);
+  const focused = useRef<string | undefined>(undefined);
   const focusAt = items.find((i) => i.key === focus)?.coords;
   // Fly once, as soon as the focused item has a position (the live board may answer after the fixtures).
   useEffect(() => {
-    if (focused.current || !focusAt) return;
-    focused.current = true;
+    if (!focus) {
+      focused.current = undefined;
+      if (embedded) setSelected(null);
+      return;
+    }
+    if (focused.current === focus || !focusAt) return;
+    focused.current = focus;
+    setSelected(focus);
     setFlyTarget([...focusAt] as LatLng);
-  }, [focusAt]);
+  }, [focus, focusAt, embedded]);
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
   const [onlyInView, setOnlyInView] = useState(false);
 
@@ -249,13 +257,15 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
   }
 
   function pick(it: MapItem) {
-    setSelected((cur) => (cur === it.key ? null : it.key));
+    const next = selected === it.key ? null : it.key;
+    setSelected(next);
+    onPick?.(next);
     if (it.coords) setFlyTarget([...it.coords] as LatLng);
   }
 
   return (
     <div className="flex h-full flex-col md:flex-row">
-      <aside className="order-2 flex min-h-0 flex-1 flex-col border-line bg-paper md:order-1 md:w-96 md:flex-none md:border-r">
+      {!embedded && <aside className="order-2 flex min-h-0 flex-1 flex-col border-line bg-paper md:order-1 md:w-96 md:flex-none md:border-r">
         <header className="border-b border-line bg-card p-3">
           <h1 className="text-lg font-bold">Sites and problems</h1>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
@@ -293,9 +303,9 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
             </>
           )}
         </ul>
-      </aside>
+      </aside>}
 
-      <div className="relative order-1 h-[55vh] md:order-2 md:h-auto md:flex-1">
+      <div className={embedded ? "relative h-full min-h-0 flex-1" : "relative order-1 h-[55vh] md:order-2 md:h-auto md:flex-1"}>
         <MapContainer center={pilotCenter} zoom={13} className="h-full w-full" zoomControl>
           <BasemapTiles extra={`${zones?.metadata?.attribution ? `. Zones: ${zones.metadata.attribution}` : ""}${atlas ? ". Atlas: NASA GIBS, MODIS, GPM IMERG, NASA/USGS/ESA HLS, NASA EONET" : ""}`} />
           <KeepSized />
@@ -313,11 +323,28 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
           {placed.map((it) => (
             <Marker key={it.key} position={it.coords!} icon={iconFor(it, selected === it.key)}
               zIndexOffset={selected === it.key ? 1000 : it.kind === "incident" ? 500 : isExtra(it) ? 250 : 0}
-              title={it.title} eventHandlers={{ click: () => pick(it) }} />
+              title={it.title} eventHandlers={{ click: () => pick(it) }}>
+              {embedded && <Popup>
+                {it.kind === "site" ? <SiteCards items={[it.record as Site]} now={now} />
+                  : it.kind === "incident" ? <IncidentCards items={[it.record as Incident]} now={now} />
+                    : <div><strong>{it.title}</strong><p>{it.note ?? statusText(it.status)}</p></div>}
+              </Popup>}
+            </Marker>
           ))}
         </MapContainer>
         {atlasSelection.compare && atlas?.frames.find(frame => frame.id === atlasSelection.frameId)?.tileURL &&
-          <div aria-hidden className="pointer-events-none absolute bottom-0 top-0 z-[500] w-0.5 border-l border-ink bg-card" style={{ left: `${atlasSelection.split ?? 50}%` }} />}
+          <div className="pointer-events-none absolute inset-0 z-[600] overflow-hidden" data-imagery-comparison>
+            <div aria-hidden className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-background shadow-sm ring-1 ring-foreground/30"
+              data-imagery-divider style={{ left: `${atlasSelection.split ?? 50}%` }}>
+              <span className="absolute top-[65%] left-1/2 flex size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-background text-lg text-foreground shadow-md">↔</span>
+            </div>
+            <input type="range" min="0" max="100" step="1" value={atlasSelection.split ?? 50}
+              aria-label="Before and after image divider"
+              className="imagery-divider-range pointer-events-auto absolute top-[65%] h-11 -translate-y-1/2 cursor-ew-resize touch-none"
+              onChange={event => setAtlasSelection(current => ({ ...current, split: Number(event.target.value) }))} />
+            <span className="absolute bottom-12 left-3 rounded-md border bg-background/90 px-2 py-1 text-xs text-foreground">Before · 22 Dec 2022</span>
+            <span className="absolute bottom-12 right-3 rounded-md border bg-background/90 px-2 py-1 text-xs text-foreground">After · 11 Feb 2023</span>
+          </div>}
         <HatchDefs />
         <Legend meta={zones?.metadata} zones={!!zones && atlasSelection.showDemoCells} />
         {zones && <NasaEvidence fc={zones}>
