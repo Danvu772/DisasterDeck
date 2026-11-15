@@ -1,5 +1,7 @@
 # Disaster Desk
 
+[![CI](https://github.com/DarshalShetty/HackTheNest26/actions/workflows/ci.yml/badge.svg)](https://github.com/DarshalShetty/HackTheNest26/actions/workflows/ci.yml)
+
 Current pilot: **Antakya, Türkiye, February 2023**. Operational reports, users, shelters and logistics are synthetic. Satellite imagery, NASA measurements and the separately credited HOT/OSM reference building database are historical real data.
 
 ## Run the map on your workstation
