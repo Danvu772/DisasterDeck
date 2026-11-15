@@ -26,7 +26,7 @@ function arg(name: string): string | undefined {
 const replay = process.argv.includes("--replay");
 const from = arg("from") ?? "2023-02-06T10:00:00Z";
 const speed = Number(arg("speed") ?? 60);
-const deskId = process.env.DESK_ID ?? "malatya-2023";
+const deskId = process.env.DESK_ID ?? "antakya-2023";
 const postEvents = process.env.QUAKE_ALERT_EVENTS === "1";
 const log = (...m: unknown[]) => console.error(`[quake-watcher ${new Date().toISOString().slice(11, 19)}]`, ...m);
 

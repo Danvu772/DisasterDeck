@@ -1,8 +1,16 @@
 {
-  "version": "malatya-nasa-v1",
-  "deskId": "malatya-2023",
-  "bbox": [38.29, 38.33, 38.35, 38.39],
-  "imageSize": [216, 216],
+  "version": "antakya-nasa-v1",
+  "deskId": "antakya-2023",
+  "bbox": [
+    36.12,
+    36.17,
+    36.2,
+    36.22
+  ],
+  "imageSize": [
+    216,
+    216
+  ],
   "zoneSideMeters": 500,
   "damageDate": "2023-02-10",
   "lightsBeforeDate": "2023-01-03",
@@ -18,15 +26,39 @@
     "maxSaturatedFraction": 0.2
   },
   "zones": [
-    {"id": "malatya-turuncu", "name": "Turuncu Avlu demo cell", "center": [38.35, 38.31]},
-    {"id": "malatya-mor", "name": "Mor Avlu demo cell", "center": [38.36, 38.33]}
+    {
+      "id": "antakya-turuncu",
+      "name": "Turuncu Avlu demo cell",
+      "center": [
+        36.194,
+        36.157
+      ]
+    },
+    {
+      "id": "antakya-mor",
+      "name": "Mor Avlu demo cell",
+      "center": [
+        36.204,
+        36.177
+      ]
+    }
   ],
-  "reportWindowSeconds": [0, 20],
+  "reportWindowSeconds": [
+    0,
+    20
+  ],
   "reportOrigins": {
-    "demo-malatya-001": "synthetic-call-ayse",
-    "demo-malatya-002": "synthetic-call-ayse",
-    "demo-malatya-003": "synthetic-call-ayse",
-    "demo-malatya-004": "synthetic-call-ayse",
-    "demo-malatya-005": "synthetic-call-mor"
-  }
+    "demo-antakya-001": "synthetic-call-ayse",
+    "demo-antakya-002": "synthetic-call-ayse",
+    "demo-antakya-003": "synthetic-call-ayse",
+    "demo-antakya-004": "synthetic-call-ayse",
+    "demo-antakya-005": "synthetic-call-mor"
+  },
+  "cityName": "Antakya",
+  "region": "antakya-merkez",
+  "queryCoords": [
+    36.194,
+    36.157
+  ],
+  "landmarkQuery": "Habib-i Neccar Camii, Antakya, Turkey"
 }

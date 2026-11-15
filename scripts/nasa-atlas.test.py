@@ -49,6 +49,8 @@ class AtlasTests(unittest.TestCase):
         for frame in output["frames"]:
             self.assertLess(frame["bounds"][0][0], frame["bounds"][1][0])
             self.assertLess(frame["bounds"][0][1], frame["bounds"][1][1])
+            if frame.get("tileURL"):
+                continue
             image = np.array(Image.open(ROOT / "public" / frame["image"].lstrip("/")).convert("RGBA"))
             limits = np.array(Image.open(ROOT / "public" / frame["limitsImage"].lstrip("/")).convert("RGBA"))
             self.assertEqual(image.shape, limits.shape)
@@ -59,10 +61,29 @@ class AtlasTests(unittest.TestCase):
 
     def test_missing_after_samples_preserve_no_outage_conclusion(self):
         data = json.loads((ROOT / "public/data/nasa-atlas/originals.json").read_text(encoding="utf-8"))
-        self.assertEqual(data["hlsProcessedDates"], ["2023-02-01", "2023-02-09"])
+        self.assertEqual(data["hlsProcessedDates"], [])  # Old Malatya tiles must not masquerade as Antakya observations.
         for zone in data["zones"]:
             if zone["afterValid"] == 0:
                 self.assertIsNone(zone["after"])
+
+    def test_paired_change_requires_original_quality_on_both_dates(self):
+        observations = []
+        for day in ["2023-01-03", "2023-02-08"]:
+            path = ROOT / "data/nasa/subsets" / (day + ".npz")
+            provenance = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), provenance["sha256"])
+            with np.load(path, allow_pickle=False) as subset:
+                values = subset["values"]
+                valid = originals.radiance_valid(values, subset["quality"], subset["cloud"], subset["snow"])
+                observations.append((values, valid))
+        (before, valid_before), (after, valid_after) = observations
+        eligible = valid_before & valid_after & (before >= 10)
+        loss = after[eligible] / before[eligible] <= .6
+        data = json.loads((ROOT / "public/data/nasa-atlas/originals.json").read_text(encoding="utf-8"))
+        self.assertEqual(int(eligible.sum()), data["pairedRadiance"]["eligiblePixels"])
+        self.assertEqual(int(loss.sum()), data["pairedRadiance"]["lightLossPixels"])
+        self.assertGreater(int(eligible.sum()), 0)
+        self.assertLess(int(eligible.sum()), int(before.size))
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ export function makeFieldBoard(now: number) {
       { ts: new Date(now - 3 * 60000), by: "dispatcher", source: "system", reason: "Nearest free field team, 1.2 km away" },
       { ts: new Date(now - 2 * 60000), by: "Demo Nöbetçi Koordinatör", source: "person", reason: "Approved dispatch" },
     ],
-    deskId: "malatya-2023",
+    deskId: "antakya-2023",
   };
   // Two more for the same team, so the "Your other tasks" list shows in demo mode.
   const deliver: Task = {
@@ -25,7 +25,7 @@ export function makeFieldBoard(now: number) {
     detail: "6 meals for the team on site. Pick them up at Demo Depo A.",
     deadline: new Date(now + 25 * 60000),
     history: [{ ts: new Date(now - 5 * 60000), by: "dispatcher", source: "system", reason: "On the way to Çınar St. 3 anyway" }],
-    deskId: "malatya-2023",
+    deskId: "antakya-2023",
   };
   const call: Task = {
     _id: "task-11", type: "call", recordType: "site", recordId: "site-61", assignee: "field-alpha",
@@ -34,7 +34,7 @@ export function makeFieldBoard(now: number) {
     detail: "Someone posted from near the mosque, nobody has confirmed anyone is trapped.",
     deadline: new Date(now - 4 * 60000),
     history: [{ ts: new Date(now - 14 * 60000), by: "dispatcher", source: "system", reason: "Nobody else free to call" }],
-    deskId: "malatya-2023",
+    deskId: "antakya-2023",
   };
   return { ...board, tasks: [...board.tasks, task, deliver, call] };
 }

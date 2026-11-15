@@ -12,14 +12,14 @@ import { planScenarioStep, runScenarioStep, StepNotReady, STEPS } from "../worke
 import { eventBody } from "../lib/schemas.ts";
 
 const execFileAsync = promisify(execFile);
-const config = JSON.parse(await readFile(new URL("../data/scenarios/malatya.json", import.meta.url), "utf8"));
+const config = JSON.parse(await readFile(new URL("../data/scenarios/antakya.json", import.meta.url), "utf8"));
 const seed = JSON.parse(await readFile(new URL("../data/seed.json", import.meta.url), "utf8"));
 const player = fileURLToPath(new URL("../workers/scenario-player.ts", import.meta.url));
 const deskId = config.deskId;
 
 function makeBoard() {
   return {
-    sites: [{ _id: "site-from-keeper", deskId, address: "Malatya merkez, Turuncu Avlu", region: config.site.region,
+    sites: [{ _id: "site-from-keeper", deskId, address: "Antakya merkez, Turuncu Avlu", region: config.site.region,
       coords: config.site.coords, callStatus: "verified", status: "team_on_site" }],
     needs: [{ _id: "need-from-keeper", deskId, item: "blankets", region: config.site.region, quantity: 20,
       siteIds: ["site-from-keeper"], lines: [{ siteId: "site-from-keeper", quantity: 20 }], status: "on_the_way" }],
@@ -124,7 +124,7 @@ test("a live field request is observed without posting another need", () => {
 
 test("geocoded reports keep working with city labels and an incomplete extracted address", () => {
   const board = makeBoard();
-  board.sites[0].region = "Malatya";
+  board.sites[0].region = "Antakya";
   board.sites[0].address = "Address awaiting confirmation";
   const action = planScenarioStep(config, "truck-breakdown", "demo", board);
   assert.equal(action.bindings.siteId, "site-from-keeper");

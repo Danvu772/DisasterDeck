@@ -46,7 +46,7 @@ export type EventType = "report" | "need" | "closure" | "capacity"
 
 export interface Event<P = unknown> {
   _id?: string;
-  deskId: string;         // v2: which disaster, "malatya-2023" or "lahaina-2023"
+  deskId: string;         // v2: which disaster, "antakya-2023" or "lahaina-2023"
   ts: Date;               // when the desk received it
   observedAt?: Date;      // v2: when it was true (tweet time, photo time). Default: ts
   type: EventType;

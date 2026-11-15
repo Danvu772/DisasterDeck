@@ -1,7 +1,7 @@
 // CP1 and CP2 check for the Brain: npm run keeper:check
 // Replays the five demo tweets (data/tweets_replay.json) plus edge cases into a separate desk,
 // "check-cp1", runs the Brain on that desk only, checks the sites, then deletes everything it
-// made. The shared board (malatya-2023) is not touched. Also checks GET /api/events?since=.
+// made. The shared board (antakya-2023) is not touched. Also checks GET /api/events?since=.
 // CP2: throwaway people on the same desk, then a report becomes a site and a call task, an
 // accept, a done, an approval with an assignee, an arrived, a decline, an incident that blocks
 // a task, a need and a claim.
@@ -42,30 +42,30 @@ async function drain() {
 const report = (key: string, p: ReportPayload, actor = "x-agent", source: "x" | "person" = "x") =>
   post<ReportPayload>({ deskId: DESK, type: "report", source, actor, dedupeKey: `check:cp1:${key}`, payload: p });
 
-// Throwaway people, only on this desk. Ayşe's tweets sit near [38.35, 38.31], the CP2 sites
-// near [38.40, 38.40], about 8 km away.
+// Throwaway people, only on this desk. Ayşe's tweets sit near [36.194, 36.157], the CP2 sites
+// near [36.244, 36.247], about 8 km away.
 const U = {
   volA: "check-cp1-vol-a", volB: "check-cp1-vol-b", volOld: "check-cp1-vol-old", volStale: "check-cp1-vol-stale",
   field1: "check-cp1-field-1", field2: "check-cp1-field-2", coord1: "check-cp1-coord-1", coord2: "check-cp1-coord-2",
   supplier: "check-cp1-supplier",
 };
-const SITE_A: LatLng = [38.4, 38.4];
-const SITE_B: LatLng = [38.405, 38.405];
+const SITE_A: LatLng = [36.244, 36.247];
+const SITE_B: LatLng = [36.249, 36.252];
 
 function people(): User[] {
-  const base = { region: "malatya-merkez", status: "available" as const, deskId: DESK };
+  const base = { region: "antakya-merkez", status: "available" as const, deskId: DESK };
   const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000);
   return [
-    { ...base, _id: U.volA, name: "Check volunteer A", role: "volunteer", trust: "vetted", coords: [38.4005, 38.4005], lastSeen: new Date() },
-    { ...base, _id: U.volB, name: "Check volunteer B", role: "volunteer", trust: "vetted", coords: [38.41, 38.41] },
-    { ...base, _id: U.volOld, name: "Check volunteer near Ayşe", role: "volunteer", trust: "vetted", coords: [38.351, 38.311] },
+    { ...base, _id: U.volA, name: "Check volunteer A", role: "volunteer", trust: "vetted", coords: [36.2445, 36.2475], lastSeen: new Date() },
+    { ...base, _id: U.volB, name: "Check volunteer B", role: "volunteer", trust: "vetted", coords: [36.254, 36.257] },
+    { ...base, _id: U.volOld, name: "Check volunteer near Ayşe", role: "volunteer", trust: "vetted", coords: [36.195, 36.158] },
     // The nearest of all to site A, but last seen 10 minutes ago: never picked.
-    { ...base, _id: U.volStale, name: "Check volunteer gone quiet", role: "volunteer", trust: "vetted", coords: [38.4001, 38.4001], lastSeen: minutesAgo(10) },
-    { ...base, _id: U.field1, name: "Check team 1", role: "field", trust: "official", coords: [38.401, 38.401] },
-    { ...base, _id: U.field2, name: "Check team 2", role: "field", trust: "official", coords: [38.43, 38.43] },
+    { ...base, _id: U.volStale, name: "Check volunteer gone quiet", role: "volunteer", trust: "vetted", coords: [36.2441, 36.2471], lastSeen: minutesAgo(10) },
+    { ...base, _id: U.field1, name: "Check team 1", role: "field", trust: "official", coords: [36.245, 36.248] },
+    { ...base, _id: U.field2, name: "Check team 2", role: "field", trust: "official", coords: [36.274, 36.277] },
     { ...base, _id: U.coord1, name: "Check coordinator 1", role: "coordinator", trust: "official" },
     { ...base, _id: U.coord2, name: "Check coordinator 2", role: "coordinator", trust: "official" },
-    { ...base, _id: U.supplier, name: "Check supplier", role: "supplier", trust: "vetted", coords: [38.39, 38.39], profile: { stock: { blankets: 50 } } },
+    { ...base, _id: U.supplier, name: "Check supplier", role: "supplier", trust: "vetted", coords: [36.234, 36.237], profile: { stock: { blankets: 50 } } },
   ];
 }
 
@@ -96,7 +96,7 @@ async function main() {
   await drain();
 
   let sites = await c.sites.find({ deskId: DESK }).toArray();
-  const ayse = sites.find((s) => s.sources.some((x) => x.eventId) && s.coords?.[1] === 38.31) as Site;
+  const ayse = sites.find((s) => s.sources.some((x) => x.eventId) && s.coords?.[1] === 36.157) as Site;
   assert.equal(sites.length, 2, `5 tweets → 2 sites, got ${sites.length}`);
   assert.equal(ayse.sources.length, 4, "Ayşe: 4 tweets → one site with 4 sources");
   assert.equal(ayse.support, 4, "4 different wordings are 4 voices");
@@ -111,7 +111,7 @@ async function main() {
   await report("rt-copy", { kind: "trapped", text: `RT @someone: ${tweets[0].text}`, textEn: "copy" }); // no coords
   await report("addr-a", { kind: "trapped", text: "Çınar Sokak 3'te enkaz", textEn: "rubble at Çınar St 3", address: "Çınar Sokak No: 3" });
   await report("addr-b", { kind: "missing", text: "cinar sk no 3 kimse yok", textEn: "nobody at cinar st 3", address: "cinar sk. no 3" });
-  await report("rescued", { kind: "rescued", text: "Ayşe çıkarıldı", textEn: "Ayşe was taken out", coords: [38.3501, 38.3101], peopleCount: 1 },
+  await report("rescued", { kind: "rescued", text: "Ayşe çıkarıldı", textEn: "Ayşe was taken out", coords: [36.1941, 36.1571], peopleCount: 1 },
     "field-alpha", "person");
   await report("orphan-update", { kind: "site_update", text: "far away", textEn: "far away", coords: [39.9, 32.8] });
   await post({ deskId: DESK, type: "report", source: "x", actor: "x-agent", dedupeKey: "check:cp1:bad", payload: { kind: "nonsense" } });
@@ -133,7 +133,7 @@ async function main() {
   ok(`rejected with a reason: ${rejected.map((e) => `"${e.result?.reason}"`).join(", ")}`);
 
   // --- running an event twice changes nothing ---
-  const again = await c.events.findOne({ dedupeKey: "check:cp1:demo-malatya-002" });
+  const again = await c.events.findOne({ dedupeKey: "check:cp1:demo-antakya-002" });
   await processEvent({ ...again!, status: "working" });
   const ayse3 = await c.sites.findOne({ _id: ayse._id });
   assert.equal(ayse3!.sources.length, 6, "no duplicate source"); assert.equal(ayse3!.history.length, ayse2.history.length);
@@ -160,10 +160,10 @@ async function main() {
   assert.equal((await get("since=yesterday")).status, 400); assert.equal((await get("limit=9999")).status, 400);
   assert(all.body.some((e: { status: string; result?: { recordIds: string[] } }) => e.status === "merged" && e.result?.recordIds.length));
   ok("GET /api/events?since: oldest first, ISO or epoch ms, limit, 400 on bad input, shows status and result");
-  const first = all.body.find((e: { dedupeKey?: string }) => e.dedupeKey === "check:cp1:demo-malatya-001");
+  const first = all.body.find((e: { dedupeKey?: string }) => e.dedupeKey === "check:cp1:demo-antakya-001");
   assert(tweets[0].text.includes("000 000 00 42"), "the demo tweet carries a (fake) phone number");
   assert(!first.payload.text.includes("000 000 00 42") && first.payload.text.includes("•••••••••42"), "feed masks it");
-  const stored = await c.events.findOne({ dedupeKey: "check:cp1:demo-malatya-001" });
+  const stored = await c.events.findOne({ dedupeKey: "check:cp1:demo-antakya-001" });
   assert(stored!.payload && (stored!.payload as { text: string }).text.includes("000 000 00 42"), "stored text unchanged");
   ok("feed masks phone numbers on the way out (•••••••••42); the stored event keeps the original");
 
@@ -180,7 +180,7 @@ async function main() {
   // --- a report becomes a site and a call task ---
   await report("cp2-a", {
     kind: "trapped", text: "Yardım, 2 kişi enkaz altında, tel 0532 111 22 33", textEn: "Help, 2 people under rubble, phone 0532 111 22 33",
-    coords: SITE_A, region: "malatya-merkez", peopleCount: 2,
+    coords: SITE_A, region: "antakya-merkez", peopleCount: 2,
   });
   await drain();
   const siteA = (await c.sites.findOne({ deskId: DESK, coords: SITE_A }))!;
@@ -253,7 +253,7 @@ async function main() {
   ok("rescue done: site closed");
 
   // --- decline: same task, next person, never the same one twice ---
-  await report("cp2-b", { kind: "trapped", text: "Enkaz, bir kişi", textEn: "Rubble, one person", coords: SITE_B, region: "malatya-merkez", peopleCount: 1 });
+  await report("cp2-b", { kind: "trapped", text: "Enkaz, bir kişi", textEn: "Rubble, one person", coords: SITE_B, region: "antakya-merkez", peopleCount: 1 });
   await drain();
   const siteB = (await c.sites.findOne({ deskId: DESK, coords: SITE_B }))!;
   const callB = await taskOf({ recordId: siteB._id, type: "call", open: true });
@@ -301,7 +301,7 @@ async function main() {
   assert.equal(deliver.assignee, U.supplier, "the supplier with blankets in stock"); assert.equal(deliver.risk, "low");
   need = (await c.needs.findOne({ _id: need._id }))!;
   assert.equal(need.status, "assigned"); assert((need.caseNo ?? 0) > 0); assert.equal(sum(need.scoreParts), need.priority);
-  ev = await say("need-again", "need", U.field2, { item: "blankets", quantity: 10, lifeThreatening: false, region: "malatya-merkez" });
+  ev = await say("need-again", "need", U.field2, { item: "blankets", quantity: 10, lifeThreatening: false, region: "antakya-merkez" });
   assert.equal(ev.status, "merged");
   need = (await c.needs.findOne({ _id: need._id }))!;
   assert.equal(need.quantity, 30); assert.equal(need.support, 2); assert.equal(await c.needs.countDocuments({ deskId: DESK }), 1);

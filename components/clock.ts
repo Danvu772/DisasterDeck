@@ -1,4 +1,4 @@
-// The desk's clock. Live data can be stamped months before today (the Malatya scenario is February 2023),
+// The desk's clock. Live data can be stamped months before today (the Antakya scenario is February 2023),
 // so ages are measured against scenario time: the newest observedAt on the last board, plus the
 // real time since that board arrived. Fixtures are built relative to now and never feed this, so they
 // keep reading against Date.now().

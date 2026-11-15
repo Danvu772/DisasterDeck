@@ -1,32 +1,32 @@
 {
   "ariaExtentMatches": true,
   "landmark": {
-    "name": "Yeni Cami",
+    "name": "Habib-i Neccar Camii",
     "coordsLngLat": [
-      38.3181102,
-      38.3495353
+      36.1655275,
+      36.201547
     ],
-    "osmWayId": 296572992
+    "osmWayId": 102165117
   },
   "landmark500mEvidence": {
     "damage": {
       "damage": null,
-      "flaggedOverlayFraction": 0.982143,
-      "opaqueFraction": 0.982143,
+      "flaggedOverlayFraction": 0.964912,
+      "opaqueFraction": 0.964912,
       "quality": "unflagged-validity-unknown"
     },
     "lights": {
       "dark": null,
       "renderedCoverage": 1.0,
       "quality": "saturated-rendering",
-      "beforeMeanBrightness": 246.0595,
+      "beforeMeanBrightness": 255.0,
       "afterMeanBrightness": 255.0,
       "maxSaturatedFraction": 1.0
     }
   },
   "independentReport": {
-    "url": "https://www.dha.com.tr/gundem/malatyada-depremde-yeni-cami-de-yikildi-2201455",
-    "publishedAt": "2023-02-06T10:47:00+03:00",
-    "finding": "The reporter documented collapse of Yeni Cami. The surrounding rendered overlay flags surface change; validity and power outage remain unresolved."
+    "url": "https://data.humdata.org/dataset/hotosm_tur_destroyed_buildings",
+    "publishedAt": "2023-05-22T12:08:50Z",
+    "finding": "Separate HOT/OSM historical destroyed-building reference polygons are included in public/data/antakya/buildings.geojson. They are community mapping, not our model predictions or a field safety assessment."
   }
 }

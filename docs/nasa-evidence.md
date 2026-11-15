@@ -1,71 +1,45 @@
-# Malatya NASA evidence · v1
+# Antakya NASA evidence
 
-## Map presentation
+This evidence was regenerated for Antakya. Previous Malatya values must not be reused for this pilot. See [the pilot delivery](antakya-pilot.md) for the separate Maxar imagery and HOT/OSM reference building data.
 
-The [satellite atlas](nasa-atlas.md) extends the map with snow, precipitation, cloud fraction, HLS imagery, original Black Marble radiance, product-specific observation limits and historical EONET records. The original two-cell alert evidence below retains its earlier acquisition and quality assessment.
+## Original nighttime radiance
 
-Open `/map` and expand **NASA · Weather evidence**. Choose an observation day from 6–10 February and a trend metric. It shows minimum and maximum temperature (°C), mean wind speed at 2 m (m/s), mean relative humidity at 2 m (%) and daily precipitation (mm/day). The two Locate buttons focus the synthetic 500 m cells. Both cells share the same regional weather observation.
+The committed VNP46A2 subsets cover the city extent on **3 January and 8 February 2023**. They preserve unclipped `DNB_BRDF-Corrected_NTL`, mandatory quality, cloud mask, snow flag and latitude/longitude arrays. Product scale is approximately 500 m. Lossless numeric arrays and parent-file hashes are in `data/nasa/subsets/`.
 
-The unmodified response is `data/nasa/power-weather-malatya.json`. Its URL, download time and SHA-256 hash are in the manifest. On 9 February the values are −14.38 °C minimum, −0.24 °C maximum, 2.45 m/s mean wind, 78.93% humidity and 0.04 mm/day precipitation. Precipitation alone does not distinguish rain from snow; daily mean wind does not establish gusts. These are regional historical observations shared by both cells.
+Only original retrievals with mandatory quality 0, snow flag 0, a nighttime observation, sufficiently good cloud-mask quality, confidently clear conditions, and no shadow/cirrus flags pass the conservative filter. Fill values never become zero radiance.
 
-Click a hatched cell for its dated evidence and the suggested blanket/shelter review. The expandable satellite explanation describes the radar validity and night-light saturation limitations. Missing measurements remain null in the evidence. The map presents no silent-zone alert or completed priority change for these cells.
+There are **92 eligible paired pixels** with valid observations on both dates and baseline radiance at least 10 nW/(cm^2 sr). **56 of those pixels** show at least 40% lower radiance. This describes the eligible sample only, not 56 buildings or a citywide percentage. The threshold is a demo screening choice. A single historical baseline cannot isolate power loss from every other cause of changed light.
 
-The map contains two synthetic 500 m demo cells inside longitude 38.29–38.35 and latitude 38.33–38.39. The retrospective scene is 11 February 2023 at 09:00 Türkiye time. Source products were retrieved on 14 November 2026. Their processing versions reflect the present archive. The exact 2023 publication times are unavailable.
+The main **NASA - Night-light change** view displays those eligible pixels. Orange marks at least 40% lower radiance; blue marks other eligible pairs. Click a cell for the before/after values and percentage. Transparency means an unavailable or excluded pair; observation limits show these excluded areas in purple. Individual-date QA frames are also available.
 
-| Input | Observation dates and native scale | Decision supported by this cache |
-|---|---|---|
-| ARIA, Sentinel-1 radar coherence change | 10 February 2023, about 30 m | Colored surface-change overlay. Valid unflagged coverage is unresolved. Normalized `damage` stays unknown. |
-| Black Marble, Suomi NPP VIIRS gap-filled BRDF-corrected radiance rendering | 3 January and 8 February 2023, about 500 m | Both city cells reach the white end of the display scale. `dark` stays unknown. |
-| POWER, MERRA-2 `T2M_MIN` | 6–10 February 2023, 0.5° × 0.625° regional meteorology | 9 February minimum **−14.38 °C**, `cold: true`. Both cells share this regional observation. |
+NASA's [published Antakya assessment](https://science.nasa.gov/earth/earth-observatory/dark-nights-in-antakya-151029/) independently describes regional light loss between 4 and 8 February, with cloud-obscured central-city observations. Those published HD maps use downscaling and different dates; they are context, not the numerical input for our January/February comparison. Neither source identifies trapped people or individual building outages.
 
-ARIA describes yellow-to-red pixels as increasing radar coherence change and warns about vegetation and mountains. Its four-band rendered image has transparent background pixels. Their validity cannot be resolved from this export. `flaggedOverlayFraction` measures colored pixels over the whole demo cell and is retained separately from normalized damage. [ARIA service metadata](https://gis.earthdata.nasa.gov/portal/rest/services/DISASTERS_202302_EARTHQUAKE_TURKIYE/2302_opera_dpm/ImageServer)
+## Weather
 
-The GIBS layer identifies gap-filled BRDF-corrected Suomi NPP radiance with a 500 m tile matrix. Its linked colormap maps values **at or above 38.2 nW/(cm² sr)** to white. A white pixel therefore gives a clipped displayed value. Both selected cells are fully white in the after image. Rendered alpha coverage also omits the original product's cloud, snow and retrieval-age quality flags. This comparison leaves a power outage unresolved. [GIBS capabilities](https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/1.0.0/WMTSCapabilities.xml), [linked colormap](https://gibs.earthdata.nasa.gov/colormaps/v1.3/VIIRS_DayNightBand_At_Sensor_Radiance.xml), [NASA product specification](https://ladsweb.modaps.eosdis.nasa.gov/filespec/VIIRS/2/VNP46A2_v2.0.fs)
+NASA POWER / MERRA-2 was queried at 36.194 N, 36.157 E for 6-10 February. Daily local solar time is retained. The native weather grid is 0.5 x 0.625 degrees, approximately 50 km, and is shared regional context for both synthetic cells.
 
-POWER returns −3.49, −9.56, −10.79, −14.38 and −11.04 °C for 6–10 February. These daily values use local solar time (LST). The worker uses an end-of-product-date UTC label for `observedAt` and preserves the original date and LST in the map evidence. The value describes regional weather. [Recorded POWER query](https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MIN&community=RE&longitude=38.31&latitude=38.35&start=20230206&end=20230210&format=JSON), [POWER spatial-resolution guidance](https://power.larc.nasa.gov/docs/services/)
+| Date | Minimum C | Maximum C | Humidity % | Precipitation mm/day | Wind m/s at 2 m |
+|---|---:|---:|---:|---:|---:|
+| 6 Feb | 4.99 | 9.98 | 90.34 | 24.20 | 4.17 |
+| 7 Feb | 1.28 | 10.01 | 71.67 | 2.73 | 3.08 |
+| 8 Feb | -1.17 | 7.72 | 65.46 | 0.04 | 2.32 |
+| 9 Feb | -1.05 | 9.45 | 60.04 | 0.28 | 1.20 |
+| 10 Feb | -3.11 | 9.71 | 75.97 | 0.08 | 3.27 |
 
-| ARIA · 10 February | Lights · 3 January | Lights · 8 February |
-|---|---|---|
-| ![Malatya ARIA overlay](../data/nasa/aria-malatya.png) | ![Malatya baseline night lights](../data/nasa/lights-before.png) | ![Malatya after-event night lights](../data/nasa/lights-after.png) |
+The zone alert reference day remains 9 February: **-1.05 C**, producing two cold alerts. The card's coldest-day summary is **-3.11 C on 10 February**. These are different dated summaries of the same five-day series, not conflicting measurements. Precipitation alone does not distinguish rain/snow, and daily mean wind is not a gust measurement.
 
-## Zone output and call provenance
+## Radar and automatic alerts
 
-| Zone ID | Source posts | Distinct synthetic original calls | Colored overlay area | `damage` / `dark` / `silentZone` |
-|---|---|---|---|---|
-| `malatya-turuncu` | 4 | 1 | 76.875% | unknown / unknown / unknown |
-| `malatya-mor` | 1 | 1 | 40.9375% | unknown / unknown / unknown |
+ARIA's approximately 30 m Sentinel-1 damage proxy is a rendered surface-change layer. Vegetation, terrain and unflagged validity affect interpretation; a normalized building-damage fraction is not available from this export. The zone `damage`, `dark` and `silentZone` fields remain null. The legacy browse brightness logic is kept as a conservative separate diagnostic; the new light-change view uses original numeric radiance and QA, not the brightness of a JPEG/PNG.
 
-The call window is replay seconds `[0,20)`. `data/nasa/analysis-config.json` maps four Ayşe reposts to one original call. These are sample counts from the synthetic replay. They provide no estimate of total reports from Malatya.
+The two 500 m cells are synthetic report grouping locations, with four reposts counting as one original simulated call and a separate fifth report counting as another. They do not represent total real calls, population or satellite-detected people. The current watcher emits two cold alerts and zero silent-zone alerts. HOT destroyed-building outlines are not silently converted into a NASA damage percentage.
 
-The candidate rule requires damage ≥0.20, darkness with a displayed-brightness ratio ≤0.60, and at most one distinct call. Brightness comparisons additionally require ≥80% rendered coverage, baseline brightness ≥10/255 and ≤20% saturation. These thresholds are demo choices. The cached evidence produces **two cold alerts and zero silent-zone alerts**.
+## Provenance and reproduction
 
-`/data/zones.geojson` includes IDs, polygons, source URLs, dates, native scales, thresholds, counts, cold flags and quality details. Unknown evidence is JSON `null`. Role 3 should display it as unknown. The shared database `Zone` interface requires numeric/boolean fields, so the evidence GeoJSON should be consumed as a separate nullable map format. The watcher posts only the existing `AlertPayload` fields through the event API.
+- `data/nasa/manifest.json`: original source URLs, hashes and recorded retrieval times.
+- `data/nasa/atlas/manifest.json`: Antakya browse imagery and catalog provenance.
+- `public/data/nasa-atlas/originals.json`: original-derived frames, cell measurements, paired counts and QA interpretation.
+- `public/data/zones.geojson`: scenario evidence, weather, timestamps and source scales.
+- `public/data/antakya/ATTRIBUTION.md`: separate provider credits and licenses.
 
-## Independent check
-
-DHA documented the collapse of Yeni Cami on 6 February 2023 at 10:47 Türkiye time. The public OSM landmark is at longitude 38.3181102, latitude 38.3495353. The surrounding 500 m cell has 98.2143% colored overlay area, consistent with surface change in a location with reported damage. The night-light rendering there is also saturated. The comparison supports a coarse location check and leaves nighttime power conditions unresolved. Numerical results and the landmark reference are saved in `data/nasa/validation.json`. [DHA field report](https://www.dha.com.tr/gundem/malatyada-depremde-yeni-cami-de-yikildi-2201455), [OpenStreetMap landmark](https://www.openstreetmap.org/way/296572992)
-
-## Reproduce and run
-
-Use Python 3.10+ with `scripts/requirements-nasa.txt` and Node.js 22.18+ or 24. From the repository root, run the preparation script against the committed cache.
-
-```sh
-python scripts/prepare-nasa.py
-python scripts/nasa-evidence.test.py
-node workers/satellite-watcher.ts --dry-run
-node --test scripts/satellite-watcher.test.mjs
-```
-
-Use `--download` to fetch missing inputs or `--refresh` to replace the cache deliberately. The manifest retains source URLs, SHA-256 hashes and original download file timestamps across offline rebuilds. The cache's `.gitattributes` preserves downloaded bytes across Git checkouts on Windows and Linux.
-
-Once Role 1's event API is running with `AGENT_KEY` in `.env.local`, run one observation batch. Set `BASE_URL` when the API is hosted elsewhere.
-
-```sh
-node --env-file=.env.local workers/satellite-watcher.ts
-```
-
-Each event has a key derived from desk, zone, alert kind, observation and dataset version. The sender retries network failures, HTTP 429 and server errors up to three times with the same key. A repeated invocation relies on the event API's unique key to return the existing ID. The local HTTP test exercises this contract with a simulated stored event followed by a lost success response. Live MongoDB deduplication, priority changes and coordinator approval remain integration checks for Role 1.
-
-Credit the ARIA team, Copernicus and ESA, NASA GIBS / Black Marble, NASA POWER / MERRA-2, and OpenStreetMap contributors. The event packet also requests the following credit line.
-
-Supported by the Michigan Space Grant Consortium, NASA grant 80NSSC20M0124.
+Run the offline preparation and tests listed in [the pilot runbook](antakya-pilot.md). Every workstation can inspect the packaged data without an Earthdata login. A complete operational pipeline still requires the shared backend, Brain and role sessions.

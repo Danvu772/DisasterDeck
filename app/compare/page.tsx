@@ -16,7 +16,7 @@ export default function ComparePage() {
   return (
     <main className="grid h-full grid-cols-2 gap-4 bg-paper px-6 py-4">
       <section className="flex min-h-0 flex-col rounded-card border border-line bg-card p-4">
-        <h2 className="text-xl font-bold">Today (Malatya, 2023)</h2>
+        <h2 className="text-xl font-bold">Today (Antakya, 2023)</h2>
         <p className="mb-2 text-xs"><span className={pill}>The same five tweets, as a sheet</span></p>
         <div className="min-h-0 flex-1 overflow-y-auto"><TodayTable rows={rows} /></div>
         <p className="mt-2 text-lg">Five posts, four rows about one building, nobody knows who called.</p>

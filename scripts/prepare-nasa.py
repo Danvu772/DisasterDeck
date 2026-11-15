@@ -1,15 +1,17 @@
-"""Build the historical Malatya map from cached evidence. --download fetches missing inputs."""
+"""Build the historical Antakya map from cached evidence. --download fetches missing inputs."""
 
 import argparse
 import hashlib
 import json
 import math
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / ".next/cache/nasa-python"))
 import numpy as np
 from PIL import Image
 
@@ -32,20 +34,20 @@ def source_urls():
     urls = {
         "aria-service.json": ARIA + "?f=pjson",
         "aria-catalog.json": ARIA + "/query?" + urlencode({"where": "1=1", "outFields": "*", "returnGeometry": "false", "f": "pjson"}),
-        "aria-malatya.png": ARIA + "/exportImage?" + urlencode({**export, "f": "image"}),
+        "aria-antakya.png": ARIA + "/exportImage?" + urlencode({**export, "f": "image"}),
         "aria-export.json": ARIA + "/exportImage?" + urlencode({**export, "f": "pjson"}),
         "lights-layer.xml": CAPABILITIES,
         "lights-colormap.xml": "https://gibs.earthdata.nasa.gov/colormaps/v1.3/VIIRS_DayNightBand_At_Sensor_Radiance.xml",
-        "power-malatya.json": "https://power.larc.nasa.gov/api/temporal/daily/point?" + urlencode({
-            "parameters": "T2M_MIN", "community": "RE", "longitude": 38.31, "latitude": 38.35,
+        "power-antakya.json": "https://power.larc.nasa.gov/api/temporal/daily/point?" + urlencode({
+            "parameters": "T2M_MIN", "community": "RE", "longitude": CONFIG["queryCoords"][1], "latitude": CONFIG["queryCoords"][0],
             "start": "20230206", "end": "20230210", "format": "JSON",
         }),
-        "power-weather-malatya.json": "https://power.larc.nasa.gov/api/temporal/daily/point?" + urlencode({
+        "power-weather-antakya.json": "https://power.larc.nasa.gov/api/temporal/daily/point?" + urlencode({
             "parameters": "T2M_MIN,T2M_MAX,RH2M,PRECTOTCORR,WS2M", "community": "AG",
-            "longitude": 38.31, "latitude": 38.35,
+            "longitude": CONFIG["queryCoords"][1], "latitude": CONFIG["queryCoords"][0],
             "start": "20230206", "end": "20230210", "format": "JSON",
         }),
-        "landmark.json": "https://nominatim.openstreetmap.org/search?" + urlencode({"q": "Yeni Cami, Malatya, Turkey", "format": "json", "limit": 1}),
+        "landmark.json": "https://nominatim.openstreetmap.org/search?" + urlencode({"q": CONFIG["landmarkQuery"], "format": "json", "limit": 1}),
     }
     for name, date in [("before", CONFIG["lightsBeforeDate"]), ("after", CONFIG["lightsAfterDate"])]:
         urls[f"lights-{name}.png"] = "https://wvs.earthdata.nasa.gov/api/v1/snapshot?" + urlencode({
@@ -206,8 +208,8 @@ def main():
         raise ValueError("Wrong Black Marble layer")
     colormap = ET.parse(CACHE / "lights-colormap.xml")
     white = next(node for node in colormap.iter("ColorMapEntry") if node.get("rgb") == "255,255,255")
-    power = load_json(CACHE / "power-malatya.json")
-    weather = weather_series(load_json(CACHE / "power-weather-malatya.json"))
+    power = load_json(CACHE / "power-antakya.json")
+    weather = weather_series(load_json(CACHE / "power-weather-antakya.json"))
     values = power["properties"]["parameter"]["T2M_MIN"]
     minimum = values[CONFIG["temperatureDate"].replace("-", "")]
     if power["parameters"]["T2M_MIN"]["units"] != "C" or minimum == power["header"]["fill_value"] or not math.isfinite(minimum):
@@ -218,7 +220,7 @@ def main():
     replay = load_json(ROOT / "data/tweets_replay.json")
     if set(CONFIG["reportOrigins"]) != {post["id"] for post in replay}:
         raise ValueError("Update report provenance for the changed replay")
-    aria, before, after = [read_image(name) for name in ["aria-malatya.png", "lights-before.png", "lights-after.png"]]
+    aria, before, after = [read_image(name) for name in ["aria-antakya.png", "lights-before.png", "lights-after.png"]]
     features = []
     for zone in CONFIG["zones"]:
         box = zone_box(zone["center"])
@@ -238,21 +240,21 @@ def main():
         if damage["damage"] is not None and lights["dark"] is not None:
             silent = damage["damage"] >= thresholds["heavyDamageMinFraction"] and lights["dark"] and calls <= thresholds["fewCallsMax"]
         properties = {
-            "_id": zone["id"], "name": zone["name"], "deskId": CONFIG["deskId"], "region": "malatya-merkez",
+            "_id": zone["id"], "name": zone["name"], "deskId": CONFIG["deskId"], "region": "antakya-merkez",
             "damage": damage["damage"], "dark": lights["dark"], "calls": calls, "silentZone": silent,
             "cold": minimum < 0, "minTempC": minimum, "reportPosts": len(posts),
             "callsBasis": "synthetic-distinct-original-calls", "geometryOrigin": "500m-demo-cell",
             "observedAt": CONFIG["damageDate"] + "T23:59:59Z",
             "temperatureObservedAt": CONFIG["temperatureDate"] + "T23:59:59Z",
             "damageEvidence": damage, "lightsEvidence": lights,
-            "temperatureEvidence": {"date": CONFIG["temperatureDate"], "timeStandard": power["header"]["time_standard"], "units": "C", "source": "NASA POWER / MERRA-2", "gridDegrees": [0.5, 0.625], "queryCoords": [38.35, 38.31]},
+            "temperatureEvidence": {"date": CONFIG["temperatureDate"], "timeStandard": power["header"]["time_standard"], "units": "C", "source": "NASA POWER / MERRA-2", "gridDegrees": [0.5, 0.625], "queryCoords": CONFIG["queryCoords"]},
         }
         features.append({"type": "Feature", "id": zone["id"], "bbox": box, "geometry": {"type": "Polygon", "coordinates": [[[left, bottom], [right, bottom], [right, top], [left, top], [left, bottom]]]}, "properties": properties})
     landmark = load_json(CACHE / "landmark.json")[0]
     point = [float(landmark["lon"]), float(landmark["lat"])]
     nearby = pixel_mask(zone_box([point[1], point[0]]))
     metadata = {
-        "version": CONFIG["version"], "deskId": CONFIG["deskId"], "scenarioAt": CONFIG["scenarioAt"],
+        "version": CONFIG["version"], "deskId": CONFIG["deskId"], "cityName": CONFIG["cityName"], "scenarioAt": CONFIG["scenarioAt"],
         "bboxOrder": "west,south,east,north", "coordinateOrder": "longitude,latitude", "thresholds": CONFIG["thresholds"],
         "dates": {key: CONFIG[key] for key in ["damageDate", "lightsBeforeDate", "lightsAfterDate", "temperatureDate"]},
         "nativeResolutionMeters": {"damage": 30, "nightLights": 500, "temperatureApprox": 50000},
@@ -262,9 +264,9 @@ def main():
             if value != power["header"]["fill_value"] and math.isfinite(value)
         ],
         "weatherSeries": weather,
-        "weatherSourceURL": source_urls()["power-weather-malatya.json"],
+        "weatherSourceURL": source_urls()["power-weather-antakya.json"],
         "sourcesManifestRepositoryPath": "data/nasa/manifest.json", "reportWindowSeconds": CONFIG["reportWindowSeconds"],
-        "sourceURLs": {"damage": ARIA, "nightLights": CAPABILITIES, "nightLightsColormap": source_urls()["lights-colormap.xml"], "temperature": source_urls()["power-malatya.json"]},
+        "sourceURLs": {"damage": ARIA, "nightLights": CAPABILITIES, "nightLightsColormap": source_urls()["lights-colormap.xml"], "temperature": source_urls()["power-antakya.json"]},
         "attribution": "NASA JPL/Caltech ARIA Team, Copernicus, ESA; NASA GIBS / Suomi NPP VIIRS Black Marble; NASA POWER / MERRA-2",
         "whiteRadianceInterval": white.get("value"), "missingValue": None,
         "observedAtMeaning": "Conservative UTC end-of-product-date label; exact acquisition time unavailable; POWER source days use LST",
@@ -274,7 +276,7 @@ def main():
     write_json(CACHE / "validation.json", {
         "ariaExtentMatches": True, "landmark": {"name": landmark["name"], "coordsLngLat": point, "osmWayId": landmark["osm_id"]},
         "landmark500mEvidence": {"damage": damage_summary(aria, nearby), "lights": lights_summary(before, after, nearby)},
-        "independentReport": {"url": "https://www.dha.com.tr/gundem/malatyada-depremde-yeni-cami-de-yikildi-2201455", "publishedAt": "2023-02-06T10:47:00+03:00", "finding": "The reporter documented collapse of Yeni Cami. The surrounding rendered overlay flags surface change; validity and power outage remain unresolved."},
+        "independentReport": {"url": "https://data.humdata.org/dataset/hotosm_tur_destroyed_buildings", "publishedAt": "2023-05-22T12:08:50Z", "finding": "Separate HOT/OSM historical destroyed-building reference polygons are included in public/data/antakya/buildings.geojson. They are community mapping, not our model predictions or a field safety assessment."},
     })
     print(json.dumps({"zones": [{"id": item["id"], "calls": item["properties"]["calls"], "dark": item["properties"]["dark"], "silentZone": item["properties"]["silentZone"], "minTempC": item["properties"]["minTempC"]} for item in features]}, indent=2))
 

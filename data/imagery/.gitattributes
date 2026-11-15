@@ -1,0 +1,2 @@
+# Cached HTTP bodies are hashed byte-for-byte, including on Windows checkouts.
+* -text

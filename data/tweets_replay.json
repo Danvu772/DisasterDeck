@@ -1,52 +1,52 @@
 [
   {
-    "id": "demo-malatya-001",
-    "text": "Tatbikat: Malatya merkez, Turuncu Avlu'da Ayşe enkaz altında. Bir kişi için yardım istiyoruz. Demo irtibat: 000 000 00 42.",
+    "id": "demo-antakya-001",
+    "text": "Tatbikat: Antakya merkez, Turuncu Avlu'da Ayşe enkaz altında. Bir kişi için yardım istiyoruz. Demo irtibat: 000 000 00 42.",
     "ts_offset_seconds": 0,
     "coords": [
-      38.35,
-      38.31
+      36.194,
+      36.157
     ],
-    "region": "malatya-merkez"
+    "region": "antakya-merkez"
   },
   {
-    "id": "demo-malatya-002",
-    "text": "İlk ihbarı aktarıyorum: Malatya merkezdeki Turuncu Avlu'da Ayşe mahsur kalmış. Tatbikat irtibatı 000 000 00 42.",
+    "id": "demo-antakya-002",
+    "text": "İlk ihbarı aktarıyorum: Antakya merkezdeki Turuncu Avlu'da Ayşe mahsur kalmış. Tatbikat irtibatı 000 000 00 42.",
     "ts_offset_seconds": 4,
     "coords": [
-      38.35,
-      38.31
+      36.194,
+      36.157
     ],
-    "region": "malatya-merkez"
+    "region": "antakya-merkez"
   },
   {
-    "id": "demo-malatya-003",
-    "text": "Aynı çağrıyı yeniden paylaşıyorum. Malatya merkez, Turuncu Avlu. Ayşe için ekip bekleniyor, bir kişi enkaz altında.",
+    "id": "demo-antakya-003",
+    "text": "Aynı çağrıyı yeniden paylaşıyorum. Antakya merkez, Turuncu Avlu. Ayşe için ekip bekleniyor, bir kişi enkaz altında.",
     "ts_offset_seconds": 8,
     "coords": [
-      38.35,
-      38.31
+      36.194,
+      36.157
     ],
-    "region": "malatya-merkez"
+    "region": "antakya-merkez"
   },
   {
-    "id": "demo-malatya-004",
-    "text": "Tatbikat güncellemesi: Turuncu Avlu'daki Ayşe için ilk yardım çağrısını tekrar iletiyorum. Yer Malatya merkez, kişi sayısı bir.",
+    "id": "demo-antakya-004",
+    "text": "Tatbikat güncellemesi: Turuncu Avlu'daki Ayşe için ilk yardım çağrısını tekrar iletiyorum. Yer Antakya merkez, kişi sayısı bir.",
     "ts_offset_seconds": 12,
     "coords": [
-      38.35,
-      38.31
+      36.194,
+      36.157
     ],
-    "region": "malatya-merkez"
+    "region": "antakya-merkez"
   },
   {
-    "id": "demo-malatya-005",
-    "text": "Ayrı tatbikat ihbarı: Malatya merkez, Mor Avlu'da iki kişi enkaz altında. Ekip gerekiyor. Demo irtibat: 000 000 00 73.",
+    "id": "demo-antakya-005",
+    "text": "Ayrı tatbikat ihbarı: Antakya merkez, Mor Avlu'da iki kişi enkaz altında. Ekip gerekiyor. Demo irtibat: 000 000 00 73.",
     "ts_offset_seconds": 16,
     "coords": [
-      38.36,
-      38.33
+      36.204,
+      36.177
     ],
-    "region": "malatya-merkez"
+    "region": "antakya-merkez"
   }
 ]

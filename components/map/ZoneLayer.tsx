@@ -17,6 +17,7 @@ export interface ZoneProps {
   temperatureEvidence?: { date?: string; source?: string };
 }
 export interface ZoneMeta {
+  cityName?: string;
   weatherSeries?: { date: string; minTempC: number | null; maxTempC: number | null; humidityPct: number | null; precipitationMm: number | null; windMs: number | null }[];
   weatherSourceURL?: string;
   dates?: { damageDate?: string; lightsAfterDate?: string; temperatureDate?: string };

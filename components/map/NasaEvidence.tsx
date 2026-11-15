@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ZoneFC, ZoneMeta } from "./ZoneLayer";
 
 type WeatherDay = NonNullable<ZoneMeta["weatherSeries"]>[number];
@@ -16,6 +16,12 @@ const dateLabel = (date: string) => new Date(date + "T12:00:00Z").toLocaleDateSt
 
 export function NasaEvidence({ fc, children }: { fc: ZoneFC; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 768px)");
+    const update = () => setOpen(desktop.matches);
+    update(); desktop.addEventListener("change", update);
+    return () => desktop.removeEventListener("change", update);
+  }, []);
   const [date, setDate] = useState("");
   const [metricKey, setMetricKey] = useState<WeatherKey>("minTempC");
   const series = fc.metadata?.temperatureSeries ?? [];
@@ -32,11 +38,10 @@ export function NasaEvidence({ fc, children }: { fc: ZoneFC; children?: ReactNod
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="nasa-evidence"
         className="w-full shrink-0 p-3 text-left">
         <span className="flex justify-between gap-3 text-sm font-bold">
-          <span>NASA · Satellite & weather</span><span aria-hidden>{open ? "−" : "+"}</span>
+          <span>Antakya · Satellite evidence</span><span aria-hidden>{open ? "−" : "+"}</span>
         </span>
-        {coldest && <span className="mt-1 block text-3xl font-bold tabular-nums">{coldest.minTempC.toFixed(2)} °C</span>}
-        <span className="block text-xs text-muted">Coldest daily minimum · {coldest && dateLabel(coldest.date)}</span>
-        <span className="block text-xs text-muted">Malatya city area · Historical observations</span>
+        <span className="block text-xs text-muted">Historical imagery · Synthetic operations</span>
+        {coldest && <span className="mt-1 block text-xs tabular-nums text-muted">Coldest daily minimum: {coldest.minTempC.toFixed(2)} °C · {dateLabel(coldest.date)}</span>}
         <span className="mt-1 block text-xs text-primary">{open ? "Hide evidence" : "View dates, sources and limitations"}</span>
       </button>
       {open && (
@@ -75,8 +80,8 @@ export function NasaEvidence({ fc, children }: { fc: ZoneFC; children?: ReactNod
           <p className="mt-3">Cold exposure gives the coordinator a reason to review blanket and shelter requests.</p>
           {withheld && <details className="mt-3 border-t border-line pt-2">
             <summary className="cursor-pointer font-bold">Why satellite alerts are withheld</summary>
-            <p className="mt-2 text-xs">ARIA radar · 10 Feb 2023 · about 30 m. Surface-change pixels are visible, but transparent pixels lack a reliable validity mask. A damaged-area percentage needs more information.</p>
-            <p className="mt-2 text-xs">Black Marble · 3 Jan and 8 Feb 2023 · about 500 m. The city pixels reach the image brightness limit, so the comparison cannot establish a power outage.</p>
+            <p className="mt-2 text-xs">ARIA radar · about 30 m. Rendered surface change alone does not provide a validated damaged-building percentage.</p>
+            <p className="mt-2 text-xs">Black Marble · 3 Jan and 8 Feb 2023 · about 500 m. The night-light comparison uses original radiance and quality flags. Many pixels have no usable after observation. Measured light loss is a regional signal; it does not prove building collapse or occupancy.</p>
             <p className="mt-2 text-xs">A silent-zone alert requires evidence of damage and loss of light, alongside few calls. That evidence is incomplete here.</p>
           </details>}
           <p className="mt-3 flex flex-wrap gap-3 text-xs text-primary">

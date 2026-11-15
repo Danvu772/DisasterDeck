@@ -1,13 +1,13 @@
 {
-  "deskId": "malatya-2023",
+  "deskId": "antakya-2023",
   "regions": [
     {
-      "_id": "malatya-merkez",
-      "name": "Malatya Merkez",
-      "deskId": "malatya-2023",
+      "_id": "antakya-merkez",
+      "name": "Antakya Merkez",
+      "deskId": "antakya-2023",
       "zoneIds": [
-        "malatya-turuncu",
-        "malatya-mor"
+        "antakya-turuncu",
+        "antakya-mor"
       ]
     }
   ],
@@ -16,13 +16,13 @@
       "_id": "volunteer-callback",
       "name": "Zeynep",
       "role": "volunteer",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "status": "available",
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "trust": "vetted",
       "coords": [
-        38.351,
-        38.311
+        36.195,
+        36.158
       ],
       "profile": {
         "vehicle": "none",
@@ -35,13 +35,13 @@
       "_id": "volunteer-mechanic",
       "name": "Demo Mekanik",
       "role": "volunteer",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "status": "available",
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "trust": "vetted",
       "coords": [
-        38.356,
-        38.315
+        36.2,
+        36.162
       ],
       "profile": {
         "vehicle": "van",
@@ -54,13 +54,13 @@
       "_id": "field-alpha",
       "name": "Saha Ekibi A",
       "role": "field",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "status": "available",
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "trust": "official",
       "coords": [
-        38.353,
-        38.313
+        36.197,
+        36.16
       ],
       "profile": {
         "vehicle": "van",
@@ -73,13 +73,13 @@
       "_id": "supplier-primary",
       "name": "Demo Depo A",
       "role": "supplier",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "status": "available",
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "trust": "vetted",
       "coords": [
-        38.352,
-        38.311
+        36.196,
+        36.158
       ],
       "profile": {
         "vehicle": "truck",
@@ -93,13 +93,13 @@
       "_id": "supplier-backup",
       "name": "Demo Depo B",
       "role": "supplier",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "status": "available",
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "trust": "vetted",
       "coords": [
-        38.357,
-        38.317
+        36.201,
+        36.164
       ],
       "profile": {
         "vehicle": "truck",
@@ -113,13 +113,13 @@
       "_id": "shelter-desk",
       "name": "Demo Barınak Görevlisi",
       "role": "shelter",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "status": "available",
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "trust": "vetted",
       "coords": [
-        38.352,
-        38.313
+        36.196,
+        36.16
       ],
       "profile": {
         "vehicle": "none",
@@ -132,13 +132,13 @@
       "_id": "coordinator-duty",
       "name": "Demo Nöbetçi Koordinatör",
       "role": "coordinator",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "status": "available",
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "trust": "official",
       "coords": [
-        38.353,
-        38.31
+        36.197,
+        36.157
       ],
       "profile": {
         "vehicle": "none",
@@ -149,13 +149,13 @@
       "_id": "coordinator-backup",
       "name": "Demo Yedek Koordinatör",
       "role": "coordinator",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "status": "available",
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "trust": "official",
       "coords": [
-        38.354,
-        38.31
+        36.198,
+        36.157
       ],
       "profile": {
         "vehicle": "none",
@@ -166,13 +166,13 @@
       "_id": "public-demo",
       "name": "Demo Katılımcı",
       "role": "public",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "status": "available",
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "trust": "public",
       "coords": [
-        38.36,
-        38.33
+        36.204,
+        36.177
       ],
       "profile": {
         "vehicle": "none",
@@ -184,14 +184,14 @@
     {
       "_id": "shelter-a",
       "name": "Demo Barınak A",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "coords": [
-        38.352,
-        38.313
+        36.196,
+        36.16
       ],
       "bedsUsed": 38,
       "bedsTotal": 50,
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "observedAt": "2023-02-11T09:00:00+03:00",
       "updated": "2023-02-11T09:00:00+03:00",
       "history": [
@@ -206,14 +206,14 @@
     {
       "_id": "shelter-b",
       "name": "Demo Barınak B",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "coords": [
-        38.356,
-        38.315
+        36.2,
+        36.162
       ],
       "bedsUsed": 24,
       "bedsTotal": 40,
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "observedAt": "2023-02-11T09:00:00+03:00",
       "updated": "2023-02-11T09:00:00+03:00",
       "history": [
@@ -228,14 +228,14 @@
     {
       "_id": "shelter-c",
       "name": "Demo Barınak C",
-      "region": "malatya-merkez",
+      "region": "antakya-merkez",
       "coords": [
-        38.36,
-        38.331
+        36.204,
+        36.178
       ],
       "bedsUsed": 12,
       "bedsTotal": 30,
-      "deskId": "malatya-2023",
+      "deskId": "antakya-2023",
       "observedAt": "2023-02-11T09:00:00+03:00",
       "updated": "2023-02-11T09:00:00+03:00",
       "history": [

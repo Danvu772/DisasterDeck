@@ -26,7 +26,7 @@ const once = process.argv.includes("--once");
 const dry = process.argv.includes("--dry");
 const EVERY_MS = Number(process.env.SHEET_POLL_SECONDS ?? 30) * 1000;
 const HUMAN_GRACE_MS = 5 * 60_000;
-const deskId = process.env.DESK_ID ?? "malatya-2023";
+const deskId = process.env.DESK_ID ?? "antakya-2023";
 const log = (...m: unknown[]) => console.error(`[sheet-sync ${new Date().toISOString().slice(11, 19)}]`, ...m);
 
 // What we know about each row between passes, kept on disk so a restart does not re-post everything.

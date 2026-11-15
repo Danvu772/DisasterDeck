@@ -6,9 +6,8 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, Marker, Polyline, Tooltip, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Polyline, useMap, useMapEvents } from "react-leaflet";
 import type { Incident, LatLng, Site } from "@/lib/types";
-import validation from "../../data/nasa/validation.json";
 import { IncidentCards, SiteCards } from "../BoardCards";
 import { Stamp } from "../Stamp";
 import { chip, pill, statusTag, statusText, tierBadge, tierBar, tierText } from "../encode";
@@ -18,16 +17,6 @@ import { BasemapPicker, BasemapTiles } from "./basemap";
 import { HatchDefs, useZones, ZoneLayer, type ZoneMeta } from "./ZoneLayer";
 import { NasaEvidence } from "./NasaEvidence";
 import { NasaAtlasControls, NasaAtlasOverlay, useNasaAtlas, type AtlasSelection } from "./NasaAtlas";
-
-// The NASA check: one ink ring on the Yeni Cami landmark. JSON stores [lng, lat].
-const CHECK_AT: LatLng = [validation.landmark.coordsLngLat[1], validation.landmark.coordsLngLat[0]];
-const CHECK_PCT = Math.round(validation.landmark500mEvidence.damage.flaggedOverlayFraction * 100);
-const checkRing = () => L.divIcon({
-  className: "",
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-  html: `<span class="block h-full w-full rounded-full border-2 border-solid border-ink"></span>`,
-});
 
 function FitOnce({ points }: { points: LatLng[] }) {
   const map = useMap();
@@ -141,20 +130,20 @@ function NasaLegend({ meta }: { meta?: ZoneMeta }) {
 
 function Legend({ meta, zones }: { meta?: ZoneMeta; zones: boolean }) {
   const dot = "inline-block h-3.5 w-3.5 rounded-full align-middle";
-  // Below md the legend sits behind a button. At md and up it is always open.
+  // Keep the imagery visible; operators can open the legend at any screen size.
   const [open, setOpen] = useState(false);
   return (
     <>
       {!open && (
         <button type="button" onClick={() => setOpen(true)} aria-expanded={false}
-          className={`${chip(false)} pointer-events-auto absolute bottom-6 left-3 z-[1000] md:hidden`}>
+          className={`${chip(false)} pointer-events-auto absolute bottom-6 left-3 z-[1000]`}>
           Legend
         </button>
       )}
-    <div className={`pointer-events-auto absolute bottom-6 left-3 z-[1000] max-h-[calc(100%-3rem)] overflow-y-auto rounded-card border border-line bg-card p-3 text-xs md:block md:max-w-80 ${open ? "block" : "hidden"}`}>
+    <div className={`pointer-events-auto absolute bottom-6 left-3 z-[1000] max-h-[calc(100%-3rem)] max-w-80 overflow-y-auto rounded-card border border-line bg-card p-3 text-xs ${open ? "block" : "hidden"}`}>
       <div className="mb-1 flex items-center justify-between gap-3">
         <p className="font-bold">Legend</p>
-        <button type="button" onClick={() => setOpen(false)} className={`${chip(false)} md:hidden`}>Close</button>
+        <button type="button" onClick={() => setOpen(false)} className={chip(false)}>Close</button>
       </div>
       <div className="flex flex-wrap gap-1">
         <span className={pill}><span className={`${dot} ${tierBar(0)}`} /> Danger to life</span>
@@ -165,7 +154,6 @@ function Legend({ meta, zones }: { meta?: ZoneMeta; zones: boolean }) {
         <span className={pill}><span className={`inline-block h-3 w-3 rounded-tag align-middle ${tierBar(2)}`} /> Shelter with room</span>
         <span className={pill}><span className="inline-block h-2 w-5 border-4 border-solid border-ink bg-card align-middle" /> Road closed</span>
         <span className={pill}><span className="inline-block h-2 w-5 border-2 border-dashed border-ink bg-card align-middle" /> Road unconfirmed</span>
-        {zones && <span className={pill}><span className="inline-block h-3 w-3 rounded-full border-2 border-solid border-ink align-middle" /> Independent check, {validation.landmark.name} (DHA)</span>}
       </div>
       <p className="mt-1">Bigger means more people reported it.</p>
       <p>Dashed outline: unconfirmed. Thick: confirmed.</p>
@@ -182,7 +170,7 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
 }) {
   const zones = useZones(zonesUrl ?? "");
   const atlas = useNasaAtlas();
-  const [atlasSelection, setAtlasSelection] = useState<AtlasSelection>({ frameId: "hls-after-2023-02-09", showLimits: false, eventScope: "off", showDemoCells: false });
+  const [atlasSelection, setAtlasSelection] = useState<AtlasSelection>({ frameId: "maxar-after-2023-02-11", showLimits: false, eventScope: "off", showDemoCells: false, compare: true, split: 50, showBuildings: true });
   const [atlasTarget, setAtlasTarget] = useState<LatLng>();
   const [cityBounds, setCityBounds] = useState<[LatLng, LatLng]>();
   const [selected, setSelected] = useState<string | null>(focus ?? null);
@@ -230,6 +218,7 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
   const isExtra = (i: MapItem) => i.kind === "shelter" || i.kind === "road";
   const points = placed.map((i) => i.coords!);
   const cityPoints: [LatLng, LatLng] | undefined = atlas ? [[atlas.bbox[1], atlas.bbox[0]], [atlas.bbox[3], atlas.bbox[2]]] : undefined;
+  const initialImageryBounds = atlas?.frames.find(frame => frame.id === "maxar-after-2023-02-11")?.bounds;
   const listed = onlyInView && bounds ? placed.filter((i) => bounds.contains(i.coords!)) : placed;
   const listedMain = listed.filter((i) => !isExtra(i));
   const listedExtra = listed.filter(isExtra);
@@ -306,32 +295,28 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
       </aside>
 
       <div className="relative order-1 h-[55vh] md:order-2 md:h-auto md:flex-1">
-        <MapContainer center={[38.35, 38.31]} zoom={13} className="h-full w-full" zoomControl>
+        <MapContainer center={[36.194, 36.157]} zoom={13} className="h-full w-full" zoomControl>
           <BasemapTiles extra={`${zones?.metadata?.attribution ? `. Zones: ${zones.metadata.attribution}` : ""}${atlas ? ". Atlas: NASA GIBS, MODIS, GPM IMERG, NASA/USGS/ESA HLS, NASA EONET" : ""}`} />
           <KeepSized />
           {atlas && <NasaAtlasOverlay atlas={atlas} selection={atlasSelection} />}
           {zones && atlasSelection.showDemoCells && <ZoneLayer fc={zones} />}
-          <FitOnce key={cityPoints && !focus ? "city" : "records"} points={cityPoints && !focus ? cityPoints : points} />
+          <FitOnce key={initialImageryBounds && !focus ? "imagery" : "records"} points={initialImageryBounds && !focus ? initialImageryBounds : points} />
           <FitCity bounds={cityBounds} />
           <FlyTo to={flyTarget} />
-          <FlyTo to={atlasTarget} zoom={10} />
+          <FlyTo to={atlasTarget} zoom={17} />
           <TrackBounds onChange={setBounds} />
           {placed.filter((i) => i.linkTo).map((i) => (
             <Polyline key={`link:${i.key}`} positions={[i.coords!, i.linkTo!]}
               pathOptions={{ className: "stroke-muted", dashArray: "4 6", weight: 2 }} />
           ))}
-          {atlasSelection.showDemoCells && <Marker position={CHECK_AT} icon={checkRing()} interactive>
-            <Tooltip>
-              Independent check: {validation.landmark.name} collapsed, {day(validation.independentReport.publishedAt.slice(0, 10))} (DHA).
-              ARIA overlay covers {CHECK_PCT}% of its 500 m cell.
-            </Tooltip>
-          </Marker>}
           {placed.map((it) => (
             <Marker key={it.key} position={it.coords!} icon={iconFor(it, selected === it.key)}
               zIndexOffset={selected === it.key ? 1000 : it.kind === "incident" ? 500 : isExtra(it) ? 250 : 0}
               title={it.title} eventHandlers={{ click: () => pick(it) }} />
           ))}
         </MapContainer>
+        {atlasSelection.compare && atlas?.frames.find(frame => frame.id === atlasSelection.frameId)?.tileURL &&
+          <div aria-hidden className="pointer-events-none absolute bottom-0 top-0 z-[500] w-0.5 border-l border-ink bg-card" style={{ left: `${atlasSelection.split ?? 50}%` }} />}
         <HatchDefs />
         <Legend meta={zones?.metadata} zones={!!zones && atlasSelection.showDemoCells} />
         {zones && <NasaEvidence fc={zones}>

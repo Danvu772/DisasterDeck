@@ -1,10 +1,10 @@
-# Malatya scenario player
+# Antakya scenario player
 
 The player sends synthetic exercise observations through the event API. Its five cues reuse the delivered seed and the Türkiye 2023 story. The volunteer, coordinator, field team and suppliers use the app for their live actions. The player supplies unattended reports and explicit presenter fallback cues.
 
 ## Run one cue
 
-Use Node.js 22.18+ or 24. From the repository root, list the cues or load the team's existing `.env.local` with `AGENT_KEY`. `BASE_URL` defaults to `http://localhost:3000`. `DESK_ID`, when set, must be `malatya-2023`.
+Use Node.js 22.18+ or 24. From the repository root, list the cues or load the team's existing `.env.local` with `AGENT_KEY`. `BASE_URL` defaults to `http://localhost:3000`. `DESK_ID`, when set, must be `antakya-2023`.
 
 ```sh
 node workers/scenario-player.ts --list
@@ -30,7 +30,7 @@ node --env-file=.env.local workers/scenario-player.ts --run rehearsal-01 --step 
 | `truck-breakdown` | The primary supplier's unique delivery for the site's blanket need is accepted and open | `vehicle_breakdown`, actual delivery task ID, `canContinue: false`. An existing breakdown is recorded as observed. |
 | `truck-repaired` | An actual vehicle-breakdown incident associated with that original delivery | An update with the existing `incidentId`, original `taskId`, `resolved: true` and `canContinue: true`. Use the cue when the presenter confirms the scripted repair. |
 
-The configuration is `data/scenarios/malatya.json`. It contains proposed demo identities, synthetic observation text, locations and the historical reference scene. The offline planning helper can use the reference offsets of 20, 30, 40, 60 and 90 seconds. The live CLI timestamps each new synthetic observation at the exercise time, matching the current X agent and personal-agent flow. Prepared timestamps are reused on retries. NASA evidence cards show the products' historical observation dates.
+The configuration is `data/scenarios/antakya.json`. It contains proposed demo identities, synthetic observation text, locations and the historical reference scene. The offline planning helper can use the reference offsets of 20, 30, 40, 60 and 90 seconds. The live CLI timestamps each new synthetic observation at the exercise time, matching the current X agent and personal-agent flow. Prepared timestamps are reused on retries. NASA evidence cards show the products' historical observation dates.
 
 The initial site match uses the known replay pin within 100 m. This supports geocoded reports whose extracted address or city label differs from the seed's region key. Without coordinates, the configured address and region identify the case. Multiple matching sites require review. Subsequent cues use the bound record IDs.
 
@@ -48,11 +48,11 @@ The journal is bound to the server origin and configuration. Keep the same URL a
 
 ## API handoff
 
-The player uses `GET /api/board?deskId=malatya-2023` and `POST /api/events`, both with the private `x-agent-key` header. The board must return the contract arrays and preserve blocked tasks and incidents. Each returned record must belong to the requested desk. The POST body carries `source: system`, `actor: scenario-player`, `deskId`, `observedAt`, `dedupeKey` and the typed payload.
+The player uses `GET /api/board?deskId=antakya-2023` and `POST /api/events`, both with the private `x-agent-key` header. The board must return the contract arrays and preserve blocked tasks and incidents. Each returned record must belong to the requested desk. The POST body carries `source: system`, `actor: scenario-player`, `deskId`, `observedAt`, `dedupeKey` and the typed payload.
 
 The event API identifies the authenticated worker and returns `{ id }`. Its unique dedupe index handles a repeated key. The Keeper owns records, and the Dispatcher owns replacement work and notices. Human task acceptance and coordinator approval use the existing app sessions and buttons.
 
-The latest main includes `lib/db.ts`, `lib/seed.ts` and `POST /api/events`. Its actual Zod request schema is used by the scenario and satellite tests. `GET /api/board`, the Keeper and Dispatcher remain team integration dependencies. The local HTTP tests exercise interruption handling and repeatability. Live CP3/CP4 acceptance still needs the board endpoint, Brain and role sessions.
+Current main includes board/inbox/users APIs and core person-event Keeper/Dispatcher handlers. The local HTTP tests exercise the player contract, interruption handling and repeatability, not the complete live backend. Capacity, closure and NASA alert events still need Keeper handlers. Live CP3/CP4 acceptance requires the shared Brain and real role sessions; coordinate with its existing operator.
 
 ## Verification
 

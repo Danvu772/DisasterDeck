@@ -1,14 +1,15 @@
 {
   "type": "FeatureCollection",
   "bbox": [
-    38.29,
-    38.33,
-    38.35,
-    38.39
+    36.12,
+    36.17,
+    36.2,
+    36.22
   ],
   "metadata": {
-    "version": "malatya-nasa-v1",
-    "deskId": "malatya-2023",
+    "version": "antakya-nasa-v1",
+    "deskId": "antakya-2023",
+    "cityName": "Antakya",
     "scenarioAt": "2023-02-11T06:00:00Z",
     "bboxOrder": "west,south,east,north",
     "coordinateOrder": "longitude,latitude",
@@ -34,68 +35,68 @@
     "temperatureSeries": [
       {
         "date": "2023-02-06",
-        "minTempC": -3.49
+        "minTempC": 4.99
       },
       {
         "date": "2023-02-07",
-        "minTempC": -9.56
+        "minTempC": 1.28
       },
       {
         "date": "2023-02-08",
-        "minTempC": -10.79
+        "minTempC": -1.17
       },
       {
         "date": "2023-02-09",
-        "minTempC": -14.38
+        "minTempC": -1.05
       },
       {
         "date": "2023-02-10",
-        "minTempC": -11.04
+        "minTempC": -3.11
       }
     ],
     "weatherSeries": [
       {
         "date": "2023-02-06",
-        "minTempC": -3.49,
-        "maxTempC": 2.97,
-        "humidityPct": 90.26,
-        "precipitationMm": 11.05,
-        "windMs": 2.9
+        "minTempC": 4.99,
+        "maxTempC": 9.98,
+        "humidityPct": 90.34,
+        "precipitationMm": 24.2,
+        "windMs": 4.17
       },
       {
         "date": "2023-02-07",
-        "minTempC": -9.56,
-        "maxTempC": -0.75,
-        "humidityPct": 80.91,
-        "precipitationMm": 2.69,
-        "windMs": 3.96
+        "minTempC": 1.28,
+        "maxTempC": 10.01,
+        "humidityPct": 71.67,
+        "precipitationMm": 2.73,
+        "windMs": 3.08
       },
       {
         "date": "2023-02-08",
-        "minTempC": -10.79,
-        "maxTempC": -1.2,
-        "humidityPct": 78.26,
-        "precipitationMm": 0.0,
-        "windMs": 3.82
+        "minTempC": -1.17,
+        "maxTempC": 7.72,
+        "humidityPct": 65.46,
+        "precipitationMm": 0.04,
+        "windMs": 2.32
       },
       {
         "date": "2023-02-09",
-        "minTempC": -14.38,
-        "maxTempC": -0.24,
-        "humidityPct": 78.93,
-        "precipitationMm": 0.04,
-        "windMs": 2.45
+        "minTempC": -1.05,
+        "maxTempC": 9.45,
+        "humidityPct": 60.04,
+        "precipitationMm": 0.28,
+        "windMs": 1.2
       },
       {
         "date": "2023-02-10",
-        "minTempC": -11.04,
-        "maxTempC": 0.35,
-        "humidityPct": 80.19,
-        "precipitationMm": 0.02,
-        "windMs": 1.27
+        "minTempC": -3.11,
+        "maxTempC": 9.71,
+        "humidityPct": 75.97,
+        "precipitationMm": 0.08,
+        "windMs": 3.27
       }
     ],
-    "weatherSourceURL": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MIN%2CT2M_MAX%2CRH2M%2CPRECTOTCORR%2CWS2M&community=AG&longitude=38.31&latitude=38.35&start=20230206&end=20230210&format=JSON",
+    "weatherSourceURL": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MIN%2CT2M_MAX%2CRH2M%2CPRECTOTCORR%2CWS2M&community=AG&longitude=36.157&latitude=36.194&start=20230206&end=20230210&format=JSON",
     "sourcesManifestRepositoryPath": "data/nasa/manifest.json",
     "reportWindowSeconds": [
       0,
@@ -105,7 +106,7 @@
       "damage": "https://gis.earthdata.nasa.gov/portal/rest/services/DISASTERS_202302_EARTHQUAKE_TURKIYE/2302_opera_dpm/ImageServer",
       "nightLights": "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/1.0.0/WMTSCapabilities.xml",
       "nightLightsColormap": "https://gibs.earthdata.nasa.gov/colormaps/v1.3/VIIRS_DayNightBand_At_Sensor_Radiance.xml",
-      "temperature": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MIN&community=RE&longitude=38.31&latitude=38.35&start=20230206&end=20230210&format=JSON"
+      "temperature": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MIN&community=RE&longitude=36.157&latitude=36.194&start=20230206&end=20230210&format=JSON"
     },
     "attribution": "NASA JPL/Caltech ARIA Team, Copernicus, ESA; NASA GIBS / Suomi NPP VIIRS Black Marble; NASA POWER / MERRA-2",
     "whiteRadianceInterval": "[38.2,999999.0)",
@@ -115,51 +116,51 @@
   "features": [
     {
       "type": "Feature",
-      "id": "malatya-turuncu",
+      "id": "antakya-turuncu",
       "bbox": [
-        38.30713635,
-        38.34775422,
-        38.31286365,
-        38.35224578
+        36.1542172,
+        36.19175422,
+        36.1597828,
+        36.19624578
       ],
       "geometry": {
         "type": "Polygon",
         "coordinates": [
           [
             [
-              38.30713635,
-              38.34775422
+              36.1542172,
+              36.19175422
             ],
             [
-              38.31286365,
-              38.34775422
+              36.1597828,
+              36.19175422
             ],
             [
-              38.31286365,
-              38.35224578
+              36.1597828,
+              36.19624578
             ],
             [
-              38.30713635,
-              38.35224578
+              36.1542172,
+              36.19624578
             ],
             [
-              38.30713635,
-              38.34775422
+              36.1542172,
+              36.19175422
             ]
           ]
         ]
       },
       "properties": {
-        "_id": "malatya-turuncu",
+        "_id": "antakya-turuncu",
         "name": "Turuncu Avlu demo cell",
-        "deskId": "malatya-2023",
-        "region": "malatya-merkez",
+        "deskId": "antakya-2023",
+        "region": "antakya-merkez",
         "damage": null,
         "dark": null,
         "calls": 1,
         "silentZone": null,
         "cold": true,
-        "minTempC": -14.38,
+        "minTempC": -1.05,
         "reportPosts": 4,
         "callsBasis": "synthetic-distinct-original-calls",
         "geometryOrigin": "500m-demo-cell",
@@ -167,16 +168,16 @@
         "temperatureObservedAt": "2023-02-09T23:59:59Z",
         "damageEvidence": {
           "damage": null,
-          "flaggedOverlayFraction": 0.76875,
-          "opaqueFraction": 0.76875,
+          "flaggedOverlayFraction": 0.652632,
+          "opaqueFraction": 0.652632,
           "quality": "unflagged-validity-unknown"
         },
         "lightsEvidence": {
           "dark": null,
           "renderedCoverage": 1.0,
           "quality": "saturated-rendering",
-          "beforeMeanBrightness": 246.25,
-          "afterMeanBrightness": 255.0,
+          "beforeMeanBrightness": 255.0,
+          "afterMeanBrightness": 241.0982,
           "maxSaturatedFraction": 1.0
         },
         "temperatureEvidence": {
@@ -189,59 +190,59 @@
             0.625
           ],
           "queryCoords": [
-            38.35,
-            38.31
+            36.194,
+            36.157
           ]
         }
       }
     },
     {
       "type": "Feature",
-      "id": "malatya-mor",
+      "id": "antakya-mor",
       "bbox": [
-        38.32713595,
-        38.35775422,
-        38.33286405,
-        38.36224578
+        36.17421685,
+        36.20175422,
+        36.17978315,
+        36.20624578
       ],
       "geometry": {
         "type": "Polygon",
         "coordinates": [
           [
             [
-              38.32713595,
-              38.35775422
+              36.17421685,
+              36.20175422
             ],
             [
-              38.33286405,
-              38.35775422
+              36.17978315,
+              36.20175422
             ],
             [
-              38.33286405,
-              38.36224578
+              36.17978315,
+              36.20624578
             ],
             [
-              38.32713595,
-              38.36224578
+              36.17421685,
+              36.20624578
             ],
             [
-              38.32713595,
-              38.35775422
+              36.17421685,
+              36.20175422
             ]
           ]
         ]
       },
       "properties": {
-        "_id": "malatya-mor",
+        "_id": "antakya-mor",
         "name": "Mor Avlu demo cell",
-        "deskId": "malatya-2023",
-        "region": "malatya-merkez",
+        "deskId": "antakya-2023",
+        "region": "antakya-merkez",
         "damage": null,
         "dark": null,
         "calls": 1,
         "silentZone": null,
         "cold": true,
-        "minTempC": -14.38,
+        "minTempC": -1.05,
         "reportPosts": 1,
         "callsBasis": "synthetic-distinct-original-calls",
         "geometryOrigin": "500m-demo-cell",
@@ -249,17 +250,17 @@
         "temperatureObservedAt": "2023-02-09T23:59:59Z",
         "damageEvidence": {
           "damage": null,
-          "flaggedOverlayFraction": 0.409375,
-          "opaqueFraction": 0.409375,
+          "flaggedOverlayFraction": 0.156667,
+          "opaqueFraction": 0.156667,
           "quality": "unflagged-validity-unknown"
         },
         "lightsEvidence": {
           "dark": null,
           "renderedCoverage": 1.0,
           "quality": "saturated-rendering",
-          "beforeMeanBrightness": 224.6,
-          "afterMeanBrightness": 255.0,
-          "maxSaturatedFraction": 1.0
+          "beforeMeanBrightness": 250.28,
+          "afterMeanBrightness": 231.38,
+          "maxSaturatedFraction": 0.24
         },
         "temperatureEvidence": {
           "date": "2023-02-09",
@@ -271,8 +272,8 @@
             0.625
           ],
           "queryCoords": [
-            38.35,
-            38.31
+            36.194,
+            36.157
           ]
         }
       }

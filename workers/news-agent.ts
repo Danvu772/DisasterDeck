@@ -4,7 +4,7 @@
 //
 //   npx tsx --env-file=.env.local workers/news-agent.ts                      both channels
 //   npx tsx --env-file=.env.local workers/news-agent.ts --channel official   AFAD, Karayolları, AA, TRT
-//   npx tsx --env-file=.env.local workers/news-agent.ts --region "Battalgazi, Malatya"
+//   npx tsx --env-file=.env.local workers/news-agent.ts --region "Battalgazi, Antakya"
 //
 // Channels and their event source / actor:
 //   news      source "news"    actor "news-agent"
@@ -21,11 +21,11 @@ function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 }
-const region = arg("region", "Malatya, Türkiye");
+const region = arg("region", "Antakya, Türkiye");
 const when = arg("when", "6–12 February 2023, after the Kahramanmaraş earthquakes");
 const pick = arg("channel", "all");
 const channels: Channel[] = pick === "all" ? (Object.keys(CHANNELS) as Channel[]) : [pick as Channel];
-const deskId = process.env.DESK_ID ?? "malatya-2023";
+const deskId = process.env.DESK_ID ?? "antakya-2023";
 const log = (...m: unknown[]) => console.error(`[news-agent ${new Date().toISOString().slice(11, 19)}]`, ...m);
 
 const WHO: Record<Channel, { source: "news"; actor: string }> = {

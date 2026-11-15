@@ -12,8 +12,8 @@ const seed = JSON.parse(await readFile(resolve(dataDirectory, "seed.json"), "utf
 function assertCoordinates(coords, label) {
   assert(Array.isArray(coords) && coords.length === 2, `${label} needs [lat, lng]`);
   assert(coords.every(Number.isFinite), `${label} coordinates must be finite`);
-  assert(coords[0] >= 38.25 && coords[0] <= 38.45, `${label} latitude must be in the Malatya demo extent`);
-  assert(coords[1] >= 38.21 && coords[1] <= 38.41, `${label} longitude must be in the Malatya demo extent`);
+  assert(coords[0] >= 36.10 && coords[0] <= 36.35, `${label} latitude must be in the Antakya demo extent`);
+  assert(coords[1] >= 36.05 && coords[1] <= 36.25, `${label} longitude must be in the Antakya demo extent`);
 }
 
 function assertUniqueIds(rows, label, idField = "_id") {
@@ -28,7 +28,7 @@ function assertDate(value, label) {
   assert(typeof value === "string" && Number.isFinite(Date.parse(value)), `${label} must be a date string`);
 }
 
-assert.equal(seed.deskId, "malatya-2023");
+assert.equal(seed.deskId, "antakya-2023");
 assertUniqueIds(seed.regions, "Regions");
 assertUniqueIds(seed.users, "Users");
 assertUniqueIds(seed.shelters, "Shelters");
@@ -101,14 +101,14 @@ for (const shelter of seed.shelters) {
 
 assert.equal(replay.length, 5, "The CP1 fixture contains five posts");
 for (const [index, post] of replay.entries()) {
-  assert.equal(post.id, `demo-malatya-${String(index + 1).padStart(3, "0")}`);
+  assert.equal(post.id, `demo-antakya-${String(index + 1).padStart(3, "0")}`);
   assert(typeof post.text === "string" && post.text.trim());
   assert.equal(post.ts_offset_seconds, index * 4);
   assert(regionIds.has(post.region), `${post.id} has an unknown region`);
   assertCoordinates(post.coords, post.id);
 }
 for (const post of replay.slice(0, 4)) {
-  assert.deepEqual(post.coords, [38.35, 38.31], "The first four posts share the primary scenario pin");
+  assert.deepEqual(post.coords, [36.194, 36.157], "The first four posts share the primary scenario pin");
   assert.equal(post.region, replay[0].region);
   assert(post.text.includes("Ayşe") && post.text.includes("Turuncu Avlu"));
 }

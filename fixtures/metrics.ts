@@ -8,14 +8,14 @@ import { makeBoard } from "./board";
 import { makeCoordinatorTasks } from "./coordinator";
 import { makeEvents, users as deskUsers } from "./desk";
 
-const DESK = "malatya-2023";
+const DESK = "antakya-2023";
 
 // Positions for the desk's people, and one more free field team.
 const COORDS: Record<string, [number, number]> = {
-  "volunteer-callback": [38.352, 38.305],
-  "field-alpha": [38.343, 38.297],
-  "supplier-primary": [38.336, 38.322],
-  "coordinator-duty": [38.348, 38.312],
+  "volunteer-callback": [36.196, 36.152],
+  "field-alpha": [36.187, 36.144],
+  "supplier-primary": [36.18, 36.169],
+  "coordinator-duty": [36.192, 36.159],
 };
 
 export function makeMetricInput(now: number): MetricInput {
@@ -25,14 +25,14 @@ export function makeMetricInput(now: number): MetricInput {
   const users: User[] = [
     ...deskUsers.map((u) => ({ ...u, coords: COORDS[u._id] ?? u.coords, lastSeen: ago(3) })),
     {
-      _id: "field-bravo", name: "Saha Ekibi B", role: "field", region: "malatya-merkez", status: "available",
-      deskId: DESK, trust: "official", coords: [38.361, 38.318], lastSeen: ago(2),
+      _id: "field-bravo", name: "Saha Ekibi B", role: "field", region: "antakya-merkez", status: "available",
+      deskId: DESK, trust: "official", coords: [36.205, 36.165], lastSeen: ago(2),
       profile: { skills: ["rescue"], vehicle: "truck" },
     },
   ];
 
   const far: Site = {
-    _id: "site-66", address: "Fırat St. 8, Battalgazi", region: "battalgazi", coords: [38.42, 38.365],
+    _id: "site-66", address: "Fırat St. 8, Battalgazi", region: "battalgazi", coords: [36.264, 36.212],
     peopleTrapped: 2, callStatus: "called", status: "open",
     sources: [{ source: "news", eventId: "ev-40" }, { source: "x", eventId: "ev-41" }],
     history: [{ ts: ago(30), by: "news-agent", source: "news", reason: "Local news: two people under a collapsed house" }],
@@ -40,7 +40,7 @@ export function makeMetricInput(now: number): MetricInput {
   };
 
   const water: Need = {
-    _id: "need-6", item: "drinking water", quantity: 120, region: "malatya-merkez", siteIds: ["site-52"],
+    _id: "need-6", item: "drinking water", quantity: 120, region: "antakya-merkez", siteIds: ["site-52"],
     status: "delivered", deskId: DESK, confidence: "confirmed", lifeThreatening: false,
     lines: [{ siteId: "site-52", quantity: 120 }], tier: 1, priority: 30, support: 2, requestedBy: ["field-alpha", "volunteer-callback"],
     history: [
@@ -50,7 +50,7 @@ export function makeMetricInput(now: number): MetricInput {
     ],
   };
   const lateFuel: Need = {
-    _id: "need-7", item: "generator fuel", quantity: 20, region: "malatya-merkez", siteIds: ["site-52"],
+    _id: "need-7", item: "generator fuel", quantity: 20, region: "antakya-merkez", siteIds: ["site-52"],
     status: "open", deskId: DESK, confidence: "confirmed", lifeThreatening: false,
     lines: [{ siteId: "site-52", quantity: 20 }], tier: 1, priority: 26, support: 1, requestedBy: ["field-alpha"],
     history: [{ ts: ago(85), by: "Saha Ekibi A", source: "person", reason: "Floodlight generator needs 20 l of fuel" }],

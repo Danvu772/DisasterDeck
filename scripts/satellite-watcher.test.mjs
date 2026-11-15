@@ -12,7 +12,7 @@ test("cached evidence produces two cold alerts and retains unknown silence", () 
   const alerts = buildSatelliteAlerts(cached);
   assert.equal(alerts.length, 2);
   assert(alerts.every((alert) => alert.type === "alert" && alert.source === "nasa" && alert.payload.kind === "cold"));
-  assert(alerts.every((alert) => alert.payload.evidence.minTempC === -14.38));
+  assert(alerts.every((alert) => alert.payload.evidence.minTempC === -1.05));
   assert(alerts.every((alert) => eventBody.safeParse(alert).success));
   assert.deepEqual(buildSatelliteAlerts(cached), alerts);
   assert.equal(new Set(alerts.map((alert) => alert.dedupeKey)).size, 2);

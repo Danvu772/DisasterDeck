@@ -7,11 +7,11 @@ export type Row = { id: string; time: string; textEn: string; text: string; addr
 
 // The replay file has Turkish text only. English and address are written by hand, per tweet id.
 const NOTES: Record<string, { address: string; en: string }> = {
-  "demo-malatya-001": { address: "Turuncu Avlu", en: "Drill: Malatya centre, Ayşe is under the rubble at Turuncu Avlu. We are asking for help for one person." },
-  "demo-malatya-002": { address: "Turuncu Avlu", en: "Passing on the first report: Ayşe is trapped at Turuncu Avlu in central Malatya." },
-  "demo-malatya-003": { address: "Turuncu Avlu", en: "Sharing the same call again. Malatya centre, Turuncu Avlu. A team is awaited for Ayşe, one person under the rubble." },
-  "demo-malatya-004": { address: "Turuncu Avlu", en: "Drill update: repeating the first call for help for Ayşe at Turuncu Avlu. Central Malatya, one person." },
-  "demo-malatya-005": { address: "Mor Avlu", en: "Separate drill report: Malatya centre, two people under the rubble at Mor Avlu. A team is needed." },
+  "demo-antakya-001": { address: "Turuncu Avlu", en: "Drill: Antakya centre, Ayşe is under the rubble at Turuncu Avlu. We are asking for help for one person." },
+  "demo-antakya-002": { address: "Turuncu Avlu", en: "Passing on the first report: Ayşe is trapped at Turuncu Avlu in central Antakya." },
+  "demo-antakya-003": { address: "Turuncu Avlu", en: "Sharing the same call again. Antakya centre, Turuncu Avlu. A team is awaited for Ayşe, one person under the rubble." },
+  "demo-antakya-004": { address: "Turuncu Avlu", en: "Drill update: repeating the first call for help for Ayşe at Turuncu Avlu. Central Antakya, one person." },
+  "demo-antakya-005": { address: "Mor Avlu", en: "Separate drill report: Antakya centre, two people under the rubble at Mor Avlu. A team is needed." },
 };
 
 // Phone numbers stay masked, same rule as the rest of the app.
@@ -41,7 +41,7 @@ export function toSites(tweets: Tweet[], bases: Site[], now: number): { site: Si
     const site: Site = {
       ...base,
       address,
-      region: "Malatya centre",
+      region: "Antakya centre",
       peopleTrapped: i === 0 ? 1 : 2,
       callStatus: claimed ? "called" : "not_called",
       status: "open",

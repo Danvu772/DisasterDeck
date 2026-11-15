@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import math
+import sys
 import time
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
@@ -12,13 +13,15 @@ from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / ".next/cache/nasa-python"))
 import numpy as np
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "data/nasa/atlas"
 PUBLIC = ROOT / "public/data/nasa-atlas"
-BBOX = [38.15, 38.2, 38.5, 38.5]  # west, south, east, north
+PILOT = json.loads((ROOT / "data/pilot.json").read_text(encoding='utf-8'))
+BBOX = PILOT["bbox"]  # west, south, east, north
 DATES = [f"2023-02-{day:02d}" for day in range(6, 11)]
 GIBS = "https://gibs.earthdata.nasa.gov"
 LAYERS = [
@@ -40,7 +43,7 @@ def fetch(path, url):
     path.parent.mkdir(parents=True, exist_ok=True)
     key = path.relative_to(ROOT).as_posix()
     old = records.get(key)
-    if old and old["url"] != url:
+    if old and old["url"] != url and not refresh:
         raise ValueError(f"Source changed for {key}; inspect before refreshing")
     if refresh or not path.exists():
         if not download:
@@ -126,7 +129,7 @@ def main():
     args = parser.parse_args()
     download, refresh = args.download or args.refresh, args.refresh
     if MANIFEST.exists():
-        records = {row["file"]: row for row in json.loads(MANIFEST.read_text())["sources"]}
+        records = {row["file"]: row for row in json.loads(MANIFEST.read_text(encoding='utf-8'))["sources"]}
     for name in ["MODIS_NDSI_Snow_Cover", "MODIS_Cloud_Fraction", "GPM_Precipitation_Rate"]:
         fetch(CACHE / f"{name}.xml", f"{GIBS}/colormaps/v1.3/{name}.xml")
     catalogs = {}
@@ -158,6 +161,18 @@ def main():
     originals = json.loads(original_path.read_text(encoding="utf-8")) if original_path.exists() else None
     if originals:
         frames.extend(originals["frames"])
+    highres_path = ROOT / "public/data/antakya/imagery.json"
+    highres = json.loads(highres_path.read_text(encoding="utf-8")) if highres_path.exists() else None
+    if highres:
+        for label in ["before", "after"]:
+            data = highres[label]
+            gsd = data["sourceGsdMeters"]
+            frames.append({"id": f"maxar-{label}-{data['date']}", "kind": "highres-" + label,
+                           "title": "Maxar / WorldView-2 " + label, "date": data["date"], "image": "", "tileURL": data["tileURL"],
+                           "bounds": data["bounds"], "scale": f"Source GSD {min(gsd):.2f}–{max(gsd):.2f} m; map tiles ~{data['exportGsdApproxMeters']:.2f} m",
+                           "sourceURL": highres["sourceURL"], "renderedCoverage": data["coverageFraction"],
+                           "limitsImage": "/data/antakya/pair-limits.png", "limitedFraction": highres["pairMissingFraction"],
+                           "limitation": "At least one selected acquisition has no rendered coverage in purple areas. This shared mask covers BOTH dates. It is an image-footprint/nodata mask; it is not a cloud detector or a safety assessment.", "legendURL": None})
     scene_dates = {scene["date"][:10] for scene in scenes}
     missing_dates = [day for day in DATES if day not in scene_dates]
     for day in missing_dates:
@@ -173,12 +188,14 @@ def main():
                        "renderedCoverage": 0, "limitsImage": public_url(limits_path), "limitedFraction": 1,
                        "limitation": "No HLSS30 scene intersected the queried extent on this date. Other sensors may have observations.",
                        "legendURL": None})
-    output = {"version": "malatya-atlas-v1", "dates": DATES, "bbox": BBOX, "frames": frames, "events": events,
+    output = {"version": "antakya-atlas-v2", "cityName": PILOT["name"], "dates": DATES, "bbox": BBOX, "frames": frames, "events": events,
               "eonetSourceURL": eonet_url, "hlsScenes": scenes,
               "hlsMissingDates": missing_dates,
               "originalMeasurements": originals,
               "originals": {"blackMarble": "Earthdata login required for radiance and quality flags", "hls": "Earthdata login required for multispectral bands and Fmask"},
               "limitsMeaning": "Product-specific observation limits. Clear pixels do not establish that the ground is safe. Snow-layer transparency alone cannot distinguish snow-free ground, clouds, water and missing data."}
+    if highres:
+        output["highResolution"] = {"buildingCount": highres["buildings"]["count"], "sourceURL": highres["sourceURL"], "limitations": highres["limitations"]}
     (PUBLIC / "atlas.json").write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     MANIFEST.write_text(json.dumps({"sources": sorted(records.values(), key=lambda row: row["file"])}, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps({"frames": len(frames), "events": len(events), "regionalEvents": sum(e["regional"] for e in events), "hlsScenes": len(scenes),

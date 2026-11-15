@@ -70,7 +70,7 @@ export function useBasemap(): Basemap {
 export function BasemapTiles({ extra = "" }: { extra?: string }) {
   const b = useBasemap();
   return (
-    <TileLayer key={b.id} url={b.url} attribution={`${b.attribution}${extra}`} maxZoom={16}
+    <TileLayer key={b.id} url={b.url} attribution={`${b.attribution}${extra}`} maxNativeZoom={16} maxZoom={21}
       {...(b.tileSize ? { tileSize: b.tileSize, zoomOffset: b.zoomOffset } : {})} />
   );
 }

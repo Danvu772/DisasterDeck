@@ -1,12 +1,12 @@
 {
- "href": "https://gis.earthdata.nasa.gov/portal/rest/directories/0123456789abcdef/arcgisoutput/_ags_07038dae_da2a_4a69_b1b6_dc2e51c684a8.png",
+ "href": "https://gis.earthdata.nasa.gov/portal/rest/directories/0123456789abcdef/arcgisoutput/_ags_552cf694_0ac7_4aca_8805_2fc8d95f6e91.png",
  "width": 216,
  "height": 216,
  "extent": {
-  "xmin": 38.289999999999999,
-  "ymin": 38.329999999999998,
-  "xmax": 38.350000000000001,
-  "ymax": 38.390000000000001,
+  "xmin": 36.119999999999997,
+  "ymin": 36.170000000000002,
+  "xmax": 36.200000000000003,
+  "ymax": 36.219999999999999,
   "spatialReference": {
    "wkid": 4326,
    "latestWkid": 4326

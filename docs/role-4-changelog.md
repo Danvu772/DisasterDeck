@@ -2,6 +2,18 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v1.0 Antakya pilot and portable imagery · 2026-11-15 01:40 EST
+
+- Migrated the active seed, five replay reports, scenario, fixture geography, worker/backend defaults, map centres and presenter documentation to `antakya-2023`. Existing Malatya data/history is retained; old worker environments must be updated explicitly.
+- Packaged 3,060 ordinary Git WebP tiles (~50 MiB) from real Maxar WorldView-2 acquisitions on 22 Dec 2022 and 11 Feb 2023. Native source GSD is 0.50–0.67 m; map export resolution is ~0.964 m. Added hashes, source STAC records, reproducible preparation and CC BY-NC 4.0 attribution.
+- Added a before/after swipe, close-up navigation, combined acquisition-footprint gaps, 743 historical HOT/OSM reference building polygons (ODbL-1.0), browser-local human review notes and JSON export. No automated damage model or field confirmation is claimed.
+- Requeried NASA POWER for Antakya and extracted portable lossless Black Marble radiance/QA subsets. Two-date filtering yields 92 eligible bright-baseline pixels; 56 show ≥40% lower radiance. Displayed numerical popups and missing-observation masks; no causal outage or building/casualty inference.
+- Added `npm run demo`, `npm run check:pilot`, root workstation instructions and `docs/antakya-pilot.md`. App assets need no NASA/AWS account, Python, Git LFS or additional download. Original optional HDF files and large local mosaics remain ignored.
+- Verified a clean npm install and production build with no environment secrets or original NASA files. TypeScript/scoped lint, 13 Python scientific/provenance checks and 22 Node scenario/watcher tests pass. Real Edge checks passed with external requests denied: 216 local tile requests, zero failed local tiles, moving divider, building review persistence, radiance grid, observation masks, city reset and mobile layout.
+- Production build retains existing Auth.js/jose Edge compression warnings. The map-only clean snapshot falls back to labeled fixture operations without MongoDB; shared Atlas/model/SSO and live Brain delivery acceptance remain separate. Existing video/screenshots describe the prior Malatya iteration and require re-recording for submission.
+
+- Integration update at 01:46 EST: rebased onto upstream `8771193`, retained the new shared Mapbox basemap and observedAt-only clock, migrated the expanded CP2 checks to Antakya, and refreshed the completion plan for the now-implemented core Brain/dispatcher/inbox work. NASA alert/capacity/closure handling and crash recovery remain open. Repeated the merged-source Node/scoped-lint checks and Edge flow: 133 local tile requests, zero tile failures and zero page errors.
+
 ## Pipeline completion review · 2026-11-15 00:41 EST
 
 - Reviewed main through `f235d43`, including the report-only Brain, empty dispatcher, read routes, original/v2 role screens, agent context caching and proposal refs. Updated the plan for the newly merged P-002 contract, metrics engine/charts and agent feed.

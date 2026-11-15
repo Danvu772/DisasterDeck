@@ -17,7 +17,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 ORIGINALS = ROOT / "data/nasa/originals"
 PUBLIC = ROOT / "public/data/nasa-atlas"
-BBOX = [38.15, 38.2, 38.5, 38.5]
+BBOX = json.loads((ROOT / "data/pilot.json").read_text(encoding='utf-8'))["bbox"]
 BOUNDS = [[BBOX[1], BBOX[0]], [BBOX[3], BBOX[2]]]
 FIELDS = "HDFEOS/GRIDS/VIIRS_Grid_DNB_2d/Data Fields"
 SPEC = "https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/VNP46A2/"
@@ -67,36 +67,49 @@ def hls_valid(qa):
 def read_radiance(day):
     doy = datetime.strptime(day, "%Y-%m-%d").strftime("%Y%j")
     matches = sorted(ORIGINALS.glob(f"VNP46A2.A{doy}.*.h5"))
-    if not matches:
+    subset = ROOT / "data/nasa/subsets" / (day + ".npz")
+    provenance = subset.with_suffix(".json")
+    if not matches and not subset.exists():
         return None
-    path = matches[-1]
-    with h5py.File(path) as file:
-        group = file[FIELDS]
-        latitudes, longitudes = group["lat"][:], group["lon"][:]
-        rows = np.flatnonzero((latitudes >= BBOX[1]) & (latitudes <= BBOX[3]))
-        cols = np.flatnonzero((longitudes >= BBOX[0]) & (longitudes <= BBOX[2]))
-        if not len(rows) or not len(cols):
-            raise ValueError("Black Marble tile does not cover selected extent")
-        window = (slice(rows.min(), rows.max() + 1), slice(cols.min(), cols.max() + 1))
-        values = group["DNB_BRDF-Corrected_NTL"][window]
-        quality = group["Mandatory_Quality_Flag"][window]
-        cloud = group["QF_Cloud_Mask"][window]
-        snow = group["Snow_Flag"][window]
-        valid = radiance_valid(values, quality, cloud, snow)
-        lat, lon = latitudes[rows], longitudes[cols]
-        if lat[0] < lat[-1]:
-            lat, values, valid = lat[::-1], values[::-1], valid[::-1]
-        if lon[0] > lon[-1]:
-            lon, values, valid = lon[::-1], values[:, ::-1], valid[:, ::-1]
-        delta_lat = abs(float(lat[1] - lat[0])) / 2
-        delta_lon = abs(float(lon[1] - lon[0])) / 2
-        bounds = [[float(lat[-1] - delta_lat), float(lon[0] - delta_lon)], [float(lat[0] + delta_lat), float(lon[-1] + delta_lon)]]
+    if subset.exists():
+        with np.load(subset, allow_pickle=False) as cache:
+            values, quality, cloud, snow, lat, lon = [cache[key] for key in ["values", "quality", "cloud", "snow", "lat", "lon"]]
+        origin = json.loads(provenance.read_text(encoding='utf-8'))
+        if origin["bbox"] != BBOX or origin["sha256"] != hashlib.sha256(subset.read_bytes()).hexdigest():
+            raise ValueError("Radiance subset provenance does not match pilot or bytes")
+    else:
+        path = matches[-1]
+        with h5py.File(path) as file:
+            group = file[FIELDS]
+            latitudes, longitudes = group["lat"][:], group["lon"][:]
+            rows = np.flatnonzero((latitudes >= BBOX[1]) & (latitudes <= BBOX[3]))
+            cols = np.flatnonzero((longitudes >= BBOX[0]) & (longitudes <= BBOX[2]))
+            if not len(rows) or not len(cols):
+                raise ValueError("Black Marble tile does not cover selected extent")
+            window = (slice(rows.min(), rows.max() + 1), slice(cols.min(), cols.max() + 1))
+            values = group["DNB_BRDF-Corrected_NTL"][window]
+            quality = group["Mandatory_Quality_Flag"][window]
+            cloud = group["QF_Cloud_Mask"][window]
+            snow = group["Snow_Flag"][window]
+            lat, lon = latitudes[rows], longitudes[cols]
+        subset.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(subset, values=values, quality=quality, cloud=cloud, snow=snow, lat=lat, lon=lon)
+        origin = {"bbox": BBOX, "file": subset.relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(subset.read_bytes()).hexdigest(), "parentFile": path.name, "parentSha256": hashlib.sha256(path.read_bytes()).hexdigest(), "sourceURL": "https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/VNP46A2/", "transformation": "Unscaled numeric and QA arrays cropped to pilot pixel centres; NPZ is lossless, no pickle."}
+        provenance.write_text(json.dumps(origin, indent=2) + "\n", encoding="utf-8", newline="\n")
+    valid = radiance_valid(values, quality, cloud, snow)
+    if lat[0] < lat[-1]:
+        lat, values, valid = lat[::-1], values[::-1], valid[::-1]
+    if lon[0] > lon[-1]:
+        lon, values, valid = lon[::-1], values[:, ::-1], valid[:, ::-1]
+    delta_lat = abs(float(lat[1] - lat[0])) / 2
+    delta_lon = abs(float(lon[1] - lon[0])) / 2
+    bounds = [[float(lat[-1] - delta_lat), float(lon[0] - delta_lon)], [float(lat[0] + delta_lat), float(lon[-1] + delta_lon)]]
     brightness = np.clip(np.arcsinh(np.maximum(values, 0) / 5) / np.arcsinh(40 / 5), 0, 1)
     rgb = np.repeat((brightness * 255).astype("uint8")[:, :, None], 3, axis=2)
     make_frame("radiance-" + day, day, "Original Black Marble quality-filtered", rgb, valid,
                "Excluded radiance pixels: missing retrieval, poor mandatory quality, snow/ice, low-quality cloud mask, cloud, shadow or cirrus. Clear areas pass this conservative filter.",
                SPEC, bounds)
-    record(path)
+    sources.append(origin)
     return values, valid, lat, lon
 
 
@@ -112,6 +125,10 @@ def hls_day(day):
     arrays = {}
     for band, path in band_paths.items():
         with rasterio.open(path) as dataset:
+            from rasterio.warp import transform_bounds
+            extent = transform_bounds(dataset.crs, "EPSG:4326", *dataset.bounds)
+            if extent[0] >= BBOX[2] or extent[2] <= BBOX[0] or extent[1] >= BBOX[3] or extent[3] <= BBOX[1]:
+                return False
             fill = 255 if band == "Fmask" else -9999
             output = np.full((768, 768), fill, dtype="int32")
             reproject(source=rasterio.band(dataset, 1), destination=output, src_transform=dataset.transform,
@@ -132,11 +149,42 @@ def hls_day(day):
     return True
 
 
+def paired_radiance(before, after):
+    if before is None or after is None:
+        return {"eligiblePixels": 0, "lightLossPixels": 0, "status": "Missing original radiance input"}
+    base, valid_before, lat, lon = before
+    comparison, valid_after, lat_after, lon_after = after
+    if not np.array_equal(lat, lat_after) or not np.array_equal(lon, lon_after):
+        raise ValueError("Night-light grids must align before a paired comparison")
+    eligible = valid_before & valid_after & (base >= 10)
+    loss = np.zeros(base.shape, dtype=bool)
+    loss[eligible] = comparison[eligible] / base[eligible] <= .6
+    # Display only eligible paired observations. Missing observations stay transparent.
+    rgb = np.zeros((*base.shape, 3), dtype="uint8")
+    rgb[eligible] = [55, 105, 155]
+    rgb[loss] = [204, 114, 42]
+    half_lat = abs(float(lat[1]-lat[0]))/2
+    half_lon = abs(float(lon[1]-lon[0]))/2
+    bounds = [[float(lat[-1]-half_lat),float(lon[0]-half_lon)],[float(lat[0]+half_lat),float(lon[-1]+half_lon)]]
+    make_frame("radiance-change-2023-02-08", "2023-02-08", "Black Marble paired light change", rgb, eligible,
+               "Only pixels passing quality checks on BOTH 3 Jan and 8 Feb 2023, with baseline radiance ≥10 nW/(cm² sr), are compared. Purple excludes unavailable, poor-quality or low-baseline pairs. Orange: ≥40% lower radiance; blue: other eligible pairs. This is not building damage or proof of an outage.", SPEC, bounds)
+    frames[-1]["kind"] = "radiance-change"
+    features=[]
+    for i,j in np.argwhere(eligible):
+        west,east=float(lon[j]-half_lon),float(lon[j]+half_lon)
+        south,north=float(lat[i]-half_lat),float(lat[i]+half_lat)
+        features.append({"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[west,south],[east,south],[east,north],[west,north],[west,south]]]},
+                         "properties":{"before":round(float(base[i,j]),5),"after":round(float(comparison[i,j]),5),"changePct":round(float((comparison[i,j]/base[i,j]-1)*100),2),"lightLoss":bool(loss[i,j]),"beforeDate":"2023-01-03","afterDate":"2023-02-08","units":"nW/(cm² sr)","nativeResolutionMeters":500,"notBuildingDamage":True}})
+    (PUBLIC / "radiance-pairs.geojson").write_text(json.dumps({"type":"FeatureCollection","features":features},ensure_ascii=False)+"\n",encoding="utf-8")
+    return {"eligiblePixels":int(eligible.sum()),"lightLossPixels":int(loss.sum()),"totalPixels":int(base.size),"baselineMinRadiance":10,"lightLossThresholdPct":40,
+            "beforeDate":"2023-01-03","afterDate":"2023-02-08","status":"Original radiance, conservative paired quality filter; two historical dates are a screening signal, not a causal outage assessment."}
+
+
 def main():
     PUBLIC.mkdir(parents=True, exist_ok=True)
     before, after = read_radiance("2023-01-03"), read_radiance("2023-02-08")
     zones = []
-    config = json.loads((ROOT / "data/nasa/analysis-config.json").read_text())
+    config = json.loads((ROOT / "data/nasa/analysis-config.json").read_text(encoding='utf-8'))
     for zone in config["zones"]:
         lat_c, lon_c = zone["center"]
         half_lat = config["zoneSideMeters"] / 2 / 111320
@@ -153,9 +201,10 @@ def main():
             if selected.any() and selected.sum() / max(1, cell.sum()) >= .8:
                 item[label] = round(float(values[selected].mean()), 5)
         zones.append(item)
+    paired = paired_radiance(before, after)
     hls_done = [day for day in ["2023-02-01", "2023-02-09"] if hls_day(day)]
     output = {"status": "Original Black Marble radiance filtered by mandatory quality, cloud mask and snow flags. Means use at least 80% valid cell-centre samples; these two dates alone do not establish a power outage.",
-              "zones": zones, "frames": frames, "hlsProcessedDates": hls_done, "sources": sources,
+              "zones": zones, "frames": frames, "hlsProcessedDates": hls_done, "sources": sources, "pairedRadiance": paired,
               "radianceDisplay": "Shared asinh display stretch 0–40 nW/(cm² sr). Numerical means use unclipped original radiance."}
     (PUBLIC / "originals.json").write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps({"zones": zones, "hlsDates": hls_done, "frames": len(frames)}, indent=2))

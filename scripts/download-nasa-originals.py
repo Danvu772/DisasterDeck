@@ -22,7 +22,7 @@ def main():
         raise RuntimeError("Earthdata sign-in did not complete")
     TARGET.mkdir(parents=True, exist_ok=True)
     records = []
-    bbox = (38.15, 38.2, 38.5, 38.5)
+    bbox = tuple(json.loads((ROOT / "data/pilot.json").read_text(encoding='utf-8'))["bbox"])
     for day in ([] if args.hls_only else ["2023-01-03", "2023-02-08"]):
         print(f"Finding Black Marble for {day}...", flush=True)
         results = earthaccess.search_data(short_name="VNP46A2", version="2", bounding_box=bbox, temporal=(day + "T00:00:00Z", day + "T23:59:59Z"), count=8)

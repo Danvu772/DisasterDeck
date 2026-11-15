@@ -1,0 +1,280 @@
+{
+  "sources": [
+    {
+      "file": "data/imagery/antakya/10300100DF6BFE00-collection.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/acquisition_collections/10300100DF6BFE00_collection.json",
+      "sha256": "299f9c7b4ea5169139b9284923a8bb451ffb70b7b9405db286e0292b05252b26"
+    },
+    {
+      "file": "data/imagery/antakya/10300100E18CB600-collection.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/acquisition_collections/10300100E18CB600_collection.json",
+      "sha256": "495f1310988fa853b576c3ac4670d680ee011ec252cc095f1634c9bda1efd35b"
+    },
+    {
+      "file": "data/imagery/antakya/collection.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/collection.json",
+      "sha256": "ade21500bb6aa6c6c7c3b0210e4020442db99b567f9ed61e33ededc4e5e53722"
+    },
+    {
+      "file": "data/imagery/antakya/destroyed-buildings.zip",
+      "url": "https://s3.us-east-1.amazonaws.com/exports-stage.hotosm.org/hotosm_tur_destroyed_buildings_polygons_geojson_geojson_uid_12c31136-ec56-4c83-bdd9-f37b1cd7fc08.zip",
+      "sha256": "dc3391aa67ab58d48f4c015e5e55bf48fc7e3962c681f1799e3d3fc5f8b1916c"
+    },
+    {
+      "file": "data/imagery/antakya/hdx-package.json",
+      "url": "https://data.humdata.org/api/3/action/package_show?id=hotosm_tur_destroyed_buildings",
+      "sha256": "dfb5d7a14dc7ccea83d9ecd0ca2f45ff9ba7bd28a60651733be679b291c9cd29"
+    },
+    {
+      "file": "data/imagery/antakya/stac/36/120022132332/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/36/120022132332/2023-02-11/10300100E18CB600.json",
+      "sha256": "39e3d503480759a7f9051da189b2b44e505a22096a3a0a9a57fcba7f51ab16d7"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023030/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023030/2023-02-11/10300100E18CB600.json",
+      "sha256": "1d130466ba0516643f2babd92471a3245fada3cb4a5f9e2e1f42be96af2d65c3"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023031/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023031/2023-02-11/10300100E18CB600.json",
+      "sha256": "32791849f8d47427fc5aa864c9345aab7c3f5a270f50d433d66afae6a823e430"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023032/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023032/2023-02-11/10300100E18CB600.json",
+      "sha256": "48ead28db586c5fd1a8c417d52cd8168d771c3faf0c006d050b1a641a9f8def0"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023033/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023033/2023-02-11/10300100E18CB600.json",
+      "sha256": "f74da930aff7d27755709877eaea11db101a62321d1f98edead4b119596ced32"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023120/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023120/2023-02-11/10300100E18CB600.json",
+      "sha256": "660988120c385c7da833fc9df2ec42e90174fb18fc078a0d4653cdbcf41bcc70"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023122/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023122/2023-02-11/10300100E18CB600.json",
+      "sha256": "4ac44244d33a5e23e6665b0e1e9db9d1e81fb8eae4a14b5367ed44cc6e17bfb9"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023123/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023123/2023-02-11/10300100E18CB600.json",
+      "sha256": "0d254f65fec9e83803a99360745925444243dcf66bf612c345790cd4bba9cd1a"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023132/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023132/2023-02-11/10300100E18CB600.json",
+      "sha256": "cd613bd199cf747e0e71195e77b56f9934b28e5365c1ef81272a1f33997a1ce2"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023133/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023133/2023-02-11/10300100E18CB600.json",
+      "sha256": "03736e301121763b184591186ec5431c20616c80a1121b3159b7e9a5092de1f0"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023210/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023210/2023-02-11/10300100E18CB600.json",
+      "sha256": "fed4afb29ecf19927740c1ce3d3ee327ec4b7265f60c82a5395abf639006e2d7"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023211/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023211/2023-02-11/10300100E18CB600.json",
+      "sha256": "95cf5f1440f5c42ab3b14c35ec6b647c356943fb2ad297d660dfc5ca7c52db45"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023212/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023212/2023-02-11/10300100E18CB600.json",
+      "sha256": "7a81a2a2fbc5109a46967ad6d10aa9695632c48c8d48c0fd538ec43439b95166"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023213/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023213/2023-02-11/10300100E18CB600.json",
+      "sha256": "6d05ece90086aff7fc033a6073b7965c492fc9361125bf690006b597ae1be57c"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023230/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023230/2023-02-11/10300100E18CB600.json",
+      "sha256": "71d95eae3d922bb6850ba8a3ed5ff650711ac9f68b782de26189e6a8ddcd27f5"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023231/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023231/2023-02-11/10300100E18CB600.json",
+      "sha256": "c33c69f292da84dd3c1f1934feffa0b1240e881a6c6a949bd7cfdf1d6c8e751d"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023232/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023232/2023-02-11/10300100E18CB600.json",
+      "sha256": "1948c6c31ec59bb49b75f353af265afc12f0aa52f0ccd06d7d33ff39d6f9a29f"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023233/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023233/2023-02-11/10300100E18CB600.json",
+      "sha256": "078ef58da1e379525a5f9f2f13980acb147d2dff974ddbd726abfb07df31a542"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023300/2022-12-22/10300100DF6BFE00.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023300/2022-12-22/10300100DF6BFE00.json",
+      "sha256": "3ade7e02329beb646e6c749bfefdfe2b5de7fdcc66df409b6e2cacf7261505e6"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023300/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023300/2023-02-11/10300100E18CB600.json",
+      "sha256": "f60a145c6f8fafba01d8494ae08aa738852d6962292df7f58a0dd95cd054022c"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023301/2022-12-22/10300100DF6BFE00.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023301/2022-12-22/10300100DF6BFE00.json",
+      "sha256": "19c86b731cba7e8672de78db5f3b6a9dbd85a58f20d194a95c82c1b73582129b"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023301/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023301/2023-02-11/10300100E18CB600.json",
+      "sha256": "081c5e7637b293fade37878957eefaa128365eec6de2d8738390272ffe854bf3"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023302/2022-12-22/10300100DF6BFE00.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023302/2022-12-22/10300100DF6BFE00.json",
+      "sha256": "259c1b0531600f86fe2d623bbbbbae7c7df48cc456f4a87d61412ea3a1f27e1b"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023302/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023302/2023-02-11/10300100E18CB600.json",
+      "sha256": "48dcd6710a9f8485dd71b232c7296d45fed45c083704e7847599c0c749c6560a"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023303/2022-12-22/10300100DF6BFE00.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023303/2022-12-22/10300100DF6BFE00.json",
+      "sha256": "668a61b16db9699b841283a1f8730a5b9603b49e998b93be04b10eef439776f7"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023303/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023303/2023-02-11/10300100E18CB600.json",
+      "sha256": "d8f8f3e4871dd0e423bc587950599e27a4836d6293f4879c9f0b0f54a48c978b"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023310/2022-12-22/10300100DF6BFE00.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023310/2022-12-22/10300100DF6BFE00.json",
+      "sha256": "1bc418755864507cde4800c91834c5d8418c7ec9a6f592858586b331571e35c7"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023310/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023310/2023-02-11/10300100E18CB600.json",
+      "sha256": "5180f608b246bf9f6b02257c85172e3c0c71eb8614f1e7feb6966421195fe44e"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023311/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023311/2023-02-11/10300100E18CB600.json",
+      "sha256": "dca9ab33c26ac58f974f94c19b276d734647b8fe66b6109e8e24f5ef05961f29"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023312/2022-12-22/10300100DF6BFE00.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023312/2022-12-22/10300100DF6BFE00.json",
+      "sha256": "2155d10a180d5b3fb5436be253f4f7282dee316267f1abedb09f3ab1878578b2"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023312/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023312/2023-02-11/10300100E18CB600.json",
+      "sha256": "216195a046bc22a21b97f0a847cf10a3a294f40ffd2f1abcb7463ea6c95d8eef"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023313/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023313/2023-02-11/10300100E18CB600.json",
+      "sha256": "51ad0c13dbc7223f08e4e68fcf595c145fdc19502edce57b44edc1df87335fa3"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023320/2022-12-22/10300100DF6BFE00.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023320/2022-12-22/10300100DF6BFE00.json",
+      "sha256": "878c5fcda50f0b7c21e01e941338e32c13d28e48657ff46f5fc36333d3a48096"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023320/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023320/2023-02-11/10300100E18CB600.json",
+      "sha256": "2adb7c04b9b3f075d2bcc0fd8b7ca4fc832fe117297d41897c6c63af240b4680"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023321/2022-12-22/10300100DF6BFE00.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023321/2022-12-22/10300100DF6BFE00.json",
+      "sha256": "12983d270a76a10935674912644e522ee51895c509cfdf34add9084685136664"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023321/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023321/2023-02-11/10300100E18CB600.json",
+      "sha256": "6592fd7d5b74b4cc311fb6e8954efc9f4f33950e79229239d0674bc65497209b"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023322/2022-12-22/10300100DF6BFE00.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023322/2022-12-22/10300100DF6BFE00.json",
+      "sha256": "9f0526d1754db3f9bce99480fce4c144607d30eab483d66981c5276529feb0c6"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023322/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023322/2023-02-11/10300100E18CB600.json",
+      "sha256": "3ecac79d21cbdc51bf311694e685a053d1973a990b5fba48f9607738f56d49dc"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023323/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023323/2023-02-11/10300100E18CB600.json",
+      "sha256": "6fd699ada5987df6c5e010753a68633d63af5d507149a5848b52808fa27bf4d4"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023330/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023330/2023-02-11/10300100E18CB600.json",
+      "sha256": "62d8eeaf4f61fbd09caeb350a7fd5010a26ac69d982b022c64fd006ddd7c7ef4"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023331/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023331/2023-02-11/10300100E18CB600.json",
+      "sha256": "6ca47c8d3bac9a69692686cc912e569c89e24e4d4c77d1f0750e42c0de1a7dfe"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023332/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023332/2023-02-11/10300100E18CB600.json",
+      "sha256": "b3856c88124352be6008868b040cf5add5d762c1416af82902f187e519041273"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133023333/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133023333/2023-02-11/10300100E18CB600.json",
+      "sha256": "c04261c4bd0e140c5249b478f10eb0d293191f2cbfc045c1b5c6ec4d381e650c"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133201011/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133201011/2023-02-11/10300100E18CB600.json",
+      "sha256": "e68a7f695f0d11ca69588f6cc08a0d4f1db0b9643c4a0471d74dc22544ccfdda"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133201100/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133201100/2023-02-11/10300100E18CB600.json",
+      "sha256": "12b0812b75d02bca2fa2fcf16250d5c740246f3e2fb00a299d3149191265793c"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133201101/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133201101/2023-02-11/10300100E18CB600.json",
+      "sha256": "4823edc4d77bc411f64b194e0b3262134a173794d0e21955e3692b7e26c16c6a"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133201110/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133201110/2023-02-11/10300100E18CB600.json",
+      "sha256": "1aab81068a92b37fefcdce8e44593e75164290fc445c21ff17c31c87648e722e"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133201111/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133201111/2023-02-11/10300100E18CB600.json",
+      "sha256": "e170f334cc30c9537aa06cda188f4ec1fba9714d8276117cb99e730749abd70f"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133201112/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133201112/2023-02-11/10300100E18CB600.json",
+      "sha256": "c5057930c4c83d3299434850314703f75f347955b63cb8cf87ba5d02b63b74b5"
+    },
+    {
+      "file": "data/imagery/antakya/stac/37/031133201113/2023-02-11/10300100E18CB600.json",
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Kahramanmaras-turkey-earthquake-23/ard/37/031133201113/2023-02-11/10300100E18CB600.json",
+      "sha256": "b2f0b81f3a26ed7b825ca49a78aa119d5de3fe07de580af7dbac46e32f541df7"
+    }
+  ],
+  "generatedAt": "2026-11-15T06:28:33.652034+00:00"
+}

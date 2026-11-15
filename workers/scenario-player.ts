@@ -307,7 +307,7 @@ async function main() {
     index += 1;
   }
   assert(values.has("--run") && values.has("--step"), "Use --list or --run <rehearsal-id> --step <step>");
-  const config = JSON.parse(await readFile(new URL("../data/scenarios/malatya.json", import.meta.url), "utf8")) as ScenarioConfig;
+  const config = JSON.parse(await readFile(new URL("../data/scenarios/antakya.json", import.meta.url), "utf8")) as ScenarioConfig;
   const seed = JSON.parse(await readFile(new URL("../data/seed.json", import.meta.url), "utf8")) as { deskId: string; users: User[] };
   assert.equal(seed.deskId, config.deskId);
   for (const [id, role] of [[config.fieldUserId, "field"], [config.primarySupplierId, "supplier"], [config.backupSupplierId, "supplier"]]) {

@@ -22,7 +22,7 @@ function arg(name: string): string | undefined {
 const mock = process.argv.includes("--mock");
 const speed = Number(arg("speed") ?? process.env.REPLAY_SPEED ?? 10);
 const limit = Number(arg("limit") ?? Infinity);
-const deskId = process.env.DESK_ID ?? "malatya-2023";
+const deskId = process.env.DESK_ID ?? "antakya-2023";
 const file = arg("file")
   ?? (existsSync("data/tweets_replay.json") ? "data/tweets_replay.json" : "agents/fixtures/tweets_sample.json");
 

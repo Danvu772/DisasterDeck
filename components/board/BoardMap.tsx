@@ -57,7 +57,7 @@ export default function BoardMap({ items, now, ring, ringAt, fly, onPick }: {
   const hasMarker = placed.some((i) => i.key === ring);
   return (
     <div className="relative h-full w-full">
-      <MapContainer center={[38.35, 38.31]} zoom={13} className="h-full w-full" zoomControl>
+      <MapContainer center={[36.194, 36.157]} zoom={13} className="h-full w-full" zoomControl>
         <BasemapTiles extra={zones?.metadata?.attribution ? `. Zones: ${zones.metadata.attribution}` : ""} />
         <KeepSized />
         {zones && <ZoneLayer fc={zones} />}

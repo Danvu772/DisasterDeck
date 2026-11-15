@@ -33,7 +33,7 @@ function jsonSchema(schema: z.ZodType) {
 
 const deskParam = {
   name: "desk", in: "query", required: false,
-  description: "Which disaster. Default: the server's DESK_ID (malatya-2023)",
+  description: "Which disaster. Default: the server's DESK_ID (antakya-2023)",
   schema: { type: "string" },
 };
 
@@ -362,8 +362,8 @@ export function buildSpec() {
                     summary: "Satellite watcher: cold night (agent key)",
                     value: {
                       type: "alert", source: "nasa", observedAt: "2023-02-09T23:59:59Z",
-                      dedupeKey: "nasa:malatya-2023:malatya-mor:cold:demo",
-                      payload: { zoneId: "malatya-mor", kind: "cold", evidence: { minTempC: -14.4 } },
+                      dedupeKey: "nasa:antakya-2023:antakya-mor:cold:demo",
+                      payload: { zoneId: "antakya-mor", kind: "cold", evidence: { minTempC: -14.4 } },
                     },
                   },
                   report: {

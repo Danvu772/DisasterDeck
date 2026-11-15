@@ -1,5 +1,21 @@
 # Completing the live Disaster Desk pipeline
 
+## Current integration update - 15 November, 01:46 EST
+
+Rechecked against upstream **8771193** while integrating the Antakya delivery. Several items in the original plan have now landed. The original baseline and implementation sequence below are retained as history; use this update to identify current work.
+
+| Area | Current source state | Remaining acceptance / implementation |
+|---|---|---|
+| Core Brain and dispatcher | Report, answer, approval, incident, need and claim handlers; task creation/reassignment, replacement links and inbox notices are implemented. | Run the multi-operator callback, approval, delivery/ETA and incident flow on the shared deployment. Do not treat fixture screenshots as that acceptance. |
+| Read APIs and UI | Inbox/users routes, reassignment controls, inbox indicators, metric charts and local-demo security checks have landed. | Verify real role sessions and deployed permissions; maintain the new loopback/proxy restrictions. |
+| NASA / shelter / roads | The keeper's HANDLED list still excludes alert, capacity and closure. | Implement and test these handlers before claiming a NASA-driven priority change or automated shelter/road cue consumption. Correction/plan workflows remain outside the current core. |
+| Recovery | The Brain marks an event final before calling dispatcher.react. | Address the interrupted-dispatch window and reconcile side effects; prove retry safety for tasks and notices. |
+| Antakya evidence | Local before/after imagery, 743 external building references, numeric NASA QA subsets and synthetic scenario migration are packaged. | Re-record the video; evaluate an actual damage model before claiming automated building detection. Local image-review notes are not shared MongoDB records. |
+
+One shared Brain already may be running on a teammate's laptop. Coordinate the new desk/environment and seed with its operator; do not start competing loops. This delivery did not connect to or modify the shared database.
+
+## Historical baseline and original implementation plan
+
 Reviewed on 15 November 2026 against main revision **f235d43**, including the contract, metrics and agent-feed changes merged during this review. This plan comes from source inspection and the local checks listed below. Atlas connectivity, deployed role sessions and the complete live workflow still need an integration run.
 
 The working core is report ingestion, MongoDB event storage, report-to-site processing and board reads. The next deliverable is a live callback, approved field dispatch and accepted blanket delivery with an ETA visible to the requesting field team.

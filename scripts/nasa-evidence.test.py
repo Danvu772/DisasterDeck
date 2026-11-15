@@ -18,7 +18,7 @@ spec.loader.exec_module(prepare)
 
 class EvidenceTests(unittest.TestCase):
     def test_weather_units_missing_values_and_output_provenance(self):
-        raw = json.loads((ROOT / "data/nasa/power-weather-malatya.json").read_text(encoding="utf-8"))
+        raw = json.loads((ROOT / "data/nasa/power-weather-antakya.json").read_text(encoding="utf-8"))
         series = prepare.weather_series(raw)
         output = json.loads((ROOT / "public/data/zones.geojson").read_text(encoding="utf-8"))
         self.assertEqual(series, output["metadata"]["weatherSeries"])
@@ -26,10 +26,10 @@ class EvidenceTests(unittest.TestCase):
         for row in series:
             self.assertEqual(row["minTempC"], raw["properties"]["parameter"]["T2M_MIN"][row["date"].replace("-", "")])
         day = next(row for row in series if row["date"] == "2023-02-09")
-        self.assertEqual(day["humidityPct"], 78.93)
-        self.assertEqual(day["precipitationMm"], 0.04)
-        self.assertEqual(day["windMs"], 2.45)
-        self.assertEqual(day["maxTempC"], -0.24)
+        self.assertEqual(day['humidityPct'], raw["properties"]["parameter"]['RH2M']["20230209"])
+        self.assertEqual(day['precipitationMm'], raw["properties"]["parameter"]['PRECTOTCORR']["20230209"])
+        self.assertEqual(day['windMs'], raw["properties"]["parameter"]['WS2M']["20230209"])
+        self.assertEqual(day['maxTempC'], raw["properties"]["parameter"]['T2M_MAX']["20230209"])
         raw["properties"]["parameter"]["RH2M"]["20230209"] = raw["header"]["fill_value"]
         self.assertIsNone(next(row for row in prepare.weather_series(raw) if row["date"] == "2023-02-09")["humidityPct"])
         raw["parameters"]["WS2M"]["units"] = "km/h"
@@ -97,7 +97,7 @@ class EvidenceTests(unittest.TestCase):
 
     def test_generated_counts_and_temperature_match_provenance(self):
         output = json.loads((ROOT / "public/data/zones.geojson").read_text(encoding="utf-8"))
-        power = json.loads((ROOT / "data/nasa/power-malatya.json").read_text(encoding="utf-8"))
+        power = json.loads((ROOT / "data/nasa/power-antakya.json").read_text(encoding="utf-8"))
         minimum = power["properties"]["parameter"]["T2M_MIN"]["20230209"]
         self.assertEqual([zone["properties"]["reportPosts"] for zone in output["features"]], [4, 1])
         for zone in output["features"]:

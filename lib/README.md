@@ -66,7 +66,7 @@ To look at the data, open the cluster in the Atlas web UI and use **Browse Colle
 |---|---|---|
 | `MONGODB_URI` | from Role 1 | The Atlas `mongodb+srv://…` URI. Empty: the agents fall back to fake data |
 | `MONGODB_DB` | `disaster_desk` | Database name |
-| `DESK_ID` | `malatya-2023` | Default `deskId` for events and the board |
+| `DESK_ID` | `antakya-2023` | Default `deskId` for events and the board |
 | `AGENT_KEY` | from Role 1 | Workers send it as `x-agent-key` |
 | `DEMO_MODE` | `1` | Allows `?user=ID` on the API |
 
@@ -138,7 +138,7 @@ loop is down. `failed` counts events that threw three times.
 ### `searchMemory(q)`: read only, behind the `ask_desk` tool
 
 ```ts
-const hits = await searchMemory({ collection: "shelters", region: "malatya-merkez", text: "okul" });
+const hits = await searchMemory({ collection: "shelters", region: "antakya-merkez", text: "okul" });
 // → [{ record: Shelter, ageSeconds: 360 }, …]
 ```
 

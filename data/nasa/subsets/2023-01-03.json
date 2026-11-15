@@ -1,0 +1,14 @@
+{
+  "bbox": [
+    36.05,
+    36.1,
+    36.25,
+    36.35
+  ],
+  "file": "data/nasa/subsets/2023-01-03.npz",
+  "sha256": "073ee0117b011fe05babbc3e1e47b0bfae7ffe48956e025a6d432a185cbef32a",
+  "parentFile": "VNP46A2.A2023003.h21v05.002.2025135165845.h5",
+  "parentSha256": "bead64a74d1556cd2baeb20c8891bbe3e54dc12c9deb249dbd10f10d2d2cb577",
+  "sourceURL": "https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/VNP46A2/",
+  "transformation": "Unscaled numeric and QA arrays cropped to pilot pixel centres; NPZ is lossless, no pickle."
+}

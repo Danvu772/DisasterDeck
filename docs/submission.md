@@ -1,3 +1,5 @@
+> Current pilot: Antakya. The existing video/screenshots describe the earlier Malatya iteration; re-record them before submission. See [the new pilot runbook](antakya-pilot.md).
+
 # Submission handoff · Hack The Nest 2026
 
 ## Deliverables
@@ -6,7 +8,7 @@
 |---|---|
 | Devpost project story | [Project name, tagline, story, tools and NASA credit](devpost.md). Use the same name and tagline in the event app. |
 | Demo video | [Disaster Desk, 1:39, English narration and captions](submission-media/disaster-desk-demo.mp4). Captured from the local app with demo records and a separate real, offline NASA worker run. |
-| Gallery image 1 | [Malatya comparison](submission-media/compare.png). Caption: “Five synthetic reports, two addresses. The first callback has an owner. The second still needs one.” |
+| Gallery image 1 | [Antakya comparison](submission-media/compare.png). Caption: “Five synthetic reports, two addresses. The first callback has an owner. The second still needs one.” |
 | Gallery image 2 | [Coordinator view](submission-media/coordinator.png). Caption: “Fixture examples of an approval, an unassigned task and a vehicle breakdown.” |
 | Table pitch | [Two-minute operator script and acceptance checklist](demo.md). Run the live ending only after it passes with the team. |
 
@@ -16,12 +18,12 @@ Both screenshots were captured on 14 November 2026 from application revision `27
 
 | Historical observations | Synthetic material | Verified action |
 |---|---|---|
-| Malatya, February 2023. POWER, ARIA and Black Marble product details are on the [NASA evidence card](nasa-evidence.md). | Five reports over 16 seconds, four from the same simulated call. Users, site names and supplier loads are exercise data. | Opened the comparison and coordinator routes, expanded task history and captured both screens. Ran the satellite watcher on the cache and verified two cold alerts and zero silent-zone alerts. |
-| The regional minimum is shared by both cells. The dated Yeni Cami report provides a coarse location check. | Callback ownership, dispatch approvals and the replacement ETA in the captured screens are fixture state. | Still to observe on real sessions: callback, human approval, supplier acceptance, phone ETA, same-tier warmth priority, and optionally replacement ETA. |
+| Antakya, February 2023. POWER, ARIA and Black Marble product details are on the [NASA evidence card](nasa-evidence.md). | Five reports over 16 seconds, four from the same simulated call. Users, site names and supplier loads are exercise data. | Opened the comparison and coordinator routes, expanded task history and captured both screens. Ran the satellite watcher on the cache and verified two cold alerts and zero silent-zone alerts. |
+| The regional minimum is shared by both cells. The map includes separately sourced HOT/OSM destroyed-building reference polygons. | Callback ownership, dispatch approvals and the replacement ETA in the captured screens are fixture state. | Still to observe on real sessions: callback, human approval, supplier acceptance, phone ETA, same-tier warmth priority, and optionally replacement ETA. |
 
 ## Event-app short description
 
-Disaster Desk gives volunteers, field teams and suppliers a shared case view. In a synthetic Malatya earthquake exercise, five reports describe two addresses. The desk shows who owns the callback and where a coordinator decision is needed. An offline NASA worker adds a cold alert from the historical regional temperature record.
+Disaster Desk gives volunteers, field teams and suppliers a shared case view. In a synthetic Antakya earthquake exercise, five reports describe two addresses. The desk shows who owns the callback and where a coordinator decision is needed. An offline NASA worker adds a cold alert from the historical regional temperature record.
 
 ## Track and team fields
 

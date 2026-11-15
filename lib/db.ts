@@ -14,7 +14,7 @@ import type {
 // ---------- connection ----------
 
 const DEFAULT_DB = "disaster_desk";
-const DEFAULT_DESK = "malatya-2023";
+const DEFAULT_DESK = "antakya-2023";
 
 export function deskId(): string {
   return process.env.DESK_ID || DEFAULT_DESK;

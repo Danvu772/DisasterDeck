@@ -37,7 +37,7 @@ function FlyTo({ dot }: { dot?: MapDot }) {
 export default function V2MapView({ dots, selected, onPick }: {
   dots: MapDot[]; selected?: string; onPick: (key: string) => void;
 }) {
-  const center: LatLng = dots[0]?.coords ?? [38.355, 38.309];
+  const center: LatLng = dots[0]?.coords ?? [36.199, 36.156];
   return (
     <MapContainer center={center} zoom={13} scrollWheelZoom className="h-full w-full" style={{ minHeight: 420 }}>
       <BasemapTiles />

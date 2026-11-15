@@ -3,7 +3,7 @@
 // so the screen shows both the red and the calm state. Every name and number is made up.
 import type { Task } from "@/lib/types";
 
-const DESK = "malatya-2023";
+const DESK = "antakya-2023";
 
 export function makeCoordinatorTasks(now: number): Task[] {
   const ago = (min: number) => new Date(now - min * 60000);

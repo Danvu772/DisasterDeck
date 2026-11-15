@@ -3,14 +3,14 @@
 // Every name, address and number here is made up.
 import type { Incident, Need, Road, Shelter, Site, Task } from "@/lib/types";
 
-const DESK = "malatya-2023";
+const DESK = "antakya-2023";
 
 export function makeBoard(now: number) {
   const ago = (min: number) => new Date(now - min * 60000);
 
   const sites: Site[] = [
     {
-      _id: "site-57", address: "Örnek St. 12", region: "malatya-merkez", coords: [38.355, 38.309],
+      _id: "site-57", address: "Örnek St. 12", region: "antakya-merkez", coords: [36.199, 36.156],
       peopleTrapped: 1, callStatus: "not_called", status: "open",
       sources: [1, 2, 3, 4].map((i) => ({ source: "x" as const, eventId: `ev-${i}` })),
       history: [
@@ -20,14 +20,14 @@ export function makeBoard(now: number) {
       deskId: DESK, confidence: "corroborated", observedAt: ago(14), tier: 0, priority: 54, support: 4,
     },
     {
-      _id: "site-52", address: "Çınar St. 3", region: "malatya-merkez", coords: [38.343, 38.296], peopleTrapped: 3,
+      _id: "site-52", address: "Çınar St. 3", region: "antakya-merkez", coords: [36.187, 36.143], peopleTrapped: 3,
       callStatus: "verified", status: "team_on_site",
       sources: [{ source: "person", eventId: "ev-9" }],
       history: [{ ts: ago(40), by: "Zeynep", source: "person", reason: "Called back, voices heard" }],
       deskId: DESK, confidence: "confirmed", observedAt: ago(40), tier: 0, priority: 70, support: 1,
     },
     {
-      _id: "site-61", address: "Near the mosque, Kale", region: "malatya-merkez", peopleTrapped: 0,
+      _id: "site-61", address: "Near the mosque, Kale", region: "antakya-merkez", peopleTrapped: 0,
       callStatus: "not_called", status: "open", sources: [{ source: "x", eventId: "ev-20" }],
       history: [], deskId: DESK, confidence: "unconfirmed", observedAt: ago(95), tier: 1, priority: 31, support: 1,
     },
@@ -36,7 +36,7 @@ export function makeBoard(now: number) {
   // requestedBy is in the contract (lib/types.ts v2.1), same shape as the API.
   const needs: (Need & { requestedBy: string[] })[] = [
     {
-      _id: "need-1", item: "blankets", quantity: 20, region: "malatya-merkez", siteIds: ["site-52"],
+      _id: "need-1", item: "blankets", quantity: 20, region: "antakya-merkez", siteIds: ["site-52"],
       status: "on_the_way", deskId: DESK, confidence: "confirmed", lifeThreatening: true,
       lines: [{ siteId: "site-52", quantity: 20 }], tier: 0, priority: 62, support: 1, requestedBy: ["field-alpha"],
       history: [
@@ -45,7 +45,7 @@ export function makeBoard(now: number) {
       ],
     },
     {
-      _id: "need-4", item: "food for the team", quantity: 6, region: "malatya-merkez", siteIds: ["site-52"],
+      _id: "need-4", item: "food for the team", quantity: 6, region: "antakya-merkez", siteIds: ["site-52"],
       status: "assigned", deskId: DESK, confidence: "confirmed", lifeThreatening: false,
       lines: [{ siteId: "site-52", quantity: 6 }], tier: 1, priority: 28, support: 1, requestedBy: ["field-alpha"],
       history: [
@@ -54,19 +54,19 @@ export function makeBoard(now: number) {
       ],
     },
     {
-      _id: "need-2", item: "hot meals", quantity: 40, region: "malatya-merkez", siteIds: [],
+      _id: "need-2", item: "hot meals", quantity: 40, region: "antakya-merkez", siteIds: [],
       status: "proposed", deskId: DESK, confidence: "unconfirmed", lifeThreatening: false,
       lines: [{ quantity: 40 }], tier: 2, priority: 12, support: 1, requestedBy: ["volunteer-callback"],
       history: [{ ts: ago(25), by: "Zeynep", source: "person", reason: "Families at the park have had no hot food" }],
     },
     {
-      _id: "need-3", item: "power bank", quantity: 1, region: "malatya-merkez", siteIds: [],
+      _id: "need-3", item: "power bank", quantity: 1, region: "antakya-merkez", siteIds: [],
       status: "open", deskId: DESK, confidence: "confirmed", lifeThreatening: false,
       lines: [{ quantity: 1 }], tier: 2, priority: 18, support: 1, requestedBy: ["volunteer-callback"],
       history: [{ ts: ago(8), by: "Zeynep", source: "person", reason: "My phone is at 8%" }],
     },
     {
-      _id: "need-5", item: "fuel", quantity: 40, region: "malatya-merkez", siteIds: [],
+      _id: "need-5", item: "fuel", quantity: 40, region: "antakya-merkez", siteIds: [],
       status: "open", deskId: DESK, confidence: "confirmed", lifeThreatening: false,
       lines: [{ quantity: 40 }], tier: 1, priority: 33, support: 1, requestedBy: ["supplier-primary"],
       history: [{ ts: ago(12), by: "Demo Depo A", source: "person", reason: "Van is almost out of fuel" }],
@@ -74,25 +74,25 @@ export function makeBoard(now: number) {
   ];
 
   const shelters: Shelter[] = [
-    { _id: "sh-a", name: "Shelter A, school gym", region: "malatya-merkez", coords: [38.371, 38.325], bedsUsed: 58, bedsTotal: 60,
+    { _id: "sh-a", name: "Shelter A, school gym", region: "antakya-merkez", coords: [36.215, 36.172], bedsUsed: 58, bedsTotal: 60,
       updated: ago(3), observedAt: ago(120), history: [], deskId: DESK },
-    { _id: "sh-b", name: "Shelter B, mosque hall", region: "malatya-merkez", coords: [38.344, 38.301], bedsUsed: 24, bedsTotal: 60,
+    { _id: "sh-b", name: "Shelter B, mosque hall", region: "antakya-merkez", coords: [36.188, 36.148], bedsUsed: 24, bedsTotal: 60,
       updated: ago(5), observedAt: ago(5), history: [], deskId: DESK },
   ];
 
   const roads: Road[] = [
     { _id: "rd-1", road: "İnönü Ave, north", state: "closed", reason: "Collapsed building on the road",
-      coords: [38.382, 38.312],
+      coords: [36.226, 36.159],
       history: [], deskId: DESK, confidence: "confirmed", observedAt: ago(22) },
     { _id: "rd-2", road: "Ring road exit 3", state: "unconfirmed", reason: "One tweet says traffic is stuck",
-      coords: [38.358, 38.338],
+      coords: [36.202, 36.185],
       history: [], deskId: DESK, confidence: "unconfirmed", observedAt: ago(48) },
   ];
 
   const incidents: Incident[] = [
     {
       _id: "inc-1", deskId: DESK, kind: "vehicle_breakdown", reportedBy: "supplier-primary", taskId: "task-3",
-      severity: "critical", canContinue: false, coords: [38.336, 38.322],
+      severity: "critical", canContinue: false, coords: [36.18, 36.169],
       text: "Lastik patladı, 14. km'deyim", textEn: "Flat tire, I'm stuck at km 14, 30 blankets on board",
       status: "helping",
       actions: [

@@ -53,7 +53,7 @@ export function FieldV2({ initial, userId }: { initial: V2Board; userId: string 
       <header className="topbar flex items-center gap-2.5 px-[18px] pb-3.5 pt-[18px]">
         <div className="flex-1">
           <div className="text-lg font-bold">{nameOf(userId)}</div>
-          <div className="text-xs" style={{ color: "var(--v2-night-muted)" }}>Malatya exercise, official field team</div>
+          <div className="text-xs" style={{ color: "var(--v2-night-muted)" }}>Antakya exercise, official field team</div>
         </div>
         <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${live || demo ? "health-ok" : "health-bad"}`}>
           <span className={`inline-block h-2 w-2 rounded-full ${live || demo ? "dot-ok" : "dot-bad"}`} aria-hidden="true" />

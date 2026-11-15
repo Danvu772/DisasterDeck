@@ -2,26 +2,26 @@
 // Swap for the real API once Role 1 ships a feed endpoint. Every name and number is made up.
 import type { Event, Message, User } from "@/lib/types";
 
-const DESK = "malatya-2023";
+const DESK = "antakya-2023";
 
 export const users: User[] = [
   {
-    _id: "volunteer-callback", name: "Zeynep", role: "volunteer", region: "malatya-merkez", status: "available",
+    _id: "volunteer-callback", name: "Zeynep", role: "volunteer", region: "antakya-merkez", status: "available",
     deskId: DESK, trust: "vetted",
     profile: { skills: ["turkish", "phone_calls"], vehicle: "none", notes: "Night shift until 04:00. Prefers short tasks." },
   },
   {
-    _id: "field-alpha", name: "Saha Ekibi A", role: "field", region: "malatya-merkez", status: "busy",
-    deskId: DESK, trust: "official", coords: [38.351, 38.31],
+    _id: "field-alpha", name: "Saha Ekibi A", role: "field", region: "antakya-merkez", status: "busy",
+    deskId: DESK, trust: "official", coords: [36.195, 36.157],
     profile: { skills: ["rescue", "first_aid"], vehicle: "truck", notes: "Mostly talks by voice. Keep replies to one line." },
   },
   {
-    _id: "supplier-primary", name: "Demo Depo A", role: "supplier", region: "malatya-merkez", status: "busy",
+    _id: "supplier-primary", name: "Demo Depo A", role: "supplier", region: "antakya-merkez", status: "busy",
     deskId: DESK, trust: "vetted",
     profile: { vehicle: "van", stock: { blankets: 180, water: 400 }, notes: "One van, one driver." },
   },
   {
-    _id: "coordinator-duty", name: "Demo Nöbetçi Koordinatör", role: "coordinator", region: "malatya-merkez", status: "available",
+    _id: "coordinator-duty", name: "Demo Nöbetçi Koordinatör", role: "coordinator", region: "antakya-merkez", status: "available",
     deskId: DESK, trust: "official",
     profile: { notes: "Approves field team dispatch. Wants incidents first." },
   },
@@ -48,8 +48,9 @@ export function makeEvents(now: number): FeedEvent[] {
       payload: { item: "blankets", quantity: 20, lifeThreatening: true, siteId: "site-52" },
       result: { recordIds: ["need-1"], reason: "Need open at tier 0, delivery task to supplier-primary" } }),
     e(7, { _id: "ev-26", type: "alert", source: "nasa", actor: "satellite-watcher", status: "done",
-      payload: { zoneId: "kale", kind: "silent_zone", evidence: { damage: 0.8, dark: true, calls: 1 } },
-      result: { recordIds: ["zone-kale"], reason: "Kale flagged silent. Sites there +30 priority" } }),
+      observedAt: new Date("2023-02-09T23:59:59Z"),
+      payload: { zoneId: "antakya-turuncu", kind: "cold", evidence: { minTempC: -1.05 } },
+      result: { recordIds: ["antakya-turuncu"], reason: "Demo state: regional cold evidence; live priority consumption still needs verification" } }),
     e(9, { _id: "ev-25", type: "answer", source: "person", actor: "volunteer-callback", status: "done",
       payload: { taskId: "task-0", result: "done", note: "called, voices heard" },
       result: { recordIds: ["site-52"], reason: "Site verified, confidence confirmed" } }),
