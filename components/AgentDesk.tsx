@@ -2,7 +2,8 @@
 import { useState } from "react";
 import type { Event, Message, Task, User } from "@/lib/types";
 import { EventRow } from "./EventRow";
-import { TaskCard, type TaskAction } from "./TaskCard";
+import { TaskCard } from "./TaskCard";
+import { getCoords, sendTaskEvent, taskEventBody, type ProblemKind, type TaskAction } from "./taskEvents";
 import { ChatLine } from "./ChatLine";
 import { stubReply } from "./stubAgent";
 import { YourNeeds, type MyNeed } from "./YourNeeds";
@@ -20,6 +21,7 @@ export function AgentDesk(props: {
   const [messages, setMessages] = useState(props.messages);
   const [text, setText] = useState("");
   const [stub, setStub] = useState(false);
+  const [notice, setNotice] = useState("");
   const top = props.tasks[0];
   const nameOf = (id: string) => props.users.find((u) => u._id === id)?.name ?? id;
 
@@ -48,15 +50,14 @@ export function AgentDesk(props: {
     setMessages((m) => [...m, { _id: `a${m.length}`, userId: user._id, from: "agent", text: reply, ts: new Date() }]);
   }
 
-  function onAction(a: TaskAction) {
+  async function onAction(a: TaskAction, kind?: ProblemKind) {
     if (!top) return;
-    // TODO swap for POST /api/events once Role 1 ships it. Buttons must work without the model.
-    if (a === "problem") {
-      localEvent({ type: "incident", source: "person",
-        payload: { kind: "other", text: "Problem button", textEn: "Problem button pressed", taskId: top._id, canContinue: false } });
-    } else {
-      localEvent({ type: "answer", source: "person", payload: { taskId: top._id, result: a } });
-    }
+    setNotice("Sending");
+    const coords = a === "problem" ? await getCoords() : undefined;
+    const body = taskEventBody(top._id, a, kind, coords);
+    // Local copy first so the demo works when the API is down.
+    localEvent(body);
+    setNotice(await sendTaskEvent(user._id, body));
   }
 
   return (
@@ -86,7 +87,7 @@ export function AgentDesk(props: {
           <h2 className="mb-2 text-lg font-bold">
             Your top task {props.tasks.length > 1 && <span className="font-sans text-sm font-normal text-muted">({props.tasks.length - 1} more)</span>}
           </h2>
-          {top ? <TaskCard task={top} now={now} onAction={onAction}
+          {top ? <TaskCard task={top} now={now} onAction={onAction} notice={notice}
             assigneeName={props.users.find((u) => u._id === top.assignee)?.name} />
                : <p className="text-sm text-muted">Nothing assigned to you.</p>}
         </div>
