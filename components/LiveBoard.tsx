@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { makeBoard } from "@/fixtures/board";
 import { users } from "@/fixtures/desk";
+import { AskDesk } from "./AskDesk";
 import { BoardTabs } from "./BoardTabs";
 import { HealthLine } from "./HealthLine";
 import { usePolled } from "./map/usePolled";
@@ -38,6 +39,8 @@ export function LiveBoard({ initial }: { initial: DeskBoard }) {
           );
         })}
       </ul>
+
+      <AskDesk />
 
       <div className="mt-6">
         <BoardTabs board={b} now={now} />
