@@ -6,7 +6,7 @@ import type { IncidentKind, LatLng } from "@/lib/types";
 import { usePolled } from "@/components/map/usePolled";
 import { History } from "@/components/History";
 import { ChatLine } from "@/components/ChatLine";
-import { button, confidenceBorder, statusTag, statusText, tierBar } from "@/components/encode";
+import { button, confidenceBorder, statusTag, statusText, tierBadge, tierBar, tierText } from "@/components/encode";
 import { openTasksFor, type FieldBoard, type FieldTask } from "./pickTask";
 import { useOutbox, type FieldEvent } from "./useOutbox";
 import { useHoldToTalk } from "./useHoldToTalk";
@@ -140,33 +140,38 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
         </section>
       ) : (
         <>
-          <section className={`flex overflow-hidden rounded-card bg-card ${confidenceBorder("confirmed")}`}>
-            <div className={`w-3 shrink-0 ${tierBar(task.tier, overdue)}`} />
-            <div className="min-w-0 flex-1 p-4">
-              <h1 className="break-words text-3xl font-bold leading-tight">{task.title}</h1>
-              <p className="mt-3 break-words text-xl">{current.place}</p>
-              <p className="mt-1 text-lg">{current.people}, case {current.caseId}</p>
-              {overdue && <p className="mt-1 text-lg font-bold text-act">Overdue</p>}
-              <button className={`${big(button.outline)} mt-4`} aria-expanded={details}
-                onClick={() => setDetails(!details)}>
-                {details ? "Hide details" : "Details"}
-              </button>
-              {details && (
-                <div className="mt-3 space-y-2 text-base">
-                  {task.detail && <p>{task.detail}</p>}
-                  <p className="flex flex-wrap items-center gap-2">
-                    <span className={statusTag}>{statusText(task.status)}</span>
-                    <span className="text-muted">
-                      Priority {task.priority}, {task.risk} risk,{" "}
-                      {minutesLeft >= 0 ? `answer within ${minutesLeft} min` : `deadline passed ${-minutesLeft} min ago`}
-                    </span>
-                  </p>
-                  <p className="text-muted">Task {task._id}, {task.type}</p>
-                  {task.history.length > 0 && <History entries={task.history} now={now} />}
-                </div>
-              )}
+          <h1 className="text-2xl font-bold leading-tight">Your next task</h1>
+          <section className={`flex flex-col gap-3 rounded-card bg-card p-4 ${confidenceBorder("confirmed")}`}>
+            <p className="flex flex-wrap items-center gap-2 text-sm">
+              <span className={`rounded-pill px-2 py-0.5 text-xs font-bold ${tierBadge(task.tier, overdue)}`}>
+                <span className="font-mono">{tierText(task.tier).code}</span> {tierText(task.tier).word}
+              </span>
+              <span className="text-muted">{task.type}, case <span className="font-mono">{current.caseId}</span></span>
+              {overdue && <span className="font-bold text-act">Overdue</span>}
+            </p>
+            <div>
+              <h2 className="break-words text-3xl font-bold leading-tight">{current.place}</h2>
+              <p className="mt-1 text-lg">{current.people}</p>
             </div>
-          </section>
+            <p className="break-words text-base text-muted">{task.title}</p>
+            <button className={`${big(button.outline)} py-2! text-lg!`} aria-expanded={details}
+              onClick={() => setDetails(!details)}>
+              {details ? "Hide details" : "Details"}
+            </button>
+            {details && (
+              <div className="space-y-2 text-base">
+                {task.detail && <p>{task.detail}</p>}
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className={statusTag}>{statusText(task.status)}</span>
+                  <span className="text-muted">
+                    Priority <span className="font-mono">{task.priority}</span>, {task.risk} risk,{" "}
+                    {minutesLeft >= 0 ? `answer within ${minutesLeft} min` : `deadline passed ${-minutesLeft} min ago`}
+                  </span>
+                </p>
+                <p className="text-muted">Task <span className="font-mono">{task._id}</span>, {task.type}</p>
+                {task.history.length > 0 && <History entries={task.history} now={now} />}
+              </div>
+            )}
 
           {panel === "eta" && (
             <section className="space-y-3">
@@ -219,11 +224,12 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
                 Arrived
               </button>
               <button className={primaryIf(2)} disabled={busy} onClick={() => setPanel("done")}>Done</button>
-              <button className={`${big(button.act)} mt-6`} disabled={busy} onClick={() => setPanel("problem")}>
+              <button className={`${big(button.act)} mt-3`} disabled={busy} onClick={() => setPanel("problem")}>
                 Problem
               </button>
             </section>
           )}
+          </section>
         </>
       )}
 
@@ -235,8 +241,9 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
       )}
 
       <section className="space-y-2 border-t border-line pt-4">
+        <h2 className="text-xl font-bold">Your agent</h2>
         <button
-          className={`${big(talk.state === "recording" ? `${button.primary} bg-primary-dark!` : button.primary)} min-h-28 touch-none select-none [-webkit-touch-callout:none]`}
+          className={`${big(talk.state === "recording" ? `${button.primary} bg-primary-dark!` : button.primary)} rounded-pill! min-h-24 touch-none select-none [-webkit-touch-callout:none]`}
           disabled={talk.state === "unsupported" || talk.state === "sending"}
           onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); talk.start(); }}
           onPointerUp={talk.stop}
