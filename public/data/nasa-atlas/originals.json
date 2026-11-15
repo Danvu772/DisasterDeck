@@ -1,0 +1,184 @@
+{
+  "status": "Original Black Marble radiance filtered by mandatory quality, cloud mask and snow flags. Means use at least 80% valid cell-centre samples; these two dates alone do not establish a power outage.",
+  "zones": [
+    {
+      "name": "Turuncu Avlu demo cell",
+      "before": 38.61025,
+      "beforeValid": 2,
+      "after": null,
+      "afterValid": 0
+    },
+    {
+      "name": "Mor Avlu demo cell",
+      "before": 37.31932,
+      "beforeValid": 1,
+      "after": null,
+      "afterValid": 0
+    }
+  ],
+  "frames": [
+    {
+      "id": "radiance-2023-01-03",
+      "kind": "radiance",
+      "title": "Original Black Marble quality-filtered",
+      "date": "2023-01-03",
+      "image": "/data/nasa-atlas/radiance-2023-01-03.png",
+      "bounds": [
+        [
+          38.2020833333319,
+          38.14791666667145
+        ],
+        [
+          38.50208333333214,
+          38.49791666667173
+        ]
+      ],
+      "scale": "500 m",
+      "sourceURL": "https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/VNP46A2/",
+      "renderedCoverage": 0.19907,
+      "limitsImage": "/data/nasa-atlas/radiance-2023-01-03-limits.png",
+      "limitedFraction": 0.80093,
+      "limitation": "Excluded radiance pixels: missing retrieval, poor mandatory quality, snow/ice, low-quality cloud mask, cloud, shadow or cirrus. Clear areas pass this conservative filter.",
+      "legendURL": null
+    },
+    {
+      "id": "radiance-2023-02-08",
+      "kind": "radiance",
+      "title": "Original Black Marble quality-filtered",
+      "date": "2023-02-08",
+      "image": "/data/nasa-atlas/radiance-2023-02-08.png",
+      "bounds": [
+        [
+          38.2020833333319,
+          38.14791666667145
+        ],
+        [
+          38.50208333333214,
+          38.49791666667173
+        ]
+      ],
+      "scale": "500 m",
+      "sourceURL": "https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/VNP46A2/",
+      "renderedCoverage": 0.14352,
+      "limitsImage": "/data/nasa-atlas/radiance-2023-02-08-limits.png",
+      "limitedFraction": 0.85648,
+      "limitation": "Excluded radiance pixels: missing retrieval, poor mandatory quality, snow/ice, low-quality cloud mask, cloud, shadow or cirrus. Clear areas pass this conservative filter.",
+      "legendURL": null
+    },
+    {
+      "id": "hlsqa-2023-02-01",
+      "kind": "hlsqa",
+      "title": "Original HLS · cloud/shadow QA",
+      "date": "2023-02-01",
+      "image": "/data/nasa-atlas/hlsqa-2023-02-01.png",
+      "bounds": [
+        [
+          38.2,
+          38.15
+        ],
+        [
+          38.5,
+          38.5
+        ]
+      ],
+      "scale": "30 m source",
+      "sourceURL": "https://hls.gsfc.nasa.gov/data-products/",
+      "renderedCoverage": 0.0009,
+      "limitsImage": "/data/nasa-atlas/hlsqa-2023-02-01-limits.png",
+      "limitedFraction": 0.9991,
+      "limitation": "HLS Fmask flags cloud, shadow, adjacent cloud/shadow, high aerosol or missing data. Purple marks these excluded pixels; snow is retained.",
+      "legendURL": null
+    },
+    {
+      "id": "hlsqa-2023-02-09",
+      "kind": "hlsqa",
+      "title": "Original HLS · cloud/shadow QA",
+      "date": "2023-02-09",
+      "image": "/data/nasa-atlas/hlsqa-2023-02-09.png",
+      "bounds": [
+        [
+          38.2,
+          38.15
+        ],
+        [
+          38.5,
+          38.5
+        ]
+      ],
+      "scale": "30 m source",
+      "sourceURL": "https://hls.gsfc.nasa.gov/data-products/",
+      "renderedCoverage": 0.08535,
+      "limitsImage": "/data/nasa-atlas/hlsqa-2023-02-09-limits.png",
+      "limitedFraction": 0.91465,
+      "limitation": "HLS Fmask flags cloud, shadow, adjacent cloud/shadow, high aerosol or missing data. Purple marks these excluded pixels; snow is retained.",
+      "legendURL": null
+    }
+  ],
+  "hlsProcessedDates": [
+    "2023-02-01",
+    "2023-02-09"
+  ],
+  "sources": [
+    {
+      "file": "VNP46A2.A2023003.h21v05.002.2025135165845.h5",
+      "sourceURL": "https://data.laadsdaac.earthdatacloud.nasa.gov/prod-lads/VNP46A2/VNP46A2.A2023003.h21v05.002.2025135165845.h5",
+      "sha256": "bead64a74d1556cd2baeb20c8891bbe3e54dc12c9deb249dbd10f10d2d2cb577",
+      "bytes": 26461530
+    },
+    {
+      "file": "VNP46A2.A2023039.h21v05.002.2025136023247.h5",
+      "sourceURL": "https://data.laadsdaac.earthdatacloud.nasa.gov/prod-lads/VNP46A2/VNP46A2.A2023039.h21v05.002.2025136023247.h5",
+      "sha256": "8a60d760f95d4423e7562b0e2a48f59e2de595f069eb47f07316d31e21f803e2",
+      "bytes": 22093540
+    },
+    {
+      "file": "HLS.S30.T37SDC.2023032T081049.v2.0.B02.tif",
+      "sourceURL": "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSS30.020/HLS.S30.T37SDC.2023032T081049.v2.0/HLS.S30.T37SDC.2023032T081049.v2.0.B02.tif",
+      "sha256": "85ef063e8e54ed5f5f5e59de92d023bf4ee6382dd4bd576f0acaf9096a915f53",
+      "bytes": 27884097
+    },
+    {
+      "file": "HLS.S30.T37SDC.2023032T081049.v2.0.B03.tif",
+      "sourceURL": "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSS30.020/HLS.S30.T37SDC.2023032T081049.v2.0/HLS.S30.T37SDC.2023032T081049.v2.0.B03.tif",
+      "sha256": "8895887f91a6f2d7d2c47dff8085ff18529a39ecbd09db9cb705a2426c964806",
+      "bytes": 27946934
+    },
+    {
+      "file": "HLS.S30.T37SDC.2023032T081049.v2.0.B04.tif",
+      "sourceURL": "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSS30.020/HLS.S30.T37SDC.2023032T081049.v2.0/HLS.S30.T37SDC.2023032T081049.v2.0.B04.tif",
+      "sha256": "7a58143bbb68badc79469ea9d3631a19ce8cfcd4d8f2303495d44d75f52e9262",
+      "bytes": 27916993
+    },
+    {
+      "file": "HLS.S30.T37SDC.2023032T081049.v2.0.Fmask.tif",
+      "sourceURL": "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSS30.020/HLS.S30.T37SDC.2023032T081049.v2.0/HLS.S30.T37SDC.2023032T081049.v2.0.Fmask.tif",
+      "sha256": "814a103430cb679713bfe21a37b44c85db22c0875df0a2e7a58a3c9c5ab8cccc",
+      "bytes": 887728
+    },
+    {
+      "file": "HLS.S30.T37SDC.2023040T082111.v2.0.B02.tif",
+      "sourceURL": "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSS30.020/HLS.S30.T37SDC.2023040T082111.v2.0/HLS.S30.T37SDC.2023040T082111.v2.0.B02.tif",
+      "sha256": "ba6919ee88f988e9c7160e1c368a4e05d0b30a4431780564d570e725c57b5a20",
+      "bytes": 20240095
+    },
+    {
+      "file": "HLS.S30.T37SDC.2023040T082111.v2.0.B03.tif",
+      "sourceURL": "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSS30.020/HLS.S30.T37SDC.2023040T082111.v2.0/HLS.S30.T37SDC.2023040T082111.v2.0.B03.tif",
+      "sha256": "6a4c2392e8313422ac69ef029c2e6a2cfdd8aff3516aacac625fbba2b6faa904",
+      "bytes": 20364736
+    },
+    {
+      "file": "HLS.S30.T37SDC.2023040T082111.v2.0.B04.tif",
+      "sourceURL": "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSS30.020/HLS.S30.T37SDC.2023040T082111.v2.0/HLS.S30.T37SDC.2023040T082111.v2.0.B04.tif",
+      "sha256": "4569244ef1a9e496907e39a8e363815df6dc0806dfdaab395b47e21eb85b5eb0",
+      "bytes": 20408789
+    },
+    {
+      "file": "HLS.S30.T37SDC.2023040T082111.v2.0.Fmask.tif",
+      "sourceURL": "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSS30.020/HLS.S30.T37SDC.2023040T082111.v2.0/HLS.S30.T37SDC.2023040T082111.v2.0.Fmask.tif",
+      "sha256": "9715e23e1e91aeb23864d451b5e1ea05fd6a101126a3a3d2c38688a3d269b80c",
+      "bytes": 865664
+    }
+  ],
+  "radianceDisplay": "Shared asinh display stretch 0–40 nW/(cm² sr). Numerical means use unclipped original radiance."
+}

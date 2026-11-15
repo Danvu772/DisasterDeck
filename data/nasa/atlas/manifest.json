@@ -1,0 +1,154 @@
+{
+  "sources": [
+    {
+      "file": "data/nasa/atlas/GPM_Precipitation_Rate.xml",
+      "url": "https://gibs.earthdata.nasa.gov/colormaps/v1.3/GPM_Precipitation_Rate.xml",
+      "sha256": "c62b5da425e1f831fe1cbe9119f7806c31922a5aa7d63134a94058c0929d11cd",
+      "cachedAt": "2026-11-15T04:18:10.587817+00:00"
+    },
+    {
+      "file": "data/nasa/atlas/MODIS_Cloud_Fraction.xml",
+      "url": "https://gibs.earthdata.nasa.gov/colormaps/v1.3/MODIS_Cloud_Fraction.xml",
+      "sha256": "2c6b94b2ac521a4bf5056e84d71fc37d22b71f8217d7838031c73f1c7e3c6760",
+      "cachedAt": "2026-11-15T04:18:10.456004+00:00"
+    },
+    {
+      "file": "data/nasa/atlas/MODIS_NDSI_Snow_Cover.xml",
+      "url": "https://gibs.earthdata.nasa.gov/colormaps/v1.3/MODIS_NDSI_Snow_Cover.xml",
+      "sha256": "4af042d24dffc7dd67b991589157285e7281307c85f74bd0188f46556dbafd7a",
+      "cachedAt": "2026-11-15T04:18:10.303729+00:00"
+    },
+    {
+      "file": "data/nasa/atlas/black-marble-granules.json",
+      "url": "https://cmr.earthdata.nasa.gov/search/granules.json?bounding_box=38.15%2C38.2%2C38.5%2C38.5&temporal=2023-01-20T00%3A00%3A00Z%2C2023-02-11T00%3A00%3A00Z&page_size=100&short_name=VNP46A2",
+      "sha256": "b9d53677956e57ba8fa181abe475ea10a638c46b4f7c377a3039a7c4777b86a5",
+      "cachedAt": "2026-11-15T04:18:14.375984+00:00"
+    },
+    {
+      "file": "data/nasa/atlas/eonet.json",
+      "url": "https://eonet.gsfc.nasa.gov/api/v3/events?status=all&start=2023-02-06&end=2023-02-10&limit=1000",
+      "sha256": "566e0da1beb130481b36f29e2154451ec66491c505c8bc4d88636f8915f46a52",
+      "cachedAt": "2026-11-15T04:18:16.304458+00:00"
+    },
+    {
+      "file": "data/nasa/atlas/hls-granules.json",
+      "url": "https://cmr.earthdata.nasa.gov/search/granules.json?bounding_box=38.15%2C38.2%2C38.5%2C38.5&temporal=2023-01-20T00%3A00%3A00Z%2C2023-02-11T00%3A00%3A00Z&page_size=100&collection_concept_id=C2021957295-LPCLOUD",
+      "sha256": "5349a009722904b6543272ca86031c799af0989ebfac34dae5e53c4b64576db4",
+      "cachedAt": "2026-11-15T04:18:13.484464+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/cloud-2023-02-06.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-06&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=MODIS_Terra_Cloud_Fraction_Day&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "69faf3b0315a9a2552099ef64a9ddc4a98e587a638dec630776fce1fa533a4df",
+      "cachedAt": "2026-11-15T04:18:18.572610+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/cloud-2023-02-07.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-07&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=MODIS_Terra_Cloud_Fraction_Day&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "22ed95c14a15969aadf29055319110acce2fd0706d221b2a0b88213ad12a46cb",
+      "cachedAt": "2026-11-15T04:18:18.572610+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/cloud-2023-02-08.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-08&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=MODIS_Terra_Cloud_Fraction_Day&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "d379d37fa850c292b59ace38933df295379b0a892e5d11b5e4d3fe2fd162d5c0",
+      "cachedAt": "2026-11-15T04:18:19.843096+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/cloud-2023-02-09.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-09&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=MODIS_Terra_Cloud_Fraction_Day&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "73e024eb6a1586cda7e985c4adaef2b10a0beac2792365a1091415f231eefd85",
+      "cachedAt": "2026-11-15T04:18:19.843096+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/cloud-2023-02-10.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-10&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=MODIS_Terra_Cloud_Fraction_Day&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "5c795937f586535353e1ce1fcd484f8a22737711bf6431040255318a54d5cb9c",
+      "cachedAt": "2026-11-15T04:18:19.843096+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/hls-after-2023-02-09.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-09&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=HLS_S30_Nadir_BRDF_Adjusted_Reflectance&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "12291a0f8298ff89c95815c1cc100c04fd7ed5700ed4b2f3cfd7ec7ccec47c77",
+      "cachedAt": "2026-11-15T04:18:21.515034+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/hls-before-2023-02-01.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-01&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=HLS_S30_Nadir_BRDF_Adjusted_Reflectance&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "0465332ff15de4b4328f45f6224b874cabd8958a12eef2c8efa9095a5fea3ee3",
+      "cachedAt": "2026-11-15T04:18:20.068708+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/lights-after-2023-02-08.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-08&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=VIIRS_SNPP_GapFilled_BRDF_Corrected_DayNightBand_Radiance&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "f607a470ca28e44812ce07ed65fae78a97cb9c9255ebfccf112ddbe4938e6ec8",
+      "cachedAt": "2026-11-15T04:18:21.316860+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/lights-before-2023-01-03.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-01-03&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=VIIRS_SNPP_GapFilled_BRDF_Corrected_DayNightBand_Radiance&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "444faeb96a23e22e524c341df010684dd967961d0ff0b85b9165644f423bead2",
+      "cachedAt": "2026-11-15T04:18:20.691567+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/precipitation-2023-02-06.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-06&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=IMERG_Precipitation_Rate&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "9215c7425c5261db8036d0cbbb9726e9bfeb1b3651d382fadf33bed9b50d10a7",
+      "cachedAt": "2026-11-15T04:18:17.906513+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/precipitation-2023-02-07.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-07&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=IMERG_Precipitation_Rate&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "a8fcf27f8dcfb027f984f771ff7a07046c5632b36f8b79dbe43c74c6d3853d8d",
+      "cachedAt": "2026-11-15T04:18:17.892391+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/precipitation-2023-02-08.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-08&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=IMERG_Precipitation_Rate&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "074065f07e35265d9695cced0f42844dbb02e5766c4ed185d0a372b2d033b093",
+      "cachedAt": "2026-11-15T04:18:17.904475+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/precipitation-2023-02-09.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-09&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=IMERG_Precipitation_Rate&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "074065f07e35265d9695cced0f42844dbb02e5766c4ed185d0a372b2d033b093",
+      "cachedAt": "2026-11-15T04:18:18.665376+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/precipitation-2023-02-10.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-10&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=IMERG_Precipitation_Rate&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "074065f07e35265d9695cced0f42844dbb02e5766c4ed185d0a372b2d033b093",
+      "cachedAt": "2026-11-15T04:18:18.571371+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/snow-2023-02-06.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-06&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=MODIS_Terra_L3_NDSI_Snow_Cover_Daily&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "074065f07e35265d9695cced0f42844dbb02e5766c4ed185d0a372b2d033b093",
+      "cachedAt": "2026-11-15T04:18:17.047826+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/snow-2023-02-07.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-07&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=MODIS_Terra_L3_NDSI_Snow_Cover_Daily&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "5dc0babc1fa0919f78940c37292ae3820adbfd672dd81f88dd4fab292f93832a",
+      "cachedAt": "2026-11-15T04:18:17.190950+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/snow-2023-02-08.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-08&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=MODIS_Terra_L3_NDSI_Snow_Cover_Daily&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "92d9017933a66c0f910dace5d8a1c377eb770b0a384d01f54a6304311a810fd2",
+      "cachedAt": "2026-11-15T04:18:17.070262+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/snow-2023-02-09.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-09&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=MODIS_Terra_L3_NDSI_Snow_Cover_Daily&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "362051fa825602027bac525851c69179a1704be136132ca42cc1d28c198b3b6f",
+      "cachedAt": "2026-11-15T04:18:16.627274+00:00"
+    },
+    {
+      "file": "public/data/nasa-atlas/snow-2023-02-10.png",
+      "url": "https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2023-02-10&BBOX=38.2%2C38.15%2C38.5%2C38.5&CRS=EPSG%3A4326&LAYERS=MODIS_Terra_L3_NDSI_Snow_Cover_Daily&FORMAT=image%2Fpng&WIDTH=512&HEIGHT=512",
+      "sha256": "13876614a9aea91ffecb4d0a4567c9b43bad5a650e70dafa84ebea9288e45c8e",
+      "cachedAt": "2026-11-15T04:18:17.892391+00:00"
+    }
+  ]
+}

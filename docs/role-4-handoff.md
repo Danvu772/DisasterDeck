@@ -9,6 +9,8 @@
 
 ## Files and validation
 
+The [NASA atlas](nasa-atlas.md) now adds 27 dated layer choices with product-specific observation-limit overlays. Original HLS and Black Marble processing uses a local Earthdata download. Public derivatives and provenance are committed. Prithvi model cards are linked; model inference remains unperformed.
+
 Run from the repository root with Node.js. The command uses built-in modules.
 
 ```sh

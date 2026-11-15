@@ -2,6 +2,14 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v0.8 satellite atlas and observation limits · 2026-11-14 23:31 EST
+
+- Added 27 dated map layer choices covering MODIS snow, IMERG precipitation rate, MODIS daytime cloud fraction, HLS Sentinel-2, Black Marble, original-file quality layers and four HLS acquisition gaps.
+- User completed local Earthdata authentication. Downloaded original Black Marble and six-band HLS scenes with Fmask. Fixed the downloader's HLS collection-filter incompatibility and date interval, then completed both HLS scenes.
+- Added source-specific purple masks for high cloud fraction, missing acquisitions, clipped browse pixels and original QA exclusions. Original Black Marble has valid January means in both cells; no February cell samples pass the conservative filter. No outage conclusion is generated.
+- Added historical EONET catalogue points. Query returned ten worldwide events and zero points in the Malatya extent. Geometry dates are restricted to the query window.
+- Verified 12 Python evidence/atlas checks, TypeScript, scoped lint and desktop/phone interactions. Prithvi model cards are accessible from the map; model inference remains unperformed.
+
 ## v0.7 Malatya weather series · 2026-11-14 22:15 EST
 
 - Added a direct NASA POWER query for minimum/maximum temperature, relative humidity, mean wind speed and daily precipitation over 6–10 February 2023. Stored the unmodified response with manifest URL, timestamp and SHA-256.

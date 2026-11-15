@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { LatLng } from "@/lib/types";
 import type { ZoneFC, ZoneMeta } from "./ZoneLayer";
 
@@ -15,7 +15,7 @@ const METRICS = [
 type WeatherKey = typeof METRICS[number]["key"];
 const dateLabel = (date: string) => new Date(date + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
-export function NasaEvidence({ fc, onLocate }: { fc: ZoneFC; onLocate: (coords: LatLng) => void }) {
+export function NasaEvidence({ fc, onLocate, children }: { fc: ZoneFC; onLocate: (coords: LatLng) => void; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState("");
   const [metricKey, setMetricKey] = useState<WeatherKey>("minTempC");
@@ -33,7 +33,7 @@ export function NasaEvidence({ fc, onLocate }: { fc: ZoneFC; onLocate: (coords: 
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="nasa-evidence"
         className="w-full shrink-0 p-3 text-left">
         <span className="flex justify-between gap-3 text-sm font-bold">
-          <span>NASA · Weather evidence</span><span aria-hidden>{open ? "−" : "+"}</span>
+          <span>NASA · Satellite & weather</span><span aria-hidden>{open ? "−" : "+"}</span>
         </span>
         {coldest && <span className="mt-1 block text-3xl font-bold tabular-nums">{coldest.minTempC.toFixed(2)} °C</span>}
         <span className="block text-xs text-muted">Coldest daily minimum · {coldest && dateLabel(coldest.date)}</span>
@@ -42,6 +42,7 @@ export function NasaEvidence({ fc, onLocate }: { fc: ZoneFC; onLocate: (coords: 
       </button>
       {open && (
         <div id="nasa-evidence" className="min-h-0 overflow-y-auto border-t border-line p-3 text-sm">
+          {children}
           {chosenDay && <>
             <label htmlFor="nasa-weather-date" className="block text-xs font-bold">Observation day</label>
             <select id="nasa-weather-date" className="mt-1 w-full rounded-button border border-line bg-card p-2" value={chosenDay.date} onChange={(event) => setDate(event.target.value)}>

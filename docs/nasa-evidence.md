@@ -2,6 +2,8 @@
 
 ## Map presentation
 
+The [satellite atlas](nasa-atlas.md) extends the map with snow, precipitation, cloud fraction, HLS imagery, original Black Marble radiance, product-specific observation limits and historical EONET records. The original two-cell alert evidence below retains its earlier acquisition and quality assessment.
+
 Open `/map` and expand **NASA · Weather evidence**. Choose an observation day from 6–10 February and a trend metric. It shows minimum and maximum temperature (°C), mean wind speed at 2 m (m/s), mean relative humidity at 2 m (%) and daily precipitation (mm/day). The two Locate buttons focus the synthetic 500 m cells. Both cells share the same regional weather observation.
 
 The unmodified response is `data/nasa/power-weather-malatya.json`. Its URL, download time and SHA-256 hash are in the manifest. On 9 February the values are −14.38 °C minimum, −0.24 °C maximum, 2.45 m/s mean wind, 78.93% humidity and 0.04 mm/day precipitation. Precipitation alone does not distinguish rain from snow; daily mean wind does not establish gusts. These are regional historical observations shared by both cells.

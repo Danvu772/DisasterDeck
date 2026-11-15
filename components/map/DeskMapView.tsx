@@ -16,6 +16,7 @@ import type { MapItem } from "./mapItems";
 import { icon, roadLine, TILES, TILES_ATTR } from "./markers";
 import { HatchDefs, useZones, ZoneLayer, type ZoneMeta } from "./ZoneLayer";
 import { NasaEvidence } from "./NasaEvidence";
+import { NasaAtlasControls, NasaAtlasOverlay, useNasaAtlas, type AtlasSelection } from "./NasaAtlas";
 
 // The NASA check: one ink ring on the Yeni Cami landmark. JSON stores [lng, lat].
 const CHECK_AT: LatLng = [validation.landmark.coordsLngLat[1], validation.landmark.coordsLngLat[0]];
@@ -50,11 +51,11 @@ function KeepSized() {
   return null;
 }
 
-function FlyTo({ to }: { to?: LatLng }) {
+function FlyTo({ to, zoom }: { to?: LatLng; zoom?: number }) {
   const map = useMap();
   useEffect(() => {
-    if (to) map.flyTo(to, Math.max(map.getZoom(), 15), { duration: 0.4 });
-  }, [map, to]);
+    if (to) map.flyTo(to, zoom ?? Math.max(map.getZoom(), 15), { duration: 0.4 });
+  }, [map, to, zoom]);
   return null;
 }
 
@@ -175,6 +176,9 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
   focus?: string;                 // "<kind>:<id>" from /map?focus=, selected and flown to on load
 }) {
   const zones = useZones(zonesUrl ?? "");
+  const atlas = useNasaAtlas();
+  const [atlasSelection, setAtlasSelection] = useState<AtlasSelection>({ frameId: "", showLimits: true, eventScope: "off" });
+  const [atlasTarget, setAtlasTarget] = useState<LatLng>();
   const [selected, setSelected] = useState<string | null>(focus ?? null);
   const [flyTarget, setFlyTarget] = useState<LatLng | undefined>();
   const focused = useRef(false);
@@ -240,11 +244,13 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
 
       <div className="relative order-1 h-[55vh] md:order-2 md:h-auto md:flex-1">
         <MapContainer center={[38.35, 38.31]} zoom={13} className="h-full w-full" zoomControl>
-          <TileLayer url={TILES} attribution={zones?.metadata?.attribution ? `${TILES_ATTR}. Zones: ${zones.metadata.attribution}` : TILES_ATTR} maxZoom={16} />
+          <TileLayer url={TILES} attribution={`${TILES_ATTR}${zones?.metadata?.attribution ? `. Zones: ${zones.metadata.attribution}` : ""}${atlas ? ". Atlas: NASA GIBS, MODIS, GPM IMERG, NASA/USGS/ESA HLS, NASA EONET" : ""}`} maxZoom={16} />
           <KeepSized />
+          {atlas && <NasaAtlasOverlay atlas={atlas} selection={atlasSelection} />}
           {zones && <ZoneLayer fc={zones} />}
           <FitOnce points={points} />
           <FlyTo to={flyTarget} />
+          <FlyTo to={atlasTarget} zoom={10} />
           <TrackBounds onChange={setBounds} />
           {placed.filter((i) => i.linkTo).map((i) => (
             <Polyline key={`link:${i.key}`} positions={[i.coords!, i.linkTo!]}
@@ -264,7 +270,9 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
         </MapContainer>
         <HatchDefs />
         <Legend meta={zones?.metadata} zones={!!zones} />
-        {zones && <NasaEvidence fc={zones} onLocate={setFlyTarget} />}
+        {zones && <NasaEvidence fc={zones} onLocate={setFlyTarget}>
+          {atlas && <NasaAtlasControls atlas={atlas} selection={atlasSelection} onChange={setAtlasSelection} onLocate={setAtlasTarget} />}
+        </NasaEvidence>}
       </div>
     </div>
   );
