@@ -2,6 +2,13 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 21:20 t01, t02, t08 merged (`3765df2`, `28009e7`, and the map commit)
+- **t01** `/` polls `GET /api/board` through `LiveBoard`, says "Demo data" until the route answers. The health line shows failed events when there are any.
+- **t02** Accept, Decline, Done, Problem post real events to `POST /api/events?user=`. Problem asks which kind first (Vehicle, Road blocked, Can't find it, Other) and adds the browser position when it gets one within 3 s. The card says "Sent" or the server's own error. When the desk is offline, the screen still updates locally and says so.
+- **t08** `/map` has shelters (square, gold when full or over 90%) and roads (a bar, thick when closed, dashed when unconfirmed, never red). Open roads are not drawn.
+
+Not checked in the browser: since the SSOJet commit, every page needs a login unless `.env.local` has `DEMO_MODE=1`, and it doesn't. Dan sets that, the orchestrator is not allowed to switch off a login gate.
+
 ### 21:15 Orchestra set up
 One orchestrator session, workers in tmux, see `README.md`. First worker run (t03, haiku): 18 s, one cent, clean diff.
 
