@@ -1,6 +1,6 @@
 // Where a record is, and what it links to. Pure, from the board the page already polls.
 // Never guesses a position: no coords on the record or on what it points to means null.
-import type { Incident, LatLng, Need, Road, Shelter, Site, Task } from "@/lib/types";
+import type { Incident, LatLng, Need, Road, ScorePart, Shelter, Site, Task } from "@/lib/types";
 import type { Board } from "../BoardCards";
 import { severityTier } from "../encode";
 import { siteOfTask } from "../map/mapItems";
@@ -53,14 +53,14 @@ export function locate(kind: DetailKind, record: AnyRecord, board: Board, depth 
 }
 
 // The words a card leads with. Mirrors BoardCards so the panel title matches the card.
-export function summary(kind: DetailKind, r: AnyRecord, now = Date.now()): { title: string; tier: 0 | 1 | 2; priority?: number; status: string; confidence: string; actNow: boolean } {
+export function summary(kind: DetailKind, r: AnyRecord, now = Date.now()): { title: string; tier: 0 | 1 | 2; priority?: number; status: string; confidence: string; actNow: boolean; scoreParts?: ScorePart[]; caseNo?: number } {
   switch (kind) {
-    case "site": { const s = r as Site; return { title: s.address, tier: s.tier, priority: s.priority, status: s.status, confidence: s.confidence, actNow: s.tier === 0 && s.status === "open" }; }
-    case "need": { const n = r as Need; return { title: `${n.quantity} ${n.item}`, tier: n.tier, priority: n.priority, status: n.status, confidence: n.confidence, actNow: false }; }
+    case "site": { const s = r as Site; return { title: s.address, tier: s.tier, priority: s.priority, scoreParts: s.scoreParts, caseNo: s.caseNo, status: s.status, confidence: s.confidence, actNow: s.tier === 0 && s.status === "open" }; }
+    case "need": { const n = r as Need; return { title: `${n.quantity} ${n.item}`, tier: n.tier, priority: n.priority, scoreParts: n.scoreParts, caseNo: n.caseNo, status: n.status, confidence: n.confidence, actNow: false }; }
     case "shelter": { const h = r as Shelter; return { title: h.name, tier: h.bedsUsed / h.bedsTotal > 0.9 ? 1 : 2, status: `${h.bedsUsed} of ${h.bedsTotal} beds`, confidence: "confirmed", actNow: false }; }
     case "road": { const d = r as Road; return { title: d.road, tier: 1, status: d.state, confidence: d.confidence, actNow: false }; }
-    case "incident": { const i = r as Incident; return { title: i.kind.replaceAll("_", " "), tier: severityTier(i.severity), status: i.status, confidence: "confirmed", actNow: i.severity === "critical" }; }
-    case "task": { const t = r as Task; return { title: t.title, tier: t.tier, priority: t.priority, status: t.status, confidence: "confirmed", actNow: t.open && new Date(t.deadline).getTime() < now }; }
+    case "incident": { const i = r as Incident; return { title: i.kind.replaceAll("_", " "), tier: severityTier(i.severity), caseNo: i.caseNo, status: i.status, confidence: "confirmed", actNow: i.severity === "critical" }; }
+    case "task": { const t = r as Task; return { title: t.title, tier: t.tier, priority: t.priority, scoreParts: t.scoreParts, status: t.status, confidence: "confirmed", actNow: t.open && new Date(t.deadline).getTime() < now }; }
   }
 }
 

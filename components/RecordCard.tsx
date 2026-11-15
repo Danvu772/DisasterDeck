@@ -1,5 +1,6 @@
-import type { Confidence, HistoryEntry, RecordType, Source, Tier } from "@/lib/types";
-import { confidenceBorder, statusTag, statusText, tierBar } from "./encode";
+import type { Confidence, HistoryEntry, RecordType, ScorePart, Source, Tier } from "@/lib/types";
+import { confidenceBorder, statusTag, statusText, tierBar, tierText } from "./encode";
+import { CaseNo, ScoreBreakdown } from "./ScoreBreakdown";
 import { Stamp } from "./Stamp";
 import { History } from "./History";
 
@@ -10,6 +11,8 @@ export function RecordCard(props: {
   detail?: string;
   tier: Tier;
   priority?: number;
+  scoreParts?: ScorePart[];
+  caseNo?: number;
   confidence: Confidence;
   status: string;
   at: Date | string;
@@ -27,12 +30,14 @@ export function RecordCard(props: {
       <div className={`w-2 shrink-0 ${tierBar(props.tier, props.actNow)}`} />
       <div className="min-w-0 flex-1 p-3">
         <header className="flex items-baseline gap-2">
-          <h3 className="truncate text-lg font-bold">{props.title}</h3>
-          {props.priority !== undefined && (
-            <span className="ml-auto whitespace-nowrap text-xs text-muted">
-              Priority {props.priority}
-            </span>
+          {props.caseNo !== undefined && (
+            <span className="whitespace-nowrap text-sm text-muted"><CaseNo kind={props.type} no={props.caseNo} /></span>
           )}
+          <h3 className="truncate text-lg font-bold">{props.title}</h3>
+          <span className="ml-auto flex items-baseline gap-2 whitespace-nowrap text-xs text-muted">
+            <span><span className="font-mono">{tierText(props.tier).code}</span> {tierText(props.tier).word}</span>
+            {props.priority !== undefined && <ScoreBreakdown priority={props.priority} parts={props.scoreParts} />}
+          </span>
         </header>
         {props.detail && <p className="mt-1 text-sm">{props.detail}</p>}
         {props.children}

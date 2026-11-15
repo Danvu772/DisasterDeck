@@ -8,6 +8,7 @@ import type { Incident, Site } from "@/lib/types";
 import type { Board } from "../BoardCards";
 import { History } from "../History";
 import { SOURCE_LABEL } from "../Stamp";
+import { CaseNo, ScoreBreakdown } from "../ScoreBreakdown";
 import { button, link, statusTag, statusText, tierBadge, tierText } from "../encode";
 import { fields, when } from "./fields";
 import { type DetailKind, findRecord, links, locate, parseKey, summary } from "./locate";
@@ -62,9 +63,12 @@ export function DetailPanel({ board, now, live, openKey, onOpen, onClose }: {
           </span>
           <span className="text-xs text-muted">{KIND_WORD[kind]} <span className="font-mono">{record._id}</span></span>
         </p>
-        <h2 className="mt-1.5 text-xl font-bold first-letter:uppercase">{head.title}</h2>
+        <h2 className="mt-1.5 text-xl font-bold">
+          {head.caseNo !== undefined && <span className="mr-2 text-base font-normal text-muted"><CaseNo kind={kind} no={head.caseNo} /></span>}
+          <span className="first-letter:uppercase">{head.title}</span>
+        </h2>
         <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-          {head.priority !== undefined && <span>Priority <span className="font-mono">{head.priority}</span></span>}
+          {head.priority !== undefined && <ScoreBreakdown priority={head.priority} parts={head.scoreParts} className="text-sm" />}
           <span className={statusTag}>{statusText(head.status)}</span>
           <span className="capitalize text-muted">{head.confidence}</span>
         </p>
