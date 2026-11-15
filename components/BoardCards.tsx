@@ -15,7 +15,7 @@ export function SiteCards({ items, now, tasks }: { items: Site[]; now: number; t
     return (
       <RecordCard key={s._id} type="site" title={s.address}
         detail={`${s.peopleTrapped} ${s.peopleTrapped === 1 ? "person" : "people"} trapped. Call status: ${s.callStatus.replace("_", " ")}.`}
-        tier={s.tier} priority={s.priority} confidence={s.confidence} status={s.status}
+        tier={s.tier} priority={s.priority} scoreParts={s.scoreParts} caseNo={s.caseNo} confidence={s.confidence} status={s.status}
         at={s.observedAt} source={s.sources[0]?.source} sources={s.sources.length}
         history={s.history} now={now}>
         <p className="mt-1 text-xs text-muted">{loopLine(s, tasks)}</p>
@@ -39,7 +39,7 @@ export function SiteCards({ items, now, tasks }: { items: Site[]; now: number; t
 export function NeedCards({ items, now }: { items: Need[]; now: number }) {
   return items.map((n) => (
     <RecordCard key={n._id} type="need" title={`${n.quantity} ${n.item}`} detail={n.region}
-      tier={n.tier} priority={n.priority} confidence={n.confidence} status={n.status}
+      tier={n.tier} priority={n.priority} scoreParts={n.scoreParts} caseNo={n.caseNo} confidence={n.confidence} status={n.status}
       at={n.history[0]?.ts ?? new Date(now)} now={now}>
       {n.status === "proposed" && (
         <p className="mt-1 text-xs text-muted">
@@ -72,7 +72,7 @@ export function RoadCards({ items, now }: { items: Road[]; now: number }) {
 export function IncidentCards({ items, now }: { items: Incident[]; now: number }) {
   return items.map((i) => (
     <RecordCard key={i._id} type="incident" title={i.kind.replace("_", " ")} detail={i.textEn}
-      tier={0} actNow={i.severity === "critical"} confidence="confirmed" status={i.status}
+      tier={0} actNow={i.severity === "critical"} caseNo={i.caseNo} confidence="confirmed" status={i.status}
       at={i.actions[0]?.ts ?? new Date(now)} source="person" now={now}>
       <p className="mt-1 text-xs text-muted">{i.text}</p>
       <p className="mt-2 text-xs font-bold">Actions taken</p>

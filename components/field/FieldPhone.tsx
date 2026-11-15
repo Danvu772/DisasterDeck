@@ -7,6 +7,7 @@ import { usePolled } from "@/components/map/usePolled";
 import { History } from "@/components/History";
 import { ChatLine } from "@/components/ChatLine";
 import { button, confidenceBorder, statusTag, statusText, tierBadge, tierBar, tierText } from "@/components/encode";
+import { CaseNo } from "@/components/ScoreBreakdown";
 import { openTasksFor, type FieldBoard, type FieldTask } from "./pickTask";
 import { useOutbox, type FieldEvent } from "./useOutbox";
 import { useHoldToTalk } from "./useHoldToTalk";
@@ -80,6 +81,9 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
   const closed = !!chosen && !picked;
   const others = open.filter((o) => o !== current);
   const task = current?.task;
+  const aboutRecord = task && (task.recordType === "site" ? data.sites.find((x) => x._id === task.recordId)
+    : task.recordType === "need" ? data.needs.find((x) => x._id === task.recordId) : undefined);
+  const caseNo = aboutRecord?.caseNo;
   const step = task
     ? Math.max(task.status === "accepted" ? 1 : 0, local?.id === task._id ? local.step : 0)
     : 0;
@@ -156,7 +160,10 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
               <h2 className="break-words text-3xl font-bold leading-tight">{current.place}</h2>
               <p className="mt-1 text-lg">{current.people}</p>
             </div>
-            <p className="break-words text-base text-muted">{task.title}</p>
+            <p className="break-words text-base text-muted">
+              {caseNo !== undefined && <span className="mr-2"><CaseNo kind={task.recordType} no={caseNo} /></span>}
+              {task.title}
+            </p>
             <button className={`${big(button.outline)} py-2! text-lg!`} aria-expanded={details}
               onClick={() => setDetails(!details)}>
               {details ? "Hide details" : "Details"}

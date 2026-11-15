@@ -4,6 +4,7 @@ import type { Incident, Need, Road, Shelter, Site, Task } from "@/lib/types";
 import { users } from "@/fixtures/desk";
 import type { Board } from "../BoardCards";
 import { Stamp } from "../Stamp";
+import { CaseNo, ScoreBreakdown } from "../ScoreBreakdown";
 import { chip, minutesSince, statusTag, statusText, tierBadge, tierText } from "../encode";
 import { loopLine } from "../loopStep";
 import { KIND_WORD } from "../detail/DetailPanel";
@@ -103,13 +104,16 @@ function ListRow({ r, board, now, selected, onOpen }: {
   const s = summary(r.kind, r.record, now);
   const t = tierText(s.tier);
   return (
-    <li className="border-b border-line">
+    <li className="relative border-b border-line">
       <button type="button" data-card={r.key} aria-pressed={selected} onClick={() => onOpen(r.key)}
         className={`grid w-full grid-cols-[2.5rem_minmax(0,1fr)_auto] items-start gap-3 py-2.5 pr-3 text-left ${r.indent ? "pl-9" : "pl-3"} ${
           selected ? "bg-primary-lighter shadow-[inset_0_0_0_2px_var(--color-primary)]" : "hover:bg-paper"}`}>
         <span title={t.word} className={`rounded-tag py-0.5 text-center font-mono text-xs font-bold ${tierBadge(s.tier, s.actNow)}`}>{t.code}</span>
         <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-xs text-muted">{KIND_WORD[r.kind]} <span className="font-mono">{r.record._id}</span></span>
+          <span className="text-xs text-muted">
+            {s.caseNo !== undefined && <><CaseNo kind={r.kind} no={s.caseNo} />, </>}
+            {KIND_WORD[r.kind]} <span className="font-mono">{r.record._id}</span>, {t.word}
+          </span>
           <span className="font-bold first-letter:uppercase">{s.title}</span>
           <RowLines r={r} board={board} now={now} />
           <span className="mt-0.5 flex flex-wrap items-center gap-2">
@@ -118,13 +122,17 @@ function ListRow({ r, board, now, selected, onOpen }: {
             <span className="text-xs capitalize text-muted">{s.confidence}</span>
           </span>
         </span>
-        <span className="flex flex-col items-end">
+        <span className="flex flex-col items-end" aria-hidden={s.scoreParts ? true : undefined}>
           {s.priority !== undefined && <>
-            <span className="font-mono text-sm font-bold">{s.priority}</span>
-            <span className="text-xs text-muted">priority</span>
+            <span className={`font-mono text-sm font-bold ${s.scoreParts ? "invisible" : ""}`}>{s.priority}</span>
+            <span className={`text-xs ${s.scoreParts ? "invisible" : "text-muted"}`}>priority</span>
           </>}
         </span>
       </button>
+      {/* A button cannot sit inside the row button, so the popover trigger floats over the number's slot. */}
+      {s.priority !== undefined && s.scoreParts && (
+        <ScoreBreakdown stacked priority={s.priority} parts={s.scoreParts} className="absolute right-3 top-2.5" />
+      )}
     </li>
   );
 }
