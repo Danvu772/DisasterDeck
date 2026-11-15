@@ -10,7 +10,7 @@ export type Board = {
 export function SiteCards({ items, now }: { items: Site[]; now: number }) {
   return items.map((s) => (
     <RecordCard key={s._id} type="site" title={s.address}
-      detail={`${s.peopleTrapped} ${s.peopleTrapped === 1 ? "person" : "people"} · call: ${s.callStatus.replace("_", " ")}`}
+      detail={`${s.peopleTrapped} ${s.peopleTrapped === 1 ? "person" : "people"} trapped. Call status: ${s.callStatus.replace("_", " ")}.`}
       tier={s.tier} priority={s.priority} confidence={s.confidence} status={s.status}
       at={s.observedAt} source={s.sources[0]?.source} sources={s.sources.length}
       history={s.history} now={now} />
@@ -23,8 +23,8 @@ export function NeedCards({ items, now }: { items: Need[]; now: number }) {
       tier={n.tier} priority={n.priority} confidence={n.confidence} status={n.status}
       at={n.history[0]?.ts ?? new Date(now)} now={now}>
       {n.status === "proposed" && (
-        <p className="mt-1 font-mono text-xs text-muted">
-          {"●".repeat(n.support)}{"○".repeat(Math.max(0, 3 - n.support))} {n.support} of 3 asked
+        <p className="mt-1 text-xs text-muted">
+          {n.support} of 3 requests needed
         </p>
       )}
     </RecordCard>
@@ -55,9 +55,10 @@ export function IncidentCards({ items, now }: { items: Incident[]; now: number }
     <RecordCard key={i._id} type="incident" title={i.kind.replace("_", " ")} detail={i.textEn}
       tier={0} actNow={i.severity === "critical"} confidence="confirmed" status={i.status}
       at={i.actions[0]?.ts ?? new Date(now)} source="person" now={now}>
-      <p className="mt-1 text-xs italic text-muted">{i.text}</p>
-      <ul className="mt-2 space-y-0.5 font-mono text-xs">
-        {i.actions.map((a, k) => <li key={k}>→ {a.what}</li>)}
+      <p className="mt-1 text-xs text-muted">{i.text}</p>
+      <p className="mt-2 text-xs font-bold">Actions taken</p>
+      <ul className="mt-0.5 space-y-0.5 text-xs">
+        {i.actions.map((a, k) => <li key={k}>{a.what}</li>)}
       </ul>
     </RecordCard>
   ));

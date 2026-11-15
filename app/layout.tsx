@@ -1,16 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
+import { Account } from "@/components/Account";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+// USWDS component face: Source Sans for all text, headings included.
+const sourceSans = Source_Sans_3({
+  variable: "--font-source-sans",
+  subsets: ["latin", "latin-ext"],
 });
 
 export const metadata: Metadata = {
@@ -26,9 +23,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} flex h-dvh flex-col antialiased`}
+        className={`${sourceSans.variable} flex h-dvh flex-col antialiased`}
       >
-        <Nav />
+        <Nav account={<Account />} />
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       </body>
     </html>

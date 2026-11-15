@@ -1,11 +1,11 @@
-// "queue: 3 waiting, oldest 2 s". Red only when the Brain is stuck (> 30 s).
+// "Queue: 3 waiting, oldest 2 seconds". Red only when the Brain is stuck (> 30 s).
 export function HealthLine({ pending, oldestPendingSeconds }: {
   pending: number; oldestPendingSeconds: number;
 }) {
   const stuck = oldestPendingSeconds > 30;
   return (
-    <p className={`font-mono text-xs ${stuck ? "font-semibold text-act" : "text-muted"}`}>
-      queue: {pending} waiting, oldest {oldestPendingSeconds} s
+    <p className={`text-sm ${stuck ? "font-bold text-act" : "text-muted"}`}>
+      Queue: {pending} waiting, oldest {oldestPendingSeconds} {oldestPendingSeconds === 1 ? "second" : "seconds"}
     </p>
   );
 }

@@ -3,38 +3,63 @@
 /*
   TOKENS. The only place a colour, font or radius is written.
   Owner: Dan (frontend). See docs/Multiplayer Disaster Desk/Roles/Frontend visual language.md
+  Values are USWDS 3.14 theme tokens (named in the comments) so the app looks like a default .gov site:
+  white page, Source Sans for everything (headings too), no serif, no mono, no decorative glyphs.
   One meaning, one channel:
-    act     = a person should act now (tier 0, overdue, critical). Nothing else is red.
-    urgent  = tier 1
-    calm    = tier 2
-    hatch   = NASA zones on the map only, never on cards
+    act      = a person should act now (tier 0, overdue, critical). Nothing else is red.
+    urgent   = tier 1
+    calm     = tier 2
+    primary  = you can click this (buttons, links, focus, the current tab). Nothing else is blue.
+    hatch    = NASA zones on the map only, never on cards
   Everything else is ink on paper.
 */
 @theme {
-  --color-paper: #fbfaf7;
-  --color-card: #ffffff;
-  --color-ink: #1c1b19;
-  --color-muted: #6b6862;
-  --color-line: #d9d6cf;
+  --color-paper: #ffffff; /* white, the default .gov page */
+  --color-card: #ffffff; /* white */
+  --color-ink: #1b1b1b; /* ink */
+  --color-muted: #565c65; /* base-dark, the lightest gray that passes AA for small text */
+  --color-line: #dfe1e2; /* base-lighter */
 
-  --color-act: #c4281c; /* DECIDE: must survive a projector */
-  --color-act-soft: #fbe9e7;
-  --color-urgent: #b86e00; /* DECIDE */
-  --color-calm: #9a968d;
-  --color-hatch: #4b5fa8;
+  --color-act: #b50909; /* secondary-dark */
+  --color-act-soft: #f3e1e4; /* secondary-lighter */
+  --color-urgent: #ffbe2e; /* warning */
+  --color-calm: #a9aeb1; /* base-light */
+  --color-hatch: #565c65; /* base-dark, drawn as a hatch pattern, never a fill */
 
-  --radius-card: 6px;
+  --color-primary: #005ea2; /* primary */
+  --color-primary-dark: #1a4480; /* primary-dark, hover */
+  --color-primary-lighter: #d9e8f6; /* primary-lighter */
+  --color-focus: #2491ff; /* focus, blue-40v */
+
+  --radius-card: 0.5rem; /* card-border-radius lg */
+  --radius-button: 0.25rem; /* button-border-radius md */
+  --radius-tag: 2px; /* border-radius-sm */
 }
 
-/* Fonts are inline because Next sets --font-geist-* on <body>, not :root. DECIDE the faces. */
+/* One face. Inline because Next sets the vars on <body>, not :root. */
 @theme inline {
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif; /* people */
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace; /* machine + provenance */
+  --font-sans: var(--font-source-sans), "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif; /* all text */
+  --font-serif: initial; /* no serif anywhere. font-serif is a no-op */
+  --font-mono: initial; /* no mono anywhere */
 }
 
 body {
   background: var(--color-paper);
   color: var(--color-ink);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-source-sans), "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
+  line-height: 1.5;
   font-variant-numeric: tabular-nums;
+}
+
+/* USWDS focus ring: 0.25rem solid focus blue, everywhere, keyboard only. */
+:focus-visible {
+  outline: 0.25rem solid var(--color-focus);
+  outline-offset: 0;
+}
+
+/* Leaflet ships Helvetica on the map and Lucida Console (mono) on the zoom buttons. Same face as everything else. */
+body .leaflet-container,
+body .leaflet-container .leaflet-control-zoom-in,
+body .leaflet-container .leaflet-control-zoom-out {
+  font-family: var(--font-sans);
 }

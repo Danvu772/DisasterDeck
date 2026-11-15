@@ -4,8 +4,7 @@ import type {
 } from "@/lib/types";
 import { ageText } from "./encode";
 
-// One line per event, whatever the type. What came in (sans if a person said it, mono if a
-// machine did), then what the desk turned it into.
+// One entry per event, whatever the type. Who sent it, what came in, then what the desk did with it.
 function summary(e: Event): { said: string; original?: string } {
   switch (e.type) {
     case "report": { const p = e.payload as ReportPayload; return { said: p.textEn, original: p.text }; }
@@ -15,24 +14,24 @@ function summary(e: Event): { said: string; original?: string } {
     case "closure": { const p = e.payload as ClosurePayload; return { said: `${p.road} ${p.state}: ${p.reason}` }; }
     case "answer": { const p = e.payload as AnswerPayload; return { said: p.note ?? p.result }; }
     case "approval": { const p = e.payload as ApprovalPayload; return { said: p.approved ? "Approved" : "Rejected" }; }
-    case "alert": { const p = e.payload as AlertPayload; return { said: `${p.kind.replace("_", " ")} in ${p.zoneId}` }; }
+    case "alert": { const p = e.payload as AlertPayload; const zone = p.zoneId.charAt(0).toUpperCase() + p.zoneId.slice(1); const kind = p.kind.replaceAll("_", " "); return { said: `${kind.charAt(0).toUpperCase() + kind.slice(1)} in ${zone}` }; }
     default: return { said: e.type };
   }
 }
 
 export function EventRow({ e, now, actorName }: { e: Event; now: number; actorName: string }) {
   const s = summary(e);
-  const person = e.source === "person";
   const waiting = e.status === "pending" || e.status === "working";
   return (
     <li className={`border-b border-line py-2 ${waiting ? "opacity-60" : ""}`}>
-      <p className="font-mono text-xs text-muted">
-        {e.type} · {actorName} · {e.source} · {ageText(e.ts, now)}
+      <p className="text-xs text-muted">
+        <span className="font-bold text-ink">{actorName}</span>, {e.type} from {e.source}, {ageText(e.ts, now)}
       </p>
-      <p className={`mt-0.5 text-sm ${person ? "" : "font-mono"}`}>{s.said}</p>
-      {s.original && <p className="text-xs italic text-muted">{s.original}</p>}
-      <p className="mt-0.5 font-mono text-xs">
-        {waiting ? <span className="text-muted">… {e.status}</span> : <>→ {e.result?.reason ?? e.status}</>}
+      <p className="mt-0.5 text-sm">{s.said}</p>
+      {s.original && <p className="text-xs text-muted">{s.original}</p>}
+      <p className="mt-0.5 text-xs">
+        {waiting ? <span className="text-muted">Status: {e.status}</span>
+                 : <><span className="font-bold">Result:</span> {e.result?.reason ?? e.status}</>}
       </p>
     </li>
   );

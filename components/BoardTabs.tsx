@@ -30,10 +30,10 @@ export function BoardTabs({ board, now, initial = "sites" }: { board: Board; now
           return (
             <button key={t} role="tab" aria-selected={on} onClick={() => setTab(t)}
               className={`-mb-px flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm capitalize ${
-                on ? "border-ink font-medium" : "border-transparent text-muted hover:text-ink"}`}>
+                on ? "border-primary font-bold text-ink" : "border-transparent text-muted hover:text-primary"}`}>
               {t}
-              <span className="font-mono text-xs text-muted">{board[t].length}</span>
-              {act > 0 && <span className="rounded bg-act px-1 font-mono text-xs text-card">{act}</span>}
+              <span className="text-muted">({board[t].length})</span>
+              {act > 0 && <span className="rounded-tag bg-act px-1.5 text-xs font-bold text-card">{act}</span>}
             </button>
           );
         })}

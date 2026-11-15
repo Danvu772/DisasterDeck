@@ -18,6 +18,11 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // design-sync: staged converter, its output, generated types
+      ".ds-sync/**",
+      "ds-bundle/**",
+      "dist/**",
+      ".design-sync/**",
     ],
   },
 ];

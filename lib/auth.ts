@@ -6,6 +6,7 @@
 // 3. `?user=<id>` only when DEMO_MODE=1: the role picker on our laptops.
 import { createHash, timingSafeEqual } from "node:crypto";
 import { cols } from "./db";
+import { sessionUserId } from "../auth";
 import type { User } from "./types";
 
 export type Caller =
@@ -23,11 +24,11 @@ function sameSecret(a: string, b: string): boolean {
 
 /**
  * The user id from the login session, or null.
- * TODO(Role 3 + Role 1): read the SSOJet session here once login lands.
+ * The SSOJet session (Auth.js cookie), mapped to a desk user in /auth.ts (Role 3).
  */
 async function getSessionUserId(req: Request): Promise<string | null> {
-  void req; // the SSOJet session cookie will be read from here
-  return null;
+  void req; // Auth.js reads the session cookie from the request context itself
+  return sessionUserId();
 }
 
 export async function resolveCaller(req: Request): Promise<CallerResult> {

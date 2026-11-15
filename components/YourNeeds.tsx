@@ -1,5 +1,5 @@
 import type { Need } from "@/lib/types";
-import { ageText, confidenceBorder, tierBar } from "./encode";
+import { ageText, confidenceBorder, statusTag, statusText, tierBar } from "./encode";
 
 // Until Role 1 adds requestedBy to Need (see "Personal agents").
 export type MyNeed = Need & { requestedBy?: string[] };
@@ -17,18 +17,18 @@ export function YourNeeds({ needs, now }: { needs: MyNeed[]; now: number }) {
             <div className={`w-1 shrink-0 ${tierBar(n.tier, n.lifeThreatening && n.status !== "delivered")}`} />
             <div className="min-w-0 flex-1 px-3 py-2">
               <p className="flex items-baseline gap-2 text-sm">
-                <span className="font-medium">{n.quantity} {n.item}</span>
-                <span className="rounded border border-line px-1.5 text-xs">{n.status.replaceAll("_", " ")}</span>
-                <span className="ml-auto font-mono text-xs text-muted">{n.tier} · {n.priority}</span>
+                <span className="font-bold">{n.quantity} {n.item}</span>
+                <span className={statusTag}>{statusText(n.status)}</span>
+                <span className="ml-auto whitespace-nowrap text-xs text-muted">Priority {n.priority}</span>
               </p>
               {n.status === "proposed" && (
-                <p className="mt-0.5 font-mono text-xs text-muted">
-                  {"●".repeat(n.support)}{"○".repeat(Math.max(0, 3 - n.support))} {n.support} of 3 asked, goes on the shared list at 3
+                <p className="mt-0.5 text-xs text-muted">
+                  {n.support} of 3 requests. Goes on the shared list at 3.
                 </p>
               )}
               {last && (
-                <p className={`mt-0.5 truncate text-xs ${last.source === "person" ? "" : "font-mono"}`}>
-                  <span className="text-muted">{ageText(last.ts, now)} · </span>{last.reason}
+                <p className="mt-0.5 truncate text-xs">
+                  <span className="text-muted">{ageText(last.ts, now)}:</span> {last.reason}
                 </p>
               )}
             </div>

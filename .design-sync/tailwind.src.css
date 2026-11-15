@@ -1,0 +1,16 @@
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap");
+@import "../app/globals.css";
+@source "../components";
+
+/* The app gets these from next/font on <body>. Outside Next, define them here. */
+:root {
+  --font-source-sans: "Source Sans 3";
+}
+
+/* Safelist so every token exists as a utility and a var, plus a small layout vocabulary for designs. */
+@source inline("{bg,text,border}-{paper,card,ink,muted,line,act,act-soft,urgent,calm,hatch,primary,primary-dark,primary-lighter,focus}");
+@source inline("hover:{bg,text,border}-{primary,primary-dark}");
+@source inline("{flex,grid,inline-flex,block,hidden,flex-col,flex-wrap,flex-1,items-center,items-baseline,items-start,justify-between,justify-center,justify-end,shrink-0,min-w-0,w-full,h-full,truncate,whitespace-nowrap}");
+@source inline("{gap,p,px,py,m,mt,mb,ml,mr,space-y}-{0,0.5,1,1.5,2,3,4,6,8}");
+@source inline("{grid-cols,md:grid-cols,lg:grid-cols}-{1,2,3,4}");
+@source inline("rounded-card rounded-button rounded-tag border border-2 border-dashed border-b border-t font-sans font-medium font-semibold font-bold text-xs text-sm text-base text-lg text-xl uppercase underline capitalize");

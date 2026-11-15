@@ -22,10 +22,10 @@ export default async function AgentPage({ searchParams }: { searchParams: Promis
   return (
     <main className="mx-auto flex h-full max-w-6xl flex-col gap-4 p-4">
       <nav className="flex flex-wrap items-baseline gap-3 text-sm">
-        <span className="font-mono text-xs text-muted">demo, talk as:</span>
+        <span className="text-muted">Demo. Talk as:</span>
         {users.map((u) => (
           <Link key={u._id} href={`/agent?user=${u._id}`}
-            className={u._id === user._id ? "underline" : "text-muted hover:text-ink"}>
+            className={u._id === user._id ? "font-bold text-ink" : "text-primary underline hover:text-primary-dark"}>
             {u.name}
           </Link>
         ))}

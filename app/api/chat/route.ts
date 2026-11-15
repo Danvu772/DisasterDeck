@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { runTurn, type TurnInput } from "@/agents/personal/turn";
 import { desk } from "@/agents/desk";
+import { sessionUserId } from "@/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,9 +60,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "body must be JSON" }, { status: 400 });
   }
 
-  const userId = new URL(req.url).searchParams.get("user") ?? (typeof body.userId === "string" ? body.userId : null);
-  if (!userId) return NextResponse.json({ error: "who is talking? (login, or ?user= in demo mode)" }, { status: 401 });
-  if (!demoAllowed()) return NextResponse.json({ error: "?user= works only with DEMO_MODE=1" }, { status: 401 });
+  // The SSOJet login wins. ?user= / body.userId is the demo fallback, only with DEMO_MODE=1.
+  let userId = await sessionUserId();
+  if (!userId) {
+    userId = new URL(req.url).searchParams.get("user") ?? (typeof body.userId === "string" ? body.userId : null);
+    if (!userId) return NextResponse.json({ error: "who is talking? (login, or ?user= in demo mode)" }, { status: 401 });
+    if (!demoAllowed()) return NextResponse.json({ error: "?user= works only with DEMO_MODE=1" }, { status: 401 });
+  }
   if (!(await desk().getUser(userId))) return NextResponse.json({ error: `unknown user ${userId}` }, { status: 404 });
 
   const ip = (req.headers.get("x-forwarded-for") ?? "local").split(",")[0].trim();

@@ -6,6 +6,7 @@ import { TaskCard, type TaskAction } from "./TaskCard";
 import { ChatLine } from "./ChatLine";
 import { stubReply } from "./stubAgent";
 import { YourNeeds, type MyNeed } from "./YourNeeds";
+import { button } from "./encode";
 
 type FeedEvent = Event & { _id: string };
 
@@ -61,18 +62,18 @@ export function AgentDesk(props: {
   return (
     <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-[5fr_7fr]">
       <section className="order-2 min-h-0 overflow-y-auto md:order-1">
-        <h2 className="font-mono text-xs uppercase tracking-wide text-muted">Desk feed · everyone</h2>
+        <h2 className="text-lg font-bold">Desk feed</h2>
         <ul>{events.map((e) => <EventRow key={e._id} e={e} now={now} actorName={nameOf(e.actor)} />)}</ul>
       </section>
 
       <section className="order-1 flex min-h-0 flex-col gap-4 md:order-2">
         <details className="rounded-card border border-line bg-card p-3 text-sm">
           <summary className="cursor-pointer">
-            <span className="font-medium">{user.name}</span>
-            <span className="text-muted"> · {user.role} · {user.trust} · {user.region}</span>
-            <span className="ml-2 font-mono text-xs text-muted">context file</span>
+            <span className="font-bold">{user.name}</span>
+            <span className="text-muted">, {user.role}, {user.trust}, {user.region}</span>
+            <span className="ml-2 text-primary underline">Context file</span>
           </summary>
-          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 font-mono text-xs">
+          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
             {user.profile?.skills && <><dt className="text-muted">skills</dt><dd>{user.profile.skills.join(", ")}</dd></>}
             {user.profile?.vehicle && <><dt className="text-muted">vehicle</dt><dd>{user.profile.vehicle}</dd></>}
             {user.profile?.stock && <><dt className="text-muted">stock</dt>
@@ -82,16 +83,17 @@ export function AgentDesk(props: {
         </details>
 
         <div>
-          <h2 className="mb-2 font-mono text-xs uppercase tracking-wide text-muted">
-            Your top task {props.tasks.length > 1 && `· ${props.tasks.length - 1} more`}
+          <h2 className="mb-2 text-lg font-bold">
+            Your top task {props.tasks.length > 1 && <span className="font-sans text-sm font-normal text-muted">({props.tasks.length - 1} more)</span>}
           </h2>
-          {top ? <TaskCard task={top} now={now} onAction={onAction} />
+          {top ? <TaskCard task={top} now={now} onAction={onAction}
+            assigneeName={props.users.find((u) => u._id === top.assignee)?.name} />
                : <p className="text-sm text-muted">Nothing assigned to you.</p>}
         </div>
 
         <div>
-          <h2 className="mb-2 font-mono text-xs uppercase tracking-wide text-muted">
-            Your needs {props.needs.length > 0 && `· ${props.needs.length}`}
+          <h2 className="mb-2 text-lg font-bold">
+            Your needs {props.needs.length > 0 && <span className="font-sans text-sm font-normal text-muted">({props.needs.length})</span>}
           </h2>
           <YourNeeds needs={props.needs} now={now} />
         </div>
@@ -102,11 +104,11 @@ export function AgentDesk(props: {
             {messages.map((m) => <ChatLine key={m._id} m={m} name={user.name} />)}
           </div>
           <form className="flex gap-2 border-t border-line p-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Tell your agent…"
-              className="min-w-0 flex-1 rounded-card border border-line px-2 py-1.5 text-sm outline-none focus:border-ink" />
-            <button className="rounded-card border border-ink px-3 text-sm">Send</button>
+            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Tell your agent"
+              className="min-w-0 flex-1 rounded-button border border-muted px-2 py-1.5 text-sm" />
+            <button className={button.primary}>Send</button>
           </form>
-          {stub && <p className="px-3 pb-2 font-mono text-xs text-muted">stub agent: /api/chat not up yet</p>}
+          {stub && <p className="px-3 pb-2 text-xs text-muted">Stub agent. /api/chat is not up yet.</p>}
         </div>
       </section>
     </div>

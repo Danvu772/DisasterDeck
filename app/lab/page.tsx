@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-2 font-mono text-xs uppercase tracking-wide text-muted">{title}</h2>
+      <h2 className="mb-2 text-lg font-bold">{title}</h2>
       <div className="space-y-3">{children}</div>
     </section>
   );
@@ -24,8 +24,8 @@ export default function Lab() {
 
   return (
     <main className="mx-auto max-w-6xl p-6">
-      <h1 className="text-xl font-semibold">Lab</h1>
-      <p className="text-sm text-muted">Fixtures only. Tier = bar colour, confidence = border, machine = mono.</p>
+      <h1 className="text-2xl font-bold">Lab</h1>
+      <p className="text-sm text-muted">Fixtures only. Tier is the bar colour, confidence is the border, the bold name says who acted.</p>
 
       <div className="mt-6 grid gap-6 md:grid-cols-3">
         <Section title="Sites"><SiteCards items={b.sites} now={now} /></Section>
