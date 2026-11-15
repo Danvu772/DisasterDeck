@@ -2,6 +2,12 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 00:20 Redesign: decisions made, t25 v4 foundation merged (`9434ea0`)
+- Dan compared v1 with Ömer's `redesign/v2` and decided (`DECISIONS.md`): v1 stays the base, v2 gives layout and look only, every value is USWDS, no v2-only features.
+- **t25** (opus, $1.71): Public Sans + Roboto Mono (mono only for ids, times, scores), grey `base-lightest` page, dark `base-darkest` header with pill tabs and a live queue pill polling `/api/health` ("Brain not running, queue 1, oldest 98 min" in act red right now). `check:tokens` now scans CSS files too. Checked on `/coordinator` in the browser.
+- Started t26 (board three-pane), t27 (coordinator), t28 (field), t30 (map, compare, login, lab), t31 (scenario clock). t29 (agent) waits on Dan: fold in the Accept lock and board polling first?
+- Bug report via Dan: Accept on `/agent` adds a feed line per click and the card never changes. Cause: `/agent` reads fixture tasks once, never polls, and Atlas holds zero tasks, so `/api/events` answers 404. Options written up for Dan: lock the buttons and show the server's answer (A), fake it in demo mode (B, rejected), real tasks in Atlas (C, Role 1).
+
 ### 23:45 Pulled Darshal's CP1 Brain (`76427c5`). The board is live, and nearly empty
 - `GET /api/board`, `GET /api/health`, `GET /api/events?since=` exist now. Every screen that polls `/api/board` switched from fixtures to Atlas on its own (that is what the adapters were for). Atlas holds 3 shelters, 0 sites, 0 tasks, so `/`, `/map`, `/coordinator` and `/field` now show live but almost empty data.
 - The Brain loop is not running on this laptop (`lastLoopAt` null, 1 event pending for 13 min, the health line turns red). Somebody runs `npm run brain` and replays the tweets before the demo.
