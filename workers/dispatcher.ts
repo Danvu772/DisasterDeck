@@ -25,8 +25,8 @@ import { PLAYBOOK } from "../lib/rules/incidents";
 import type { HistoryEntry, Incident, InboxItem, LatLng, Need, Role, ScorePart, Site, Task, User } from "../lib/types";
 import { confirmedSince, noteIncidentStep, noteNeedAssigned, restNeedId, setIncidentStatus, type Change, type TaskAction } from "./memory-keeper";
 
-/** How long a person has to answer (N in §5, 2 in the demo). The board turns it red after. */
-export const ANSWER_MINUTES = 2;
+/** How long a person has to answer (N in §5, 2 in the demo, ANSWER_MINUTES=10 for unattended runs). The board turns it red after. */
+export const ANSWER_MINUTES = Number(process.env.ANSWER_MINUTES) || 2;
 /** Three people said no: a coordinator decides. */
 export const MAX_TRIES = 3;
 /** A deliver task for this many items or more is a big supply move: high risk, a coordinator decides. */
@@ -98,19 +98,26 @@ export async function reconcile(desk?: string): Promise<{ created: number; desks
 /**
  * An escalated task gets another try every tick, with the same rules as a new task. The first
  * person who is free and fits takes it, so a volunteer who comes online gets the work nobody could
- * take. A task that said no MAX_TRIES times stays escalated for a coordinator. A task on a closed
- * or retracted site is left alone. Returns the desks whose tasks moved.
+ * take. A timeout is not a no: someone who missed the task is offered it again once their screen
+ * has been seen after the miss. A task that said no MAX_TRIES times stays escalated for a
+ * coordinator. A task on a closed or retracted site is left alone. Returns the desks whose tasks moved.
  */
 export async function redelegate(desk?: string, now: Date = new Date()): Promise<{ moved: number; desks: string[] }> {
-  const { tasks } = await cols();
-  const waiting = await tasks.find({ ...(desk ? { deskId: desk } : {}), status: "escalated", open: true }).toArray();
+  const { tasks, users } = await cols();
+  const q = desk ? { deskId: desk } : {};
+  const waiting = await tasks.find({ ...q, status: "escalated", open: true }).toArray();
+  if (!waiting.length) return { moved: 0, desks: [] };
+  const seen = new Map((await users.find(q, { projection: { _id: 1, lastSeen: 1 } }).toArray())
+    .map((u) => [u._id, u.lastSeen ? new Date(u.lastSeen).getTime() : 0]));
   const desks = new Set<string>();
   let moved = 0;
   for (const t of waiting) {
-    if (t.tried.length >= MAX_TRIES || (t.recordType !== "site" && t.recordType !== "need")) continue;
+    const missed = missedAt(t);
+    const exclude = t.tried.filter((id) => !(missed.has(id) && (seen.get(id) ?? 0) > missed.get(id)!));
+    if (exclude.length >= MAX_TRIES || (t.recordType !== "site" && t.recordType !== "need")) continue;
     const rec = await recordOf(t.recordType, t.recordId);
     if (!rec || rec.status === "closed" || rec.status === "retracted") continue;
-    const pick = await pickFor(t, t.tried, now);
+    const pick = await pickFor(t, exclude, now);
     if (!pick.ok) continue;
     const team = `Proposed team: ${pick.user.name} (${pick.user._id})${pick.meters !== undefined ? `, ${distanceText(pick.meters)} away` : ""}.`;
     const high = t.risk === "high";
@@ -128,6 +135,22 @@ export async function redelegate(desk?: string, now: Date = new Date()): Promise
     else await inboxTask({ ...t, assignee: pick.user._id });
   }
   return { moved, desks: [...desks] };
+}
+
+/**
+ * The people who only timed out on this task, with the time of their latest miss. Anyone who
+ * declined it said no, so they are left out.
+ */
+function missedAt(t: Task): Map<string, number> {
+  const out = new Map<string, number>();
+  const no = new Set<string>();
+  for (const h of t.history) {
+    const m = /^timed out, no answer from (\S+) in /.exec(h.reason);
+    if (m) out.set(m[1], new Date(h.ts).getTime());
+    else if (h.reason.startsWith("declined")) no.add(h.by);
+  }
+  for (const id of no) out.delete(id);
+  return out;
 }
 
 // ---------- 1. what the keeper decided about a task ----------

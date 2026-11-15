@@ -5,6 +5,9 @@
 //   x       the replay tweets, mock extraction: reports, needs, road closures, shelter counts
 //   sheet   random small changes to shelter bed counts, as the shelter sheet would send them
 //   news    road closures toggled open and closed, as news would report them
+//   busy    a volunteer on screen with fewer than BUSY_MIN open tasks gets a fresh trapped report
+//           near them, so a demo desk always has a next task. It goes through the keeper and the
+//           dispatcher like any report, nothing here writes a task.
 //
 // Each event says who sent it: actor "synthetic-feed", "synthetic-sheet" or "synthetic-news".
 // The records are real records on the desk, so a simulated change moves real sites, roads and
@@ -16,7 +19,9 @@
 import { desk, type NewEvent } from "../agents/desk";
 import { extractTweet } from "../agents/research/x-extract";
 import { readReplay, replayKey } from "../agents/research/replay-input";
+import { haversineMeters } from "../lib/geo";
 import { eventBody } from "../lib/schemas";
+import type { LatLng } from "../lib/types";
 
 const TWEETS = "data/tweets_replay.json";
 const EVERY_MS = Number(process.env.SYNTH_EVERY_S ?? 30) * 1000;
@@ -28,6 +33,14 @@ const RUN = Date.now().toString(36);
 const log = (...m: unknown[]) => console.log(`[synthetic-feed ${new Date().toISOString().slice(11, 19)}]`, ...m);
 
 type Port = ReturnType<typeof desk>;
+
+const BUSY_MIN = 2;
+const SEEN_MS = 3 * 60_000;
+// One report per person per minute at most, so a task that cannot reach them does not flood the desk.
+const BUSY_COOLDOWN_MS = 60_000;
+const STREETS = ["Çınar Sokak", "Kayısı Caddesi", "Fırat Sokak", "Gündüz Sokak", "Meydan Sokak", "Bahar Sokak", "Pınar Sokak", "Yeni Mahalle Sokak"];
+const lastBusy = new Map<string, number>();
+let busyN = 0;
 
 async function post(d: Port, event: NewEvent): Promise<string> {
   eventBody.parse(event);
@@ -77,6 +90,60 @@ async function newsPass(d: Port, cycle: number): Promise<void> {
   log(`news   pass ${cycle}: ${r.road} ${r.state} → ${state}`);
 }
 
+// A point 120 to 600 m from `c`, turned by the golden angle each time so the sites spread out.
+function offset(c: LatLng, n: number): LatLng {
+  const a = (n * 137.5 * Math.PI) / 180;
+  const m = 120 + (n % 9) * 60;
+  const dLat = (m * Math.cos(a)) / 111_320;
+  const dLng = (m * Math.sin(a)) / (111_320 * Math.cos((c[0] * Math.PI) / 180));
+  return [Number((c[0] + dLat).toFixed(5)), Number((c[1] + dLng).toFixed(5))];
+}
+
+// The dispatcher gives a call to the nearest free volunteer, so the point has to be nearer to `me`
+// than to any other volunteer, and more than the keeper's merge radius from every site.
+function spot(me: LatLng, others: LatLng[], sites: LatLng[]): LatLng | undefined {
+  for (let i = 0; i < 60; i++) {
+    const p = offset(me, busyN + i);
+    const mine = haversineMeters(me, p);
+    if (others.some((o) => haversineMeters(o, p) <= mine)) continue;
+    if (sites.some((s) => haversineMeters(s, p) < 150)) continue;
+    busyN += i + 1;
+    return p;
+  }
+  return undefined;
+}
+
+async function busyPass(d: Port, cycle: number): Promise<void> {
+  const [users, board] = await Promise.all([d.listUsers(), d.getBoard(deskId)]);
+  const now = Date.now();
+  for (const u of users) {
+    if (u.deskId !== deskId || u.role !== "volunteer" || u.status !== "available" || !u.coords) continue;
+    if (!u.lastSeen || now - new Date(u.lastSeen).getTime() > SEEN_MS) continue;
+    const open = board.tasks.filter((t) => t.open && t.assignee === u._id).length;
+    if (open >= BUSY_MIN || now - (lastBusy.get(u._id) ?? 0) < BUSY_COOLDOWN_MS) continue;
+    lastBusy.set(u._id, now);
+    const others = users.filter((o) => o._id !== u._id && o.deskId === deskId && o.role === "volunteer" && o.coords).map((o) => o.coords!);
+    const coords = spot(u.coords, others, board.sites.flatMap((s) => (s.coords ? [s.coords] : [])));
+    if (!coords) { log(`busy   pass ${cycle}: no free spot near ${u._id}`); continue; }
+    const n = busyN;
+    const street = STREETS[n % STREETS.length];
+    const no = 3 + ((n * 7) % 40);
+    const people = 1 + (n % 3);
+    const address = `${street} ${no}`;
+    const meters = Math.round(haversineMeters(u.coords, coords));
+    await post(d, {
+      deskId, source: "x", actor: "synthetic-feed", type: "report", observedAt: new Date().toISOString(),
+      dedupeKey: `synth:busy:${RUN}:${n}`,
+      payload: {
+        kind: "trapped", peopleCount: people, address, coords, region: u.region,
+        text: `Tatbikat: ${address}, ${people} kişi enkaz altında, sesleri geliyor. (#${RUN}-${n})`,
+        textEn: `Drill: ${address}, ${people} ${people === 1 ? "person" : "people"} trapped, voices heard. (#${RUN}-${n})`,
+      },
+    });
+    log(`busy   pass ${cycle}: ${u._id} had ${open} open task(s), new report at ${address}, ${meters} m away`);
+  }
+}
+
 async function main() {
   const tweets = readReplay(TWEETS);
   if (!tweets.length) throw new Error(`no tweets in ${TWEETS}`);
@@ -90,6 +157,7 @@ async function main() {
       ["x", () => xPass(d, cycle, tweets)],
       ["sheet", () => sheetPass(d, cycle)],
       ["news", () => newsPass(d, cycle)],
+      ["busy", () => busyPass(d, cycle)],
     ] as const) {
       try { await run(); } catch (err) { log(`${name} pass ${cycle} failed: ${err instanceof Error ? err.message : err}`); }
     }
