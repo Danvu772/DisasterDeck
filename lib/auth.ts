@@ -8,6 +8,9 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { cols } from "./db";
 import { isLocalDemo } from "./localDemo";
+import { shared } from "./shared";
+
+const USER_TTL_MS = 15_000;
 import { sessionUserId } from "../auth";
 import type { User } from "./types";
 
@@ -62,8 +65,10 @@ export async function resolveCaller(req: Request): Promise<CallerResult> {
   }
   if (!userId) return { ok: false, status: 401, error: "not signed in" };
 
-  const { users } = await cols();
-  const user = await users.findOne({ _id: userId });
+  // Every poll (board each second, inbox every 5 s) asks who the caller is: share the lookup for
+  // USER_TTL_MS instead of one Atlas round trip per poll (speed, 15 Nov).
+  const id = userId;
+  const user = await shared(`caller:${id}`, USER_TTL_MS, async () => (await cols()).users.findOne({ _id: id }));
   if (!user) return { ok: false, status: 401, error: `unknown user ${userId}` };
   return { ok: true, caller: { kind: "person", user } };
 }

@@ -4,7 +4,8 @@
 import { makeFieldBoard } from "@/fixtures/field";
 import { FirstMinute } from "@/components/FirstMinute";
 import { FieldPhone } from "@/components/field/FieldPhone";
-import { getBoard } from "@/lib/db";
+import { deskId } from "@/lib/db";
+import { boardJson } from "@/lib/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function FieldPage({ searchParams }: { searchParams: Promis
   const id = user || "field-alpha";
   try {
     // JSON round trip: the same shape the polls return (dates as ISO strings).
-    const board = JSON.parse(JSON.stringify(await getBoard())) as FieldBoard;
+    const board = JSON.parse(await boardJson(deskId())) as FieldBoard;
     return <><FirstMinute screen="field" /><FieldPhone key={id} user={id} wanted={task} initial={board} initialLive /></>;
   } catch (err) {
     console.error("first paint: database not reachable, showing the demo board:", err instanceof Error ? err.message : err);

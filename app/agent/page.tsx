@@ -7,7 +7,8 @@ import { AgentDesk } from "@/components/AgentDesk";
 import { makeEvents, makeMessages, users } from "@/fixtures/desk";
 import { makeBoard } from "@/fixtures/board";
 import { cn } from "@/lib/utils";
-import { getBoard } from "@/lib/db";
+import { deskId } from "@/lib/db";
+import { boardJson } from "@/lib/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function AgentPage({ searchParams }: { searchParams: Promis
   let initialLive = false;
   try {
     // JSON round trip: the same shape the polls return (dates as ISO strings).
-    initial = JSON.parse(JSON.stringify(await getBoard())) as ReturnType<typeof makeBoard>;
+    initial = JSON.parse(await boardJson(deskId())) as ReturnType<typeof makeBoard>;
     initialLive = true;
   } catch (err) {
     console.error("first paint: database not reachable, showing the demo board:", err instanceof Error ? err.message : err);

@@ -10,6 +10,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_IDS = 500;
+const LAST_SEEN_MS = 30_000;
+const lastSeenAt = new Map<string, number>();
 
 function json(status: number, body: unknown): Response {
   return Response.json(body, { status, headers: { "cache-control": "no-store" } });
@@ -28,7 +30,12 @@ export async function GET(req: Request): Promise<Response> {
     if (p instanceof Response) return p;
     const { users } = await cols();
     // Polled every few seconds by the person's screen, so this doubles as "is this person there?"
-    await users.updateOne({ _id: p.userId }, { $set: { lastSeen: new Date() } });
+    // One write per person per LAST_SEEN_MS is enough for "is this person there?" (speed, 15 Nov).
+    const last = lastSeenAt.get(p.userId) ?? 0;
+    if (Date.now() - last > LAST_SEEN_MS) {
+      lastSeenAt.set(p.userId, Date.now());
+      await users.updateOne({ _id: p.userId }, { $set: { lastSeen: new Date() } });
+    }
     return json(200, await getInbox(p.userId));
   } catch (err) {
     console.error("GET /api/inbox failed:", err);

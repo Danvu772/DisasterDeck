@@ -11,7 +11,12 @@
 //
 // The reply arrives sentence by sentence (one mp3 each); they are queued back to back.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AudioFormat, RealtimeEvents, Scribe, type RealtimeConnection } from "@elevenlabs/client";
+import type { RealtimeConnection } from "@elevenlabs/client";
+
+// The Scribe client is most of /talk's JavaScript: load it after the page is up, not with it
+// (speed, 15 Nov). prefetch() starts the download, so the first press does not wait for it.
+let scribeLib: Promise<typeof import("@elevenlabs/client")> | undefined;
+const loadScribe = () => (scribeLib ??= import("@elevenlabs/client"));
 
 export type VoiceState = "idle" | "listening" | "thinking" | "speaking";
 
@@ -95,6 +100,7 @@ export function useVoice(userId: string) {
   /** Get a token now, so pressing the orb does not wait for one. A token works once, for 15 minutes. */
   const prefetch = useCallback(async () => {
     if (!liveOk.current) return;
+    loadScribe().catch(() => { scribeLib = undefined; });
     if (token.current && Date.now() - token.current.at < 10 * 60_000) return;
     try {
       const r = await fetch(`/api/chat/token?user=${encodeURIComponent(userId)}`, { cache: "no-store" });
@@ -128,6 +134,7 @@ export function useVoice(userId: string) {
     if (!t) return false;
     workletReady.current ??= ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: "text/javascript" })));
     await workletReady.current;
+    const { AudioFormat, RealtimeEvents, Scribe } = await loadScribe();
 
     const conn = Scribe.connect({ token: t.token, modelId: t.modelId, audioFormat: AudioFormat.PCM_16000, sampleRate: RATE });
     const source = ctx.createMediaStreamSource(stream);
