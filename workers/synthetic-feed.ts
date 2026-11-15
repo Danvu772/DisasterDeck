@@ -49,7 +49,8 @@ async function sheetPass(d: Port, cycle: number): Promise<void> {
   const shelters = (await d.getBoard(deskId)).shelters;
   if (!shelters.length) return log("sheet  no shelters on the desk");
   const s = shelters[cycle % shelters.length];
-  const step = ((cycle * 7) % 7) - 3;
+  // Cycles -3..+3 over seven passes, so the counts move both ways instead of draining.
+  const step = ((cycle * 3) % 7) - 3;
   const bedsUsed = Math.min(s.bedsTotal, Math.max(0, s.bedsUsed + step));
   await post(d, {
     deskId, source: "sheet", actor: "synthetic-sheet", type: "capacity", observedAt: new Date().toISOString(),
