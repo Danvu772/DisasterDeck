@@ -18,6 +18,7 @@ Rule (Dan, 15 Nov): a question becomes a chart only when it is a quantitative as
 | progress | did anyone reach Ayşe, is it moving | counts and times per stage of the loop |
 | gaps | what don't we know, where is the blind spot | unknown share, missing fields, silent zones |
 | compare | A vs B, before vs after | paired values, difference |
+| **location** | location of all shelters, where is Örnek St. 12, nearest shelter, closed roads near Kale, nerede, harita | the matching records with coordinates, distance from the person: shown as a **map card**, not a chart |
 
 Anything else (greetings, instructions, "tell my team...", "pull the map", reports, needs) is **not** quantitative: text only, no chart.
 
