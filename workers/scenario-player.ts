@@ -126,12 +126,11 @@ export function planScenarioStep(config: ScenarioConfig, step: Step, runId: stri
   const address = config.site.address.toLocaleLowerCase("tr-TR");
   const sites = board.sites.filter((site) => {
     if (bound.siteId) return site._id === bound.siteId;
-    return site.region === config.site.region && site.address.toLocaleLowerCase("tr-TR").includes(address)
-      && (!site.coords || distanceMeters(site.coords, config.site.coords) <= config.site.matchRadiusMeters);
+    if (site.coords) return distanceMeters(site.coords, config.site.coords) <= config.site.matchRadiusMeters;
+    return site.region === config.site.region && site.address.toLocaleLowerCase("tr-TR").includes(address);
   });
   const site = only(sites, "the Turuncu Avlu site");
-  assert.equal(site.region, config.site.region);
-  const needs = board.needs.filter((need) => (!bound.needId || need._id === bound.needId) && need.item === config.blankets.item && need.region === site.region
+  const needs = board.needs.filter((need) => (!bound.needId || need._id === bound.needId) && need.item === config.blankets.item
     && (need.siteIds?.includes(site._id) || need.lines?.some((line) => line.siteId === site._id)));
   assert(needs.length <= 1, "Ambiguous blanket need for this site");
 
@@ -144,7 +143,7 @@ export function planScenarioStep(config: ScenarioConfig, step: Step, runId: stri
     requireState(board.tasks.some((task) => task.type === "rescue" && task.recordType === "site" && task.recordId === site._id
       && task.assignee === config.fieldUserId && task.risk === "high" && ["accepted", "done"].includes(task.status)),
     "Waiting for the coordinator-approved field dispatch to be accepted");
-    return { event: event("need", { ...config.blankets, siteId: site._id, region: site.region, coords: site.coords ?? config.site.coords }), bindings, note: "Synthetic fallback for an unattended field team's blanket request" };
+    return { event: event("need", { ...config.blankets, siteId: site._id, region: needs[0]?.region ?? site.region, coords: site.coords ?? config.site.coords }), bindings, note: "Synthetic fallback for an unattended field team's blanket request" };
   }
 
   const need = only(needs.filter((row) => !bound.needId || row._id === bound.needId), "the site's blanket need");

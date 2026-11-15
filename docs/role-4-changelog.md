@@ -2,6 +2,11 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v0.4 site matching · 2026-11-14 21:21 EST
+
+- A geocoded report can identify the demo site within 100 m even when the agent returns a city label or an incomplete street address. Multiple matching sites still require clarification.
+- Eighteen scenario tests and four NASA tests passed, including a regression check that rejects a distant geocoded report. Repository lint, TypeScript and replay/seed validation passed on the integrated checkout.
+
 ## v0.4 integration update · 2026-11-14 21:11 EST
 
 - Rebased onto the team's new POST event endpoint and agent implementation. All five scenario event shapes and the real NASA alerts pass the actual `lib/schemas.ts` request schema.

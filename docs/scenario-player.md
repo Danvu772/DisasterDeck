@@ -32,6 +32,8 @@ node --env-file=.env.local workers/scenario-player.ts --run rehearsal-01 --step 
 
 The configuration is `data/scenarios/malatya.json`. It contains proposed demo identities, synthetic observation text, locations and the historical reference scene. The offline planning helper can use the reference offsets of 20, 30, 40, 60 and 90 seconds. The live CLI timestamps each new synthetic observation at the exercise time, matching the current X agent and personal-agent flow. Prepared timestamps are reused on retries. NASA evidence cards show the products' historical observation dates.
 
+The initial site match uses the known replay pin within 100 m. This supports geocoded reports whose extracted address or city label differs from the seed's region key. Without coordinates, the configured address and region identify the case. Multiple matching sites require review. Subsequent cues use the bound record IDs.
+
 The committed seed's shelter timestamps still describe the reference scene. If shelter capacity enters the live demo, use a fresh scripted capacity observation or agree on a synthetic-seed clock refresh with Role 1. `shelter-filling` supplies a fresh observation for Shelter A.
 
 ## Repetition and interrupted runs

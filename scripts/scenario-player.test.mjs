@@ -122,6 +122,17 @@ test("a live field request is observed without posting another need", () => {
   assert.equal(action.bindings.needId, "need-from-keeper");
 });
 
+test("geocoded reports keep working with city labels and an incomplete extracted address", () => {
+  const board = makeBoard();
+  board.sites[0].region = "Malatya";
+  board.sites[0].address = "Address awaiting confirmation";
+  const action = planScenarioStep(config, "truck-breakdown", "demo", board);
+  assert.equal(action.bindings.siteId, "site-from-keeper");
+  assert.equal(action.event.payload.taskId, "delivery-from-brain");
+  board.sites[0].coords = [38.5, 38.5];
+  assert.throws(() => planScenarioStep(config, "truck-breakdown", "demo", board), StepNotReady);
+});
+
 test("breakdown targets the accepted primary delivery, repair updates the actual incident", () => {
   const board = makeBoard();
   const first = planScenarioStep(config, "truck-breakdown", "demo", board);
