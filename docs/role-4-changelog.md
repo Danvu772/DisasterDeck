@@ -2,6 +2,13 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v0.5 pitch and submission materials · 2026-11-14 21:36 EST
+
+- Wrote the English Devpost story and event-app description, including NASA product credits, the grant line, AI-tool disclosure and outstanding track decisions.
+- Captured the comparison and coordinator screens from local revision `2758599`, including the task-history interaction. Produced a 98.94-second English narrated and captioned MP4. Decoded the full H.264/AAC file and checked Chrome playback and seeking. The two gallery PNGs retain the app's demo labels.
+- Re-ran the demo data validator and NASA dry run. The cache yields two cold alerts from one regional temperature measurement and zero silent-zone alerts. Live phone ETA and priority changes still need team rehearsal.
+- Added the spoken table pitch and submission checklist. External draft/final receipts, public links, member profiles and three four-person rehearsals remain with the team.
+
 ## v0.4 site matching · 2026-11-14 21:21 EST
 
 - A geocoded report can identify the demo site within 100 m even when the agent returns a city label or an incomplete street address. Multiple matching sites still require clarification.

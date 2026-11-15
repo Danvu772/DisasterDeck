@@ -28,6 +28,18 @@ Use the successful CP3 ending when the breakdown flow has not passed. Shelter an
 
 ## Presenter cues
 
+### Spoken pitch for the verified build
+
+**0:00–0:30 · Open the comparison screen.** “You’re on the volunteer desk. Four messages say Ayşe is trapped. Before you pick up the phone, you need to know whether somebody has already called. These are synthetic reports in a Malatya earthquake exercise. Look at the right-hand side. Zeynep has the Turuncu Avlu callback. At Mor Avlu, two people are reported trapped and nobody owns the call yet.”
+
+**0:30–1:00 · Open the coordinator screen and expand the history.** “Here’s the decision that stays with a person. The coordinator sees who requested a dispatch and can approve, change or reject it. In this separate demo case, a delivery truck has a flat tire. The problem card shows the blocked delivery and the proposed handoff. Our live rehearsal has to prove that the updated ETA reaches the field team.”
+
+**1:00–1:40 · Show the archived evidence and worker output.** “Why blankets? NASA POWER recorded a regional minimum of minus 14.38 Celsius on February ninth. The weather grid is about 50 kilometres across, so these two sites share the same measurement. Our worker generates one cold alert per site. The radar map is about 30 metres per pixel. The night lights are about 500 metres, and the image saturates here. We leave a silent zone unresolved rather than sending a team on that evidence.”
+
+**1:40–2:00 · Return to the unclaimed site.** “If you take the next volunteer shift, your first question has an answer. Zeynep owns the first call. This second address still needs someone. That’s the handoff we want the desk to make visible, from the callback all the way to the field team’s delivery time.”
+
+The [narrated video and gallery images](submission.md) cover this version. Once live acceptance passes, use the operator sequence above.
+
 Choose a run name after the team's clean reset and use it for every cue. Check the preview before sending a fallback.
 
 ```sh

@@ -5,7 +5,7 @@
 1. **Replay and seed ready for integration.** Five synthetic Turkish posts, nine demo users and three shelters are in `data/`. Local validation passes. The X worker, database loader and live CP1 acceptance remain with Roles 1 and 2.
 2. **NASA cache, map and watcher ready for integration.** Two 500 m polygons, source metadata and hashes, a reproducible offline preparation script, regression checks and the event sender are implemented. The real cache yields two cold alerts. Damage and night-light evidence remain unknown because of transparency and saturation. See [NASA evidence](nasa-evidence.md) and [the track requirements audit](nasa-requirements-audit.md). Live priority and approval acceptance still requires Role 1's API and Brain.
 3. **Scenario player ready for board/Brain integration.** Five synthetic cues use real board IDs, explicit manual advance, optional delays and durable per-run receipts. Eighteen scenario tests cover site matching, restart, retry and concurrent execution. The tests validate each cue against the POST event schema. See [the runbook](scenario-player.md). Live CP3/CP4 acceptance requires the board endpoint and Brain.
-4. **Pitch and submission pending.** The [two-minute demo script](demo.md) is drafted with proposed operator/device assignments. The Devpost draft, operator confirmation, live rehearsal and video recording remain pending. Use verified integrations in the submitted pitch.
+4. **Pitch and submission materials ready.** The [Devpost copy](devpost.md), [captioned video, screenshots and submission record](submission.md), and [two-minute pitch](demo.md) are ready for the team. Live rehearsal, team profile and track confirmation, judge-accessible links and submission receipts remain open.
 
 ## Files and validation
 
