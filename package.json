@@ -11,6 +11,8 @@
     "db:check": "tsx --env-file=.env.local lib/db-check.ts",
     "db:seed": "tsx --env-file=.env.local lib/seed.ts",
     "api:check": "tsx --env-file=.env.local lib/api-check.ts",
+    "keeper:check": "tsx --env-file=.env.local lib/keeper-check.ts",
+    "brain": "tsx --env-file=.env.local workers/brain.ts",
     "check:tokens": "! grep -rnE \"#[0-9a-fA-F]{3,8}\\b|(bg|text|border|fill|stroke|ring|from|to)-(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone|black|white)\\b|font-(serif|mono)\\b\" app components --include=*.ts --include=*.tsx --exclude-dir=api"
   },
   "dependencies": {

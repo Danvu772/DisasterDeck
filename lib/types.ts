@@ -1,4 +1,4 @@
-// Owned by Role 1. Ask before changing.          Version 2.1, 14 Nov.
+// Owned by Role 1. Ask before changing.          Version 2.2, 14 Nov.
 // Source of truth: docs/.../Roles/Team contracts.md §3.
 // v2.1: Need.requestedBy (asked for in "Personal agents"), and the helper types at the
 //       bottom for the functions in lib/db.ts. No existing field changed.
@@ -55,7 +55,10 @@ export interface Event<P = unknown> {
   status: "pending" | "working" | "done" | "merged" | "rejected"
         | "failed";       // v2
   lockedAt?: Date; attempts?: number;   // v2: so a crashed keeper loses nothing
-  result?: { recordIds: string[]; reason: string };
+  result?: {
+    recordIds: string[]; reason: string;
+    textKey?: string;     // v2.2: the report's normalized text, so the keeper can spot copies
+  };
 }
 
 export interface ReportPayload {

@@ -58,3 +58,14 @@ export async function resolveCaller(req: Request): Promise<CallerResult> {
   if (!user) return { ok: false, status: 401, error: `unknown user ${userId}` };
   return { ok: true, caller: { kind: "person", user } };
 }
+
+/**
+ * May this request read the desk (board, event feed)? With DEMO_MODE=1 everyone may, the same
+ * rule Role 3's middleware uses for pages. Otherwise any identified caller (agent key, login, or
+ * a demo user) may. Writing always goes through resolveCaller() and the rules in /api/events.
+ */
+export async function canRead(req: Request): Promise<{ ok: true } | { ok: false; status: 401 | 500; error: string }> {
+  if (process.env.DEMO_MODE === "1" && !req.headers.has("x-agent-key")) return { ok: true };
+  const who = await resolveCaller(req);
+  return who.ok ? { ok: true } : who;
+}

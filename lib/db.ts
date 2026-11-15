@@ -73,11 +73,15 @@ export async function cols() {
     inbox: db.collection<InboxItem>("inbox"),
     users: db.collection<User>("users"),
     messages: db.collection<Message>("messages"),
-    meta: db.collection<{ _id: string; lastLoopAt?: Date }>("meta"),
+    // "brain": the loop's heartbeat. "brain-lease": which Brain process may run (only one).
+    meta: db.collection<{ _id: string; lastLoopAt?: Date; holder?: string; until?: Date }>("meta"),
   };
 }
 
-/** The four indexes from Team contracts §4. Safe to run again: createIndex is idempotent. */
+/**
+ * The four indexes from Team contracts §4, plus one for the memory keeper's copy check.
+ * Safe to run again: createIndex is idempotent.
+ */
 export async function ensureIndexes(db: Db): Promise<void> {
   await Promise.all([
     // The keeper's take: pending, lane 0 first, oldest first.
@@ -94,6 +98,13 @@ export async function ensureIndexes(db: Db): Promise<void> {
     ),
     // Inbox polling every second.
     db.collection("inbox").createIndex({ userId: 1, status: 1, ts: -1 }, { name: "inbox_poll" }),
+    // Memory keeper: "was this exact text reported before?" (copies add a source, not support).
+    db.collection("events").createIndex(
+      { deskId: 1, "result.textKey": 1 },
+      { name: "copies", partialFilterExpression: { "result.textKey": { $exists: true } } },
+    ),
+    // GET /api/events?since=: the feed, newest events of one desk.
+    db.collection("events").createIndex({ deskId: 1, ts: 1 }, { name: "feed" }),
   ]);
 }
 

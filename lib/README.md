@@ -13,7 +13,24 @@ Everyone may **call** these functions. Only Role 1 changes them, and announces i
 | `db-check.ts` | A smoke test: `npm run db:check` |
 | `api-check.ts` | Checks `POST /api/events` (identity, permissions, validation) and that the API docs list every route: `npm run api:check` |
 | `openapi.ts` | The OpenAPI description of the HTTP API, shown at `/api/docs` |
-| `rules/` | Later: the dispatcher's plain-code rules (`priority.ts`, `assign.ts`, `incidents.ts`) |
+| `geo.ts` | Distance (haversine), and address and text normalisation for the merge rules |
+| `rules/merge.ts` | Which site a report belongs to: same text, then within 100 m or the same address, else new |
+| `rules/priority.ts` | Tier, score (`10 × support + minutes waiting + NASA terms`), confidence, support |
+| `keeper-check.ts` | CP1 check of the memory keeper on a throwaway desk: `npm run keeper:check` |
+
+## The Brain: `npm run brain`
+
+The Brain is the one loop that turns events into records (`workers/brain.ts`): it takes the next
+event (people first, then the oldest), the memory keeper (`workers/memory-keeper.ts`) applies
+it, the dispatcher reacts (CP2), and the sweeper puts stuck events back in the queue.
+
+- **Run exactly one per database.** It holds a lease in Atlas, so a second `npm run brain`
+  (yours or a teammate's) just waits, and takes over within ~15 s if the first one stops.
+- **Handled today:** `report` → sites. Other event types stay `pending` until their handler
+  lands, so nothing is thrown away.
+- **Is it running?** `GET /api/health`: `lastLoopAt` updates every second while it runs.
+- Every event ends `done`, `merged` or `rejected`, with `result.reason` saying why. The feed
+  (`GET /api/events?since=`) shows it.
 
 ---
 
@@ -28,6 +45,8 @@ npm run db:up                  # local MongoDB 8 in Docker, waits until it is he
 npm run db:seed                # the demo users and shelters from data/seed.json
 npm run db:check               # should end with "All checks passed."
 npm run api:check              # needs AGENT_KEY set and DEMO_MODE=1 in .env.local
+npm run keeper:check           # the memory keeper (CP1), on a throwaway desk
+npm run brain                  # the Brain loop; leave it running
 ```
 
 `npm run db:up` runs `docker compose up -d --wait mongo` (see `docker-compose.yml`). The database
@@ -159,6 +178,8 @@ running). See `app/api/README.md` for how to use it and how to add a route.
 | `events` | `{ dedupeKey }` unique, sparse (`dedupe`) | The same post twice is ignored |
 | `tasks` | `{ recordId, type }` unique where `open: true` (`one_open_task`) | No second open task for the same record and type |
 | `inbox` | `{ userId, status, ts: -1 }` (`inbox_poll`) | Inbox polling every second |
+| `events` | `{ deskId, result.textKey }` partial (`copies`) | Memory keeper: was this exact text reported before? |
+| `events` | `{ deskId, ts }` (`feed`) | `GET /api/events?since=` |
 
 ## 5. Contract changes
 
@@ -166,3 +187,4 @@ running). See `app/api/README.md` for how to use it and how to add a route.
 |---|---|
 | 2.1 | `Need.requestedBy: string[]`. `getUserContext()` also returns `needs`. Helper types `NewEvent`, `Board`, `Health`, `UserContext`, `SearchQuery`, `SearchHit` |
 | 2.1 + `schemas.ts` | Runtime checks for every payload. No type changed |
+| 2.2 | `Event.result.textKey?` (optional): the normalized report text, so the keeper can spot copies |

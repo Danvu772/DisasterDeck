@@ -6,19 +6,19 @@ Measured on 14 Nov 2026 at repo commit `c6063da`, against the dev server on `loc
 
 | Route | Method | Owner | Status | Auth | Notes |
 |---|---|---|---|---|---|
-| `/api/events` | POST | Role 1 | live, 401 without a caller | agent key, session cookie, or `?user=` with `DEMO_MODE=1` | Validates and queues the event. Nothing moves it on yet (G-01) |
-| `/api/events` | GET | Role 1 | 405 | none | Not built. The `/agent` feed needs it (G-11) |
+| `/api/events` | POST | Role 1 | live, 401 without a caller | agent key, session cookie, or `?user=` with `DEMO_MODE=1` | Validates and queues the event. The Brain (`npm run brain`) turns `report` events into sites; other types wait for their handler |
+| `/api/events` | GET | Role 1 | live | open with `DEMO_MODE=1`, else any caller | `?since=` ISO or epoch ms, `limit` 1–500 (default 50), `desk`. Oldest first, with `status` and `result`. Phones masked |
 | `/api/chat` | POST | Role 2 | live, 401 without a caller | session cookie, or `?user=` with `DEMO_MODE=1` | Audio gets a canned reply (G-10). Limit: 8 a minute, 80 an hour per person |
-| `/api/board` | GET | Role 1 | 404 | planned: G-02 | `getBoard()` exists in `lib/db.ts`. Route file missing |
+| `/api/board` | GET | Role 1 | live | open with `DEMO_MODE=1`, else any caller | `getBoard()`, sorted by tier then priority, with `health`. `?desk=` picks another desk |
 | `/api/inbox` | GET | Role 1 | 404 | planned: G-03 | `getUserContext().inbox` exists. Route file missing |
-| `/api/health` | GET | Role 1 | 404 | planned: G-13 | `getHealth()` exists. Route file missing |
+| `/api/health` | GET | Role 1 | live | none | `{ pending, oldestPendingSeconds, failed, lastLoopAt }` |
 | `/api/users` | GET | Role 1 | 404 | planned: G-04 | Not in Team contracts §4 |
 | `/api/openapi.json` | GET | Role 1 | live, 200 | none | The spec that Swagger UI reads |
 | `/api/docs` | GET | Role 1 | live, 200 | none | Swagger UI page |
 | `/api/auth/*` | GET, POST | Role 3 | live | Auth.js | `/api/auth/session` returns `null` when signed out |
 | `/data/zones.geojson` | GET | Role 4 | live, 200 | none | Static file in `public/data/` |
 
-Two routes in Team contracts §4 are built: `POST /api/events` and the static zones file. Three are missing: `GET /api/board`, `GET /api/inbox` and `GET /api/health`. The frontend also needs `GET /api/users`, which the contract does not list.
+Built from Team contracts §4: `POST /api/events`, `GET /api/board`, `GET /api/health` and the static zones file, plus `GET /api/events?since=`. Missing: `GET /api/inbox`. The frontend also needs `GET /api/users`, which the contract does not list.
 
 ## What `POST /api/events` accepts
 

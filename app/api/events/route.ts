@@ -1,12 +1,14 @@
-// Owned by Role 1. POST /api/events: the HTTP door into the event queue.
-// Body: an event without _id, status, ts, lane (Team contracts §4). Returns { id }.
-// Posting the same dedupeKey again returns the first event's id, so retries are safe.
+// Owned by Role 1. The HTTP door into the event queue.
+// POST: body is an event without _id, status, ts, lane (Team contracts §4). Returns { id }.
+//       Posting the same dedupeKey again returns the first event's id, so retries are safe.
+// GET:  the desk feed. ?since=<ISO time or epoch ms> → events received after it, oldest first.
 //
-// The rules below are about the ACTOR, whichever way the request arrived (Team contracts §4,
+// The POST rules are about the ACTOR, whichever way the request arrived (Team contracts §4,
 // Final system design §9). State checks (is the task still waiting for approval?) are not done
 // here: the Brain loop applies events one at a time and decides then, so nothing races.
-import { resolveCaller } from "@/lib/auth";
-import { cols, postEvent } from "@/lib/db";
+import { maskPhones } from "@/agents/shared/privacy";
+import { canRead, resolveCaller } from "@/lib/auth";
+import { cols, deskId, postEvent } from "@/lib/db";
 import { eventBody, type EventBody } from "@/lib/schemas";
 import type { User } from "@/lib/types";
 
@@ -17,6 +19,60 @@ type Denied = { status: 400 | 403 | 404; error: string };
 
 function json(status: number, body: unknown): Response {
   return Response.json(body, { status });
+}
+
+const FEED_DEFAULT = 50;
+const FEED_MAX = 500;
+
+/**
+ * The stored event keeps what was posted (the keeper needs the original text). The feed is read
+ * by every screen, so phone numbers are masked on the way out, in every string of the payload.
+ */
+function maskDeep(value: unknown): unknown {
+  if (typeof value === "string") return maskPhones(value).text;
+  if (Array.isArray(value)) return value.map(maskDeep);
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, maskDeep(v)]));
+  }
+  return value;
+}
+
+export async function GET(req: Request): Promise<Response> {
+  const access = await canRead(req);
+  if (!access.ok) return json(access.status, { error: access.error });
+
+  const q = new URL(req.url).searchParams;
+  const limitRaw = q.get("limit");
+  const limit = limitRaw === null ? FEED_DEFAULT : Number(limitRaw);
+  if (!Number.isInteger(limit) || limit < 1 || limit > FEED_MAX) {
+    return json(400, { error: `limit must be a whole number from 1 to ${FEED_MAX}` });
+  }
+  const sinceRaw = q.get("since");
+  let since: Date | undefined;
+  if (sinceRaw !== null) {
+    since = /^\d+$/.test(sinceRaw) ? new Date(Number(sinceRaw)) : new Date(sinceRaw);
+    if (Number.isNaN(since.getTime())) return json(400, { error: "since must be an ISO time or epoch milliseconds" });
+  }
+
+  try {
+    const { events } = await cols();
+    const desk = q.get("desk") || deskId();
+    const projection = { lockedAt: 0, attempts: 0 } as const;
+    const feed = since
+      // Everything after `since`, oldest first, so a client can keep the last ts and ask again.
+      ? await events.find({ deskId: desk, ts: { $gt: since } }, { projection }).sort({ ts: 1 }).limit(limit).toArray()
+      // No `since`: the latest events, still returned oldest first.
+      : (await events.find({ deskId: desk }, { projection }).sort({ ts: -1 }).limit(limit).toArray()).reverse();
+    const masked = feed.map((e) => ({
+      ...e,
+      payload: maskDeep(e.payload),
+      ...(e.result ? { result: { ...e.result, reason: maskPhones(e.result.reason).text } } : {}),
+    }));
+    return Response.json(masked, { headers: { "cache-control": "no-store" } });
+  } catch (err) {
+    console.error("GET /api/events failed:", err);
+    return json(500, { error: "server error" });
+  }
 }
 
 export async function POST(req: Request): Promise<Response> {

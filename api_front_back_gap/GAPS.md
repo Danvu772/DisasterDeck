@@ -12,12 +12,12 @@ Nothing turned events into records. The Brain files that Team contracts §2 assi
 
 ## Status after the 14 Nov grill
 
-Status is one of: `on main` (merged by Role 3, no Role 1 code), `proposed` (code on a branch, waiting for Role 1's approval), `open` (no proposal yet), or `deferred` (decided not to build yet).
+Status is one of: `on main` (merged; `on main (Role 1)` means Role 1 built it in its own folders), `proposed` (code on a branch, waiting for Role 1's approval), `open` (no proposal yet), or `deferred` (decided not to build yet).
 
 | ID | Gap | Owner | Status | Where |
 |---|---|---|---|---|
-| G-01 | Brain loop not in the repo | Role 1 | proposed | P-003 on `p-003-keeper` |
-| G-02 | `GET /api/board` missing | Role 1 | proposed | P-001 on `p-001-read-routes` |
+| G-01 | Brain loop not in the repo | Role 1 | on main (Role 1) | `npm run brain`: one loop with a lease (one Brain per database), memory keeper for `report` → sites, sweeper for stuck events. Dispatcher is a stub until CP2. P-003's keeper is superseded |
+| G-02 | `GET /api/board` missing | Role 1 | on main (Role 1) | Open when `DEMO_MODE=1` (screens poll without `?user=`), otherwise session, demo user or agent key. Differs from D2, decided by Role 1 |
 | G-03 | `GET /api/inbox` missing | Role 1 | proposed | P-001 (adds `POST /api/inbox` to mark read, so the badge can clear) |
 | G-04 | `GET /api/users` missing | Role 1 | proposed | P-001 (no `public` role) |
 | G-05 | Approval cannot name another assignee | Role 1, Role 3 | proposed | P-002 adds the field, P-003 applies it. Modify stays unwired until P-003 merges |
@@ -26,12 +26,12 @@ Status is one of: `on main` (merged by Role 3, no Role 1 code), `proposed` (code
 | G-08 | Post text not on the board | Role 1, Role 3 | proposed | P-002 (contract and `BoardCards`), P-003 (masked write) |
 | G-09 | "On our way" and "arrived" have no state | Role 1, Role 3 | proposed | P-002 (contract and `FieldPhone`), P-003 (applies it, site to `team_on_site`) |
 | G-10 | Hold to talk sends audio | Role 3 | on main | Web Speech API, text to `/api/chat`. Needs one test on a phone over HTTPS |
-| G-11 | `GET /api/events?since=` missing | Role 1 | proposed | P-001, with masking on the way out |
+| G-11 | `GET /api/events?since=` missing | Role 1 | on main (Role 1) | Phones masked on the way out. Shows the whole desk ("Desk feed · everyone"), not only the caller's events: decided by Role 1 |
 | G-12 | Users have no email | Roles 1 and 3 | deferred | D6: `SSO_USER_MAP` is enough for the demo |
-| G-13 | `GET /api/health` missing | Role 1 | proposed | P-001 |
-| D-01 | Read routes not in the spec | Role 1 | proposed | P-001 adds every spec entry |
+| G-13 | `GET /api/health` missing | Role 1 | on main (Role 1) | Open, counts only. `lastLoopAt` shows whether the Brain runs |
+| D-01 | Read routes not in the spec | Role 1 | on main (Role 1) | Board, health and the feed are in `/api/docs`. Inbox and users follow with their routes |
 | D-02 | `fixtures/` had no owner | Both | on main | `owners.json`: Role 3. `quake-watcher.ts` still has no owner, see Notes |
-| D-03 | `api:check` writes to a shared database | Role 1 | proposed | P-001 refuses a non-local URI unless `ALLOW_SHARED_DB=1` |
+| D-03 | `api:check` writes to a shared database | Role 1 | on main (Role 1) | `api:check` and `keeper:check` write only to throwaway desks (`check-api`, `check-cp1`) and delete them, so the shared board never shows test data |
 | S-01 | `DEMO_MODE=1` on a public tunnel | Roles 1 and 3 | open | D5: tunnel only in supervised runs. The `?user=` path is still open to anyone who reaches the server, see DECISIONS |
 | M-01 | Frontend notes said `requestedBy` was missing | Role 3 | on main | comments fixed, `MyNeed` is the contract type |
 | M-02 | Role 1 doc differs between repo and vault | Role 4 | open | `docs/` belongs to Role 4 in Team contracts §2 |

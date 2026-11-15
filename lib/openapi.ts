@@ -31,6 +31,18 @@ function jsonSchema(schema: z.ZodType) {
   return out;
 }
 
+const deskParam = {
+  name: "desk", in: "query", required: false,
+  description: "Which disaster. Default: the server's DESK_ID (malatya-2023)",
+  schema: { type: "string" },
+};
+
+// Records are documented loosely: their exact fields are in lib/types.ts.
+const recordList = (what: string) => ({
+  type: "array", description: `${what}. Fields: see lib/types.ts`,
+  items: { type: "object", required: ["_id", "deskId"], additionalProperties: true },
+});
+
 const errorResponse = (description: string) => ({
   description,
   content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
@@ -54,7 +66,8 @@ export function buildSpec() {
     },
     servers: [{ url: "/" }],
     tags: [
-      { name: "events", description: "The way into memory (Role 1)" },
+      { name: "events", description: "The way into memory, and the feed of what came in (Role 1)" },
+      { name: "desk", description: "Reading the shared memory (Role 1)" },
       { name: "agents", description: "Talking to your personal agent (Role 2)" },
       { name: "meta", description: "This documentation" },
     ],
@@ -75,6 +88,44 @@ export function buildSpec() {
       },
       schemas: {
         EventBody: jsonSchema(eventBody),
+        Event: {
+          type: "object",
+          description: "A stored event: the posted body plus what the desk added. Fields: `Event` in lib/types.ts",
+          required: ["_id", "deskId", "ts", "type", "source", "actor", "lane", "payload", "status"],
+          additionalProperties: true,
+          properties: {
+            _id: { type: "string" }, deskId: { type: "string" },
+            ts: { type: "string", format: "date-time" }, observedAt: { type: "string", format: "date-time" },
+            type: { type: "string" }, source: { type: "string" }, actor: { type: "string" },
+            lane: { type: "integer", enum: [0, 1] }, payload: { type: "object" },
+            status: { type: "string", enum: ["pending", "working", "done", "merged", "rejected", "failed"] },
+            result: {
+              type: "object",
+              properties: { recordIds: { type: "array", items: { type: "string" } }, reason: { type: "string" } },
+            },
+          },
+        },
+        Health: {
+          type: "object", required: ["pending", "oldestPendingSeconds", "failed", "lastLoopAt"],
+          properties: {
+            pending: { type: "integer" }, oldestPendingSeconds: { type: "integer" }, failed: { type: "integer" },
+            lastLoopAt: { type: ["string", "null"], format: "date-time" },
+          },
+        },
+        Board: {
+          type: "object",
+          required: ["sites", "needs", "roads", "shelters", "zones", "incidents", "tasks", "health"],
+          properties: {
+            sites: recordList("Collapse sites, by tier then priority"),
+            needs: recordList("Needs, by tier then priority"),
+            roads: recordList("Roads, newest first"),
+            shelters: recordList("Shelters, by name"),
+            zones: recordList("Zones, by name"),
+            incidents: recordList("Problems on the ground, newest first"),
+            tasks: recordList("Tasks, by tier then priority"),
+            health: { $ref: "#/components/schemas/Health" },
+          },
+        },
         Id: { type: "object", required: ["id"], properties: { id: { type: "string" } } },
         Error: {
           type: "object", required: ["error"],
@@ -117,7 +168,79 @@ export function buildSpec() {
       },
     },
     paths: {
+      "/api/board": {
+        get: {
+          tags: ["desk"],
+          summary: "Everything the shared board shows",
+          description: [
+            "Sites, needs, roads, shelters, zones, incidents and tasks of one desk, each sorted by tier",
+            "(0 = danger to life first) then priority, plus queue `health`. Same shape as",
+            "`fixtures/board.ts`. Screens poll it every second.",
+            "",
+            "Open to everyone when the server runs with `DEMO_MODE=1`; otherwise any signed-in person",
+            "or agent.",
+          ].join("\n"),
+          security: [{}, { agentKey: [] }, { session: [] }, { demoUser: [] }],
+          parameters: [deskParam],
+          responses: {
+            200: {
+              description: "The board",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/Board" } } },
+            },
+            401: errorResponse("Not signed in (only when DEMO_MODE is off)"),
+          },
+        },
+      },
+      "/api/health": {
+        get: {
+          tags: ["desk"],
+          summary: "Is the Brain running?",
+          description: "Counts only, open to everyone. A growing `pending` with an old `lastLoopAt` means the Brain loop (`npm run brain`) is not running.",
+          security: [],
+          responses: {
+            200: {
+              description: "Queue health",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/Health" } } },
+            },
+          },
+        },
+      },
       "/api/events": {
+        get: {
+          tags: ["events"],
+          summary: "The desk feed: events after a time",
+          description: [
+            "Events this desk received after `since`, oldest first, with their `status` and `result`",
+            "(which record they went to, and why). Keep the `ts` of the last event you got and pass it",
+            "as `since` next time. Without `since`: the latest `limit` events, still oldest first.",
+            "Phone numbers anywhere in a payload are masked on the way out (`•••••••••42`).",
+            "",
+            "Open to everyone when the server runs with `DEMO_MODE=1`; otherwise any signed-in person",
+            "or agent.",
+          ].join("\n"),
+          security: [{}, { agentKey: [] }, { session: [] }, { demoUser: [] }],
+          parameters: [
+            {
+              name: "since", in: "query", required: false,
+              description: "ISO time (`2026-11-14T22:00:00Z`) or epoch milliseconds",
+              schema: { type: "string" }, example: "2026-11-14T22:00:00Z",
+            },
+            {
+              name: "limit", in: "query", required: false,
+              description: "How many events at most (1–500, default 50)",
+              schema: { type: "integer", minimum: 1, maximum: 500, default: 50 },
+            },
+            deskParam,
+          ],
+          responses: {
+            200: {
+              description: "Events, oldest first",
+              content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Event" } } } },
+            },
+            400: errorResponse("since or limit is not valid"),
+            401: errorResponse("Not signed in (only when DEMO_MODE is off)"),
+          },
+        },
         post: {
           tags: ["events"],
           summary: "Post an event into the queue",

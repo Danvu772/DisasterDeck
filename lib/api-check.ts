@@ -49,12 +49,16 @@ async function checkSpecMatchesRoutes() {
 const BASE = "http://localhost/api/events";
 const created: string[] = [];
 let passed = 0;
+// Everything this check writes goes to its own desk, so the shared board never shows it,
+// even for a moment, and a running Brain cannot turn it into a site on the real desk.
+const DESK = "check-api";
 
 async function post(body: unknown, opts: { user?: string; key?: string; raw?: string } = {}) {
   const url = opts.user ? `${BASE}?user=${opts.user}` : BASE;
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (opts.key !== undefined) headers["x-agent-key"] = opts.key;
-  const res = await POST(new Request(url, { method: "POST", headers, body: opts.raw ?? JSON.stringify(body) }));
+  const withDesk = body && typeof body === "object" && !Array.isArray(body) ? { deskId: DESK, ...body } : body;
+  const res = await POST(new Request(url, { method: "POST", headers, body: opts.raw ?? JSON.stringify(withDesk) }));
   const json = (await res.json()) as { id?: string; error?: string };
   if (json.id) created.push(json.id);
   return { status: res.status, ...json };
@@ -81,7 +85,7 @@ async function main() {
   await c.tasks.insertOne({
     _id: "check-task", type: "rescue", recordType: "site", recordId: "check-site", assignee: "field-alpha",
     tried: [], risk: "high", tier: 0, priority: 0, status: "waiting_approval", open: true,
-    title: "check", detail: "check", deadline: new Date(), history: [], deskId: "malatya-2023",
+    title: "check", detail: "check", deadline: new Date(), history: [], deskId: DESK,
   });
 
   // --- identity ---
@@ -109,7 +113,7 @@ async function main() {
   const r = await expect("field team posts a report", post(report, { user: "field-alpha" }), 200);
   const rev = await c.events.findOne({ _id: r.id });
   assert.equal(rev?.actor, "field-alpha", "the body's actor is ignored for a person");
-  assert.equal(rev?.lane, 0); assert.equal(rev?.deskId, "malatya-2023");
+  assert.equal(rev?.lane, 0); assert.equal(rev?.deskId, DESK);
   console.log("    actor field-alpha (body said coordinator-duty), lane 0");
 
   await expect("person claims to be a tweet", post({ ...report, source: "x" }, { user: "field-alpha" }), 403);
@@ -151,7 +155,8 @@ main()
   })
   .finally(async () => {
     const c = await cols();
-    await c.events.deleteMany({ _id: { $in: created } });
+    await c.events.deleteMany({ $or: [{ _id: { $in: created } }, { deskId: DESK }] });
+    await c.sites.deleteMany({ deskId: DESK }); // a running Brain may have made one from the test report
     await c.tasks.deleteOne({ _id: "check-task" });
     await closeDb();
   });
