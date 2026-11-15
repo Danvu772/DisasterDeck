@@ -9,7 +9,7 @@ How to change the look: colours, fonts and radii are tokens in `app/globals.css`
 - **Nav bar** (`Nav.tsx`): Desk `/`, Map `/map`, Coordinator `/coordinator`, Field `/field`, Agent `/agent`, plus `/lab`. The v2 screens have their own bar (`v2/ui.tsx`): Board `/v2`, Coordinator, Field phone, Volunteer.
 - **Account** (`Account.tsx`): shows who is signed in, and a **Sign out** button.
 - **Queue pill** (`StatusPill.tsx`): polls `GET /api/health` every 5 s. Shows how many events are waiting and how old the oldest is. Red when the oldest waits too long.
-- **Live or demo label:** every polling screen starts from fixtures and says "Demo data" until its endpoint answers, then switches to live. A failing endpoint is asked every 10 s, a working one every 1 s.
+- **Live or demo label:** the desk, map and field screens start from the database, so they are live on the first paint. The other screens (coordinator, agent, v2, compare) start from fixtures and say "Demo data" until their endpoint answers, then switch to live. A failing endpoint is asked every 10 s, a working one every 1 s.
 - **Who is acting:** role pages pick the person from `?user=` or a default (`field-alpha`, `coordinator-duty`, `volunteer-callback`). They do not read the signed-in session yet, see Known gaps.
 
 ## `/` Desk (the shared board)
@@ -100,7 +100,7 @@ These are a separate set, under `/v2`. They start from the fixture desk and poll
 
 | Piece | What it shows |
 |---|---|
-| `components/ui/` | The shared library. `Skeleton` and `SkeletonLines` (grey loading blocks), `MapSkeleton` (a map frame), `BoardSkeleton` (the desk in its grid, no layout shift). Add a new piece as its own file and export it from `index.ts` |
+| `components/ui/` | The shared library. `Skeleton` (a grey animated surface, nothing drawn on it) and `Loading` (that surface as a labelled loading state that fills its box). Add a new piece as its own file and export it from `index.ts` |
 | `RecordCard.tsx` | The one card for sites, needs, roads, shelters and incidents. Tier bar, confidence border, status, source and age |
 | `BoardCards.tsx` | One renderer per record type. A site card shows "N posts from N people", "Automated, not yet seen by a person", and post text when the API sends it |
 | `TaskCard.tsx` | Accept, Decline, Done, Problem. Works without the model |
@@ -112,11 +112,11 @@ These are a separate set, under `/v2`. They start from the fixture desk and poll
 
 ## Motion
 
-Every motion is a single pass and stops by itself, except the loading sweep, which loops only while a loading block is on screen. `prefers-reduced-motion` turns off the map motions and the sweep, and leaves the grey blocks and the end state on screen.
+Every motion is a single pass and stops by itself, except the loading sweep, which loops only while a loading surface is on screen. `prefers-reduced-motion` turns off the map motions and the sweep, and leaves the grey blocks and the end state on screen.
 
 | Where | Motion | Trigger |
 |---|---|---|
-| Loading blocks (`components/ui`) | Light sweep across grey blocks, 1.4 s, loops | While the desk waits on the database (`app/loading.tsx`), while the map chunk loads, and until the first poll answers |
+| Loading surface (`components/ui`) | Light sweep across one blank grey surface, 1.4 s, loops | Only while the desk waits on the database (`app/(desk)/loading.tsx`) and while a map chunk loads. Tab switches show no loading state |
 | `/map` marker | One red ring, 1.2 s | A critical site or incident that is new since the first live board |
 | `/map` marker | One focus flash, 600 ms | The record opened with `?focus=` |
 | `/map` zones | Fade in, 300 ms | The zone layer appears |

@@ -16,11 +16,11 @@ import { DetailPanel } from "./detail/DetailPanel";
 import { findRecord, locate, parseKey } from "./detail/locate";
 import { fromBoard } from "./map/mapItems";
 import { usePolled } from "./map/usePolled";
-import { MapSkeleton } from "@/components/ui";
+import { Loading } from "@/components/ui";
 
 const BoardMap = dynamic(() => import("./board/BoardMap"), {
   ssr: false,
-  loading: () => <MapSkeleton />,
+  loading: () => <Loading label="Loading the map" />,
 });
 
 // The API board has every field of the fixture board (plus zones and fuller health), so one type fits both.

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { Tier } from "@/lib/types";
+import { Loading } from "@/components/ui";
 import { detailFor, feedLine, nameOf, rowsFromBoard, situation, type FeedEvent, type RecordKind, type V2Board } from "./boardModel";
 import type { MapDot } from "./V2MapView";
 import { ago, Chip, clock, DemoLine, TierBadge, TIER_NAME, TopBar } from "./ui";
@@ -11,7 +12,7 @@ import { useDesk } from "./useDesk";
 
 const V2MapView = dynamic(() => import("./V2MapView"), {
   ssr: false,
-  loading: () => <p className="p-4 text-sm muted">Loading the map</p>,
+  loading: () => <Loading label="Loading the map" />,
 });
 
 type Filter = "all" | "site" | "need" | "incident" | "place";
