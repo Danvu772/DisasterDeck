@@ -1,12 +1,15 @@
 "use client";
+import { ArrowLeft, ArrowUpRight, Clock, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import type { Event } from "@/lib/types";
-import { ageText, button, link, statusTag, statusText } from "../encode";
-import { summary } from "../EventRow";
+import { Button } from "@/components/ui/button";
+import { actorLabel, KIND_WORD } from "../detail/fields";
+import { ageText } from "../encode";
+import { EVENT_ICON, outcome, summary } from "../EventRow";
 import { SOURCE_LABEL } from "../Stamp";
 import { fieldRows } from "./fields";
 import { openHref, recordKind } from "./recordKind";
-import { LANE_TEXT, exactTime, gapText } from "./timing";
+import { gapText } from "./timing";
 
 // What came in and what the desk did with it. Written against Event, so a future GET /api/events plugs in.
 export function EventReport({ e, now, actorName, onBack, demo }: { e: Event & { _id?: string }; now: number; actorName: string; onBack: () => void; demo?: boolean }) {
@@ -16,72 +19,69 @@ export function EventReport({ e, now, actorName, onBack, demo }: { e: Event & { 
   const kind = recordKind(e);
   const ids = e.result?.recordIds ?? [];
   const waiting = !demo && (e.status === "pending" || e.status === "working");
+  const failed = e.status === "failed";
+  const Icon = EVENT_ICON[e.type];
+  const source = e.source === "person" || e.source === "system" ? null : SOURCE_LABEL[e.source];
   return (
     <article className="text-sm">
-      <button type="button" onClick={onBack} className={button.outline}>Back to feed</button>
+      <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2 text-muted-foreground">
+        <ArrowLeft aria-hidden />Back to feed
+      </Button>
 
-      <header className="mt-3">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-lg font-bold">{s.said}</h2>
-          <span className={statusTag}>{statusText(e.status)}</span>
-        </div>
-        {s.original && <p className="text-muted">{s.original}</p>}
-        {(e._id || demo) && (
-          <p className="text-xs text-muted">
-            {e._id && <span className="font-mono">{e._id}</span>}{e._id && demo && ", "}{demo && "Demo, nothing reached the desk"}
+      <header className="mt-3 flex items-start gap-3">
+        <span aria-hidden className={`grid size-9 shrink-0 place-items-center rounded-lg ${
+          e.type === "incident" || failed ? "bg-destructive/10 text-destructive" : "bg-secondary text-muted-foreground"}`}>
+          {Icon && <Icon className="size-4" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold leading-snug">{s.said}</h2>
+          {s.original && <p className="mt-1 text-muted-foreground">{s.original}</p>}
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{actorLabel(actorName)}</span>
+            {source && <><span aria-hidden>·</span><span>{source}</span></>}
+            <span aria-hidden>·</span>
+            <span className="inline-flex items-center gap-1" suppressHydrationWarning><Clock className="size-3" aria-hidden />{ageText(e.observedAt ?? e.ts, now)}</span>
+            {demo && <span className="rounded-full border px-2">Demo</span>}
           </p>
-        )}
+          {gap && <p className="mt-1 text-xs text-muted-foreground">{gap}</p>}
+        </div>
       </header>
 
-      <section className="mt-4">
-        <h3 className="font-bold">Who and when</h3>
-        <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-          <dt className="text-muted">Actor</dt>
-          <dd><span className="font-bold">{actorName}</span>{actorName !== e.actor && <span className="text-muted">, {e.actor}</span>}</dd>
-          <dt className="text-muted">Source</dt><dd>{SOURCE_LABEL[e.source]}</dd>
-          <dt className="text-muted">Lane</dt><dd>{LANE_TEXT[e.lane]}</dd>
-          <dt className="text-muted">Observed</dt>
-          <dd>{ageText(e.observedAt ?? e.ts, now)}, <span suppressHydrationWarning>{exactTime(e.observedAt ?? e.ts)}</span></dd>
-          <dt className="text-muted">Received</dt>
-          <dd>{ageText(e.ts, now)}, <span suppressHydrationWarning>{exactTime(e.ts)}</span></dd>
+      {rows.length > 0 && (
+        <dl className="mt-4 grid grid-cols-2 gap-2">
+          {rows.map((r) => (
+            <div key={r.key} className="rounded-lg bg-secondary px-3 py-2">
+              <dt className="text-xs text-muted-foreground">{r.label}</dt>
+              <dd className="break-words font-medium">{r.value}</dd>
+            </div>
+          ))}
         </dl>
-        {gap && <p className="mt-1 font-bold">{gap}</p>}
-      </section>
+      )}
 
-      <section className="mt-4">
-        <h3 className="font-bold">What it said</h3>
-        {rows.length === 0 ? <p className="text-muted">No fields.</p> : (
-          <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-            {rows.map((r) => <div key={r.key} className="contents"><dt className="text-muted">{r.label}</dt><dd className="break-words">{r.value}</dd></div>)}
-          </dl>
-        )}
-      </section>
-
-      <section className="mt-4">
-        <h3 className="font-bold">What the desk did</h3>
-        {waiting && <p className="text-muted">Waiting for the desk to pick it up.</p>}
-        {e.status === "merged" && <p>Merged into an existing record.</p>}
-        {e.result?.reason && (
-          <p className={e.status === "failed" ? "text-act" : e.status === "rejected" ? "text-muted" : ""}>
-            {e.status === "failed" ? "Failed and needs a person: " : e.status === "rejected" ? "Rejected: " : ""}{e.result.reason}
+      <section className="mt-5">
+        <h3 className="text-sm font-semibold">What the desk did</h3>
+        <div className={`mt-2 rounded-lg border p-3 ${failed ? "border-destructive/30 bg-destructive/5" : ""}`}>
+          <p className={`flex items-center gap-1.5 font-medium ${failed ? "text-destructive" : ""}`}>
+            {waiting && <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />}
+            {demo ? "Demo, nothing reached the desk" : outcome(e)}
           </p>
-        )}
-        {e.status === "failed" && !e.result?.reason && <p className="text-act">Failed and needs a person.</p>}
-        {e.dedupeKey && <p className="text-muted">Dedupe key {e.dedupeKey}</p>}
-        {!!e.attempts && <p className="text-muted">Attempts: {e.attempts}</p>}
+          {e.result?.reason && <p className="mt-1 text-muted-foreground">{e.result.reason}</p>}
+        </div>
       </section>
 
-      <section className="mt-4">
-        <h3 className="font-bold">Records it touched</h3>
-        {ids.length === 0 ? <p className="text-muted">None.</p> : (
-          <ul className="mt-1 space-y-0.5">
-            {ids.map((id) => {
-              const href = openHref(kind, id);
-              return <li key={id}>{href ? <Link href={href} className={`${link} font-mono`}>{id}</Link> : <span className="font-mono">{id}</span>}</li>;
-            })}
-          </ul>
-        )}
-      </section>
+      {ids.length > 0 && kind && kind !== "zone" && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {ids.map((id, i) => {
+            const href = openHref(kind, id);
+            const label = `Open ${KIND_WORD[kind].toLowerCase()}${ids.length > 1 ? ` ${i + 1}` : ""}`;
+            return href && (
+              <Button key={id} asChild variant="outline" size="sm">
+                <Link href={href}>{label}<ArrowUpRight aria-hidden /></Link>
+              </Button>
+            );
+          })}
+        </div>
+      )}
     </article>
   );
 }

@@ -1,73 +1,251 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 /*
-  TOKENS. The only place a colour, font or radius is written.
-  Owner: Dan (frontend). See docs/Multiplayer Disaster Desk/Roles/Frontend visual language.md (v4)
-  and docs/frontend/DECISIONS.md. Values are USWDS 3 theme tokens, each named in its comment.
-  Layout follows Ömer's v2 (white cards on a light grey page, dark header). Values do not.
-  One meaning, one channel:
-    act      = a person should act now (tier 0, overdue, critical, Brain down). Nothing else is red.
-    urgent   = tier 1
-    calm     = tier 2
-    primary  = you can click this (buttons, links, focus, chips). Nothing else is blue.
-    ok       = the healthy queue pill in the header. Nothing else is green.
-    hatch    = NASA zones on the map only, never on cards
-    night    = the header bar only
-  Everything else is ink on card, cards on paper.
+  TOKENS. The only place a colour, font or radius is written. Version 5, 15 Nov 2026.
+  Theme: shadcn/ui "neutral" (the Obra shadcn/ui kit, Community edition, is built on the same
+  variables): oklch values from ui.shadcn.com/docs/theming. Light and dark (.dark on <html>).
+  Rules and examples: .claude/skills/desk-design/SKILL.md.
+
+  One meaning, one channel (unchanged from v4):
+    destructive / act  = a person should act now (tier 0, overdue, critical, Brain down). Nothing else is red.
+    warning / urgent   = tier 1
+    calm               = tier 2
+    primary            = you can click this (buttons, links, focus, chips)
+    success / ok       = the healthy queue pill. Nothing else is green.
+    info               = the agent: its voice, its answers. Nothing else is blue.
+  Everything else is foreground on card, cards on paper.
+*/
+
+:root {
+  --radius: 0.625rem;
+
+  /* shadcn/ui neutral */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Desk additions, same lightness steps as the shadcn palette */
+  --paper: oklch(0.985 0 0);                       /* the page behind the cards */
+  --primary-hover: oklch(0.269 0 0);
+  --destructive-soft: oklch(0.577 0.245 27.325 / 10%);
+  --warning: oklch(0.828 0.189 84.429);            /* = chart-4 */
+  --warning-foreground: oklch(0.205 0 0);
+  --success: oklch(0.6 0.118 184.704);             /* = chart-2 */
+  --success-soft: oklch(0.6 0.118 184.704 / 12%);
+  --info: oklch(0.546 0.245 262.881);              /* the agent */
+  --info-soft: oklch(0.546 0.245 262.881 / 10%);
+  --calm: oklch(0.708 0 0);
+  --destructive-foreground: oklch(0.985 0 0);      /* text on red: white in both modes */
+  --info-foreground: oklch(0.985 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+
+  --paper: oklch(0.145 0 0);
+  --primary-hover: oklch(0.85 0 0);
+  --destructive-soft: oklch(0.704 0.191 22.216 / 15%);
+  --warning: oklch(0.769 0.188 70.08);
+  --warning-foreground: oklch(0.145 0 0);
+  --success: oklch(0.696 0.17 162.48);
+  --success-soft: oklch(0.696 0.17 162.48 / 15%);
+  --info: oklch(0.707 0.165 254.624);
+  --info-soft: oklch(0.707 0.165 254.624 / 15%);
+  --calm: oklch(0.556 0 0);
+  --destructive-foreground: oklch(0.985 0 0);
+  --info-foreground: oklch(0.145 0 0);
+}
+
+/* shadcn/ui names. Inline, so .dark switches them per element. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Geist, shadcn/ui's face. Next sets the vars on <body>. Mono ONLY for ids, times, scores, counts. */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: initial;
+}
+
+/*
+  The desk's v4 names, kept so every existing screen takes the new theme without a code change.
+  NOT inline, so plain CSS (map keyframes, encode.ts shadows) can read var(--color-…). Repeated under
+  .dark so a dark subtree resolves them against the dark values.
+  NOTE: `muted` here means muted TEXT (v4). shadcn's muted background is `secondary` in this app:
+  write bg-secondary, never bg-muted. New code writes text-muted-foreground.
 */
 @theme {
-  --color-paper: #f0f0f0; /* base-lightest, the grey page behind the cards */
-  --color-card: #ffffff; /* white */
-  --color-ink: #1b1b1b; /* ink */
-  --color-muted: #565c65; /* base-dark, the lightest gray that passes AA for small text */
-  --color-line: #dfe1e2; /* base-lighter */
+  --color-paper: var(--paper);
+  --color-ink: var(--foreground);
+  --color-muted: var(--muted-foreground);
+  --color-line: var(--border);
+  --color-night: var(--background);
+  --color-night-ink: var(--foreground);
+  --color-night-muted: var(--muted-foreground);
+  --color-act: var(--destructive);
+  --color-act-soft: var(--destructive-soft);
+  --color-urgent: var(--warning);
+  --color-calm: var(--calm);
+  --color-hatch: var(--muted-foreground);
+  --color-ok: var(--success);
+  --color-ok-soft: var(--success-soft);
+  --color-primary-dark: var(--primary-hover);
+  --color-primary-lighter: var(--secondary);
+  --color-focus: var(--ring);
 
-  --color-night: #1b1b1b; /* base-darkest, header background */
-  --color-night-ink: #ffffff; /* white, text on the header */
-  --color-night-muted: #a9aeb1; /* base-light, muted text and pill borders on the header */
-
-  --color-act: #b50909; /* secondary-dark */
-  --color-act-soft: #f3e1e4; /* secondary-lighter */
-  --color-urgent: #ffbe2e; /* warning */
-  --color-calm: #a9aeb1; /* base-light */
-  --color-hatch: #565c65; /* base-dark, drawn as a hatch pattern, never a fill */
-
-  --color-ok: #4d8055; /* success-dark, the healthy queue pill only */
-  --color-ok-soft: #ecf3ec; /* success-lighter, the healthy queue pill only */
-
-  --color-primary: #005ea2; /* primary */
-  --color-primary-dark: #1a4480; /* primary-dark, hover */
-  --color-primary-lighter: #d9e8f6; /* primary-lighter */
-  --color-focus: #2491ff; /* focus, blue-40v */
-
-  --radius-card: 0.5rem; /* border-radius lg, cards */
-  --radius-button: 0.25rem; /* border-radius md, buttons */
-  --radius-tag: 2px; /* border-radius-sm, tags */
-  --radius-pill: 99rem; /* border-radius pill, chips and pills */
-
-  --shadow-*: initial; /* no shadows. USWDS cards are flat with a border */
+  --radius-card: var(--radius);
+  --radius-button: calc(var(--radius) * 0.8);
+  --radius-tag: calc(var(--radius) * 0.6);
+  --radius-pill: 9999px;
+}
+.dark {
+  --color-paper: var(--paper);
+  --color-ink: var(--foreground);
+  --color-muted: var(--muted-foreground);
+  --color-line: var(--border);
+  --color-night: var(--background);
+  --color-night-ink: var(--foreground);
+  --color-night-muted: var(--muted-foreground);
+  --color-act: var(--destructive);
+  --color-act-soft: var(--destructive-soft);
+  --color-urgent: var(--warning);
+  --color-calm: var(--calm);
+  --color-hatch: var(--muted-foreground);
+  --color-ok: var(--success);
+  --color-ok-soft: var(--success-soft);
+  --color-primary-dark: var(--primary-hover);
+  --color-primary-lighter: var(--secondary);
+  --color-focus: var(--ring);
 }
 
-/* Two faces, both USWDS. Inline because Next sets the vars on <body>, not :root. */
-@theme inline {
-  --font-sans: var(--font-public-sans), "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif; /* all text, headings too */
-  --font-serif: initial; /* no serif anywhere. font-serif is a no-op */
-  /* Mono ONLY for ids, times, scores, counts in pills and machine output. Never for labels or prose. */
-  --font-mono: var(--font-roboto-mono), "Roboto Mono", ui-monospace, monospace;
+/* Plain CSS and arbitrary values (encode.ts, BoardList) read var(--color-primary); the inline
+   theme does not emit it, so it is declared here for both modes. */
+:root, .dark {
+  --color-primary: var(--primary);
 }
 
-body {
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font-family: var(--font-public-sans), "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
-  line-height: 1.5;
-  font-variant-numeric: tabular-nums;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-paper text-foreground;
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* USWDS focus ring: 0.25rem solid focus blue, everywhere, keyboard only. */
+/* shadcn focus: a soft ring, keyboard only. */
 :focus-visible {
-  outline: 0.25rem solid var(--color-focus);
-  outline-offset: 0;
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 /* Leaflet ships Helvetica on the map and Lucida Console (mono) on the zoom buttons. Same face as everything else. */
@@ -108,8 +286,49 @@ body .leaflet-container .leaflet-control-zoom-out {
 /* Silent zones and cold zones appear once when their layer mounts. */
 .map-fade-in { animation: desk-fade-in 300ms ease-out 1 both; }
 
+/* MapLibre: the desk's face on the controls, quiet attribution, our own popup shell. */
+.maplibregl-map { font-family: var(--font-sans); }
+.maplibregl-ctrl-attrib { font-size: 10px; background: color-mix(in oklch, var(--background) 70%, transparent) !important; }
+.maplibregl-ctrl-group { border-radius: var(--radius) !important; box-shadow: 0 1px 2px oklch(0 0 0 / 0.08) !important; }
+.dark .maplibregl-ctrl-group { background: var(--card); }
+.dark .maplibregl-ctrl-group button + button { border-top-color: var(--border); }
+.dark .maplibregl-ctrl-icon { filter: invert(1); }
+.maplibregl-popup-content { padding: 0 !important; background: transparent !important; box-shadow: none !important; }
+.maplibregl-popup-tip { display: none; }
+
+/* A life-threatening marker breathes: two soft rings, forever, slow. Reduced motion stops it. */
+@keyframes desk-pulse {
+  0%   { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.marker-pulse::before,
+.marker-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: var(--destructive);
+  animation: desk-pulse 2.4s ease-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+.marker-pulse::after { animation-delay: 1.2s; }
+/* A hazard (fire, gas) glows warm. */
+@keyframes desk-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--warning) 60%, transparent), 0 0 12px 2px color-mix(in oklch, var(--destructive) 45%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in oklch, var(--warning) 0%, transparent), 0 0 22px 6px color-mix(in oklch, var(--destructive) 55%, transparent); }
+}
+.marker-glow { animation: desk-glow 1.8s ease-in-out infinite; }
+
+/* Scrollbars that do not shout. */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
-  .map-ring::after { display: none; }
+  .map-ring::after,
+  .marker-pulse::before,
+  .marker-pulse::after { display: none; }
+  .marker-glow { animation: none; }
   .map-flash,
   .map-fade-in { animation: none; }
 }

@@ -9,11 +9,11 @@ function span(min: number): string {
   return h < 24 ? `${h} h` : `${Math.round(h / 24)} d`;
 }
 
-// "Observed 2 h before the desk got it." Null when the two are within 5 minutes.
+// "Seen 2 h before it reached the desk." Null when the two are within 5 minutes.
 export function gapText(e: Pick<Event, "ts" | "observedAt">): string | null {
   if (!e.observedAt) return null;
   const min = Math.round((new Date(e.ts).getTime() - new Date(e.observedAt).getTime()) / 60000);
-  return min > GAP_MIN ? `Observed ${span(min)} before the desk got it.` : null;
+  return min > GAP_MIN ? `Seen ${span(min)} before it reached the desk` : null;
 }
 
 export function exactTime(at: Date | string): string {
@@ -21,6 +21,6 @@ export function exactTime(at: Date | string): string {
 }
 
 export const LANE_TEXT: Record<0 | 1, string> = {
-  0: "Lane 0, a person on the desk, read first",
-  1: "Lane 1, an outside source",
+  0: "From a person on the desk",
+  1: "From an outside source",
 };

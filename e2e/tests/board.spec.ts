@@ -13,7 +13,7 @@ test.describe("board", () => {
     await page.goto("/");
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("status")).toBeVisible();
     await expect(page.getByRole("region", { name: "Shared priority list" })).toBeVisible();
-    await expect(page.locator(".leaflet-container")).toBeVisible();
+    await expect(page.locator(".maplibregl-map")).toBeVisible();
     await expect(detail(page)).toBeVisible();
   });
 
@@ -29,14 +29,16 @@ test.describe("board", () => {
     await row.click();
     await expect(row).toHaveAttribute("aria-pressed", "true");
     await expect(page).toHaveURL(new RegExp(`open=${encodeURIComponent(key)}`));
-    await expect(detail(page).getByText(key.slice(key.indexOf(":") + 1), { exact: true }).first()).toBeVisible();
+    // The panel names the record in words (no ids on screen): the row's first line is its title.
+    const title = (await row.innerText()).split("\n").map((l) => l.trim()).find(Boolean)!;
+    await expect(detail(page).getByText(title).first()).toBeVisible();
   });
 
   test("?open= deep link opens that record", async ({ page }) => {
     await fixtureDesk(page);
     await page.goto("/?open=shelter:sh-b");
     await expect(page.locator('[data-card="shelter:sh-b"]')).toHaveAttribute("aria-pressed", "true");
-    await expect(detail(page).getByText("sh-b", { exact: true }).first()).toBeVisible();
+    await expect(detail(page).getByText("Shelter B, mosque hall").first()).toBeVisible();
     await expect(detail(page).getByRole("link", { name: "Open on the full map" })).toBeVisible();
   });
 

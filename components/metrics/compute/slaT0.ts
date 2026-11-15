@@ -9,7 +9,7 @@ import type { MetricInput } from "../registry";
 import { agoText, minText, minutesAgo, ms, oldest, pct, percentile, plural, unknown } from "./shared";
 
 const SOURCE = { name: "NFPA 1710 percentile benchmarks, DC FEMS", url: "https://fems.dc.gov/page/evaluating-response-times" };
-const TITLE = "Tier-0 approvals, 90th percentile";
+const TITLE = "Life-threatening approvals, 90th percentile";
 const TARGET_MIN = 5;
 
 const ASKED = /approval/i;     // "Needs coordinator approval", "Asked for approval"
@@ -48,8 +48,8 @@ export function compute({ board, events, now }: MetricInput): MetricResult {
 
   if (!done.length && !waiting.length) {
     return unknown("sla_t0", TITLE, SOURCE,
-      "No tier-0 high-risk task has a timed approval yet. Needs the Brain's dispatcher to create them with history, Role 1, issue #8.",
-      `${plural(t0.length, "tier-0 high-risk task")} on the board${unmeasured ? `, ${unmeasured} without a start time` : ""}`, now);
+      "No life-threatening task has a timed approval yet.",
+      `${plural(t0.length, "life-threatening task")} on the board${unmeasured ? `, ${unmeasured} without a start time` : ""}`, now);
   }
 
   const p50 = percentile(done, 0.5);
@@ -76,7 +76,7 @@ export function compute({ board, events, now }: MetricInput): MetricResult {
 
   const parts: string[] = [];
   if (done.length) {
-    parts.push(`90% of tier-0 approvals took ${minText(p90)} or less, and ${within} of ${done.length} came within ${TARGET_MIN} min.`);
+    parts.push(`90% of life-threatening approvals took ${minText(p90)} or less, and ${within} of ${done.length} came within ${TARGET_MIN} min.`);
   }
   if (waiting.length) {
     parts.push(`${plural(waiting.length, "task")} ${waiting.length === 1 ? "is" : "are"} waiting now, the longest for ${minText(waiting[0].min)}.`);

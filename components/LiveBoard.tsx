@@ -7,6 +7,8 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { makeBoard } from "@/fixtures/board";
+import { MousePointerClick } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AskDesk } from "./AskDesk";
 import { BoardList, FilterChips } from "./board/BoardList";
 import { DeskFeed, type FeedEvent } from "./board/DeskFeed";
@@ -19,7 +21,7 @@ import { usePolled } from "./map/usePolled";
 
 const BoardMap = dynamic(() => import("./board/BoardMap"), {
   ssr: false,
-  loading: () => <p className="p-4 text-sm text-muted">Loading the map</p>,
+  loading: () => <Skeleton className="h-full w-full rounded-none" />,
 });
 
 // The API board has every field of the fixture board (plus zones and fuller health), so one type fits both.
@@ -77,21 +79,24 @@ export function LiveBoard({ initial, initialFeed }: { initial: DeskBoard; initia
   const record = ref ? findRecord(b, ref.kind, ref.id) : undefined;
   const loc = ref && record ? locate(ref.kind, record, b) : null;
 
-  const card = "min-h-0 min-w-0 rounded-card border border-line bg-card";
+  const card = "min-h-0 min-w-0 rounded-xl border bg-card shadow-xs";
 
   return (
-    <main className="grid gap-4 p-4 md:grid-cols-2 xl:h-full xl:grid-cols-[380px_minmax(0,1fr)_400px] xl:grid-rows-[minmax(0,1fr)_14rem]">
+    <main className="grid gap-4 p-4 md:grid-cols-2 md:p-6 xl:h-full xl:grid-cols-[380px_minmax(0,1fr)_400px] xl:grid-rows-[minmax(0,1fr)_15rem] xl:p-4">
       <section aria-label="Shared priority list"
         className={`${card} flex flex-col md:col-start-1 md:row-start-2 md:max-h-[80vh] xl:row-span-2 xl:row-start-1 xl:max-h-none`}>
-        <div className="flex shrink-0 flex-col gap-3 border-b border-line p-3">
-          <PeopleStrip board={b} />
-          {/* AskDesk carries its own top margin for the old stacked page. The gap does that job here. */}
-          <div className="[&>section]:mt-0 [&>section>div:empty]:hidden"><AskDesk /></div>
-          {!live && <p className="text-sm text-muted">Demo data, the board API is not answering.</p>}
-          <FilterChips board={b} filter={filter} onFilter={setFilter} />
+        <div className="flex shrink-0 flex-col gap-3 border-b p-3">
+          <AskDesk />
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1"><FilterChips board={b} filter={filter} onFilter={setFilter} /></div>
+            {!live && <span className="shrink-0 rounded-full border px-2 text-xs text-muted-foreground" title="The board API is not answering">Demo</span>}
+          </div>
         </div>
         <div className="min-h-0 flex-1 md:overflow-y-auto">
           <BoardList board={b} now={now} filter={filter} selected={selected} onOpen={open} />
+        </div>
+        <div className="shrink-0 border-t px-3 py-2">
+          <PeopleStrip board={b} />
         </div>
       </section>
 
@@ -104,10 +109,17 @@ export function LiveBoard({ initial, initialFeed }: { initial: DeskBoard; initia
       </div>
 
       <aside ref={sheet} tabIndex={-1} aria-label="Selected record"
-        className={`${openKey ? "fixed inset-0 z-[1100] flex" : "hidden"} min-h-0 min-w-0 flex-col bg-card md:static md:z-auto md:col-start-2 md:row-start-2 md:flex md:max-h-[80vh] md:rounded-card md:border md:border-line xl:col-start-3 xl:row-span-2 xl:row-start-1 xl:max-h-none`}>
+        className={`${openKey ? "fixed inset-0 z-[1100] flex" : "hidden"} min-h-0 min-w-0 flex-col bg-card outline-none md:static md:z-auto md:col-start-2 md:row-start-2 md:flex md:max-h-[80vh] md:rounded-xl md:border md:shadow-xs xl:col-start-3 xl:row-span-2 xl:row-start-1 xl:max-h-none`}>
         {selected
           ? <DetailPanel board={b} now={now} live={live} openKey={selected} onOpen={open} onClose={close} />
-          : <p className="p-4 text-sm text-muted">Pick a record on the list or the map.</p>}
+          : (
+            <div className="grid flex-1 place-items-center p-8 text-center">
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <MousePointerClick className="size-5" aria-hidden />
+                <p className="text-sm">Select a record</p>
+              </div>
+            </div>
+          )}
       </aside>
     </main>
   );

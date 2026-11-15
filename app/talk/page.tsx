@@ -22,10 +22,9 @@ export default async function TalkPage({ searchParams }: { searchParams: Promise
   const meId = wanted && all.some((u) => u._id === wanted) ? wanted : people[0]?.id ?? "field-alpha";
 
   const ctx = await d.getUserContext(meId);
-  const top = ctx.tasks[0];
-  const task: TalkTask | undefined = top && {
-    id: top._id, title: top.title, detail: top.detail.replace(/\d[\d\s]{8,}\d/g, "•••"), tier: top.tier, status: top.status,
-  };
+  const tasks: TalkTask[] = ctx.tasks.slice(0, 5).map((t) => ({
+    id: t._id, title: t.title, detail: t.detail.replace(/\d[\d\s]{8,}\d/g, "•••"), tier: t.tier, status: t.status,
+  }));
   const near = await recentQuakesNear(ctx.user.coords, 60).catch(() => undefined);
   const quakes: TalkQuake[] = (near?.quakes ?? []).map((q) => ({ line: quakeLine(q), mag: q.mag, minutesAgo: q.minutesAgo }));
 
@@ -33,7 +32,7 @@ export default async function TalkPage({ searchParams }: { searchParams: Promise
     <TalkScreen
       me={{ id: ctx.user._id, name: ctx.user.name, role: ctx.user.role }}
       people={people}
-      task={task}
+      tasks={tasks}
       quakes={quakes}
       voiceOn={voiceEnabled()}
     />

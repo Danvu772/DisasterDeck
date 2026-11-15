@@ -25,15 +25,15 @@ export function compute({ board, users, now }: MetricInput): MetricResult {
   const open = board.sites.filter((s) => s.status === "open");
   if (!users) {
     return unknown("coverage", TITLE, SOURCE,
-      "Needs user positions from GET /api/users, Role 1, issue #2.",
+      "Team and volunteer positions are not available yet.",
       `${plural(open.length, "open site")}, no user list`, now);
   }
   const placed = open.filter((s) => s.coords);
   const units = users.filter((u) => UNIT_ROLES.has(u.role) && u.status === "available" && u.coords);
   if (!placed.length) {
     return unknown("coverage", TITLE, SOURCE,
-      open.length ? "No open site has coordinates yet. Coordinates come from the memory keeper's geocoding, Role 1." : "There are no open sites to cover.",
-      `${plural(open.length, "open site")}, none with coordinates`, now);
+      open.length ? "No open site has a location yet." : "No open sites to cover.",
+      `${plural(open.length, "open site")}, none with a location`, now);
   }
 
   const reach = placed.map((s) => {

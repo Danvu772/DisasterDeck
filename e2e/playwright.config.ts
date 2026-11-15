@@ -20,6 +20,8 @@ export default defineConfig({
     video: "on",
     screenshot: "on",
     trace: "on",
+    // The maps are MapLibre (WebGL). Headless Chrome only gives WebGL through SwiftShader when asked.
+    launchOptions: { args: ["--enable-unsafe-swiftshader", "--use-angle=swiftshader", "--ignore-gpu-blocklist"] },
   },
   projects: [
     {

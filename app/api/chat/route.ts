@@ -1,5 +1,5 @@
 // POST /api/chat — one turn with the person's own agent. Owner: Role 2.
-// Body: { text?, imageBase64?, audioBase64?, coords?, speak? }
+// Body: { text?, imageBase64?, audioBase64?, coords?, speak?, speechSpeed? }
 //   → { reply, eventIds, actions, heard?, replyAudio? }
 // Who is talking: the login, once SSOJet is in. Until then ?user=<id> (or body.userId),
 // accepted only when DEMO_MODE=1 and the request comes from this laptop (isLocalDemo, #11).
@@ -59,6 +59,7 @@ interface Body {
   audioBase64?: unknown;
   coords?: unknown;
   speak?: unknown;
+  speechSpeed?: unknown;         // 0.7–1.2, the /talk voice-speed slider
 }
 
 export async function POST(req: Request) {
@@ -137,7 +138,7 @@ export async function POST(req: Request) {
     // The reply as speech, when asked for. A voice failure never loses the written reply.
     let replyAudio: string | undefined;
     if (body.speak === true && voiceEnabled() && result.reply) {
-      try { replyAudio = `data:audio/mpeg;base64,${(await speak(result.reply)).toString("base64")}`; }
+      try { replyAudio = `data:audio/mpeg;base64,${(await speak(result.reply, { speed: typeof body.speechSpeed === "number" ? body.speechSpeed : undefined })).toString("base64")}`; }
       catch (e) { console.error("[api/chat] text-to-speech", e); }
     }
     return NextResponse.json({ ...result, ...(heard !== undefined ? { heard } : {}), ...(replyAudio ? { replyAudio } : {}) });

@@ -1,9 +1,11 @@
 "use client";
 // "Ask the desk": a read-only question box that posts to /api/chat as the person in ?user=.
 // The answer comes with up to two live metric cards, also when the agent is down.
+import { ArrowUp, LoaderCircle, Sparkles, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { ChatLine } from "./ChatLine";
-import { button } from "./encode";
 import { chatErrorText } from "./chatError";
 import { ChatMetrics } from "./metrics/ChatMetrics";
 import { pickMetrics } from "./metrics/useMetrics";
@@ -44,22 +46,42 @@ export function AskDesk() {
     setAsking(false);
   }
 
+  const clear = () => { setAnswer(null); setError(null); setCharts(null); };
+  const shown = asking || answer || error || charts;
+
   return (
-    <section aria-label="Ask the desk" className="mt-4">
-      <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); void ask(); }}>
-        <label htmlFor="ask-desk" className="text-sm font-bold">Ask the desk</label>
-        <input id="ask-desk" value={text} onChange={(e) => setText(e.target.value)}
-          placeholder="How full is Shelter B?"
-          className="min-w-0 flex-1 rounded-button border border-muted px-2 py-1.5 text-sm" />
-        <button className={button.primary} disabled={asking}>Ask</button>
+    <section aria-label="Ask the desk">
+      <form className="relative" onSubmit={(e) => { e.preventDefault(); void ask(); }}>
+        <label htmlFor="ask-desk" className="sr-only">Ask the desk</label>
+        <Sparkles className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-info" aria-hidden />
+        <input id="ask-desk" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off"
+          placeholder="Ask the desk anything…"
+          className="h-10 w-full rounded-xl border border-input bg-background pl-9 pr-11 text-sm shadow-xs outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
+        <Button type="submit" size="icon-sm" disabled={asking || !text.trim()} aria-label="Ask"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg">
+          {asking ? <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden /> : <ArrowUp aria-hidden />}
+        </Button>
       </form>
-      {/* Capped, so two cards do not push the list below off the screen. */}
-      <div className="mt-2 flex max-h-[60vh] flex-col gap-2 overflow-y-auto text-sm" aria-live="polite">
-        {asking && <p className="text-muted">Asking</p>}
-        {answer && <ChatLine m={{ from: "agent", text: answer }} name="" />}
-        {error && <p>{error}</p>}
-        {charts && <ChatMetrics key={charts.key} ids={charts.ids} active user={charts.user} />}
-      </div>
+      <AnimatePresence initial={false}>
+        {shown && (
+          <motion.div key="answer" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+            transition={{ type: "spring", stiffness: 340, damping: 36 }} className="overflow-hidden">
+            {/* Capped, so two cards do not push the list below off the screen. */}
+            <div className="relative mt-2 flex max-h-[60vh] flex-col gap-2 overflow-y-auto text-sm" aria-live="polite">
+              {!asking && (
+                <Button variant="ghost" size="icon-xs" aria-label="Clear the answer" onClick={clear}
+                  className="absolute right-0 top-0 z-10 text-muted-foreground">
+                  <X aria-hidden />
+                </Button>
+              )}
+              {asking && <p className="text-xs text-muted-foreground">Asking</p>}
+              {answer && <ChatLine m={{ from: "agent", text: answer }} name="" />}
+              {error && <p className="pr-7 text-xs text-muted-foreground">{error}</p>}
+              {charts && <ChatMetrics key={charts.key} ids={charts.ids} active user={charts.user} />}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

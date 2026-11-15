@@ -2,7 +2,8 @@
 // /lab only: hand-written samples, one per chart kind plus one unknown. "Change the numbers"
 // swaps in the second set. Only the values marked "changed" differ, so only those should move.
 import { useState } from "react";
-import { button } from "../../encode";
+import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { MetricResult } from "../types";
 import { MetricCard } from "./MetricCard";
 
@@ -37,9 +38,10 @@ function samples(b: boolean): MetricResult[] {
       basis: "12 open sites, 5 free units", source: { name: "Church and ReVelle 1974", url: "https://doi.org/10.1007/BF01942293" },
     },
     {
-      id: "credibility", title: "Source reliability by information credibility", headline: "Most reports are B2, usually reliable and probably true.",
+      id: "credibility", title: "Source reliability by information credibility", headline: "Most reports are usually reliable and probably true.",
       status: "ok", computedAt: NOW,
-      chart: { kind: "matrix", rows: ["A", "B", "C", "D", "E", "F"], cols: ["1", "2", "3", "4", "5", "6"],
+      chart: { kind: "matrix", rows: ["A reliable", "B usually reliable", "C fairly reliable", "D not usually reliable", "E unreliable", "F cannot be judged"],
+        cols: ["1 confirmed", "2 probably true", "3 possibly true", "4 doubtful", "5 improbable", "6 cannot be judged"],
         rowTitle: "Source reliability", colTitle: "Information credibility",
         cells: [
           [b ? 4 : 2, 1, 0, 0, 0, 0],
@@ -65,7 +67,7 @@ function samples(b: boolean): MetricResult[] {
     {
       id: "lifelines", title: "Road status with evidence", headline: "Unknown. No road report has a photo yet.",
       status: "unknown", computedAt: NOW, chart: { kind: "none" },
-      unknownReason: "No road record carries evidence. The field team owns adding photos.",
+      unknownReason: "No road record has a photo yet.",
       basis: "0 of 6 road records have evidence", source: { name: "FEMA Community Lifelines", url: "https://www.fema.gov/emergency-managers/practitioners/lifelines" },
     },
   ];
@@ -75,7 +77,10 @@ export function MetricChartsDemo() {
   const [second, setSecond] = useState(false);
   return (
     <div>
-      <button type="button" className={button.primary} onClick={() => setSecond((s) => !s)}>Change the numbers</button>
+      <Button type="button" variant="outline" size="sm" onClick={() => setSecond((s) => !s)}>
+        <RefreshCw aria-hidden />
+        Change the numbers
+      </Button>
       <div className="mt-3 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {samples(second).map((r) => <MetricCard key={r.id} result={r} />)}
       </div>

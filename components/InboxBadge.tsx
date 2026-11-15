@@ -1,7 +1,9 @@
 "use client";
-// Unread count next to "Acting as" in the header. Polls GET /api/inbox every 5 s.
+// Unread count in the header. Polls GET /api/inbox every 5 s.
 // The person is the session, or ?user= on this laptop. When the API refuses (nobody identified), it renders nothing.
 import { useSearchParams } from "next/navigation";
+import { CheckCheck, Inbox } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { Suspense, useEffect, useState } from "react";
 import type { InboxItem } from "@/lib/types";
 import { ageText } from "./encode";
@@ -51,28 +53,42 @@ function Badge() {
     <div className="relative">
       <button type="button" aria-expanded={open} aria-label={`Inbox, ${items.length} unread`}
         onClick={() => setOpen((o) => !o)}
-        className={`whitespace-nowrap rounded-pill border px-2.5 py-1 text-xs ${
-          act ? "border-act bg-act font-bold text-card" : "border-night-muted text-night-ink"}`}>
-        Inbox <span className="font-mono">{items.length}</span>
+        className={`inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-medium transition-colors ${
+          act ? "border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90" : "bg-background hover:bg-secondary"}`}>
+        <Inbox className="size-3.5" aria-hidden />
+        <span className="font-mono">{items.length}</span>
       </button>
-      {open && (
-        <div className="absolute right-0 z-50 mt-2 w-72 rounded-card border border-line bg-card p-2 text-sm text-ink">
-          {items.length === 0 && <p className="p-1 text-muted">Nothing unread.</p>}
-          <ul className="max-h-64 overflow-y-auto">
-            {items.map((i) => (
-              <li key={i._id} className="border-b border-line p-1 last:border-b-0">
-                <p>{i.message}</p>
-                <p className="text-xs text-muted">{ageText(i.ts, now)}</p>
-              </li>
-            ))}
-          </ul>
-          {items.length > 0 && (
-            <button type="button" className="mt-2 text-sm font-bold text-primary hover:text-primary-dark" onClick={markAllRead}>
-              Mark all read
-            </button>
-          )}
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 400, damping: 34 }}
+            className="absolute right-0 z-50 mt-2 w-80 origin-top-right rounded-xl border bg-popover p-1.5 text-sm text-popover-foreground shadow-lg">
+            <div className="flex items-center justify-between px-2 py-1.5">
+              <p className="text-sm font-semibold">Inbox</p>
+              {items.length > 0 && (
+                <button type="button" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={markAllRead}>
+                  <CheckCheck className="size-3.5" aria-hidden />Mark all read
+                </button>
+              )}
+            </div>
+            {items.length === 0 && <p className="px-2 pb-3 pt-1 text-muted-foreground">You are all caught up.</p>}
+            <ul className="max-h-72 overflow-y-auto">
+              {items.map((i) => {
+                const urgent = i.kind === "approval" || i.kind === "incident";
+                return (
+                  <li key={i._id} className="flex gap-2.5 rounded-lg px-2 py-2 hover:bg-secondary/70">
+                    <span aria-hidden className={`mt-1.5 size-1.5 shrink-0 rounded-full ${urgent ? "bg-destructive" : "bg-border"}`} />
+                    <span className="min-w-0">
+                      <span className="block">{i.message}</span>
+                      <span className="block text-xs text-muted-foreground" suppressHydrationWarning>{ageText(i.ts, now)}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

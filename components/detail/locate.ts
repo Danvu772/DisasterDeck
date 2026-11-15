@@ -52,6 +52,13 @@ export function locate(kind: DetailKind, record: AnyRecord, board: Board, depth 
   return null;
 }
 
+// Incident kinds as a person says them.
+export const INCIDENT_WORD: Record<string, string> = {
+  vehicle_breakdown: "Vehicle broke down", road_blocked: "Road blocked", cannot_find: "Cannot find the place",
+  short_supply: "Short on supplies", unsafe: "Unsafe to continue", injury: "Someone is injured",
+  handover: "Handover needed", unreachable: "Cannot be reached", other: "Problem in the field",
+};
+
 // The words a card leads with. Mirrors BoardCards so the panel title matches the card.
 export function summary(kind: DetailKind, r: AnyRecord, now = Date.now()): { title: string; tier: 0 | 1 | 2; priority?: number; status: string; confidence: string; actNow: boolean } {
   switch (kind) {
@@ -59,7 +66,7 @@ export function summary(kind: DetailKind, r: AnyRecord, now = Date.now()): { tit
     case "need": { const n = r as Need; return { title: `${n.quantity} ${n.item}`, tier: n.tier, priority: n.priority, status: n.status, confidence: n.confidence, actNow: false }; }
     case "shelter": { const h = r as Shelter; return { title: h.name, tier: h.bedsUsed / h.bedsTotal > 0.9 ? 1 : 2, status: `${h.bedsUsed} of ${h.bedsTotal} beds`, confidence: "confirmed", actNow: false }; }
     case "road": { const d = r as Road; return { title: d.road, tier: 1, status: d.state, confidence: d.confidence, actNow: false }; }
-    case "incident": { const i = r as Incident; return { title: i.kind.replaceAll("_", " "), tier: severityTier(i.severity), status: i.status, confidence: "confirmed", actNow: i.severity === "critical" }; }
+    case "incident": { const i = r as Incident; return { title: INCIDENT_WORD[i.kind] ?? i.kind.replaceAll("_", " "), tier: severityTier(i.severity), status: i.status, confidence: "confirmed", actNow: i.severity === "critical" }; }
     case "task": { const t = r as Task; return { title: t.title, tier: t.tier, priority: t.priority, status: t.status, confidence: "confirmed", actNow: t.open && new Date(t.deadline).getTime() < now }; }
   }
 }

@@ -1,9 +1,13 @@
 "use client";
+import { AnimatePresence, motion } from "motion/react";
+import { Check, CheckCheck, Clock, TriangleAlert, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import type { Task } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { actorLabel } from "./detail/fields";
+import { minutesSince } from "./encode";
 import { RecordCard } from "./RecordCard";
-import { button, link, minutesSince } from "./encode";
 import { problemChoices, type ProblemKind, type TaskAction } from "./taskEvents";
 
 export type { TaskAction };
@@ -19,10 +23,9 @@ export function TaskCard({ task, now, onAction, assigneeName, notice, busy, repo
   const [picking, setPicking] = useState(false);
   const waited = minutesSince(task.history[0]?.ts ?? task.deadline, now);
   const overdue = task.open && new Date(task.deadline).getTime() < now;
-  // One primary action, the rest outline (USWDS). Accept until accepted, then Done.
+  // One primary action, the rest outline. Accept until accepted, then Done.
   const next: TaskAction = task.status === "accepted" ? "done" : "accepted";
-  const off = "disabled:cursor-not-allowed disabled:opacity-50";
-  const btn = (a: TaskAction) => (a === next ? button.primary : button.outline);
+  const v = (a: TaskAction) => (a === next ? "default" : "outline") as "default" | "outline";
   return (
     <RecordCard
       type={task.recordType}
@@ -38,40 +41,48 @@ export function TaskCard({ task, now, onAction, assigneeName, notice, busy, repo
       history={task.history}
       now={now}
     >
-      <p className="mt-1 text-xs text-muted">
-        {task.assignee
-          ? <>Owner: <Link href={`/agent?user=${task.assignee}`} className={link}>{assigneeName ?? task.assignee}</Link></>
-          : "Unassigned"}, waiting {waited} min
-        {overdue && <span className="ml-1 font-bold text-act">Overdue</span>}
+      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <UserRound className="size-3.5" aria-hidden />
+          {task.assignee
+            ? <Link href={`/agent?user=${task.assignee}`} className="font-medium text-foreground underline-offset-4 hover:underline">{assigneeName ?? actorLabel(task.assignee)}</Link>
+            : "Unassigned"}
+        </span>
+        <span className="inline-flex items-center gap-1"><Clock className="size-3.5" aria-hidden />Waiting <span className="font-mono">{waited} min</span></span>
+        {overdue && <span className="font-medium text-destructive">Overdue</span>}
       </p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <button className={`${btn("accepted")} ${off}`} disabled={locked || task.status === "accepted"}
-          onClick={() => onAction?.("accepted")}>Accept</button>
-        <button className={`${btn("declined")} ${off}`} disabled={locked} onClick={() => onAction?.("declined")}>Decline</button>
-        <button className={`${btn("done")} ${off}`} disabled={locked} onClick={() => onAction?.("done")}>Done</button>
-        <button
-          className={`${button.act} ${off}`}
-          disabled={locked}
-          onClick={() => setPicking((p) => !p)}
-        >
-          Problem
-        </button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" variant={v("accepted")} disabled={locked || task.status === "accepted"} onClick={() => onAction?.("accepted")}>
+          <Check aria-hidden />Accept
+        </Button>
+        <Button size="sm" variant={v("declined")} disabled={locked} onClick={() => onAction?.("declined")}>
+          <X aria-hidden />Decline
+        </Button>
+        <Button size="sm" variant={v("done")} disabled={locked} onClick={() => onAction?.("done")}>
+          <CheckCheck aria-hidden />Done
+        </Button>
+        <Button size="sm" variant="destructive" disabled={locked} aria-expanded={picking} onClick={() => setPicking((p) => !p)}>
+          <TriangleAlert aria-hidden />Problem
+        </Button>
       </div>
-      {picking && !locked && (
-        <div className="mt-2">
-          <p className="text-sm font-bold">What is the problem?</p>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {problemChoices.map((c) => (
-              <button key={c.kind} className={button.outline}
-                onClick={() => { setPicking(false); onAction?.("problem", c.kind); }}>{c.label}</button>
-            ))}
-          </div>
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {picking && !locked && (
+          <motion.div key="pick" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+            transition={{ type: "spring", stiffness: 380, damping: 36 }} className="overflow-hidden">
+            <p className="mt-3 text-xs font-medium text-muted-foreground">What went wrong?</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {problemChoices.map((c) => (
+                <Button key={c.kind} size="sm" variant="outline"
+                  onClick={() => { setPicking(false); onAction?.("problem", c.kind); }}>{c.label}</Button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {(notice || demo) && (
-        <p role="status" className="mt-2 flex items-center gap-2 text-sm font-bold">
+        <p role="status" className="mt-3 flex items-center gap-2 text-sm font-medium">
           {notice}
-          {demo && <span className="rounded-tag border border-line px-1.5 text-xs font-normal text-muted">Demo</span>}
+          {demo && <span className="rounded-full border px-2 text-xs font-normal text-muted-foreground">Demo</span>}
         </p>
       )}
     </RecordCard>

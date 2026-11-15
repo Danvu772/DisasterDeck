@@ -46,7 +46,7 @@ export function compute({ board, now }: MetricInput): MetricResult {
 
   if (!facts.length) {
     return unknown("freshness", TITLE, SOURCE,
-      "No record on the board has a time on it yet. Records and their observedAt come from the memory keeper, Role 1.",
+      "No record on the board has a time yet.",
       `${plural(undated, "record")} without a time`, now);
   }
 

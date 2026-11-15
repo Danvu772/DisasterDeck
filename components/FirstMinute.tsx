@@ -1,16 +1,15 @@
 "use client";
-// A slim banner under the header: what this screen is for, in three lines at most.
-// Shown once per browser per screen. Closing it leaves a "How this screen works" link to bring it back.
-// No motion, so nothing to switch off for prefers-reduced-motion.
+// A slim one-line hint under the header. Shown once per browser per screen; closing it leaves a small Help button.
+import { CircleHelp, Info, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { button, link } from "./encode";
+import { Button } from "@/components/ui/button";
 
 export type Screen = "agent" | "coordinator" | "field";
 
 export const FIRST_MINUTE: Record<Screen, string> = {
-  agent: "You talk to your own agent. Ask it anything about the desk, or tell it what happened. Numbers come with a chart on the right.",
-  coordinator: "Risky work waits here for you. Approve, send someone else, or reject. Everything you decide goes into the record.",
-  field: "Your current task is on top. Press On our way, Arrived, Done. Red Problem if something goes wrong. Hold to talk.",
+  agent: "Ask your agent anything, or tell it what happened.",
+  coordinator: "Risky work waits here. Approve, send someone else, or reject.",
+  field: "Your task is on top. Tap Problem if something goes wrong.",
 };
 
 const key = (s: Screen) => `desk-first-minute-${s}`;
@@ -32,20 +31,23 @@ export function FirstMinute({ screen }: { screen: Screen }) {
 
   if (!open) {
     return (
-      <div className="flex justify-end px-4 pt-2 text-sm">
-        <button type="button" className={link} onClick={() => setOpen(true)}>How this screen works</button>
+      <div className="flex justify-end px-4 pt-2 md:px-6">
+        <Button variant="ghost" size="xs" className="text-muted-foreground" onClick={() => setOpen(true)}>
+          <CircleHelp aria-hidden />Help
+        </Button>
       </div>
     );
   }
 
   return (
-    <section aria-label="How this screen works" className="border-b border-line bg-card px-4 py-2">
-      <div className="mx-auto flex max-w-7xl items-center gap-3">
-        <p className="min-w-0 flex-1 text-sm text-ink">{FIRST_MINUTE[screen]}</p>
-        <button type="button" className={`${button.outline} shrink-0`}
+    <section aria-label="How this screen works" className="px-4 pt-3 md:px-6">
+      <div className="mx-auto flex max-w-7xl items-center gap-2.5 rounded-xl border bg-card px-3 py-2 shadow-xs">
+        <Info className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <p className="min-w-0 flex-1 text-sm">{FIRST_MINUTE[screen]}</p>
+        <Button variant="ghost" size="icon-xs" aria-label="Close" className="shrink-0"
           onClick={() => { remember(screen); setOpen(false); }}>
-          Close
-        </button>
+          <X aria-hidden />
+        </Button>
       </div>
     </section>
   );

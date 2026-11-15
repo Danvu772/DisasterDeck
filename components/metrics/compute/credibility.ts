@@ -90,7 +90,7 @@ export function compute({ board, events, users, now }: MetricInput): MetricResul
 
   if (!facts) {
     return unknown("credibility", TITLE, SOURCE,
-      "There are no sites, needs, roads or shelters on the board to grade. Records come from the memory keeper, Role 1.",
+      "No sites, needs, roads or shelters to grade yet.",
       "an empty board", now);
   }
 
@@ -100,7 +100,7 @@ export function compute({ board, events, users, now }: MetricInput): MetricResul
   return {
     id: "credibility", title: TITLE, source: SOURCE, computedAt: now,
     status: thinDanger ? "warn" : "ok",
-    headline: `${reliable} of ${plural(facts, "fact")} come from a reliable source (A or B), and ${credible} are confirmed or corroborated (1 or 2).${thinDanger ? ` ${plural(thinDanger, "danger-to-life record")} rest on a single unconfirmed report.` : ""}`,
+    headline: `${reliable} of ${plural(facts, "fact")} come from a reliable source (A or B), and ${credible} are confirmed or corroborated (1 or 2).${thinDanger ? ` ${plural(thinDanger, "life-threatening record")} rest on a single unconfirmed report.` : ""}`,
     chart: { kind: "matrix", rows: ROW_WORD, cols: COL_WORD, cells, rowTitle: "Source reliability", colTitle: "Information credibility" },
     basis: [
       `from ${plural(facts, "site, need, road and shelter", "sites, needs, roads and shelters")}`,

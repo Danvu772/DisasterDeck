@@ -1,7 +1,6 @@
 "use client";
-// The queue health pill in the header, v2's composition on USWDS tokens.
-// Green (ok) only when the Brain is running and nothing is stuck. Everything else is act red,
-// because a person has to go restart the Brain or look at the queue.
+// The queue health pill in the header. Green dot only when the Brain is running and nothing is stuck.
+// Everything else is red, because a person has to restart the Brain or look at the queue.
 import { usePolled } from "./map/usePolled";
 
 export type HealthInput = {
@@ -22,28 +21,35 @@ function wait(seconds: number): string {
 
 // Pure: health response → what the pill says. Mono parts are the counts and times.
 export function healthPill(h: HealthInput, live: boolean, now: number) {
-  if (!live) return { bad: true, parts: [{ text: "The desk is not answering" }] };
+  if (!live) return { bad: true, parts: [{ text: "Desk offline" }] };
   const pending = h.pending ?? 0;
   const oldest = h.oldestPendingSeconds ?? 0;
   const failed = h.failed ?? 0;
   const known = h.lastLoopAt !== undefined;
   const brainUp = h.lastLoopAt != null && (now - new Date(h.lastLoopAt).getTime()) / 1000 < BRAIN_UP_SECONDS;
-  const parts: { text: string; mono?: boolean }[] = [
-    { text: known ? `${brainUp ? "Brain running" : "Brain not running"}, queue ` : "Queue " },
-    { text: String(pending), mono: true },
-  ];
-  if (pending > 0) parts.push({ text: ", oldest " }, { text: wait(oldest), mono: true });
-  if (failed > 0) parts.push({ text: ", " }, { text: String(failed), mono: true }, { text: " failed" });
+  const parts: { text: string; mono?: boolean }[] = [];
+  if (known && !brainUp) parts.push({ text: "Brain stopped" });
+  else if (pending === 0) parts.push({ text: "Live" });
+  if (pending > 0) {
+    if (parts.length) parts.push({ text: " · " });
+    parts.push({ text: String(pending), mono: true }, { text: " queued, oldest " }, { text: wait(oldest), mono: true });
+  }
+  if (failed > 0) parts.push({ text: " · " }, { text: String(failed), mono: true }, { text: " failed" });
   return { bad: (known && !brainUp) || oldest > BRAIN_UP_SECONDS || failed > 0, parts };
 }
+
+const pillBase = "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-medium";
 
 // Presentational. Below sm only the dot shows, the words stay for screen readers.
 export function HealthPill({ health, live = true, now }: { health: HealthInput; live?: boolean; now: number }) {
   const { bad, parts } = healthPill(health, live, now);
   return (
     <span role="status"
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill px-2.5 py-1 text-xs font-bold text-night-ink ${bad ? "bg-act" : "bg-ok"}`}>
-      <span aria-hidden="true" className={`inline-block h-2 w-2 shrink-0 rounded-pill ${bad ? "bg-night-ink" : "bg-ok-soft"}`} />
+      className={`${pillBase} ${bad ? "border-destructive/30 bg-destructive/10 text-destructive" : "bg-background text-foreground"}`}>
+      <span aria-hidden="true" className="relative flex size-2 shrink-0">
+        {!bad && <span className="absolute inset-0 animate-ping rounded-full bg-success opacity-60 motion-reduce:hidden" />}
+        <span className={`relative size-2 rounded-full ${bad ? "bg-destructive" : "bg-success"}`} />
+      </span>
       <span className="sr-only sm:not-sr-only">
         {parts.map((p, i) => p.mono ? <span key={i} className="font-mono">{p.text}</span> : p.text)}
       </span>
@@ -57,9 +63,9 @@ export function StatusPill() {
   const { data, live, now, checked } = usePolled<HealthInput>("/api/health", {}, 5000);
   if (!checked) {
     return (
-      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-night-muted px-2.5 py-1 text-xs text-night-muted">
-        <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-pill bg-night-muted" />
-        <span className="sr-only sm:not-sr-only">Checking the desk</span>
+      <span className={`${pillBase} text-muted-foreground`}>
+        <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-border" />
+        <span className="sr-only sm:not-sr-only">Connecting</span>
       </span>
     );
   }

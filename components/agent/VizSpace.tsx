@@ -8,7 +8,10 @@ import type { Event } from "@/lib/types";
 import { MetricCard } from "../metrics/charts/MetricCard";
 import { Poller, type Shown } from "../metrics/ChatMetrics";
 import type { MetricId } from "../metrics/types";
-import { button, chip, pill } from "../encode";
+import { ChartColumn, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { chip } from "../encode";
 import "./viz.css";
 
 // One prompt. `ids` is null while the agent thinks, [] when there is nothing to chart.
@@ -62,13 +65,13 @@ export function viewOf(asks: Ask[], pick: string | null): View | null {
 function Thinking({ question }: { question: string }) {
   return (
     <>
-      <p className="truncate text-sm" title={question}>{question}</p>
-      <p role="status" className="text-sm text-muted">Reading the desk</p>
-      <div aria-hidden className="rounded-card border border-line p-4">
-        <div className="viz-shimmer h-4 w-1/2 bg-line" />
-        <div className="viz-shimmer mt-4 h-3 w-full bg-line" style={{ animationDelay: `${STAGGER_MS}ms` }} />
-        <div className="viz-shimmer mt-2 h-3 w-3/4 bg-line" style={{ animationDelay: `${2 * STAGGER_MS}ms` }} />
-        <div className="viz-shimmer mt-2 h-3 w-1/3 bg-line" style={{ animationDelay: `${3 * STAGGER_MS}ms` }} />
+      <p className="truncate text-sm font-medium" title={question}>{question}</p>
+      <p role="status" className="text-xs text-muted-foreground">Reading the desk</p>
+      <div aria-hidden className="rounded-xl border p-4">
+        <div className="viz-shimmer h-4 w-1/2 rounded-md bg-secondary" />
+        <div className="viz-shimmer mt-4 h-24 w-full rounded-md bg-secondary" style={{ animationDelay: `${STAGGER_MS}ms` }} />
+        <div className="viz-shimmer mt-3 h-3 w-3/4 rounded-md bg-secondary" style={{ animationDelay: `${2 * STAGGER_MS}ms` }} />
+        <div className="viz-shimmer mt-2 h-3 w-1/3 rounded-md bg-secondary" style={{ animationDelay: `${3 * STAGGER_MS}ms` }} />
       </div>
     </>
   );
@@ -121,19 +124,23 @@ export function VizSpace({ asks, open, onClose, events, user }: {
 
   let body: ReactNode = null;
   if (view?.kind === "thinking") body = <Thinking question={view.question} />;
-  else if (view?.kind === "empty") body = <p role="status" className="text-sm text-muted">Nothing to chart for this question</p>;
+  else if (view?.kind === "empty") body = <p role="status" className="text-sm text-muted-foreground">Nothing to chart for this one.</p>;
   else if (view?.kind === "charts" && !snap) {
     body = view.live
       ? <Thinking question={view.ask.question} />
-      : <p className="text-sm text-muted">These charts closed before the board answered, so no values were kept.</p>;
+      : <p className="text-sm text-muted-foreground">Closed before the board answered. No values kept.</p>;
   } else if (view?.kind === "charts" && snap) {
     body = (
       <>
-        <p className="text-sm text-muted">
-          {!view.live ? `As of ${hhmm(snap.at)}`
-            : snap.live ? <span className={pill}>Live, board <span className="font-mono">{Math.max(0, Math.round((tick - snap.at) / 1000))}</span> s old</span>
-              : "Demo data, the board API is not answering."}
-        </p>
+        <div className="flex">
+          {!view.live ? <Badge variant="outline">As of <span className="font-mono">{hhmm(snap.at)}</span></Badge>
+            : snap.live ? (
+              <Badge variant="outline">
+                <span className="size-1.5 rounded-full bg-success" />Live
+                <span className="font-mono text-muted-foreground">{Math.max(0, Math.round((tick - snap.at) / 1000))} s</span>
+              </Badge>
+            ) : <Badge variant="outline" title="The board is not answering, so these are demo values">Demo data</Badge>}
+        </div>
         {snap.results.map((r, i) => (
           <div key={`${view.ask.id}:${r.id}`} className="viz-in" style={{ animationDelay: `${i * STAGGER_MS}ms` }}>
             <MetricCard result={r} />
@@ -145,17 +152,19 @@ export function VizSpace({ asks, open, onClose, events, user }: {
 
   const shownId = view?.kind === "charts" ? view.ask.id : null;
   return (
-    <aside aria-label="Charts" className={`fixed inset-x-0 bottom-0 z-[1100] h-[50vh] border-t border-line bg-card
+    <aside aria-label="Charts" className={`fixed inset-x-0 bottom-0 z-[1100] h-[50vh] rounded-t-2xl border-t bg-card shadow-lg
       transition-[translate,visibility] duration-250 ease-out motion-reduce:transition-none
-      lg:relative lg:inset-auto lg:z-auto lg:h-auto lg:shrink-0 lg:translate-y-0 lg:border-t-0 lg:bg-transparent
+      lg:relative lg:inset-auto lg:z-auto lg:h-auto lg:shrink-0 lg:translate-y-0 lg:rounded-none lg:border-t-0 lg:bg-transparent lg:shadow-none
       lg:transition-[width,visibility] ${open ? "visible translate-y-0 lg:w-[22rem] xl:w-[26rem]" : "invisible translate-y-full lg:w-0"}`}>
       {open && liveAsk?.ids && <Poller key={liveAsk.id} ids={liveAsk.ids} events={events} user={user} onResults={onResults} />}
       {/* Pinned to the right edge at full width, so widening the aside slides it in from the right. */}
       <div className="h-full lg:absolute lg:inset-y-0 lg:right-0 lg:w-[22rem] lg:pl-4 xl:w-[26rem]">
-        <div className="flex h-full flex-col gap-3 overflow-y-auto bg-card p-4 lg:rounded-card lg:border lg:border-line">
+        <div className="flex h-full flex-col gap-3 overflow-y-auto rounded-t-2xl bg-card p-4 lg:rounded-xl lg:border lg:shadow-xs">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-bold">Charts</h2>
-            <button type="button" className={button.outline} onClick={onClose}>Close</button>
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <ChartColumn className="size-4 text-info" />Charts
+            </h2>
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="Close charts" onClick={onClose}><X /></Button>
           </div>
           {charted.length > 0 && (
             <div role="group" aria-label="Earlier charts" className="flex shrink-0 gap-2 overflow-x-auto pb-1">

@@ -9,6 +9,6 @@ const SOURCE = { name: "FActScore, Min et al., EMNLP 2023", url: "https://arxiv.
 
 export function compute({ now }: MetricInput): MetricResult {
   return unknown("agent_fidelity", "Agent replies backed by the board", SOURCE,
-    "Needs the scenario's ground truth and atomic facts pulled from each agent reply, Role 4.",
+    "Needs the scenario's ground truth to check agent replies against.",
     "no ground truth for this scenario", now);
 }

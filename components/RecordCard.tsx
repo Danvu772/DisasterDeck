@@ -1,9 +1,41 @@
 import type { Confidence, HistoryEntry, RecordType, Source, Tier } from "@/lib/types";
-import { confidenceBorder, statusTag, statusText, tierBar } from "./encode";
-import { Stamp } from "./Stamp";
+import { cn } from "@/lib/utils";
+import { KIND_ICON, statusWord, TIER_WORD, trustWord } from "./detail/fields";
 import { History } from "./History";
+import { Stamp } from "./Stamp";
 
-// The one card. Sites, needs, roads, shelters and incidents all render through it.
+// The tier as a word with a dot. Red only for life-threatening (or act-now), amber for urgent, grey for the rest.
+export function TierBadge({ tier, actNow, className }: { tier: Tier; actNow?: boolean; className?: string }) {
+  const red = actNow || tier === 0;
+  return (
+    <span className={cn(
+      "inline-flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-xs font-medium",
+      red ? "bg-destructive/10 text-destructive" : tier === 1 ? "bg-warning/15 text-foreground" : "bg-secondary text-muted-foreground",
+      className,
+    )}>
+      <span aria-hidden className={cn("size-1.5 rounded-full", red ? "bg-destructive" : tier === 1 ? "bg-warning" : "bg-calm")} />
+      {TIER_WORD[tier]}
+    </span>
+  );
+}
+
+// A record kind's icon in a soft tile, tinted by how bad it is.
+export function KindIcon({ type, tier, actNow, className }: { type: RecordType | "task"; tier: Tier; actNow?: boolean; className?: string }) {
+  const Icon = KIND_ICON[type];
+  const red = actNow || tier === 0;
+  return (
+    <span aria-hidden className={cn(
+      "grid size-8 shrink-0 place-items-center rounded-lg",
+      red ? "bg-destructive/10 text-destructive" : tier === 1 ? "bg-warning/15 text-foreground" : "bg-secondary text-muted-foreground",
+      className,
+    )}>
+      <Icon className="size-4" />
+    </span>
+  );
+}
+
+// The one card. Sites, needs, roads, shelters, incidents and tasks all render through it.
+// Unconfirmed records get a dashed border; everything else is one quiet line.
 export function RecordCard(props: {
   type: RecordType;
   title: string;
@@ -20,29 +52,27 @@ export function RecordCard(props: {
   now: number;
   children?: React.ReactNode;
 }) {
+  const trust = trustWord(props.confidence, props.sources);
   return (
-    <article
-      className={`relative flex overflow-hidden rounded-card bg-card ${confidenceBorder(props.confidence)}`}
-    >
-      <div className={`w-2 shrink-0 ${tierBar(props.tier, props.actNow)}`} />
-      <div className="min-w-0 flex-1 p-3">
-        <header className="flex items-baseline gap-2">
-          <h3 className="truncate text-lg font-bold">{props.title}</h3>
-          {props.priority !== undefined && (
-            <span className="ml-auto whitespace-nowrap text-xs text-muted">
-              Priority {props.priority}
-            </span>
-          )}
-        </header>
-        {props.detail && <p className="mt-1 text-sm">{props.detail}</p>}
-        {props.children}
-        <footer className="mt-2 flex items-center gap-2">
-          <span className={statusTag}>{statusText(props.status)}</span>
+    <article className={cn(
+      "rounded-xl border bg-card p-4 text-card-foreground shadow-xs",
+      props.confidence === "unconfirmed" && "border-dashed",
+    )}>
+      <header className="flex items-start gap-3">
+        <KindIcon type={props.type} tier={props.tier} actNow={props.actNow} />
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-semibold first-letter:uppercase">{props.title}</h3>
           <Stamp type={props.type} at={props.at} source={props.source} sources={props.sources} now={props.now} />
-          <span className="ml-auto text-xs capitalize text-muted">{props.confidence}</span>
-        </footer>
-        {props.history && props.history.length > 0 && <History entries={props.history} now={props.now} />}
-      </div>
+        </div>
+        <TierBadge tier={props.tier} actNow={props.actNow} />
+      </header>
+      {props.detail && <p className="mt-3 text-sm text-foreground/90">{props.detail}</p>}
+      {props.children}
+      <footer className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="inline-flex h-5 items-center rounded-full border px-2 text-xs font-medium">{statusWord(props.status)}</span>
+        {trust !== "Confirmed" && <span className="text-xs text-muted-foreground">{trust}</span>}
+      </footer>
+      {props.history && props.history.length > 0 && <History entries={props.history} now={props.now} />}
     </article>
   );
 }

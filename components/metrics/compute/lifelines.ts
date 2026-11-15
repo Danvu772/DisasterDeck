@@ -18,7 +18,7 @@ const SOURCE_WORD: Record<string, string> = {
 export function compute({ board, events, now }: MetricInput): MetricResult {
   if (!board.roads.length) {
     return unknown("lifelines", TITLE, SOURCE,
-      "There are no roads on the board. Road reports come from closure events through the memory keeper, Role 1.",
+      "No road reports yet.",
       "no road records", now);
   }
 

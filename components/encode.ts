@@ -18,7 +18,9 @@ export function severityTier(s: "low" | "high" | "critical"): Tier {
 
 // A filled square with the priority number in it (the magnitude box on the USGS list).
 export function tierBadge(tier: Tier, actNow = false): string {
-  return `${tierBar(tier, actNow)} ${actNow || tier === 0 ? "text-card" : "text-ink"}`;
+  if (actNow || tier === 0) return "bg-destructive text-destructive-foreground";
+  if (tier === 1) return "bg-warning text-warning-foreground";
+  return "bg-secondary text-secondary-foreground";
 }
 
 // v2's tier badge as text: the code ("T0") goes in font-mono, the word stays sans.
@@ -67,30 +69,32 @@ export function ageText(at: Date | string, now: number): string {
 }
 
 // Status → a USWDS tag. Neutral gray, uppercase, never coloured. Underscores read as spaces.
-export const statusTag = "whitespace-nowrap rounded-tag bg-muted px-2 font-sans text-xs uppercase text-card";
+export const statusTag = "inline-flex items-center whitespace-nowrap rounded-md border bg-background px-1.5 py-0.5 font-sans text-[11px] font-medium capitalize text-muted-foreground";
 export function statusText(s: string): string {
   return s.replaceAll("_", " ");
 }
 
 // Interactive → USWDS buttons. Primary = the one expected action, outline = the others.
 // Problem keeps act red: it is the only button that means "someone needs help now".
+// Same shapes as components/ui/button.tsx (shadcn), for places that style a plain <button>.
+const btn = "inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0";
 export const button = {
-  primary: "rounded-button bg-primary px-3 py-1.5 text-sm font-bold text-card hover:bg-primary-dark",
-  outline: "rounded-button px-3 py-1.5 text-sm font-bold text-primary shadow-[inset_0_0_0_2px_var(--color-primary)] hover:text-primary-dark hover:shadow-[inset_0_0_0_2px_var(--color-primary-dark)]",
-  act: "rounded-button bg-act px-3 py-1.5 text-sm font-bold text-card",
+  primary: `${btn} bg-primary text-primary-foreground shadow-xs hover:bg-primary/90`,
+  outline: `${btn} border bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground`,
+  act: `${btn} bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90`,
 };
 
 // v2's filter chip, on USWDS values. Clickable, so the active one gets the primary border and text.
 export function chip(active: boolean): string {
-  return `inline-flex items-center gap-1 whitespace-nowrap rounded-pill border-2 px-3 py-1 text-sm font-bold ${
-    active ? "border-primary bg-primary-lighter text-primary-dark" : "border-line bg-card text-ink hover:border-primary hover:text-primary"}`;
+  return `inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition-colors ${
+    active ? "border-primary bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-accent"}`;
 }
 
 // v2's neutral pill: a label or a count, nothing clickable. Counts inside go in font-mono.
-export const pill = "inline-flex items-center gap-1 whitespace-nowrap rounded-pill border border-line bg-card px-2 py-0.5 text-xs text-ink";
+export const pill = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border bg-background px-2 py-0.5 text-xs text-foreground";
 
 // Links → USWDS link: primary, underlined.
-export const link = "text-primary underline hover:text-primary-dark";
+export const link = "font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground";
 
 // Stale ink: faded, and the word "stale" next to it (see Stamp).
 export function staleInk(stale: boolean): string {

@@ -9,7 +9,7 @@ import { siteOfTask } from "../map/mapItems";
 
 export const FILTERS = [
   { id: "all", label: "All" },
-  { id: "incident_sites", label: "Incident sites" },
+  { id: "incident_sites", label: "Sites" },
   { id: "needs", label: "Needs" },
   { id: "shelters", label: "Shelters" },
   { id: "roads", label: "Roads" },

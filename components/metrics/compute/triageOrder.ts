@@ -8,6 +8,6 @@ const SOURCE = { name: "Kendall's tau rank correlation", url: "https://en.wikipe
 
 export function compute({ now }: MetricInput): MetricResult {
   return unknown("triage_order", "Desk order against true severity", SOURCE,
-    "Needs the scenario's true severity for each record, Role 4.",
+    "Needs the scenario's true severity for each record.",
     "no ground truth for this scenario", now);
 }
