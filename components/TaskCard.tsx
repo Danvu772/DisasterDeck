@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import type { Task } from "@/lib/types";
 import { RecordCard } from "./RecordCard";
 import { minutesSince } from "./encode";
@@ -28,7 +29,9 @@ export function TaskCard({ task, now, onAction }: {
       now={now}
     >
       <p className="mt-1 text-xs text-muted">
-        {task.assignee ? `owner: ${task.assignee}` : "unassigned"} · waited {waited} min
+        {task.assignee
+          ? <>owner: <Link href={`/agent?user=${task.assignee}`} className="underline">{task.assignee}</Link></>
+          : "unassigned"} · waited {waited} min
         {overdue && <span className="ml-1 font-semibold text-act">overdue</span>}
       </p>
       <div className="mt-2 flex flex-wrap gap-2">

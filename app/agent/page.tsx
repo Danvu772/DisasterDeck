@@ -20,9 +20,8 @@ export default async function AgentPage({ searchParams }: { searchParams: Promis
     .sort(byPriority);
 
   return (
-    <main className="mx-auto flex h-dvh max-w-6xl flex-col gap-4 p-4">
+    <main className="mx-auto flex h-full max-w-6xl flex-col gap-4 p-4">
       <nav className="flex flex-wrap items-baseline gap-3 text-sm">
-        <span className="font-semibold">Disaster Desk</span>
         <span className="font-mono text-xs text-muted">demo, talk as:</span>
         {users.map((u) => (
           <Link key={u._id} href={`/agent?user=${u._id}`}
