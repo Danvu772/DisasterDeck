@@ -131,9 +131,9 @@ export function makeBoard(now: number) {
     {
       _id: "task-5", type: "rescue", recordType: "site", recordId: "site-52", assignee: "field-alpha",
       tried: [], risk: "high", tier: 0, priority: 70, status: "accepted", open: true,
-      title: "Rescue at Çınar St. 3", detail: "3 people, voices heard (Zeynep, 40 min ago). Approved by Demo NÃ¶betÃ§i KoordinatÃ¶r.",
+      title: "Rescue at Çınar St. 3", detail: "3 people, voices heard (Zeynep, 40 min ago). Approved by Demo Nöbetçi Koordinatör.",
       deadline: new Date(now + 20 * 60000),
-      history: [{ ts: ago(4), by: "Demo NÃ¶betÃ§i KoordinatÃ¶r", source: "person", reason: "Approved dispatch" }], deskId: DESK,
+      history: [{ ts: ago(4), by: "Demo Nöbetçi Koordinatör", source: "person", reason: "Approved dispatch" }], deskId: DESK,
     },
   ];
 

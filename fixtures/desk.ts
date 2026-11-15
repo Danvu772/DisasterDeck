@@ -21,7 +21,7 @@ export const users: User[] = [
     profile: { vehicle: "van", stock: { blankets: 180, water: 400 }, notes: "One van, one driver." },
   },
   {
-    _id: "coordinator-duty", name: "Demo NÃ¶betÃ§i KoordinatÃ¶r", role: "coordinator", region: "malatya-merkez", status: "available",
+    _id: "coordinator-duty", name: "Demo Nöbetçi Koordinatör", role: "coordinator", region: "malatya-merkez", status: "available",
     deskId: DESK, trust: "official",
     profile: { notes: "Approves field team dispatch. Wants incidents first." },
   },
@@ -70,6 +70,6 @@ export function makeMessages(userId: string, now: number): Message[] {
   return [
     { _id: "m1", userId, from: "agent", ts: ago(10), text: "Please call this number about Çınar St. 3. One person posted, nobody has called yet." },
     { _id: "m2", userId, from: "user", ts: ago(9), text: "called, voices heard" },
-    { _id: "m3", userId, from: "agent", ts: ago(9), text: "Marked Çınar St. 3 as verified. Asking Demo NÃ¶betÃ§i KoordinatÃ¶r to send a team.", eventIds: ["ev-25"] },
+    { _id: "m3", userId, from: "agent", ts: ago(9), text: "Marked Çınar St. 3 as verified. Asking Demo Nöbetçi Koordinatör to send a team.", eventIds: ["ev-25"] },
   ];
 }
