@@ -16,7 +16,7 @@ export const MAX_OPEN_TASKS = 3;
 export interface Place { coords?: LatLng; region: string }
 
 export type Pick =
-  | { ok: true; user: User; meters?: number }
+  | { ok: true; user: User; meters?: number; short?: { has: number; want: number } }
   | { ok: false; reason: string };
 
 export function pickPerson(

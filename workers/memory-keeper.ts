@@ -20,7 +20,7 @@ import { isTrusted, matchNeed, mergeLines, needStatus } from "../lib/rules/needs
 import { confidence, scored, siteTier, support, type Voice } from "../lib/rules/priority";
 import {
   alertPayload, answerPayload, approvalPayload, capacityPayload, claimPayload, closurePayload, correctionPayload,
-  incidentPayload, needPayload, reportPayload,
+  incidentPayload, needPayload, planPayload, reportPayload,
 } from "../lib/schemas";
 import type {
   ClaimPayload, Confidence, Event, EventType, HistoryEntry, Incident, LatLng, Need, Post, RecordType, ReportPayload, Road,
@@ -30,7 +30,7 @@ import { z } from "zod";
 
 /** Event types the keeper handles today. Others stay pending until their handler lands. */
 export const HANDLED: EventType[] = [
-  "report", "answer", "approval", "incident", "need", "claim", "closure", "capacity", "alert", "correction",
+  "report", "answer", "approval", "incident", "need", "claim", "closure", "capacity", "alert", "correction", "plan",
 ];
 
 /** One record the keeper created or changed: what the dispatcher reacts to. */
@@ -44,6 +44,8 @@ export interface Change {
    * "silent" (a zone), "rescored" (a record got a satellite term). */
   flags?: ("notify" | "full" | "confirm" | "silent" | "rescored")[];
   note?: string;
+  /** A need moved to this status (the dispatcher tells the people who asked). */
+  toStatus?: Need["status"];
 }
 
 /** What must happen to a task. The keeper decides it, the dispatcher (the tasks' writer) does it. */
@@ -51,7 +53,11 @@ export type TaskAction =
   | { kind: "accept"; taskId: string; by: string; etaMinutes?: number; progress?: "en_route" | "arrived"; note?: string }
   | { kind: "decline"; taskId: string; by: string; note?: string }
   | { kind: "done"; taskId: string; by: string; note?: string }
-  | { kind: "approve"; taskId: string; by: string; assignee?: string }
+  | { kind: "approve"; taskId: string; by: string; assignee?: string; eventId?: string }
+  | {
+      kind: "plan"; eventId: string; deskId: string; by: string; ts: Date; reason: string;
+      exits: { zoneId: string; zone?: string; name: string; exit: string }[];
+    }
   | { kind: "reject"; taskId: string; by: string }
   | { kind: "block"; taskId: string; by: string; incidentId: string; reason: string }
   | {
@@ -79,6 +85,7 @@ export async function apply(event: Event): Promise<KeeperResult> {
     case "capacity": return applyCapacity(event);
     case "alert": return applyAlert(event);
     case "correction": return applyCorrection(event);
+    case "plan": return applyPlan(event);
     default:
       // The Brain only takes HANDLED types, so this means a bug, not bad input.
       throw new Error(`memory keeper has no handler for "${event.type}"`);
@@ -257,7 +264,7 @@ async function moveNeed(event: Event, needId: string, from: Need["status"][], se
   const { needs } = await cols();
   const r = await needs.updateOne({ _id: needId, status: { $in: from } }, { $set: set, $push: { history: historyOf(event, reason) } });
   return r.modifiedCount
-    ? [{ recordType: "need", recordId: needId, op: "updated", eventId: event._id!, fields: [...Object.keys(set), "history"] }]
+    ? [{ recordType: "need", recordId: needId, op: "updated", eventId: event._id!, fields: [...Object.keys(set), "history"], ...(set.status ? { toStatus: set.status } : {}) }]
     : [];
 }
 
@@ -333,11 +340,73 @@ async function applyApproval(event: Event): Promise<KeeperResult> {
   if (!p.approved) {
     return done([task._id], `task ${task._id} rejected by ${event.actor}`, [], [{ kind: "reject", taskId: task._id, by: event.actor }]);
   }
+  if (task.type === "evacuate") return approveEvacuation(event, task, p.assignee);
   if (p.assignee && !(await users.findOne({ _id: p.assignee, deskId: task.deskId }, { projection: { _id: 1 } }))) {
     return reject(`${p.assignee} is not a person on this desk`);
   }
   return done([task._id], `task ${task._id} approved by ${event.actor}${p.assignee ? `, send ${p.assignee} instead` : ""}`, [],
-    [{ kind: "approve", taskId: task._id, by: event.actor, assignee: p.assignee }]);
+    [{ kind: "approve", taskId: task._id, by: event.actor, assignee: p.assignee, eventId: event._id }]);
+}
+
+// ---------- plans: an evacuation plan waits for a coordinator ----------
+
+/** The zones of a plan on this desk. A zone id can be the plain id or "<desk>:<id>" (see applyAlert). */
+async function zonesOfPlan(desk: string, exits: { zoneId: string }[]): Promise<Map<string, Zone>> {
+  const { zones } = await cols();
+  const ids = exits.flatMap((e) => [e.zoneId, `${desk}:${e.zoneId}`]);
+  const found = await zones.find({ deskId: desk, _id: { $in: ids } }).toArray();
+  return new Map(exits.flatMap((e) => {
+    const z = found.find((f) => f._id === e.zoneId) ?? found.find((f) => f._id === `${desk}:${e.zoneId}`);
+    return z ? [[e.zoneId, z] as [string, Zone]] : [];
+  }));
+}
+
+async function applyPlan(event: Event): Promise<KeeperResult> {
+  const parsed = planPayload.safeParse(event.payload);
+  if (!parsed.success) return reject(`payload is not a valid plan: ${firstIssue(parsed.error)}`);
+  if (event.source === "person") return reject("a plan comes from the planner or an agent, not from a person");
+  const eventId = event._id!;
+  const c = await cols();
+  // One exit per zone: the last one named wins.
+  const exits = [...new Map(parsed.data.zoneExits.map((e) => [e.zoneId, e])).values()];
+  if (!exits.length) return reject("a plan must name at least one zone");
+  const reason = mask(parsed.data.reason);
+  const known = await zonesOfPlan(event.deskId, exits);
+  const changes: Change[] = [];
+  for (const e of exits) {
+    const z = known.get(e.zoneId);
+    if (!z) continue;
+    const r = await c.zones.updateOne({ _id: z._id, "history.eventId": { $ne: eventId } },
+      { $push: { history: withEvent(event, `evacuation plan proposed: exit ${e.exit} (${reason}). A coordinator decides`) } });
+    if (r.modifiedCount) changes.push({ recordType: "zone", recordId: z._id, op: "updated", eventId, fields: ["history"] });
+  }
+  return done([...known.values()].map((z) => z._id),
+    `evacuation plan for ${exits.length} zone${exits.length === 1 ? "" : "s"}, ${known.size} known: ${exits.map((e) => `${e.zoneId} → ${e.exit}`).join(", ")}`,
+    changes, [{
+      kind: "plan", eventId, deskId: event.deskId, by: event.actor, ts: event.ts, reason,
+      exits: exits.map((e) => ({ zoneId: e.zoneId, ...(known.get(e.zoneId) ? { zone: known.get(e.zoneId)!._id } : {}), name: known.get(e.zoneId)?.name ?? prettyZone(e.zoneId), exit: e.exit })),
+    }]);
+}
+
+/** A coordinator approved an evacuation plan: each zone gets its exit. The dispatcher closes the task. */
+async function approveEvacuation(event: Event, task: { _id: string; history: HistoryEntry[]; deskId: string }, assignee?: string): Promise<KeeperResult> {
+  const c = await cols();
+  const planId = task.history.find((h) => h.eventId)?.eventId;
+  const plan = planId ? await c.events.findOne({ _id: planId, type: "plan" }) : null;
+  const parsed = planPayload.safeParse(plan?.payload);
+  if (!plan || !parsed.success) return reject(`the plan behind task ${task._id} was not found`);
+  const exits = [...new Map(parsed.data.zoneExits.map((e) => [e.zoneId, e])).values()];
+  const known = await zonesOfPlan(task.deskId, exits);
+  const changes: Change[] = [];
+  for (const e of exits) {
+    const z = known.get(e.zoneId);
+    if (!z) continue;
+    const r = await c.zones.updateOne({ _id: z._id, "history.eventId": { $ne: event._id! } },
+      { $set: { exitAssigned: e.exit }, $push: { history: withEvent(event, `evacuation exit set to ${e.exit}: approved by ${event.actor}`) } });
+    if (r.modifiedCount) changes.push({ recordType: "zone", recordId: z._id, op: "updated", eventId: event._id!, fields: ["exitAssigned", "history"] });
+  }
+  return done([task._id, ...known.keys()].filter(Boolean), `evacuation plan approved by ${event.actor}: ${known.size} zone(s) got their exit${assignee ? " (a named person is not needed, no field team goes)" : ""}`,
+    changes, [{ kind: "approve", taskId: task._id, by: event.actor, eventId: event._id }]);
 }
 
 // ---------- incidents: the help desk (§6) ----------
@@ -856,12 +925,26 @@ async function applyCorrection(event: Event): Promise<KeeperResult> {
 // ---------- follow-ups the dispatcher asks for (records stay the keeper's) ----------
 
 /** A deliver task went out with an owner: the need is assigned. */
-export async function noteNeedAssigned(needId: string, taskId: string, assignee: string): Promise<void> {
+export async function noteNeedAssigned(needId: string, taskId: string, assignee: string): Promise<boolean> {
   const { needs } = await cols();
-  await needs.updateOne({ _id: needId, status: "open" }, {
+  const r = await needs.updateOne({ _id: needId, status: "open" }, {
     $set: { status: "assigned" },
     $push: { history: { ts: new Date(), by: "dispatcher", source: "system", reason: `task ${taskId} to ${assignee}` } },
   });
+  return r.modifiedCount > 0;
+}
+
+/**
+ * Has a trusted source (official or vetted) reported on this site since `since`? Used before a
+ * rejected rescue is proposed again. Reads only.
+ */
+export async function confirmedSince(siteId: string, since: Date): Promise<boolean> {
+  const c = await cols();
+  const site = await c.sites.findOne({ _id: siteId }, { projection: { sources: 1 } });
+  if (!site?.sources.length) return false;
+  const later = await c.events.find({ _id: { $in: site.sources.map((s) => s.eventId) }, ts: { $gt: since } }).toArray();
+  for (const e of later) if (isTrusted(await eventTrust(e))) return true;
+  return false;
 }
 
 /** The playbook ran: help is on the way, or nobody fits and a coordinator decides. */

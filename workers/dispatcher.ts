@@ -9,6 +9,11 @@
 //      risk, waiting for a coordinator, with the proposed field team named.
 //   4. An open need with no open deliver task → a deliver task, low risk, to the nearest
 //      supplier who has the item.
+//   5. High risk is a rescue, a deliver of BIG_SUPPLY_MOVE or more, and an evacuation plan (one
+//      evacuate task, approved by a coordinator, no field team). A deliver goes to a supplier whose
+//      stock covers the quantity, else the one with the most, and says so.
+//   6. The people who asked hear when their need moves. A rescue a coordinator rejected is only
+//      proposed again after something material changed.
 // Nobody fits: the task is escalated with the reason. Every task that gets a person writes one
 // inbox item for them. Every approval writes one per coordinator. The one_open_task index keeps
 // one open task per record and type, so a second run of the same event makes nothing new.
@@ -17,12 +22,14 @@ import { cols, newId } from "../lib/db";
 import { haversineMeters } from "../lib/geo";
 import { distanceText, pickPerson, stockOf, type Pick, type Place } from "../lib/rules/assign";
 import type { HistoryEntry, InboxItem, Need, Role, ScorePart, Site, Task, User } from "../lib/types";
-import { noteIncidentOutcome, noteNeedAssigned, type Change, type TaskAction } from "./memory-keeper";
+import { confirmedSince, noteIncidentOutcome, noteNeedAssigned, type Change, type TaskAction } from "./memory-keeper";
 
 /** How long a person has to answer (N in §5, 2 in the demo). The board turns it red after. */
 export const ANSWER_MINUTES = 2;
 /** Three people said no: a coordinator decides. */
 export const MAX_TRIES = 3;
+/** A deliver task for this many items or more is a big supply move: high risk, a coordinator decides. */
+export const BIG_SUPPLY_MOVE = 100;
 
 const ROLE_FOR: Record<Task["type"], Role[]> = {
   call: ["volunteer"], rescue: ["field"], deliver: ["supplier"],
@@ -34,10 +41,12 @@ const entry = (reason: string, by = "dispatcher"): HistoryEntry =>
 const deadline = (from: Date = new Date()) => new Date(from.getTime() + ANSWER_MINUTES * 60_000);
 
 export async function react(changes: Change[], actions: TaskAction[] = []): Promise<void> {
+  // A failed delivery goes back to open before the replacement takes it: the askers hear "delayed" first.
+  for (const ch of changes) if (ch.recordType === "need" && ch.toStatus === "open") await tellAskers(ch.recordId, "open", ch.eventId);
   for (const a of actions) await act(a);
   for (const ch of changes) {
     if (ch.recordType === "site") await siteChanged(ch.recordId);
-    else if (ch.recordType === "need") await needChanged(ch.recordId);
+    else if (ch.recordType === "need") await needChanged(ch);
     else if (ch.recordType === "incident" && ch.op === "created") await incidentOpened(ch.recordId);
     else if (ch.recordType === "road") { if (ch.flags?.includes("notify")) await roadChanged(ch); }
     else if (ch.recordType === "shelter") await shelterChanged(ch);
@@ -54,6 +63,7 @@ async function act(a: TaskAction): Promise<void> {
   const { tasks } = await cols();
   if (a.kind === "claim") return claimed(a);
   if (a.kind === "cancel") return cancelled(a);
+  if (a.kind === "plan") return planned(a);
   const task = await tasks.findOne({ _id: a.taskId });
   if (!task) return;
 
@@ -75,14 +85,19 @@ async function act(a: TaskAction): Promise<void> {
         $push: { history: entry(a.note ? `done: ${a.note}` : "done", a.by) },
       });
       return;
-    case "reject":
-      await tasks.updateOne({ _id: task._id, status: "waiting_approval" }, {
+    case "reject": {
+      // The number of people trapped is written down, so a later change can tell if anything is new (item "re-propose").
+      const trapped = task.type === "rescue" && task.recordType === "site"
+        ? (await (await cols()).sites.findOne({ _id: task.recordId }, { projection: { peopleTrapped: 1 } }))?.peopleTrapped : undefined;
+      const r = await tasks.updateOne({ _id: task._id, status: "waiting_approval" }, {
         $set: { status: "cancelled", open: false },
-        $push: { history: entry("rejected by the coordinator", a.by) },
+        $push: { history: entry(`rejected by the coordinator${trapped !== undefined ? `, ${trapped} trapped` : ""}`, a.by) },
       });
+      if (r.modifiedCount) await closeApprovals(task._id);
       return;
+    }
     case "approve":
-      return approved(task, a.by, a.assignee);
+      return approved(task, a.by, a.assignee, a.eventId);
     case "decline":
       return declined(task, a.by, a.note);
     case "block":
@@ -160,13 +175,45 @@ export async function syncPriority(changes: { recordId: string; priority: number
   return n;
 }
 
+/** Why this person cannot take this task, or null. The coordinator may pick anyone who is able. */
+async function whyNot(u: User, task: Task): Promise<string | null> {
+  if (!ROLE_FOR[task.type].includes(u.role)) return `${u._id} cannot take a ${task.type} task: wrong role`;
+  if (u.status === "offline") return `${u._id} cannot take a ${task.type} task: offline`;
+  if (task.type === "deliver") {
+    const need = await recordOf("need", task.recordId);
+    if (need && "item" in need && stockOf(u, need.item) <= 0) return `${u._id} cannot take a deliver task: no ${need.item} in stock`;
+  }
+  return null;
+}
+
 /** The coordinator said yes: the person they named, or the proposed team, or the nearest free one now. */
-async function approved(task: Task, by: string, assignee?: string): Promise<void> {
+async function approved(task: Task, by: string, assignee?: string, eventId?: string): Promise<void> {
   const { tasks, users } = await cols();
+  if (task.type === "evacuate") {
+    // No field team: the keeper set the exits, the task is done.
+    const r = await tasks.updateOne({ _id: task._id, status: "waiting_approval" }, {
+      $set: { status: "done", open: false }, $push: { history: entry(`approved by ${by}, the exits are set on the zones`, by) },
+    });
+    if (r.modifiedCount) await closeApprovals(task._id);
+    return;
+  }
   let pick: Pick;
   if (assignee) {
-    const u = await users.findOne({ _id: assignee });
-    pick = u ? { ok: true, user: u } : { ok: false, reason: `${assignee} is not on the desk` };
+    const u = await users.findOne({ _id: assignee, deskId: task.deskId });
+    const problem = u ? await whyNot(u, task) : `${assignee} is not on the desk`;
+    if (problem) {
+      // Not sent: the task keeps waiting, and the coordinator is told why.
+      const r = await tasks.updateOne({ _id: task._id, status: "waiting_approval", ...(eventId ? { "history.eventId": { $ne: eventId } } : {}) },
+        { $push: { history: { ...entry(`approval by ${by} not carried out: ${problem}`, by), ...(eventId ? { eventId } : {}) } } });
+      if (r.modifiedCount) {
+        await inbox([{
+          userId: by, taskId: task._id, kind: "notice", priority: task.priority, ...(eventId ? { key: `approve-refused:${eventId}` } : {}),
+          message: `Not sent: ${problem}. The task is still waiting for you: ${task.title}.`,
+        }]);
+      }
+      return;
+    }
+    pick = { ok: true, user: u! };
   } else {
     const proposed = proposedIn(task.detail);
     const u = proposed ? await users.findOne({ _id: proposed, deskId: task.deskId }) : null;
@@ -174,9 +221,20 @@ async function approved(task: Task, by: string, assignee?: string): Promise<void
   }
   const why = assignee ? `approved by ${by}, sent ${assignee} instead` : `approved by ${by}`;
   const r = await tasks.updateOne({ _id: task._id, status: "waiting_approval" }, pick.ok
-    ? { $set: { status: "assigned", assignee: pick.user._id, deadline: deadline() }, $push: { history: entry(`${why}, assigned to ${pick.user._id}`, by) } }
+    ? { $set: { status: "assigned", assignee: pick.user._id, deadline: deadline() }, $push: { history: entry(`${why}, assigned to ${pick.user._id}${near(pick)}`, by) } }
     : { $set: { status: "escalated", deadline: deadline() }, $push: { history: entry(`${why}, then escalated: ${pick.reason}`, by) } });
-  if (r.modifiedCount && pick.ok) await inboxTask({ ...task, assignee: pick.user._id });
+  if (!r.modifiedCount) return;
+  await closeApprovals(task._id);
+  if (pick.ok) {
+    await inboxTask({ ...task, assignee: pick.user._id });
+    if (task.type === "deliver" && await noteNeedAssigned(task.recordId, task._id, pick.user._id)) await tellAskers(task.recordId, "assigned", task._id);
+  }
+}
+
+/** One coordinator decided: the others must not act on it. Their unread approval items are read. */
+async function closeApprovals(taskId: string): Promise<void> {
+  const { inbox } = await cols();
+  await inbox.updateMany({ taskId, kind: "approval", status: "unread" }, { $set: { status: "read" } });
 }
 
 /** An incident stopped the task: block it, and send a replacement to the next person (§6). */
@@ -230,14 +288,95 @@ async function siteChanged(siteId: string): Promise<void> {
     await createFor("call", "site", site);
   }
   if (site.callStatus === "verified" && site.peopleTrapped > 0 && site.status !== "team_on_site") {
-    await createFor("rescue", "site", site);
+    const gate = await rescueGate(site);
+    if (gate.go) await createFor("rescue", "site", site, gate.why);
   }
 }
 
-async function needChanged(needId: string): Promise<void> {
+/**
+ * A rescue a coordinator rejected is proposed again only when something material changed since:
+ * more people trapped than then, or a confirmed (official or vetted) report after it. The reason
+ * goes into the rejected task's history either way.
+ */
+async function rescueGate(site: Site): Promise<{ go: boolean; why?: string }> {
+  const { tasks } = await cols();
+  if (await tasks.findOne({ recordId: site._id, type: "rescue", open: true }, { projection: { _id: 1 } })) return { go: false };
+  let last: { task: Task; ts: Date; trapped?: number } | undefined;
+  for (const t of await tasks.find({ recordId: site._id, type: "rescue", status: "cancelled" }).toArray()) {
+    for (const h of t.history) {
+      if (!/^rejected by the coordinator/.test(h.reason)) continue;
+      if (!last || new Date(h.ts) > last.ts) last = { task: t, ts: new Date(h.ts), trapped: Number(h.reason.match(/(\d+) trapped/)?.[1] ?? NaN) };
+    }
+  }
+  if (!last) return { go: true };
+  const was = last.trapped !== undefined && !Number.isNaN(last.trapped) ? last.trapped : undefined;
+  const more = was !== undefined && site.peopleTrapped > was;
+  if (more) return { go: true, why: `proposed again after a rejection: ${site.peopleTrapped} trapped now, ${was} then` };
+  if (await confirmedSince(site._id, last.ts)) return { go: true, why: "proposed again after a rejection: a confirmed report arrived since" };
+  const note = `not proposed again: nothing new since the rejection (${site.peopleTrapped} trapped now${was !== undefined ? `, ${was} then` : ""}, no confirmed report after it)`;
+  await tasks.updateOne({ _id: last.task._id, "history.reason": { $ne: note } }, { $push: { history: entry(note) } });
+  return { go: false };
+}
+
+async function needChanged(ch: Change): Promise<void> {
   const { needs } = await cols();
-  const need = await needs.findOne({ _id: needId });
+  const need = await needs.findOne({ _id: ch.recordId });
   if (need?.status === "open") await createFor("deliver", "need", need);
+  if (ch.toStatus === "on_the_way" || ch.toStatus === "delivered") await tellAskers(ch.recordId, ch.toStatus, ch.eventId);
+}
+
+/** The people who asked hear when their need moves: one notice each, once per status change. */
+async function tellAskers(needId: string, status: "assigned" | "on_the_way" | "delivered" | "open", change: string): Promise<void> {
+  const { needs, sites, tasks } = await cols();
+  const need = await needs.findOne({ _id: needId });
+  if (!need?.requestedBy.length) return;
+  const site = need.siteIds[0] ? await sites.findOne({ _id: need.siteIds[0] }, { projection: { caseNo: 1 } }) : null;
+  const what = `${cap(need.item)} for ${site?.caseNo ? `site ${site.caseNo}` : need.region}`;
+  let how: string;
+  if (status === "assigned") how = "a supplier has been found";
+  else if (status === "delivered") how = "delivered";
+  else if (status === "open") how = "delayed, a new supplier is being found";
+  else {
+    const eta = (await tasks.findOne({ recordId: need._id, type: "deliver", open: true }, { projection: { eta: 1 } }))?.eta;
+    const min = eta ? Math.max(1, Math.round((new Date(eta).getTime() - Date.now()) / 60_000)) : undefined;
+    how = `on the way${min === undefined ? "" : min < 60 ? `, about ${min} min` : `, about ${Math.round(min / 60)} h`}`;
+  }
+  await inbox(need.requestedBy.map((userId) => ({
+    userId, kind: "notice" as const, priority: need.priority, message: `${what}: ${how}`, key: `need:${need._id}:${status}:${change}`,
+  })));
+}
+
+/** An evacuation plan: ONE high-risk task for the coordinators. A newer plan cancels an older one still waiting. */
+async function planned(a: Extract<TaskAction, { kind: "plan" }>): Promise<void> {
+  const { tasks, events } = await cols();
+  if (await tasks.findOne({ deskId: a.deskId, type: "evacuate", "history.eventId": a.eventId }, { projection: { _id: 1 } })) return;
+  const norm = (id: string) => (id.startsWith(`${a.deskId}:`) ? id.slice(a.deskId.length + 1) : id);
+  const mine = new Set(a.exits.map((e) => norm(e.zoneId)));
+  for (const t of await tasks.find({ deskId: a.deskId, type: "evacuate", status: "waiting_approval", open: true }).toArray()) {
+    const evId = t.history.find((h) => h.eventId)?.eventId;
+    const ev = evId ? await events.findOne({ _id: evId }, { projection: { ts: 1, payload: 1 } }) : null;
+    const theirs = ((ev?.payload as { zoneExits?: { zoneId: string }[] } | undefined)?.zoneExits ?? []).map((e) => norm(e.zoneId));
+    if (ev && !theirs.some((z) => mine.has(z))) continue;
+    if (ev && new Date(ev.ts) > a.ts) return; // this plan is the stale one
+    const r = await tasks.updateOne({ _id: t._id, status: "waiting_approval" }, {
+      $set: { status: "cancelled", open: false },
+      $push: { history: entry(`cancelled: a newer evacuation plan replaces it (event ${a.eventId})`) },
+    });
+    if (r.modifiedCount) await closeApprovals(t._id);
+  }
+  const lines = a.exits.map((e) => `${e.name} → ${e.exit}`);
+  const first = a.exits[0];
+  const task: Task = {
+    _id: newId(), type: "evacuate", recordType: "zone", recordId: first.zone ?? first.zoneId, tried: [], risk: "high",
+    tier: 0, priority: 80, status: "waiting_approval", open: true,
+    title: `Approve evacuation plan for ${a.exits.length} ${a.exits.length === 1 ? "zone" : "zones"}`,
+    detail: `${lines.join("; ")}. Reason: ${a.reason}`,
+    deadline: deadline(), deskId: a.deskId,
+    history: [{ ...entry(`evacuation plan from ${a.by}: ${a.reason}`), eventId: a.eventId }, entry("waiting for a coordinator")],
+  };
+  if (!(await insertTask(task))) return;
+  await inboxCoordinators(task, "approval", `Approve: ${task.title}. ${task.detail}`);
+  log(`evacuate task ${task._id}: waiting for a coordinator`);
 }
 
 async function incidentOpened(incidentId: string): Promise<void> {
@@ -252,16 +391,17 @@ async function incidentOpened(incidentId: string): Promise<void> {
   })));
 }
 
-async function createFor(type: Task["type"], recordType: "site" | "need", rec: Site | Need): Promise<void> {
+async function createFor(type: Task["type"], recordType: "site" | "need", rec: Site | Need, why?: string): Promise<void> {
   const { tasks } = await cols();
   if (await tasks.findOne({ recordId: rec._id, type, open: true }, { projection: { _id: 1 } })) return;
-  const risk = type === "rescue" ? "high" : "low";
+  const bigMove = type === "deliver" && "item" in rec && rec.quantity >= BIG_SUPPLY_MOVE;
+  const risk = type === "rescue" || bigMove ? "high" : "low";
   await createTask({
     _id: "", type, recordType, recordId: rec._id, tried: [], risk,
     tier: rec.tier, priority: rec.priority, ...(rec.scoreParts ? { scoreParts: rec.scoreParts } : {}),
     status: "created", open: true, title: titleFor(type, rec), detail: "", deadline: deadline(),
     history: [], deskId: rec.deskId,
-  }, { why: whyFor(type, rec) });
+  }, { why: why ?? whyFor(type, rec) });
 }
 
 /**
@@ -275,7 +415,7 @@ async function createTask(from: Task, opts: { why: string; replaces?: string }):
   const base: Task = {
     ...from,
     _id: newId(),
-    detail: opts.replaces ? from.detail : detailFor(from.type, rec),
+    detail: withShort(opts.replaces ? from.detail : detailFor(from.type, rec), pick),
     tried: from.tried,
     open: true,
     deadline: deadline(),
@@ -298,7 +438,7 @@ async function createTask(from: Task, opts: { why: string; replaces?: string }):
 
   if (task.status === "assigned") {
     await inboxTask(task);
-    if (task.type === "deliver") await noteNeedAssigned(task.recordId, task._id, task.assignee!);
+    if (task.type === "deliver" && await noteNeedAssigned(task.recordId, task._id, task.assignee!)) await tellAskers(task.recordId, "assigned", task._id);
   } else if (task.status === "waiting_approval") {
     await inboxCoordinators(task, "approval", `Approve: ${task.title}. ${task.detail}`);
   } else {
@@ -416,6 +556,7 @@ async function cancelled(a: Extract<TaskAction, { kind: "cancel" }>): Promise<vo
     const r = await tasks.updateOne({ _id: t._id, open: true }, {
       $set: { status: "cancelled", open: false }, $push: { history: entry(`cancelled, the ${a.recordType} was retracted: ${a.reason}`, a.by) },
     });
+    if (r.modifiedCount) await closeApprovals(t._id);
     if (r.modifiedCount && t.assignee) {
       await inbox([{
         userId: t.assignee, taskId: t._id, kind: "notice", priority: 20, key: `cancel:${t._id}`,
@@ -447,11 +588,20 @@ async function pickFor(task: Task, tried: string[], now: Date = new Date()): Pro
   }
   const rec = await recordOf(task.recordType as "site" | "need", task.recordId);
   const place: Place = rec && "coords" in rec ? { coords: rec.coords, region: rec.region } : { region: rec?.region ?? "unknown" };
-  const item = rec && "item" in rec ? rec.item : undefined;
-  return pickPerson(users, new Map(counts.map((c) => [c._id, c.n])), place, {
-    roles, exclude: tried,
-    ...(task.type === "deliver" && item ? { has: (u: User) => stockOf(u, item) > 0, what: `${item} in stock` } : {}),
-  }, now);
+  const open = new Map(counts.map((c) => [c._id, c.n]));
+  if (task.type === "deliver" && rec && "item" in rec) {
+    // A supplier who has all of it first. Else the one with the most, and the task says so.
+    const { item, quantity } = rec;
+    const first = pickPerson(users, open, place, { roles, exclude: tried, has: (u) => stockOf(u, item) >= quantity, what: `${quantity} ${item} in stock` }, now);
+    if (first.ok) return first;
+    const levels = [...new Set(users.filter((u) => roles.includes(u.role)).map((u) => stockOf(u, item)).filter((n) => n > 0 && n < quantity))].sort((a, b) => b - a);
+    for (const level of levels) {
+      const p = pickPerson(users, open, place, { roles, exclude: tried, has: (u) => stockOf(u, item) >= level, what: `${item} in stock` }, now);
+      if (p.ok) return { ...p, short: { has: stockOf(p.user, item), want: quantity } };
+    }
+    return first;
+  }
+  return pickPerson(users, open, place, { roles, exclude: tried }, now);
 }
 
 async function recordOf(type: "site" | "need", id: string): Promise<Site | Need | null> {
@@ -512,6 +662,7 @@ function detailFor(type: Task["type"], rec: Site | Need): string {
 function whyFor(type: Task["type"], rec: Site | Need): string {
   if (type === "call") return "nobody has called about this site yet";
   if (type === "rescue") return `verified, ${(rec as Site).peopleTrapped} still trapped`;
+  if ((rec as Need).quantity >= BIG_SUPPLY_MOVE) return `big supply move, ${(rec as Need).quantity} ${(rec as Need).item}, ${(rec as Need).support} asked`;
   return `open need, ${(rec as Need).support} asked`;
 }
 
@@ -519,5 +670,11 @@ function whyFor(type: Task["type"], rec: Site | Need): string {
 const PROPOSAL = /\s*Proposed team: .*\(([^()]+)\)(, [^.]* away)?\.$/;
 const proposedIn = (detail: string) => detail.match(PROPOSAL)?.[1];
 const stripProposal = (detail: string) => detail.replace(PROPOSAL, "");
-const near = (p: Pick) => (p.ok && p.meters !== undefined ? `, ${distanceText(p.meters)} away` : "");
+const near = (p: Pick) => (p.ok ? `${p.meters !== undefined ? `, ${distanceText(p.meters)} away` : ""}${p.short ? `, has ${p.short.has} of ${p.short.want}` : ""}` : "");
+/** "Supplier has 12 of 30." once at the end of a delivery's detail (before any proposal). */
+const SHORT = /\s*Supplier has \d+ of \d+\./;
+const withShort = (detail: string, p: Pick) => {
+  const base = detail.replace(SHORT, "");
+  return p.ok && p.short ? `${PROPOSAL.test(base) ? stripProposal(base) : base} Supplier has ${p.short.has} of ${p.short.want}.`.trim() : base;
+};
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
