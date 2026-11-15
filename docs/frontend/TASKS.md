@@ -14,6 +14,7 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 
 | Task | Effort | Waits on |
 |---|---|---|
+| [t19-phone-polish](tasks/t19-phone-polish.md) | medium | t16 (ids). Map legend covers the map on a phone, field says "Signed in" in demo mode |
 | [t12-ask-the-desk](tasks/t12-ask-the-desk.md) | medium | t16 (ids) |
 | [t14-loop-step](tasks/t14-loop-step.md) | medium | t16 (ids) |
 | t17 Modify on approvals posts a real change | medium | Role 1: an approval with another `assignee` |
@@ -27,7 +28,7 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 
 - **Role 1 (Darshal):** `GET /api/board`, `GET /api/inbox`, `GET /api/health` are still "Not yet" in `lib/README.md`. Every screen falls back to fixtures until then. Also asked: `GET /api/users` (the coordinator's person picker), and a way to approve with a different person (Modify).
 - **Role 2 (Ömer):** `/api/chat` answers audio with "can't listen yet". Speech-to-text on the server, or text from the browser?
-- **Dan:** add `DEMO_MODE=1` to `.env.local`. Without it every page redirects to `/login`, and nobody can check screens in the browser. SSOJet credentials for t10.
+- **Dan:** SSOJet credentials for t10. (`DEMO_MODE=1` is set, 21:30.)
 
 ## Done
 
