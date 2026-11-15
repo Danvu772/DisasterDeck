@@ -1,0 +1,66 @@
+# Deploy (#39): every push to prod goes live on the Vultr VM behind https://disasterdeck.us.
+# Promote what is on main:   git push origin main:prod
+# Builds here, joins the tailnet with an ephemeral key (the VM is IPv6-only, reachable on Tailscale),
+# rsyncs the build to the VM and runs /usr/local/bin/desk-release there: idle slot, restart of web
+# and Brain, health check on /login, rollback to the previous slot when the new one does not answer.
+# Secrets: TS_AUTHKEY (Tailscale, reusable + ephemeral), DEPLOY_SSH_KEY, NEXT_PUBLIC_MAPBOX_TOKEN.
+# The runtime .env.local lives on the VM at /etc/desk/env.local, not in GitHub.
+name: Deploy
+
+on:
+  push:
+    branches: [prod]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VM: 100.114.100.30
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build
+        run: npx next build
+        env:
+          DEMO_MODE: "1"
+          # Build-only placeholder so Auth.js can load, as in ci.yml. The VM has the real one.
+          AUTH_SECRET: ci-build-placeholder-not-a-secret
+          DESK_ID: antakya-2023
+          NEXT_PUBLIC_MAPBOX_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}
+          NEXT_PUBLIC_MAPBOX_STYLE: ${{ secrets.NEXT_PUBLIC_MAPBOX_STYLE }}
+      - name: Join the tailnet
+        uses: tailscale/github-action@064b10558093f38325e838ddea35486bdc6b1d5c # v4.4.0
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          hostname: gh-deploy-${{ github.run_id }}
+          ping: 100.114.100.30
+      - name: SSH to the VM
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          echo "$VM ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBULO48yp6QH/V06JVlbrRDXlWp4VT7ZuHhfUHNJ9Rpe" > ~/.ssh/known_hosts
+      - name: Ship the build
+        run: rsync -az --delete --exclude /.git --exclude /node_modules --exclude /.next/cache --exclude /e2e ./ "deployer@$VM:/opt/desk-stage/"
+      - name: Release
+        run: ssh "deployer@$VM" sudo /usr/local/bin/desk-release "$GITHUB_SHA"
+      - name: Public check
+        run: |
+          code=$(curl -s -o /dev/null -m 20 -w '%{http_code}' https://disasterdeck.us/login || true)
+          echo "https://disasterdeck.us/login answers $code"
+          [ "$code" = 200 ] || echo "::warning::The VM serves the release, but disasterdeck.us answers $code (tunnel or DNS)."
