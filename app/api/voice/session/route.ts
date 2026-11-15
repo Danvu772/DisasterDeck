@@ -8,10 +8,10 @@ export async function POST(req:Request) {
   if(Number(req.headers.get("content-length")??0)>2048)return json({error:"Request too large"},413);
   try {
     const body=await voiceBody(req);
-    if(typeof body.personId!=="string" || !/^[a-f0-9]{16}$/.test(body.personId))return json({error:"Bilgi almak istediğiniz kişiyi seçin"},400);
+    if(typeof body.personId!=="string" || !/^[a-f0-9]{16}$/.test(body.personId))return json({error:"Select the person you want to ask about"},400);
     if(limitVoice("sessions-global",60,3600_000))return json({error:"Please wait before trying again"},429);
     const doc=await getUpdate(body.personId);
-    if(!doc || doc.revoked || Date.parse(doc.expiresAt)<=Date.now())return json({error:"Bu güncelleme artık yayımlanmıyor. Başka bir kayıt seçin."},404);
+    if(!doc || doc.revoked || Date.parse(doc.expiresAt)<=Date.now())return json({error:"This update is no longer published. Select another record."},404);
     const key=process.env.ELEVENLABS_API_KEY,agent=process.env.ELEVENLABS_FAMILY_AGENT_ID;
     if(!key || !agent)return json({error:"Voice service setup is incomplete. Ask the coordinator to configure ElevenLabs."},503);
     const ticket=issueTicket(doc._id);

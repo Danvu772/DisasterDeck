@@ -8,6 +8,8 @@ Current pilot: **Antakya, Türkiye, February 2023**. The deterministic rehearsal
 
 Anyone can search published family updates by name at `/family`, read them and speak to an ElevenLabs assistant backed by Claude. No login, reference code or PIN is required. Coordinators publish at `/coordinator/family`. See [setup and demo steps](docs/family-voice.md). This is a browser microphone demo; an incoming telephone number is not connected.
 
+The family UI, voice greeting and answers are in English. After pulling language changes, run `npm run voice:setup` to update your ElevenLabs agent, then restart the app and begin a new call.
+
 ## Replay real historical posts
 
 ```sh

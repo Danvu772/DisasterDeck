@@ -1,0 +1,42 @@
+{
+  "synthetic": true,
+  "description": "Fictional English family-information examples for the local demo. These are not real people or operational reports.",
+  "examples": [
+    {
+      "alias": "Demo Emma Wilson",
+      "siteIndex": 0,
+      "observedMinutesAgo": 5,
+      "summary": "FICTIONAL DEMO: Emma Wilson was registered at Demo Shelter A at the observation time. She requested a callback from her family. No medical assessment or later location update is recorded."
+    },
+    {
+      "alias": "Demo Daniel Brooks",
+      "siteIndex": 1,
+      "observedMinutesAgo": 20,
+      "summary": "FICTIONAL DEMO: A relative reported Daniel Brooks missing and asked for information. The desk has recorded the inquiry, but has no verified information about his location, health or rescue status. A missing-person inquiry is not evidence that he was injured."
+    },
+    {
+      "alias": "Demo Olivia Bennett",
+      "siteIndex": 2,
+      "observedMinutesAgo": 15,
+      "summary": "FICTIONAL DEMO: Olivia Bennett was reported at Demo Assembly Point B and requested transport to a shelter. The transport request is pending; no vehicle assignment, completed journey or current medical condition has been confirmed."
+    },
+    {
+      "alias": "Demo Noah Carter",
+      "siteIndex": 0,
+      "observedMinutesAgo": 10,
+      "summary": "FICTIONAL DEMO: The desk recorded that Noah Carter and his brother completed a family check-in at Demo Reception Point C. They requested that the check-in be shared with relatives. No onward destination or medical information is available."
+    },
+    {
+      "alias": "Demo Sophia Reed",
+      "siteIndex": 1,
+      "observedMinutesAgo": 360,
+      "summary": "FICTIONAL DEMO: Sophia Reed was registered at Demo Shelter B six hours before these examples were loaded. This is an old observation and her present location is unconfirmed. A fresh check-in has been requested but has not been received. Do not describe this as a current location confirmation."
+    },
+    {
+      "alias": "Demo James Parker",
+      "siteIndex": 2,
+      "observedMinutesAgo": 30,
+      "summary": "FICTIONAL DEMO: James Parker requested assistance obtaining a wheelchair at Demo Shelter A. The request is recorded, but delivery has not been confirmed. The record does not contain a diagnosis, injury details or a confirmed delivery time."
+    }
+  ]
+}

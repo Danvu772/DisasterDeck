@@ -2,17 +2,35 @@
 
 Anyone can search published family updates by name, read them immediately and start an ElevenLabs conversation backed by Claude. **No account, reference code, PIN or relationship verification is required to read or call.** Coordinators still sign in to publish or withdraw updates. This browser demo does not receive calls to a normal telephone number.
 
+The family interface, timestamps, service messages, voice greeting and responses use English. The voice and Claude configurations explicitly keep responses in English even if a caller requests another language. Run `npm run voice:setup` after pulling this version to update an existing provider agent; restart the app and start a new call to use the new settings.
+
 ## Run locally
 
 1. Use Node 22.18+ or 24 and `npm ci`. Preserve your existing private `.env.local` settings.
 2. Set `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY` and a random `FAMILY_VOICE_SECRET` of at least 32 characters. Secrets are intentionally absent from Git.
 3. Run `npm run voice:setup`. This creates/updates the private ElevenLabs provider agent and browser tool, saving IDs in ignored `.env.local`. The key needs Agents permission. Provider audio recording is disabled, transcript retention is one day, concurrency is two and the daily call limit is thirty. Calls consume provider credits.
 4. Run `npm run demo -- --port 3675`. At [coordinator updates](http://127.0.0.1:3675/coordinator/family?user=coordinator-duty), select a case, enter a fictional display name/update and its observation timestamp, then publish. The update is now public.
-5. Open [family voice](http://127.0.0.1:3675/family), search the name, read the update and select it. Click **Sesli ara**, allow the microphone and speak in Turkish or English. You can also type during a call. No access code is issued or requested. Mute/end controls are available; calls last at most ten minutes.
+5. Open [family voice](http://127.0.0.1:3675/family), search the name, read the update and select it. Click **Start voice call**, allow the microphone and speak in English. You can also type during a call. No access code is issued or requested. Mute/end controls are available; calls last at most ten minutes.
 
 Browser microphones require localhost or HTTPS. Without `MONGODB_URI`, demo publications use temporary memory and disappear on restart. Legacy fixture site labels are synthetic, not verified Antakya person records.
 
 With MongoDB, updates persist in `family_voice` in `MONGODB_DB`. Real coordinator authentication is required to publish outside the loopback demo; query-string users cannot bypass network authentication. Sites must belong to that coordinator's desk. Set `DEMO_MODE=0` for real operation and `PUBLIC_APP_URL` to the exact external HTTPS origin behind a proxy.
+
+## Add more examples
+
+Use [coordinator updates](http://127.0.0.1:3675/coordinator/family?user=coordinator-duty): select an existing case, enter the searchable display name and the exact facts to share, set when those facts were observed, then press **Publish approved update**. Refresh `/family` and search the name. Use **Withdraw publication** to remove an outdated example.
+
+Six fictional English examples are included in `data/family-voice-examples.json`: Emma Wilson (shelter registration), Daniel Brooks (unverified missing-person inquiry), Olivia Bennett (pending transport), Noah Carter (family check-in), Sophia Reed (old observation) and James Parker (pending equipment request). With the local demo running, load them using:
+
+```sh
+npm run voice:examples
+# Another local port:
+npm run voice:examples -- --url http://127.0.0.1:3672
+```
+
+The loader uses temporary memory only, skips already active matching names, and makes no paid model/audio calls. Run it again after a server restart. To add reusable examples, append entries to the JSON using the existing format (`alias`, `siteIndex`, `observedMinutesAgo`, `summary`); keep the `FICTIONAL DEMO:` label. Observation times are calculated when loading. For a configured MongoDB backend, add records through the coordinator screen instead.
+
+Try asking in English: "Where was Emma Wilson last registered?", "Has Olivia's transport been confirmed?", "How recent is Sophia Reed's information?", or "Do you have any verified information about Daniel Brooks?" The entire family interface, voice greeting and answers are in English. The assistant continues in English even if a question or source update is in another language.
 
 ## Public information flow
 

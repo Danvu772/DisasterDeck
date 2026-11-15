@@ -33,7 +33,8 @@
     "check:replay": "node --import tsx --test scripts/real-replay.test.mjs",
     "check:voice": "node --import tsx --test scripts/family-voice.test.mjs",
     "voice:setup": "node --env-file=.env.local scripts/setup-family-voice.mjs",
-    "voice:smoke": "node scripts/smoke-family-voice.mjs"
+    "voice:smoke": "node scripts/smoke-family-voice.mjs",
+    "voice:examples": "node scripts/load-family-examples.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
