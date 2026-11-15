@@ -89,6 +89,8 @@ const id = await postEvent<ReportPayload>({
 - `deskId` defaults to `DESK_ID`.
 - Agents never write records. They post events, and the memory keeper (Role 1) turns them into
   sites, needs, roads, shelters, zones and incidents.
+- Check anything a model produced before posting it: `payloadSchemas[type].safeParse(payload)`
+  from `schemas.ts`. These are the same checks `POST /api/events` runs.
 
 ### `getUserContext(userId)`: what a personal agent loads every turn
 
@@ -143,92 +145,9 @@ of a collection writes to it (Team contracts §2).
 
 ## 3. HTTP endpoints
 
-Screens and remote clients use these. The `lib/` functions above sit behind them, in `app/api/`.
-The shapes are fixed by Team contracts §4.
-
-### Browse them: `/api/docs`
-
-With `npm run dev` running, open **http://localhost:3000/api/docs**. It's Swagger UI over
-`/api/openapi.json`: every endpoint, its body and responses, examples, and **Try it out**.
-Click **Authorize** and either paste the `x-agent-key`, or type a seeded user id (for example
-`coordinator-duty`) into `user` when `DEMO_MODE=1`. If you're signed in with SSOJet, your
-cookie is sent automatically.
-
-The list comes from `lib/openapi.ts`. Next.js can't discover routes by itself, so that file is
-the registry. The event body there is generated from `schemas.ts`. **When you add a route, add
-it to `lib/openapi.ts`** (or to `UNDOCUMENTED` there). Otherwise `npm run api:check` fails and
-names the route.
-
-| Method | Path | Body / query | Returns | Status |
-|---|---|---|---|---|
-| `POST` | `/api/events` | An event: `type`, `source`, `payload`, optional `deskId`, `observedAt`, `dedupeKey`, `actor` | `{ id }` | **Built** |
-| `POST` | `/api/chat` | `{ text?, imageBase64?, coords? }` | `{ reply, eventIds, actions }` | **Built** (Role 2) |
-| `GET` | `/api/openapi.json`, `/api/docs` | (none) | The API description, and the Swagger UI page | **Built** |
-| `GET` | `/api/board` | (none) | `Board` (`getBoard()`) | Not yet |
-| `GET` | `/api/inbox` | (none) | `InboxItem[]` of the signed-in person; also stamps `lastSeen` | Not yet |
-| `GET` | `/api/health` | (none) | `Health` (`getHealth()`) | Not yet |
-
-### `POST /api/events`
-
-**Who is calling?** The server works it out in this order and sets `actor` itself:
-
-1. **Header `x-agent-key: $AGENT_KEY`**: a worker or the scenario player. It may name itself with
-   `"actor": "x-agent"`. Without that, the actor is `<source>-agent` (for example `nasa-agent`).
-2. **The login session**: SSOJet through Auth.js (Role 3's `/auth.ts`), read by `getSessionUserId()` in `auth.ts`.
-3. **`?user=<id>`**, only when `DEMO_MODE=1`. The id must be a seeded user.
-
-A signed-in person is always the actor. An `actor` in their body is ignored.
-
-**What is checked.** These rules apply to the actor, however the request arrived:
-
-| Rule | Status code |
-|---|---|
-| The payload matches its type's schema in `schemas.ts`. Unknown fields such as `_id`, `status`, `ts` and `lane` are dropped | 400 |
-| A signed-in person posts with `source: "person"`, never `"x"` or `"nasa"` | 403 |
-| A person cannot post a `need` directly. Needs go through their agent (`/api/chat`) | 403 |
-| `alert` and `plan` come only from agents (the satellite watcher, the planner) | 403 |
-| `approval`, `answer` and `correction` need `source: "person"`. A social post never approves anything | 403 |
-| `approval` only from a coordinator, for a task that exists | 403 / 404 |
-| `answer` only from the task's assignee | 403 / 404 |
-| An `incident` about a task, from a person: only its assignee or a coordinator | 403 / 404 |
-
-The route does **not** check task state, for example whether the task is still waiting for
-approval. The Brain loop applies events one at a time and decides then, so two clicks cannot
-race.
-
-**Responses.** `200 { id }` on success. Posting the same `dedupeKey` again returns the first
-event's id, so retries are safe. Errors look like `{ error, issues? }`: 400 bad input, 401 not
-signed in or wrong key, 403 not allowed, 404 no such task, 500 server error (safe to retry).
-
-**Examples**
-
-```bash
-# A worker (key from .env.local)
-curl -X POST localhost:3000/api/events \
-  -H "content-type: application/json" -H "x-agent-key: $AGENT_KEY" \
-  -d '{"type":"report","source":"x","actor":"x-agent","dedupeKey":"x:123",
-       "observedAt":"2023-02-06T04:30:00Z",
-       "payload":{"kind":"trapped","text":"…","textEn":"…","address":"Örnek Sk. 12"}}'
-
-# A task button in demo mode: the assignee accepts
-curl -X POST "localhost:3000/api/events?user=field-alpha" \
-  -H "content-type: application/json" \
-  -d '{"type":"answer","source":"person","payload":{"taskId":"<task id>","result":"accepted","etaMinutes":30}}'
-```
-
-From a browser screen (Role 3), the same thing:
-
-```ts
-await fetch(`/api/events?user=${user._id}`, {
-  method: "POST",
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({ type: "answer", source: "person", payload: { taskId, result: "accepted" } }),
-});
-```
-
-Role 2 code that runs on the server (`/api/chat`) calls `postEvent()` directly instead of
-going over HTTP. It should still check what the model produced with
-`payloadSchemas[type].safeParse(payload)` from `schemas.ts` first.
+The browser and remote workers reach the functions above through the routes in `app/api/`.
+They're documented in Swagger UI at **http://localhost:3000/api/docs** (with `npm run dev`
+running). See `app/api/README.md` for how to use it and how to add a route.
 
 ---
 
