@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Event, Message, User } from "@/lib/types";
 import type { makeBoard } from "@/fixtures/board";
@@ -8,6 +8,9 @@ import { EventReport } from "./event/EventReport";
 import { TaskCard } from "./TaskCard";
 import { getCoords, sendTaskEvent, taskEventBody, type ProblemKind, type TaskAction } from "./taskEvents";
 import { ChatLine } from "./ChatLine";
+import { ChatMetrics } from "./metrics/ChatMetrics";
+import { pickMetrics } from "./metrics/useMetrics";
+import type { MetricId } from "./metrics/types";
 import { stubReply } from "./stubAgent";
 import { chatErrorText } from "./chatError";
 import { cursorOf, feedUrl, mergeServer, shownEvents } from "./agentFeed";
@@ -40,6 +43,9 @@ export function AgentDesk(props: {
   const [messages, setMessages] = useState(props.messages);
   const [text, setText] = useState("");
   const [stub, setStub] = useState(false);
+  // Metric cards per agent message id. Only the newest answer's cards stay live.
+  const [charts, setCharts] = useState<Record<string, MetricId[]>>({});
+  const chatSeq = useRef(0);
   // Per task id: what the card shows until the board catches up, and the words under the buttons.
   const [local, setLocal] = useState<Record<string, LocalTask>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -91,19 +97,23 @@ export function AgentDesk(props: {
     setText("");
     setMessages((m) => [...m, { _id: `u${m.length}`, userId: user._id, from: "user", text: said, ts: new Date() }]);
     let reply: string;
+    let body: unknown = null;
     try {
       const r = await fetch(`/api/chat?user=${user._id}`, {
         method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: said }),
       });
-      const body = await r.json().catch(() => null);
-      reply = r.ok && typeof body?.reply === "string" ? body.reply : chatErrorText(r.ok ? 502 : r.status, body);
+      body = await r.json().catch(() => null);
+      const got = (body as { reply?: unknown } | null)?.reply;
+      reply = r.ok && typeof got === "string" ? got : chatErrorText(r.ok ? 502 : r.status, body);
       setStub(false);
     } catch {
       // Only an unreachable route gets the stub. A 502 is shown as what it is.
       reply = stubReply(user, top?.task, said);
       setStub(true);
     }
-    setMessages((m) => [...m, { _id: `a${m.length}`, userId: user._id, from: "agent", text: reply, ts: new Date() }]);
+    const id = `a-${chatSeq.current++}`;
+    setCharts((c) => ({ ...c, [id]: pickMetrics(said, body) }));
+    setMessages((m) => [...m, { _id: id, userId: user._id, from: "agent", text: reply, ts: new Date() }]);
   }
 
   const note = (id: string, text: string) => setNotes((n) => ({ ...n, [id]: text }));
@@ -138,6 +148,7 @@ export function AgentDesk(props: {
     note(id, result);
   }
 
+  const newestAnswer = messages.findLast((m) => m.from === "agent")?._id;
   const card = "rounded-card border border-line bg-card";
   return (
     <div className="flex flex-col gap-5">
@@ -194,7 +205,13 @@ export function AgentDesk(props: {
           <h2 className="border-b border-line px-4 py-3 text-xl font-bold">Your agent</h2>
           <div className="flex min-h-80 flex-1 flex-col gap-3 overflow-y-auto bg-paper p-4 lg:max-h-[32rem]">
             {messages.length === 0 && <p className="text-sm text-muted">Talk to your agent.</p>}
-            {messages.map((m) => <ChatLine key={m._id} m={m} name={user.name} />)}
+            {messages.map((m) => (
+              <Fragment key={m._id}>
+                <ChatLine m={m} name={user.name} />
+                {charts[m._id] && <ChatMetrics ids={charts[m._id]} active={m._id === newestAnswer}
+                  events={server ? events : undefined} user={user._id} />}
+              </Fragment>
+            ))}
           </div>
           <form className="flex gap-2 border-t border-line p-3" onSubmit={(e) => { e.preventDefault(); send(); }}>
             <label htmlFor="agent-msg" className="sr-only">Message your agent</label>
