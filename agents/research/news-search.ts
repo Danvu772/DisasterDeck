@@ -1,11 +1,31 @@
 // News agent: searches the live web for one region and turns what it finds into closures,
 // needs and site reports. Uses Claude's web search tool (replaces Exa: no Exa credits).
-// Cost per run: up to 3 searches ($0.01 each) plus tokens, roughly $0.05–0.15.
+// Two channels, each a separate run with its own allowed sites:
+//   news      any news site
+//   official  AFAD, Karayolları, governor, municipality, Interior Ministry, Kızılay, and the state
+//             news agencies that carry their announcements (Anadolu Ajansı, TRT Haber)
+// Not possible (checked 15 Nov 2026): Reddit blocks Claude's web search ("not accessible to our
+// user agent") and its API is closed to new apps; Facebook removed the Groups API in 2024.
+// No scraping.
+// Cost per channel run: up to 3 searches ($0.01 each) plus tokens, roughly $0.05–0.15.
 
 import type Anthropic from "@anthropic-ai/sdk";
 import type { ClosurePayload, NeedPayload, ReportPayload } from "@/lib/types";
 import { modelFor, send } from "../shared/llm";
 import { maskPhones } from "../shared/privacy";
+
+export type Channel = "news" | "official";
+
+export const CHANNELS: Record<Channel, { domains?: string[]; brief: string }> = {
+  news: {
+    brief: "Search news sites.",
+  },
+  official: {
+    domains: ["afad.gov.tr", "kgm.gov.tr", "malatya.gov.tr", "malatya.bel.tr", "kizilay.org.tr", "icisleri.gov.tr",
+      "aa.com.tr", "trthaber.com"],
+    brief: "Search official Turkish sources only: AFAD (disaster agency), Karayolları (highways, road status), the governor's office, the municipality, the Interior Ministry, Kızılay (Red Crescent), and the state news agencies Anadolu Ajansı and TRT Haber, which carry their announcements. Prefer what an official body announced. Official announcements of road closures and assembly or tent areas are the most useful. Pages are often in Turkish: search in Turkish too (\"yol kapalı\", \"ulaşıma kapandı\", \"çadır kent\", \"toplanma alanı\").",
+  },
+};
 
 export interface NewsFinding {
   kind: "closure" | "need" | "report";
@@ -52,14 +72,16 @@ interface Emitted {
   reports: { kind: ReportPayload["kind"]; place: string; text_en: string; people_count: number | null; url: string; published: string | null }[];
 }
 
-export async function searchNews(args: { region: string; when: string; focus?: string }): Promise<NewsFinding[]> {
+export async function searchNews(args: { region: string; when: string; focus?: string; channel?: Channel }): Promise<NewsFinding[]> {
   const { model, effort } = modelFor("extract");
+  const channel = CHANNELS[args.channel ?? "news"];
   const messages: Anthropic.Beta.BetaMessageParam[] = [{
     role: "user",
-    content: `Region: ${args.region}\nPeriod: ${args.when}\n${args.focus ? `Focus: ${args.focus}\n` : ""}Find road closures, places short of supplies, and collapse sites with people inside.`,
+    content: `Region: ${args.region}\nPeriod: ${args.when}\nChannel: ${channel.brief}\n${args.focus ? `Focus: ${args.focus}\n` : ""}Find road closures, places short of supplies, and collapse sites with people inside.`,
   }];
   let tools: Anthropic.Beta.BetaToolUnion[] = [
-    { type: "web_search_20260209", name: "web_search", max_uses: 3 },
+    { type: "web_search_20260209", name: "web_search", max_uses: 3,
+      ...(channel.domains ? { allowed_domains: channel.domains } : {}) },
     EMIT,
   ];
   const seenUrls = new Set<string>();   // only URLs the search really returned may be cited

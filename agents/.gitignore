@@ -1,2 +1,4 @@
 # Spend log of Claude calls, local to each machine.
 .usage/
+# Scenario clock of a running replay, local to each machine.
+.replay/

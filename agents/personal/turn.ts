@@ -6,6 +6,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { desk, type UserContext } from "../desk";
 import { age, incidentLine, needLine, roadLine, shelterLine, siteLine, taskLine } from "../desk/view";
+import { quakeLine, recentQuakesNear, type NearbyQuake } from "../research/quakes";
 import { BudgetError } from "../shared/cost";
 import { modelFor, send } from "../shared/llm";
 import { maskPhones } from "../shared/privacy";
@@ -43,7 +44,9 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     // Stable per role → cached after the first turn (tools + system are the prefix).
     { type: "text", text: systemPrompt(ctx.user.role), cache_control: { type: "ephemeral" } },
   ];
-  const messages: Msg[] = [...history(ctx), { role: "user", content: userContent(ctx, said, input.image) }];
+  // Aftershocks near this person (scenario clock during a replay). Plain code, no model call.
+  const quakes = await recentQuakesNear(ctx.user.coords, 60).catch(() => undefined);
+  const messages: Msg[] = [...history(ctx), { role: "user", content: userContent(ctx, said, input.image, quakes) }];
 
   const eventIds: string[] = [];
   const actions: TurnResult["actions"] = [];
@@ -131,15 +134,17 @@ function history(ctx: UserContext): Msg[] {
   return out;
 }
 
-function userContent(ctx: UserContext, said: string, image: TurnInput["image"]): Anthropic.Beta.BetaContentBlockParam[] {
-  const blocks: Anthropic.Beta.BetaContentBlockParam[] = [{ type: "text", text: contextBlock(ctx) }];
+type Quakes = { quakes: NearbyQuake[]; now: Date; replay: boolean } | undefined;
+
+function userContent(ctx: UserContext, said: string, image: TurnInput["image"], quakes: Quakes): Anthropic.Beta.BetaContentBlockParam[] {
+  const blocks: Anthropic.Beta.BetaContentBlockParam[] = [{ type: "text", text: contextBlock(ctx, quakes) }];
   if (image) blocks.push({ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } });
   blocks.push({ type: "text", text: `${ctx.user.name} says: ${said || "(sent a photo, no text)"}` });
   return blocks;
 }
 
 /** The volatile part of the prompt: this person's slice of the desk, right now. */
-export function contextBlock(ctx: UserContext): string {
+export function contextBlock(ctx: UserContext, quakes?: Quakes): string {
   const { user: u, now } = ctx;
   const p = u.profile ?? {};
   const lines: string[] = [
@@ -170,6 +175,10 @@ export function contextBlock(ctx: UserContext): string {
   section("Roads not open", ctx.records.roads.map((r) => roadLine(r, now)));
   if (u.role === "shelter" || u.role === "public") {
     section("Shelters", ctx.records.shelters.map((s) => shelterLine(s, now)));
+  }
+  if (quakes) {
+    lines.push(quakes.replay ? `Scenario time (replay): ${quakes.now.toISOString().slice(0, 16)} UTC` : "Earthquake feed: live (AFAD, USGS)");
+    section("Earthquakes worth a warning near this person, last 60 min, newest first", quakes.quakes.map(quakeLine));
   }
   section("Unread inbox", ctx.inbox.map((i) => `${i.kind} · ${i.message}${i.taskId ? ` (task ${i.taskId})` : ""} · ${age(i.ts, now)}`));
   section("Already filed this session by this agent", ctx.postedThisSession.map((e) =>
