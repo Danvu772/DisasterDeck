@@ -56,7 +56,8 @@ all)
   if lsof -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; then DEV="echo 'dev server already on :3000 (pid' \$(lsof -tiTCP:3000 -sTCP:LISTEN)')'; exec \$SHELL"
   else DEV="rm -rf .next && npx next dev -H 127.0.0.1 -p 3000; exec \$SHELL"; fi
   if pgrep -f "workers/brain.ts" >/dev/null; then BRAIN="echo 'Brain already running (pid' \$(pgrep -f workers/brain.ts | head -1)'), one per database'; exec \$SHELL"
-  else BRAIN="npm run brain; exec \$SHELL"; fi
+  # The Brain restarts itself on every change to what it imports and to .env.local (Dan, 15 Nov 02:55).
+  else BRAIN="npx tsx watch --clear-screen=false --include .env.local --env-file=.env.local workers/brain.ts; exec \$SHELL"; fi
   HEALTH="while true; do clear; date +%H:%M:%S; curl -s -m 3 localhost:3000/api/health || echo 'dev server not answering'; echo; curl -s -m 3 localhost:3000/api/board | node -e 'let s=\"\";process.stdin.on(\"data\",d=>s+=d).on(\"end\",()=>{try{const b=JSON.parse(s);console.log(Object.entries(b).filter(([k,v])=>Array.isArray(v)).map(([k,v])=>k+\" \"+v.length).join(\"  \"))}catch{}})'; sleep 3; done"
   tmux new-session -d -s desk -n all -c "$REPO" "$DEV"
   tmux split-window -h -t desk:all -c "$REPO" "$BRAIN"
