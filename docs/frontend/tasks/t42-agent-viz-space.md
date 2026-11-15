@@ -19,3 +19,6 @@ Dan: "we need the agent page to pop up an animation space when we prompt it." To
 - When the agent is down (502), the space still opens with the fallback charts and the `chatErrorText` line.
 
 Accept when: tsc, eslint, check:tokens pass, and the report describes how you checked the open, think, answer and close states (the dev server serves main, so you cannot load your branch in a browser).
+
+## Dan, 01:40: text outputs stay in the box
+The agent's written reply stays in the chat box, exactly where it is today, in full. The animation space shows **only** charts and their small labels (title, headline sentence, source, Live tag). It never repeats or moves the reply text. The question shown in the thinking state is a one-line echo, not a second chat. Errors (`chatErrorText`) stay in the chat box too. The space only says "Nothing to chart for this question" when it has no chart.
