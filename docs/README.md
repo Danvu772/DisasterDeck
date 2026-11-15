@@ -1,5 +1,7 @@
 # Team notes
 
+The [live pipeline completion plan](completion-plan.md) reviews main at `5fb51ba` and gives the implementation order, owners, recovery requirements and live acceptance checks for the remaining work.
+
 Start with [Multiplayer Disaster Desk](Multiplayer%20Disaster%20Desk/Multiplayer%20Disaster%20Desk.md). It explains the whole idea, the main flow and the demo plan.
 
 **Before you write code,** read [Team contracts](Multiplayer%20Disaster%20Desk/Roles/Team%20contracts.md): the data shapes, the API and who owns which folder.

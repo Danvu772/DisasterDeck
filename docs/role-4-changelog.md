@@ -2,6 +2,12 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## Pipeline completion review · 2026-11-15 00:41 EST
+
+- Reviewed main at `5fb51ba`, including the report-only Brain, empty dispatcher, read routes, original/v2 role screens, agent context caching, proposal refs and queued metrics work.
+- Added an English completion plan with seven implementation steps, ownership, event/retry consistency, callback/approval/delivery/incident transitions, API contracts, replay provenance and live acceptance criteria.
+- Verified TypeScript, replay/seed validation and the plan's 27 local source links. Shared Atlas, live model, SSO and end-to-end task execution were outside this documentation review's performed checks.
+
 ## v0.9 city view and simpler controls · 2026-11-14 23:52 EST
 
 - Grouped the imagery into four main products with separate date selection. Moved cloud, acquisition gaps, original quality layers and EONET into expandable details.
