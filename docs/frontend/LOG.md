@@ -2,6 +2,16 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 01:25 Role 1 takeover: Brain, routes, security, chat charts merged
+Dan took over Role 1's blocking items (tracker #26). All checks pass on main: `keeper:check` 23 of 23, `security:check`, `check:contract`.
+- **p-002 contract** (`f235d43`): optional fields for progress, approval assignee, posts, score parts, case numbers.
+- **t36** (`0bdae6e`): `GET`/`POST /api/inbox`, `GET /api/users` (no `profile`, citizens 403). Closes #1, #2.
+- **t37** (`803320b`, opus, $3.86): the Brain now takes answer, approval, incident, need and claim, not only report. The dispatcher makes tasks: call tasks to the nearest free volunteer, rescue tasks waiting for approval, deliver tasks to a supplier with stock, inbox items for each. Decline moves to the next person, a breakdown blocks the task and assigns a replacement, approval with an assignee reassigns (Modify), arrived puts the site on team on site. Keeper writes score parts, case numbers, posts, supporters. Closes #8, fills #3 to #7. It also fixed `keeper:check` racing the live Brain.
+- **t40** (`6d06f64`): demo identity and open reads only from this laptop (`lib/localDemo.ts`). Next sets `x-forwarded-for` itself on every request, so the test is "a single loopback address", not "no proxy header". Proxied and tunnelled requests get 401 or the login page, chat included. 60 posts a minute per person. Short agent keys refused. Closes #11. Stopgap before it: the dev server was reachable from the EMU network on `164.76.11.192:3000`, now bound to 127.0.0.1.
+- **t34** (`f24b838`): Ask the desk and the `/agent` chat answer with live metric cards that keep animating as the board changes, and still show when the agent is down.
+- **SSO verified end to end:** sign-in through SSOJet's email code lands on `/` as `coordinator-duty`, and the API trusts the session with no `?user=`.
+- **Needed:** Dan restarts the Brain to load t37. Ömer sends the AGENT_KEY (#29) for the replay (#9). `ANTHROPIC_API_KEY` for the chat.
+
 ### 00:20 Redesign: decisions made, t25 v4 foundation merged (`9434ea0`)
 - Dan compared v1 with Ömer's `redesign/v2` and decided (`DECISIONS.md`): v1 stays the base, v2 gives layout and look only, every value is USWDS, no v2-only features.
 - **t25** (opus, $1.71): Public Sans + Roboto Mono (mono only for ids, times, scores), grey `base-lightest` page, dark `base-darkest` header with pill tabs and a live queue pill polling `/api/health` ("Brain not running, queue 1, oldest 98 min" in act red right now). `check:tokens` now scans CSS files too. Checked on `/coordinator` in the browser.
