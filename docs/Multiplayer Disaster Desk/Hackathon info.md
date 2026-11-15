@@ -85,7 +85,7 @@ Not relevant to us: Base44, Breez and Solana (money), Quantum Rings and Xanadu (
 - [ ] On screen and in the write-up: dataset, date, place. "ARIA Damage Proxy Map, Sentinel-1, 10 Feb 2023, Malatya."
 - [ ] Pixel size said out loud: damage map about 30 m, night lights about 500 m, temperature grid about 50 km.
 - [ ] How we handled clouds and gaps: we use the gap-filled night-lights layer, and we say the damage map is weaker over vegetation and mountains.
-- [ ] One check against something known: a district the news reported as destroyed is red on the damage map and dark on 8 Feb.
+- [ ] Compare the result with a published record or second dataset, as stated on page 9 of the organizer's guide. The previously proposed red-and-dark district is one team demo example. See [the requirements audit](../nasa-requirements-audit.md).
 - [ ] Honest limits: the map shows likely damage, not single buildings. Satellite data only raises priority.
 
 ## Devpost checklist

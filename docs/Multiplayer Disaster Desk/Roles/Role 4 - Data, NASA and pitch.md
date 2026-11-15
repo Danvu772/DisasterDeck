@@ -66,7 +66,7 @@ flowchart LR
 - [x] **Cold flag.** Recorded POWER values for 6–10 Feb and read −14.38 °C for 9 Feb. Both cells reuse the regional observation. Completed 14 Nov, 19:55 EST. Brain priority acceptance is pending.
 - [x] Generated `public/data/zones.geojson` with matching seed IDs, two 500 m polygons, required properties, nullable unknown evidence, dates, sources and native scales. Completed 14 Nov, 20:04 EST.
 - [x] Added and tested `workers/satellite-watcher.ts`, deterministic rules, stable event keys and HTTP retries. The cache yields two cold alerts and zero silent-zone alerts. Live API acceptance is pending. Completed 14 Nov, 20:04 EST.
-- [ ] **One check against something known** (the NASA track asks for it): pick a district the news reported as destroyed, and show that it is red on the damage map and dark on 8 Feb.
+- [ ] **One check against something known.** The guide accepts a published record or second dataset. The team's original example was a reported damaged district with a red overlay and dark night lights. The current cache leaves that night-light check unresolved. See [the requirements audit](../../nasa-requirements-audit.md).
 - [ ] Fallback if the NASA data fights you: hand-draw 2–3 zones from the NASA images, and say so in the pitch.
 
 ### 3. Devpost draft (23:00 → 00:00): due at midnight

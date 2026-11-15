@@ -3,7 +3,7 @@
 ## Work queue
 
 1. **Replay and seed ready for integration.** Five synthetic Turkish posts, nine demo users and three shelters are in `data/`. Local validation passes. The X worker, database loader and live CP1 acceptance remain with Roles 1 and 2.
-2. **NASA cache, map and watcher ready for integration.** Two 500 m polygons, source metadata and hashes, a reproducible offline preparation script, regression checks and the event sender are implemented. The real cache yields two cold alerts. Damage and night-light evidence remain unknown because of transparency and saturation. See [NASA evidence](nasa-evidence.md). Live priority and approval acceptance still requires Role 1's API and Brain.
+2. **NASA cache, map and watcher ready for integration.** Two 500 m polygons, source metadata and hashes, a reproducible offline preparation script, regression checks and the event sender are implemented. The real cache yields two cold alerts. Damage and night-light evidence remain unknown because of transparency and saturation. See [NASA evidence](nasa-evidence.md) and [the track requirements audit](nasa-requirements-audit.md). Live priority and approval acceptance still requires Role 1's API and Brain.
 3. **Repeatable scenario pending.** Prepare manual advance in `workers/scenario-player.ts` using returned task and incident IDs. Exercise the blanket delivery first, then the breakdown and replacement supplier when CP3 works.
 4. **Pitch and submission pending.** Write `docs/demo.md` and the Devpost draft around verified behavior. Add NASA attribution, rehearse the two-minute demo and record the successful run under three minutes.
 

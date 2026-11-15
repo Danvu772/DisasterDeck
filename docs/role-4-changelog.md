@@ -2,6 +2,14 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v0.3 requirements audit · 2026-11-14 20:17 EST
+
+- Read the full NASA track guide, relevant Hacker Packet pages and the public event site. Confirmed the three selected NASA products fit the stated data scope and documented their source/sensor provenance.
+- Corrected the red-and-dark example in the NASA submission checklist. The guide accepts validation against a published record or another dataset.
+- Recorded direct key/account signup routes, normal Devpost entry and pending live NASA-driven behavior. The documents specify no separate organizer dataset approval for the current flow.
+- Split the long local Obsidian role note into five task notes and a history note. Verified retention of all fifteen original text segments and all fifty original checkbox states. The index decreased from 22,961 to 4,085 characters.
+- At 20:20 EST, verified all thirty-six links in the reorganized Obsidian notes and the relative links in the edited repository documents.
+
 ## v0.2 verification · 2026-11-14 20:07 EST
 
 - Six Python regression checks and four Node tests pass. The added cache test confirms that a fresh checkout preserves the recorded source timestamps during an offline rebuild.
