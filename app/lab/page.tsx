@@ -38,7 +38,7 @@ export default function Lab() {
         <Section title="Chat">
           <div className="space-y-1 rounded-card border border-line bg-card p-3">
             <ChatLine name="Zeynep" m={{ from: "user", text: "called, voices heard" }} />
-            <ChatLine name="Zeynep" m={{ from: "agent", text: "Marked Örnek St. 12 as verified. Asking the coordinator to send Team 4." }} />
+            <ChatLine name="Zeynep" m={{ from: "agent", text: "Marked Örnek St. 12 as verified. Asking the coordinator to send Saha Ekibi A." }} />
           </div>
         </Section>
 

@@ -11,15 +11,15 @@ export function makeCoordinatorTasks(now: number): Task[] {
     {
       _id: "task-8", type: "rescue", recordType: "site", recordId: "site-57",
       tried: [], risk: "high", tier: 0, priority: 54, status: "waiting_approval", open: true,
-      title: "Send Army Team 2 to Örnek St. 12", detail: "1 person under rubble, nobody answers the phone. Team 2 is 900 m away and free.",
+      title: "Send Saha Ekibi A to Örnek St. 12", detail: "1 person under rubble, nobody answers the phone. Saha Ekibi A is 900 m away and free.",
       deadline: new Date(now + 4 * 60000),
       history: [{ ts: ago(1), by: "dispatcher", source: "system", reason: "Rescue is high risk, sent to every coordinator" }],
       deskId: DESK,
     },
     {
       _id: "task-7", type: "assist", recordType: "incident", recordId: "inc-1",
-      tried: ["team-2", "zeynep"], risk: "low", tier: 0, priority: 58, status: "escalated", open: true,
-      title: "Fix the van at km 14", detail: "Kızılay depot 2 has a flat tire. Needs someone with tools.",
+      tried: ["volunteer-mechanic", "volunteer-callback"], risk: "low", tier: 0, priority: 58, status: "escalated", open: true,
+      title: "Fix the van at km 14", detail: "Demo Depo A has a flat tire. Needs someone with tools.",
       deadline: new Date(now + 10 * 60000),
       history: [
         { ts: ago(2), by: "help-desk", source: "system", reason: "Assist task for the nearest person with tools" },
