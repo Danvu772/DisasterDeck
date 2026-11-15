@@ -132,15 +132,15 @@ function toFindings(e: Emitted, region: string, seenUrls: Set<string>): NewsFind
         region: n.place ? `${n.place}, ${region}` : region } satisfies NeedPayload });
   }
   for (const r of e.reports ?? []) {
-    // ReportPayload has no hazard field yet (proposed to Role 1), so it rides in the text.
-    const text = maskPhones(r.hazard?.trim() ? `[Hazard: ${r.hazard.trim()}] ${r.text_en}` : r.text_en).text;
+    const text = maskPhones(r.text_en).text;
+    const hazard = r.hazard?.trim() ? maskPhones(r.hazard.trim()).text : undefined;
     out.push({ kind: "report", url: r.url, publishedAt: pub(r.published),
       payload: { kind: r.kind, text, textEn: text, address: r.place, region,
-        peopleCount: r.people_count ?? undefined } satisfies ReportPayload });
+        peopleCount: r.people_count ?? undefined, ...(hazard ? { hazard } : {}) } satisfies ReportPayload });
   }
   for (const sh of e.shelters ?? []) {
     const payload = toCapacity(sh);
-    if (payload) out.push({ kind: "capacity", url: sh.url, publishedAt: pub(sh.published), payload });
+    if (payload) out.push({ kind: "capacity", url: sh.url, publishedAt: pub(sh.published), payload: { ...payload, region } });
     else if (sh.full) console.error(`[news-search] "${sh.name}" said to be full, no numbers, not posted (${sh.url})`);
   }
   // A finding must cite a page the search returned: a URL the model or a page made up is dropped.

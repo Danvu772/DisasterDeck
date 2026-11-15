@@ -265,7 +265,7 @@ async function main() {
   assert.equal(rb.status, "done", rb.result?.reason);
   const road = (await c.roads.find({ deskId: DESK }).toArray())[0];
   assert(road, "a road record"); assert.equal(road.road, "Front Street"); assert.equal(road.state, "unconfirmed");
-  assert((await noticesOf(U.field)).some((m) => /Front Street is closed/.test(m)), "the field team with a task there is told");
+  assert((await noticesOf(U.field)).some((m) => /Front Street is reported closed, not confirmed/.test(m)), "the field team with a task there is told");
   assert.equal((await taskById((await tasksFor("site-h-57", "rescue"))[0]._id)).status, "accepted", "the task continues");
   assert.equal((await incOf(`inc-${rb._id}`)).status, "helping");
   const b5 = await counts();

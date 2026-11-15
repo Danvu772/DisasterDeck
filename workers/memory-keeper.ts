@@ -154,6 +154,9 @@ async function applyReport(event: Event): Promise<KeeperResult> {
     ts: now, by: event.actor, source: event.source,
     reason: `${p.kind}${p.peopleCount ? ` (${p.peopleCount} people)` : ""}: ${decision.reason}`,
   };
+  // A danger at the place, from a post or a person (v2.5). Masked like every text from outside.
+  const hazard = p.hazard?.trim() ? mask(p.hazard.trim()) : undefined;
+  if (hazard) entry.reason += `; hazard: ${hazard}`;
   const thisVoice = await voiceOf(event, textKey);
   // The post as the screens show it, phone numbers masked before it is stored (decision D3).
   const post: Post = {
@@ -168,6 +171,7 @@ async function applyReport(event: Event): Promise<KeeperResult> {
       address: p.address ?? "address unknown",
       ...(p.coords ? { coords: p.coords } : {}),
       region: p.region ?? "unknown",
+      ...(hazard ? { hazard } : {}),
       peopleTrapped: people,
       callStatus: "not_called",
       status: "open",
@@ -228,6 +232,8 @@ async function applyReport(event: Event): Promise<KeeperResult> {
   if (site.address === "address unknown" && p.address) set.address = p.address;
   if (!site.coords && p.coords) set.coords = p.coords;
   if (site.region === "unknown" && p.region) set.region = p.region;
+  // A hazard is added, never wiped: one an unsafe incident set stays until someone clears it.
+  if (!site.hazard && hazard) set.hazard = hazard;
   if (decision.copy) entry.reason = `copy of an earlier report (adds a source, not support)`;
 
   await c.sites.updateOne(
@@ -817,7 +823,8 @@ async function applyCapacity(event: Event): Promise<KeeperResult> {
     const id = `shelter-${eventId}`;
     if (!(await c.shelters.findOne({ _id: id }, { projection: { _id: 1 } }))) {
       const shelter: Shelter = {
-        _id: id, name, region: (await regionFor(event)) ?? "unknown", bedsUsed: p.bedsUsed, bedsTotal: p.bedsTotal,
+        _id: id, name, region: p.region ?? (await regionFor(event, p.coords)) ?? "unknown",
+        ...(p.coords ? { coords: p.coords } : {}), bedsUsed: p.bedsUsed, bedsTotal: p.bedsTotal,
         updated: new Date(), observedAt: stamp.observedAt, source: event.source, trust,
         history: [withEvent(event, `${value} beds from ${stamp.who} (${trust})`)], deskId: event.deskId,
       };
@@ -851,6 +858,9 @@ async function applyCapacity(event: Event): Promise<KeeperResult> {
       set = { observedAt: later(stamp.observedAt, new Date(same.observedAt)), updated: new Date(), source: event.source, trust };
     }
   }
+  // Where it is: filled in when the record does not know, never overwritten (v2.5).
+  if (!same.coords && p.coords) set.coords = p.coords;
+  if ((!same.region || same.region === "unknown") && p.region) set.region = p.region;
   await c.shelters.updateOne({ _id: same._id, "history.eventId": { $ne: eventId } }, {
     ...(Object.keys(set).length ? { $set: set } : {}), $push: { history: withEvent(event, note) },
   });

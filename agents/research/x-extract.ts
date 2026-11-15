@@ -182,9 +182,12 @@ export async function extractTweet(t: ReplayTweet, opts: { mock?: boolean } = {}
   }));
   const capacities: CapacityPayload[] = [];
   const capacityNoNumbers: string[] = [];
+  // Where the shelter is: the tweet's region always; its geocoded point only when the tweet is
+  // about that one shelter (not a call for help, which is geocoded to the rubble).
+  const shelterAt = !raw.isHelpCall && (raw.shelters ?? []).length === 1 ? t.coords : undefined;
   for (const sh of raw.shelters ?? []) {
     const cap = toCapacity(sh);
-    if (cap) capacities.push(cap);
+    if (cap) capacities.push({ ...cap, ...(region ? { region } : {}), ...(shelterAt ? { coords: shelterAt } : {}) });
     else if (sh.full && sh.name?.trim()) capacityNoNumbers.push(sh.name.trim());
   }
   const hazard = raw.hazard?.trim() || undefined;
@@ -199,9 +202,8 @@ export async function extractTweet(t: ReplayTweet, opts: { mock?: boolean } = {}
   // Adequacy check in code too: a call for help with no place at all cannot be dispatched as written.
   const unclear = raw.unclear?.trim() ||
     (!raw.address && !t.coords ? "no place given: ask where" : undefined);
-  // The hazard too: Site.hazard exists, but ReportPayload has no field to carry it and the API
-  // drops unknown fields, so it rides in textEn. Proposed to Role 1: an optional `hazard` field.
-  const notes = [unclear && `Needs a call: ${unclear}`, hazard && `Hazard: ${hazard}`].filter(Boolean);
+  // The hazard goes in its own field (ReportPayload.hazard, v2.5); the keeper puts it on the site.
+  const notes = [unclear && `Needs a call: ${unclear}`].filter(Boolean);
   return {
     ...others,
     unclear,
@@ -217,6 +219,7 @@ export async function extractTweet(t: ReplayTweet, opts: { mock?: boolean } = {}
       coords: t.coords,             // geocoded ahead of time by Role 4
       peopleCount: raw.peopleCount,
       phoneMasked,
+      ...(hazard ? { hazard } : {}),
     },
   };
 }

@@ -32,6 +32,7 @@ export const reportPayload = z.object({
   text, textEn: text,
   address: text.optional(), coords: latLng.optional(), region: id.optional(),
   peopleCount: count.optional(), phoneMasked: z.string().max(40).optional(), siteId: id.optional(),
+  hazard: z.string().min(1).max(500).optional(),
 }) satisfies z.ZodType<ReportPayload>;
 
 export const needPayload = z.object({
@@ -46,7 +47,7 @@ export const closurePayload = z.object({
 
 export const capacityPayload = z.object({
   shelter: z.string().min(1).max(500), bedsUsed: count, bedsTotal: count,
-  photoUrl: z.url().max(2000).optional(),
+  photoUrl: z.url().max(2000).optional(), coords: latLng.optional(), region: id.optional(),
 }).refine((p) => p.bedsUsed <= p.bedsTotal, "bedsUsed cannot be more than bedsTotal") satisfies z.ZodType<CapacityPayload>;
 
 export const answerPayload = z.object({

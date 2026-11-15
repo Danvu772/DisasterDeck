@@ -6,6 +6,7 @@
 // running on the same cluster cannot take them: only this process applies them.
 import assert from "node:assert/strict";
 import { processEvent } from "../workers/brain";
+import { roadWarning } from "../workers/dispatcher";
 import { closeDb, cols, newId } from "./db";
 import { pointInPolygon } from "./geo";
 import { conflictNote, resolveConflict, trustedClash } from "./rules/conflict";
@@ -331,6 +332,38 @@ async function main() {
   ];
   assert(badPayloads.every((e) => e.status === "rejected" && e.result?.reason));
   ok("invalid closure, capacity and alert payloads are rejected with a reason");
+
+  // ---------- v2.5: shelter position, report hazard, road warning on a task ----------
+  const sp = await send("capacity", "x", "x-agent",
+    { shelter: "Tent city C", bedsUsed: 130, bedsTotal: 150, coords: [36.21, 36.16] as LatLng, region: "check-region-c" }, at(10));
+  assert.equal(sp.status, "done", sp.result?.reason);
+  let tc = (await c.shelters.findOne({ deskId: DESK, name: "Tent city C" }))!;
+  assert.deepEqual(tc.coords, [36.21, 36.16]); assert.equal(tc.region, "check-region-c");
+  await send("capacity", "x", "x-agent", { shelter: "tent city c", bedsUsed: 140, bedsTotal: 150, coords: [1, 1] as LatLng, region: "elsewhere" }, at(11));
+  tc = (await c.shelters.findOne({ _id: tc._id }))!;
+  assert.deepEqual(tc.coords, [36.21, 36.16], "a known position is never overwritten"); assert.equal(tc.region, "check-region-c");
+  ok("capacity with coords and region: a new shelter gets its position; a later post does not move it");
+
+  const hzEv = await send("report", "x", "x-agent",
+    { kind: "trapped", text: "Enkaz altında 2 kişi, gaz kokusu var", textEn: "2 people under rubble, gas smell", address: "Hazard Street 1",
+      coords: [36.25, 36.25] as LatLng, region: R, peopleCount: 2, hazard: "gas smell at the site" }, at(12));
+  assert.equal(hzEv.status, "done", hzEv.result?.reason);
+  const hs = (await c.sites.findOne({ _id: hzEv.result!.recordIds[0] }))!;
+  assert.equal(hs.hazard, "gas smell at the site"); assert(!hs.posts?.[0].textEn.includes("[Hazard"), "the hazard is a field, not a text prefix");
+  await send("report", "x", "x-agent",
+    { kind: "trapped", text: "Hazard Street 1, yangın", textEn: "Hazard Street 1, fire", address: "Hazard Street 1",
+      coords: [36.25, 36.25] as LatLng, region: R, hazard: "fire" }, at(13));
+  assert.equal((await c.sites.findOne({ _id: hs._id }))!.hazard, "gas smell at the site", "a hazard is added, never replaced");
+  ok("report hazard → Site.hazard on a new site; a second report does not replace it");
+
+  await send("closure", "x", "x-agent", { road: "Kale bridge road", state: "unconfirmed", reason: "rubble (tweet)", coords: [36.255, 36.25] as LatLng }, at(14));
+  const rescue = { ...mkTask("h-rescue", U.official, hs._id), type: "rescue" as const };
+  const warn = await roadWarning(rescue);
+  assert.match(warn, /^ Road: Kale bridge road reported closed, 560 m from the place \(unconfirmed, x, \d+ min ago\)\. Check your route\.$/, warn);
+  assert.equal(await roadWarning({ ...rescue, type: "call" }), "", "a call needs no travel");
+  assert.equal(await roadWarning(mkTask("h-far-rescue", U.official, "h-far")), "", "call task far away");
+  assert.equal(await roadWarning({ ...mkTask("h-far-rescue", U.official, "h-far"), type: "rescue" }), "", "no road within 1.5 km");
+  ok(`a rescue task near a road that is not open carries the warning: "${warn.trim()}"`);
 
   console.log(`\n${passed} checks passed`);
 }

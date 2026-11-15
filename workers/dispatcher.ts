@@ -758,7 +758,8 @@ async function roadChanged(ch: Change): Promise<void> {
   };
   const who = new Map<string, Task>();
   for (const t of open) if (t.assignee && !who.has(t.assignee) && nearRoad(t)) who.set(t.assignee, t);
-  const message = `${road.road} is ${road.state === "open" ? "open again" : "closed"} (${road.confidence}, ${road.source ?? "unknown source"}, ${minutesAgo(road.observedAt)})`;
+  const said = road.state === "open" ? "open again" : road.state === "closed" ? "closed" : "reported closed, not confirmed";
+  const message = `${road.road} is ${said} (${road.confidence}, ${road.source ?? "unknown source"}, ${minutesAgo(road.observedAt)})`;
   await inbox([...who].map(([userId, t]) => ({
     userId, taskId: t._id, kind: "notice" as const, priority: 10, message, key: `road:${road._id}:${ch.eventId}`,
   })));
@@ -910,7 +911,40 @@ async function inbox(items: Omit<InboxItem, "_id" | "status" | "ts">[]): Promise
 
 async function inboxTask(task: Task): Promise<void> {
   if (!task.assignee) return;
-  await inbox([{ userId: task.assignee, taskId: task._id, kind: "task", priority: task.priority, message: `${task.title}. ${task.detail}` }]);
+  const warn = await roadWarning(task);
+  await inbox([{ userId: task.assignee, taskId: task._id, kind: "task", priority: task.priority, message: `${task.title}. ${task.detail}${warn}` }]);
+}
+
+/** A road that is not open this close to a task's place is worth a line on the task (v2.5). */
+export const ROAD_WARNING_METERS = 1500;
+const TRAVEL: Task["type"][] = ["rescue", "deliver", "evacuate", "assist"];
+
+/**
+ * " Road: Kernek road closed, 560 m from the place (unconfirmed, x, 20 min ago). Check your route."
+ * Empty when the task needs no travel, its place is unknown, or no such road is near. Up to two
+ * roads, nearest first. A straight line from the road's one point: a warning, not a route.
+ */
+export async function roadWarning(task: Task): Promise<string> {
+  if (!TRAVEL.includes(task.type)) return "";
+  const { roads, sites, needs } = await cols();
+  let at: LatLng | undefined;
+  if (task.recordType === "site") at = (await sites.findOne({ _id: task.recordId }, { projection: { coords: 1 } }))?.coords;
+  else if (task.recordType === "need") {
+    const need = await needs.findOne({ _id: task.recordId }, { projection: { siteIds: 1 } });
+    const site = need?.siteIds.length
+      ? await sites.findOne({ _id: { $in: need.siteIds }, coords: { $exists: true } }, { projection: { coords: 1 } }) : null;
+    at = site?.coords;
+  }
+  if (!at) return "";
+  const near = (await roads.find({ deskId: task.deskId, state: { $ne: "open" }, coords: { $exists: true } }).toArray())
+    .map((r) => ({ r, m: haversineMeters(at!, r.coords!) }))
+    .filter((x) => x.m <= ROAD_WARNING_METERS)
+    .sort((a, b) => a.m - b.m)
+    .slice(0, 2);
+  if (!near.length) return "";
+  const lines = near.map(({ r, m }) =>
+    `${r.road} ${r.state === "closed" ? "closed" : "reported closed"}, ${distanceText(m)} from the place (${r.confidence}, ${r.source ?? "unknown source"}, ${minutesAgo(r.observedAt)})`);
+  return ` Road: ${lines.join("; ")}. Check your route.`;
 }
 
 async function inboxCoordinators(task: Task, kind: "approval" | "notice", message: string): Promise<void> {

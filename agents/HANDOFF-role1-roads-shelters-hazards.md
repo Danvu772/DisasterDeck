@@ -1,6 +1,15 @@
 # To Darshal (Role 1): roads, shelter counts and hazards from the research agents
 
-From Role 2 (Ömer), 15 Nov 2026. Nothing here touches your files; these are requests. Agent side is merged in `628abb0`.
+From Role 2 (Ömer), 15 Nov 2026. Agent side is merged in `628abb0`.
+
+> **Status, 15 Nov, later:** we did all four ourselves, so there is nothing left for you here.
+> 1 was already on main (your handlers). 2, 3 and 4 are in the "v2.5" commit: `ReportPayload.hazard`,
+> `CapacityPayload.coords` / `region`, and `roadWarning()` in `workers/dispatcher.ts`, which adds
+> "Road: … Check your route." to the inbox item of a rescue, deliver, evacuate or assist task whose
+> place is within 1.5 km of a road that is not open. The road notice now says "reported closed, not
+> confirmed" for an `unconfirmed` road instead of "closed". Checks: `handlers:check` 24 (4 new),
+> `helpdesk:check` 14 (one expected text updated), `dispatch:check` 16, `keeper:check` 23.
+> The frontend items at the end are still open.
 
 ## What the agents send now
 

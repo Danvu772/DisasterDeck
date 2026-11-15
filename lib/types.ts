@@ -73,6 +73,7 @@ export interface ReportPayload {
   text: string; textEn: string;
   address?: string; coords?: LatLng; region?: string;
   peopleCount?: number; phoneMasked?: string; siteId?: string;
+  hazard?: string;                       // v2.5: a danger at the place (gas, fire, a wall still falling) → Site.hazard
 }
 export interface NeedPayload {
   item: string; quantity: number; lifeThreatening: boolean;
@@ -84,6 +85,7 @@ export interface ClosurePayload {
 }
 export interface CapacityPayload {
   shelter: string; bedsUsed: number; bedsTotal: number; photoUrl?: string;
+  coords?: LatLng; region?: string;      // v2.5: where a shelter first seen in a post is, so it can go on the map
 }
 export interface AnswerPayload {
   taskId: string; result: "accepted" | "declined" | "done";
