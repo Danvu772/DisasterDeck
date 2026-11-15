@@ -28,6 +28,7 @@
     "brain": "tsx --env-file=.env.local workers/brain.ts",
     "check:contract": "node docs/frontend/contract-check.mjs",
     "check:name": "node scripts/check-name.mjs",
+    "env:push": "bash deploy/vultr/push-env.sh",
     "check:tokens": "! grep -rnE \"#[0-9a-fA-F]{3,8}\\b|(bg|text|border|fill|stroke|ring|from|to)-(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone|black|white)\\b|font-serif\\b\" app components --include=*.ts --include=*.tsx --include=*.css --exclude=globals.css --exclude-dir=api --exclude-dir=v2",
     "demo": "node scripts/dev-demo.mjs",
     "check:pilot": "node scripts/validate-demo-data.mjs && node scripts/check-antakya.mjs",

@@ -33,7 +33,7 @@ The VM is **IPv6-only**. Vultr gave it `100.68.113.147/18` with no IPv4 default 
 
 | Path or unit | Role |
 |---|---|
-| `/etc/desk/env.local` | The production `.env.local`. Copied into each slot on release. Edit it here, copy it to `/opt/desk/.env.local`, then `systemctl restart desk-web desk-brain`. It has `AUTH_URL=https://disasterdeck.us`: behind the tunnel Next sees `localhost:3000`, and without it Auth.js sends people to `https://localhost:3000`. |
+| `/etc/desk/env.local` | The production `.env.local`. Copied into each slot on release. Change it from a laptop with `npm run env:push` (`--dry` to preview): it merges that laptop's `.env.local` in, keeps keys only the VM has, never empties a value, puts `AUTH_URL`, `DEMO_MODE=0` and `DESK_ID=antakya-2023` on top, restarts, and restores the previous file if `/login` stops answering. It has `AUTH_URL=https://disasterdeck.us`: behind the tunnel Next sees `localhost:3000`, and without it Auth.js sends people to `https://localhost:3000`. |
 | `/opt/desk` | Symlink to the live slot. |
 | `/opt/desk-stage` | Where the workflow uploads (user `deployer`). |
 | `desk-web` | `next start` on `127.0.0.1:3000`, user `desk`. |
@@ -58,7 +58,7 @@ The VM is **IPv6-only**. Vultr gave it `100.68.113.147/18` with no IPv4 default 
 - A new `NEXT_PUBLIC_*` variable needs a GitHub secret and a line in the Build step of `deploy.yml`.
 - Production runs with `DEMO_MODE=0` (VM env and the Deploy build): no `?user=`, no open board, no demo link, even from the VM itself. Keep it that way.
 - Never remove `AUTH_URL` from the VM's env, and never set it on a laptop (local login would go to the domain).
-- A new server variable goes into `/etc/desk/env.local` on the VM. Tell the person, since only Dan can reach the VM.
+- A new server variable: add it to `.env.local` and run `npm run env:push`. Only Dan's tailnet reaches the VM, so tell the person if you cannot.
 
 ## Debugging
 
