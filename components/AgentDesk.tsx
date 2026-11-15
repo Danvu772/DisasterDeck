@@ -15,7 +15,8 @@ import { chatErrorText } from "./chatError";
 import { cursorOf, feedUrl, mergeServer, shownEvents } from "./agentFeed";
 import { YourNeeds } from "./YourNeeds";
 import { usePolled } from "./map/usePolled";
-import { isRealTask, needsFor, nextLocalStatus, openTasksFor, viewTask, type LocalTask } from "./taskState";
+import { isRealTask, needsFor, nextLocalStatus, viewTask, type LocalTask } from "./taskState";
+import { rankOpen } from "@/lib/rules/top";
 import { button, statusTag, statusText } from "./encode";
 
 type FeedEvent = Event & { _id: string };
@@ -53,7 +54,8 @@ export function AgentDesk(props: {
   const [demoLines, setDemoLines] = useState<Set<string>>(new Set());
   const inFlight = useRef(new Set<string>());
   const lineSeq = useRef(0);
-  const views = openTasksFor(board.tasks, user._id).map((t) => ({ raw: t, ...viewTask(t, local[t._id]) }));
+  // The top task is decided from the board as it is now (lib/rules/top.ts), not the priority the task was made with.
+  const views = rankOpen(board.tasks, board, user._id, now).map(({ task: t }) => ({ raw: t, ...viewTask(t, local[t._id]) }));
   const open = views.filter((v) => v.task.open);
   const top = open[0];
   const needs = needsFor(board.needs, user._id);
