@@ -12,3 +12,11 @@ Dan compared main (v1) with Ömer's `redesign/v2` branch (`/v2`, commit `4173fca
 8. The `/v2` code is not merged. Workers read it from `origin/redesign/v2` (`git show origin/redesign/v2:<path>`). The `p-00x` proposal branches stay unmerged too (earlier decision).
 
 Order: t25 (foundation: tokens, fonts, header) first, then t26 to t30 in parallel. t31 (scenario clock) fixes "counted 1373 days ago" on live data, a v1 bug the comparison exposed.
+
+## Update, 15 Nov: `/v2` merged into main (Dan)
+
+Dan asked to merge Ömer's `redesign/v2` into main. It now lives at `/v2` (board, coordinator, volunteer, field), next to the v1 screens, which stay the base and keep the v4 redesign. Point 8 above no longer holds for `/v2`.
+
+- `/v2` keeps its own scoped theme (`app/v2/theme.css`, `.v2` only). The token guard skips folders named `v2` (`--exclude-dir=v2` in `check:tokens`), so its hex values do not fail the build. Everything outside `/v2` is still held to USWDS tokens.
+- `/v2` draws its own header, so the main `Nav` returns nothing there.
+- Open question for the demo: one look on screen. Either the demo stays on the v1 screens and `/v2` is not shown, or a later decision picks `/v2`.

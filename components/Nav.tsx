@@ -32,6 +32,8 @@ function ActingAs() {
 
 export function Nav({ account }: { account?: React.ReactNode }) {
   const path = usePathname();
+  // The redesign under /v2 draws its own header.
+  if (path.startsWith("/v2")) return null;
   return (
     // The outer <nav> is what useNavBottom (detail/DetailPanel.tsx) measures, so it must stay the first <nav> on the page.
     <nav aria-label="Main" className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-night px-4 py-2 text-sm text-night-ink">
