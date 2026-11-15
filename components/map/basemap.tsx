@@ -27,9 +27,17 @@ const mapbox = (id: string, label: string, style: string): Basemap => ({
 });
 
 const ESRI: Basemap = { id: "esri", label: "Gray (Esri)", url: TILES, attribution: TILES_ATTR };
+// Satellite without a Mapbox token: Esri World Imagery, free with attribution.
+const ESRI_SAT: Basemap = {
+  id: "satellite", label: "Satellite",
+  url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+};
+// Satellite is the default view (Dan, 15 Nov). Markers keep their tier colours on top of it.
+const DEFAULT_ID = "satellite";
 
-// Light first: a gray map, so no hue competes with tier red and amber. The others are for
-// looking: night operations, and satellite to set the desk against what the ground looks like.
+// Satellite opens by default (DEFAULT_ID). Light is there for when tier red and amber need a calm
+// background, night for night operations.
 export const BASEMAPS: Basemap[] = TOKEN
   ? [
       ...(CUSTOM ? [mapbox("custom", "Our style", CUSTOM)] : []),
@@ -41,7 +49,7 @@ export const BASEMAPS: Basemap[] = TOKEN
       mapbox("satellite", "Satellite", "mapbox/satellite-streets-v12"),
       ESRI,
     ]
-  : [ESRI];
+  : [ESRI_SAT, ESRI];
 
 // The choice is per viewer, kept in this browser. Every map on the page follows the same store.
 const KEY = "desk.basemap";
@@ -63,7 +71,7 @@ export function setBasemap(id: string) {
 
 export function useBasemap(): Basemap {
   const id = useSyncExternalStore(subscribe, () => memory || read(), () => "");
-  return BASEMAPS.find((b) => b.id === id) ?? BASEMAPS[0];
+  return BASEMAPS.find((b) => b.id === id) ?? BASEMAPS.find((b) => b.id === DEFAULT_ID) ?? BASEMAPS[0];
 }
 
 /** The tile layer. `extra` is appended to the attribution (zones, NASA atlas). */
