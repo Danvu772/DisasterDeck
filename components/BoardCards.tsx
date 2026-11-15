@@ -8,13 +8,24 @@ export type Board = {
 };
 
 export function SiteCards({ items, now }: { items: Site[]; now: number }) {
-  return items.map((s) => (
-    <RecordCard key={s._id} type="site" title={s.address}
-      detail={`${s.peopleTrapped} ${s.peopleTrapped === 1 ? "person" : "people"} trapped. Call status: ${s.callStatus.replace("_", " ")}.`}
-      tier={s.tier} priority={s.priority} confidence={s.confidence} status={s.status}
-      at={s.observedAt} source={s.sources[0]?.source} sources={s.sources.length}
-      history={s.history} now={now} />
-  ));
+  return items.map((s) => {
+    const posts = s.sources.length;
+    const unseen = !s.history.some((h) => h.source === "person");
+    return (
+      <RecordCard key={s._id} type="site" title={s.address}
+        detail={`${s.peopleTrapped} ${s.peopleTrapped === 1 ? "person" : "people"} trapped. Call status: ${s.callStatus.replace("_", " ")}.`}
+        tier={s.tier} priority={s.priority} confidence={s.confidence} status={s.status}
+        at={s.observedAt} source={s.sources[0]?.source} sources={s.sources.length}
+        history={s.history} now={now}>
+        {!(posts === 1 && s.support === 1) && (
+          <p className="mt-1 text-xs text-muted">
+            {posts} {posts === 1 ? "post" : "posts"} from {s.support} {s.support === 1 ? "person" : "people"}
+          </p>
+        )}
+        {unseen && <p className="mt-1 text-xs text-muted">Automated, not yet seen by a person.</p>}
+      </RecordCard>
+    );
+  });
 }
 
 export function NeedCards({ items, now }: { items: Need[]; now: number }) {
