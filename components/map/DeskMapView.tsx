@@ -6,14 +6,15 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import type { Incident, LatLng, Site } from "@/lib/types";
 import validation from "../../data/nasa/validation.json";
 import { IncidentCards, SiteCards } from "../BoardCards";
 import { Stamp } from "../Stamp";
 import { chip, pill, statusTag, statusText, tierBadge, tierBar, tierText } from "../encode";
 import type { MapItem } from "./mapItems";
-import { icon, TILES, TILES_ATTR } from "./markers";
+import { icon } from "./markers";
+import { BasemapPicker, BasemapTiles } from "./basemap";
 import { HatchDefs, useZones, ZoneLayer, type ZoneMeta } from "./ZoneLayer";
 import { NasaEvidence } from "./NasaEvidence";
 import { NasaAtlasControls, NasaAtlasOverlay, useNasaAtlas, type AtlasSelection } from "./NasaAtlas";
@@ -279,6 +280,7 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
               <span className="font-mono">{offscreen.length}</span> critical outside this view. Show them
             </button>
           )}
+          <BasemapPicker className="mt-2" />
         </header>
         <ul className="min-h-0 flex-1 overflow-y-auto">
           {listedMain.map((it) => (
@@ -305,7 +307,7 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
 
       <div className="relative order-1 h-[55vh] md:order-2 md:h-auto md:flex-1">
         <MapContainer center={[38.35, 38.31]} zoom={13} className="h-full w-full" zoomControl>
-          <TileLayer url={TILES} attribution={`${TILES_ATTR}${zones?.metadata?.attribution ? `. Zones: ${zones.metadata.attribution}` : ""}${atlas ? ". Atlas: NASA GIBS, MODIS, GPM IMERG, NASA/USGS/ESA HLS, NASA EONET" : ""}`} maxZoom={16} />
+          <BasemapTiles extra={`${zones?.metadata?.attribution ? `. Zones: ${zones.metadata.attribution}` : ""}${atlas ? ". Atlas: NASA GIBS, MODIS, GPM IMERG, NASA/USGS/ESA HLS, NASA EONET" : ""}`} />
           <KeepSized />
           {atlas && <NasaAtlasOverlay atlas={atlas} selection={atlasSelection} />}
           {zones && atlasSelection.showDemoCells && <ZoneLayer fc={zones} />}

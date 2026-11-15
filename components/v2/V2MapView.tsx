@@ -3,9 +3,9 @@
 // (theme.css), so no colour is written here. Click a dot to select the record.
 import "leaflet/dist/leaflet.css";
 import { useEffect } from "react";
-import { CircleMarker, MapContainer, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { CircleMarker, MapContainer, Tooltip, useMap } from "react-leaflet";
 import type { LatLng, Tier } from "@/lib/types";
-import { TILES, TILES_ATTR } from "../map/markers";
+import { BasemapTiles } from "../map/basemap";
 
 export interface MapDot {
   key: string;
@@ -40,7 +40,7 @@ export default function V2MapView({ dots, selected, onPick }: {
   const center: LatLng = dots[0]?.coords ?? [38.355, 38.309];
   return (
     <MapContainer center={center} zoom={13} scrollWheelZoom className="h-full w-full" style={{ minHeight: 420 }}>
-      <TileLayer url={TILES} attribution={TILES_ATTR} />
+      <BasemapTiles />
       <Fit dots={dots} />
       <FlyTo dot={dots.find((d) => d.key === selected)} />
       {dots.map((d) => {

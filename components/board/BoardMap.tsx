@@ -4,10 +4,11 @@
 // Leaflet needs `window`: LiveBoard loads this with next/dynamic, ssr off.
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef } from "react";
-import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, Marker, useMap } from "react-leaflet";
 import type { LatLng } from "@/lib/types";
 import type { MapItem } from "../map/mapItems";
-import { icon, ringIcon, TILES, TILES_ATTR } from "../map/markers";
+import { icon, ringIcon } from "../map/markers";
+import { BasemapTiles } from "../map/basemap";
 import { HatchDefs, useZones, ZoneLayer } from "../map/ZoneLayer";
 import { BoardLegend } from "./BoardLegend";
 
@@ -57,7 +58,7 @@ export default function BoardMap({ items, now, ring, ringAt, fly, onPick }: {
   return (
     <div className="relative h-full w-full">
       <MapContainer center={[38.35, 38.31]} zoom={13} className="h-full w-full" zoomControl>
-        <TileLayer url={TILES} attribution={zones?.metadata?.attribution ? `${TILES_ATTR}. Zones: ${zones.metadata.attribution}` : TILES_ATTR} maxZoom={16} />
+        <BasemapTiles extra={zones?.metadata?.attribution ? `. Zones: ${zones.metadata.attribution}` : ""} />
         <KeepSized />
         {zones && <ZoneLayer fc={zones} />}
         <FitOnce points={placed.map((i) => i.coords!)} />
