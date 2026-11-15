@@ -34,11 +34,11 @@ export function touched(e: FeedEvent, board: Board): string | null {
   return null;
 }
 
-export function DeskFeed({ board, now, onOpen, initial }: {
-  board: Board; now: number; onOpen: (key: string) => void; initial: FeedEvent[];
+export function DeskFeed({ board, now, onOpen, initial, initialLive = false }: {
+  board: Board; now: number; onOpen: (key: string) => void; initial: FeedEvent[]; initialLive?: boolean;
 }) {
   const router = useRouter();
-  const { data, live } = usePolled<FeedEvent[]>("/api/events?limit=30", initial, 2000);
+  const { data, live } = usePolled<FeedEvent[]>("/api/events?limit=30", initial, 2000, initialLive);
   const events = newestFirst(data);
   return (
     <section aria-label="Desk feed" className="flex min-h-0 flex-1 flex-col rounded-card border border-line bg-card">

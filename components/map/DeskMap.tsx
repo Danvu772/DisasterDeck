@@ -4,10 +4,11 @@
 import dynamic from "next/dynamic";
 import { fromBoard, type MapItem, type MapSource } from "./mapItems";
 import { usePolled } from "./usePolled";
+import { MapSkeleton } from "@/components/ui";
 
 const DeskMapView = dynamic(() => import("./DeskMapView"), {
   ssr: false,
-  loading: () => <p className="p-4 text-sm text-muted">Loading the map</p>,
+  loading: () => <MapSkeleton />,
 });
 
 export function DeskMap<T = MapSource>({ initial, url = "/api/board", zonesUrl = "/data/zones.geojson", adapt, focus }: {

@@ -59,6 +59,77 @@ export async function react(changes: Change[], actions: TaskAction[] = []): Prom
   }
 }
 
+// ---------- every tick: the rules over what is on the desk now ----------
+
+async function openTasksByDesk(desk?: string): Promise<Map<string, number>> {
+  const { tasks } = await cols();
+  const rows = await tasks.aggregate<{ _id: string; n: number }>([
+    { $match: { open: true, ...(desk ? { deskId: desk } : {}) } },
+    { $group: { _id: "$deskId", n: { $sum: 1 } } },
+  ]).toArray();
+  return new Map(rows.map((r) => [r._id, r.n]));
+}
+
+/**
+ * react() only sees the changes an event made, so a record that was already on the desk never
+ * got its task. This runs the same rules over every open site and need, once per tick. createFor()
+ * finds the open task first, so a tick with nothing new writes nothing. Returns the desks whose
+ * open task count went up, so the caller can bump their version.
+ */
+export async function reconcile(desk?: string): Promise<{ created: number; desks: string[] }> {
+  const { sites, needs } = await cols();
+  const q = desk ? { deskId: desk } : {};
+  const [s, n] = await Promise.all([
+    sites.find({ ...q, status: "open" }, { projection: { _id: 1 } }).toArray(),
+    needs.find({ ...q, status: "open" }, { projection: { _id: 1 } }).toArray(),
+  ]);
+  if (!s.length && !n.length) return { created: 0, desks: [] };
+  const before = await openTasksByDesk(desk);
+  await react([
+    ...s.map((r): Change => ({ recordType: "site", recordId: r._id, op: "updated", eventId: "reconcile", fields: ["status"] })),
+    ...n.map((r): Change => ({ recordType: "need", recordId: r._id, op: "updated", eventId: "reconcile", fields: ["status"] })),
+  ]);
+  const after = await openTasksByDesk(desk);
+  const desks = [...after].filter(([d, c]) => c > (before.get(d) ?? 0)).map(([d]) => d);
+  const created = [...after.values()].reduce((a, c) => a + c, 0) - [...before.values()].reduce((a, c) => a + c, 0);
+  return { created: Math.max(0, created), desks };
+}
+
+/**
+ * An escalated task gets another try every tick, with the same rules as a new task. The first
+ * person who is free and fits takes it, so a volunteer who comes online gets the work nobody could
+ * take. A task that said no MAX_TRIES times stays escalated for a coordinator. A task on a closed
+ * or retracted site is left alone. Returns the desks whose tasks moved.
+ */
+export async function redelegate(desk?: string, now: Date = new Date()): Promise<{ moved: number; desks: string[] }> {
+  const { tasks } = await cols();
+  const waiting = await tasks.find({ ...(desk ? { deskId: desk } : {}), status: "escalated", open: true }).toArray();
+  const desks = new Set<string>();
+  let moved = 0;
+  for (const t of waiting) {
+    if (t.tried.length >= MAX_TRIES || (t.recordType !== "site" && t.recordType !== "need")) continue;
+    const rec = await recordOf(t.recordType, t.recordId);
+    if (!rec || rec.status === "closed" || rec.status === "retracted") continue;
+    const pick = await pickFor(t, t.tried, now);
+    if (!pick.ok) continue;
+    const team = `Proposed team: ${pick.user.name} (${pick.user._id})${pick.meters !== undefined ? `, ${distanceText(pick.meters)} away` : ""}.`;
+    const high = t.risk === "high";
+    const set = high
+      ? { status: "waiting_approval" as const, detail: `${stripProposal(t.detail)} ${team}`.trim() }
+      : { status: "assigned" as const, assignee: pick.user._id };
+    const r = await tasks.updateOne(
+      { _id: t._id, status: "escalated", open: true },
+      { $set: { ...set, deadline: deadline(now) }, $push: { history: entry(high ? `waiting for a coordinator, ${team}` : `assigned to ${pick.user._id}${near(pick)}`) } },
+    );
+    if (!r.modifiedCount) continue;
+    moved++;
+    desks.add(t.deskId);
+    if (high) await inboxCoordinators({ ...t, ...set }, "approval", `Approve: ${t.title}. ${set.detail}`);
+    else await inboxTask({ ...t, assignee: pick.user._id });
+  }
+  return { moved, desks: [...desks] };
+}
+
 // ---------- 1. what the keeper decided about a task ----------
 
 async function act(a: TaskAction): Promise<void> {

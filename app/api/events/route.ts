@@ -6,9 +6,9 @@
 // The POST rules are about the ACTOR, whichever way the request arrived (Team contracts §4,
 // Final system design §9). State checks (is the task still waiting for approval?) are not done
 // here: the Brain loop applies events one at a time and decides then, so nothing races.
-import { maskPhones } from "@/agents/shared/privacy";
 import { canRead, resolveCaller } from "@/lib/auth";
 import { cols, deskId, postEvent } from "@/lib/db";
+import { FEED_PROJECTION, latestFeed, maskEvent } from "@/lib/feed";
 import { eventBody, type EventBody } from "@/lib/schemas";
 import type { User } from "@/lib/types";
 
@@ -38,19 +38,6 @@ function limited(key: string): boolean {
 const FEED_DEFAULT = 50;
 const FEED_MAX = 500;
 
-/**
- * The stored event keeps what was posted (the keeper needs the original text). The feed is read
- * by every screen, so phone numbers are masked on the way out, in every string of the payload.
- */
-function maskDeep(value: unknown): unknown {
-  if (typeof value === "string") return maskPhones(value).text;
-  if (Array.isArray(value)) return value.map(maskDeep);
-  if (value && typeof value === "object" && !(value instanceof Date)) {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, maskDeep(v)]));
-  }
-  return value;
-}
-
 export async function GET(req: Request): Promise<Response> {
   const access = await canRead(req);
   if (!access.ok) return json(access.status, { error: access.error });
@@ -71,17 +58,11 @@ export async function GET(req: Request): Promise<Response> {
   try {
     const { events } = await cols();
     const desk = q.get("desk") || deskId();
-    const projection = { lockedAt: 0, attempts: 0 } as const;
-    const feed = since
+    const masked = since
       // Everything after `since`, oldest first, so a client can keep the last ts and ask again.
-      ? await events.find({ deskId: desk, ts: { $gt: since } }, { projection }).sort({ ts: 1 }).limit(limit).toArray()
+      ? (await events.find({ deskId: desk, ts: { $gt: since } }, { projection: FEED_PROJECTION }).sort({ ts: 1 }).limit(limit).toArray()).map(maskEvent)
       // No `since`: the latest events, still returned oldest first.
-      : (await events.find({ deskId: desk }, { projection }).sort({ ts: -1 }).limit(limit).toArray()).reverse();
-    const masked = feed.map((e) => ({
-      ...e,
-      payload: maskDeep(e.payload),
-      ...(e.result ? { result: { ...e.result, reason: maskPhones(e.result.reason).text } } : {}),
-    }));
+      : await latestFeed(limit, desk);
     return Response.json(masked, { headers: { "cache-control": "no-store" } });
   } catch (err) {
     console.error("GET /api/events failed:", err);

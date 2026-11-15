@@ -73,7 +73,8 @@ async function main() {
   const base = new Date();
 
   // --- 1. no answer, next person ---
-  await c.sites.insertMany([site("s1", min(base, -5)), site("s2", min(base, -5)), site("s3", min(base, -5))]);
+  // s2 and s3 are already called, so the tick's reconcile pass makes no call task for them and only t1 can time out.
+  await c.sites.insertMany([site("s1", min(base, -5)), { ...site("s2", min(base, -5)), callStatus: "called" }, { ...site("s3", min(base, -5)), callStatus: "called" }]);
   const t1 = task("s1", { assignee: U.v1, deadline: min(base, ANSWER_MINUTES) });
   await c.tasks.insertOne(t1);
 
