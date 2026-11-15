@@ -5,7 +5,9 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { desk, type UserContext } from "../desk";
-import { age, countBy, incidentLine, needLine, roadLine, shelterLine, siteLine, taskLine } from "../desk/view";
+import {
+  age, countBy, incidentLine, NEAR_ROAD_METERS, needLine, roadLine, roadsNear, shelterLine, sheltersFor, siteLine, taskLine, type Place,
+} from "../desk/view";
 import { quakeLine, recentQuakesNear, type NearbyQuake } from "../research/quakes";
 import { BudgetError } from "../shared/cost";
 import { modelFor, send } from "../shared/llm";
@@ -153,6 +155,28 @@ function userContent(ctx: UserContext, said: string, image: TurnInput["image"], 
   return blocks;
 }
 
+const NEAR_KM = NEAR_ROAD_METERS / 1000;
+
+/** Where this person's open tasks take them: the site, shelter or incident a task points to. */
+function taskPlaces(ctx: UserContext): Place[] {
+  const out: Place[] = [];
+  const sites = new Map(ctx.records.sites.map((s) => [s._id, s]));
+  const shelters = new Map(ctx.records.shelters.map((s) => [s._id, s]));
+  const incidents = new Map(ctx.myIncidents.map((i) => [i._id, i]));
+  for (const t of ctx.tasks) {
+    if (t.type === "call" || t.type === "notify") continue;   // done by phone: roads do not matter
+    const label = `task "${maskPhones(t.title).text}"`;
+    const need = t.recordType === "need" ? ctx.records.needs.find((n) => n._id === t.recordId) : undefined;
+    const coords =
+      t.recordType === "site" ? sites.get(t.recordId)?.coords :
+      t.recordType === "shelter" ? shelters.get(t.recordId)?.coords :
+      t.recordType === "incident" ? incidents.get(t.recordId)?.coords :
+      need ? need.siteIds.map((id) => sites.get(id)?.coords).find(Boolean) : undefined;
+    if (coords) out.push({ label, coords });
+  }
+  return out;
+}
+
 /** The volatile part of the prompt: this person's slice of the desk, right now. */
 export function contextBlock(ctx: UserContext, quakes?: Quakes): string {
   const { user: u, now } = ctx;
@@ -199,12 +223,22 @@ export function contextBlock(ctx: UserContext, quakes?: Quakes): string {
     section("Records their tasks touch", touched, (x) => x, 8);
   }
   section("Roads not open", ctx.records.roads, (r) => roadLine(r, now), 8, (more) => countBy(more, (r) => r.state), "roads");
+  const free = (s: (typeof ctx.records.shelters)[number]) => s.bedsTotal - s.bedsUsed;
+  const shelters = sheltersFor(ctx.records.shelters, u.coords);
   if (u.role === "shelter" || u.role === "public") {
-    const free = (s: (typeof ctx.records.shelters)[number]) => s.bedsTotal - s.bedsUsed;
-    section("Shelters, most free beds first", [...ctx.records.shelters].sort((a, b) => free(b) - free(a)),
-      (s) => shelterLine(s, now), 8,
+    section(u.coords ? "Shelters, free beds first, then nearest" : "Shelters, free beds first", shelters,
+      (s) => shelterLine(s, now, u.coords), 8,
       (more) => `${more.filter((s) => free(s) > 0).length} with free beds, ${more.reduce((n, s) => n + Math.max(0, free(s)), 0)} free beds in total`,
       "shelters");
+  }
+  // Places this person is heading to: their task places, and for a citizen the shelters they
+  // would be sent to. Closed roads near them, worked out here in code, not by the model.
+  const places: Place[] = u.role === "public"
+    ? shelters.filter((s) => free(s) > 0 && s.coords).slice(0, 3).map((s) => ({ label: s.name, coords: s.coords! }))
+    : taskPlaces(ctx);
+  if (places.length) {
+    section(`Roads not open within ${NEAR_KM} km of ${u.role === "public" ? "those shelters" : "their task places"}`,
+      roadsNear(ctx.records.roads, places, now), (x) => x, 5);
   }
   if (quakes) {
     lines.push(quakes.replay ? `Scenario time (replay): ${quakes.now.toISOString().slice(0, 16)} UTC` : "Earthquake feed: live (AFAD, USGS)");

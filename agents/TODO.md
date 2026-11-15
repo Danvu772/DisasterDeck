@@ -32,6 +32,16 @@ people ── /api/chat ───┘          ▲
 | Desk connection | `agents/desk/` | `MONGODB_URI` set → **Role 1's `lib/db.ts` functions in the same process** (`lib-desk.ts`): every payload checked with Role 1's `payloadSchemas`, `actor` = the person talking. Else `DESK_API_URL` → HTTP. Else fake data | ✅ MongoDB (15 Nov 01:40) · ✅ fake |
 | Spend meter | `agents/shared/cost.ts`, `agents/scripts/spend.ts` | Every call priced and logged to `agents/.usage/usage.jsonl`. Stops at `AGENT_BUDGET_USD` (default $15) | ✅ |
 
+### Roads and shelters in the personal agents (15 Nov) — tested with real Claude
+
+| What | Where | Test |
+|---|---|---|
+| A citizen asking where to sleep gets the nearest shelter with free beds: name, free beds, straight-line distance, age of the number ("call ahead" if older than 1 h), and any road not open within 1.5 km of it. `ask_desk` shelters also sorts by distance | `view.ts` (`sheltersFor`, `shelterLine`), `turn.ts`, `prompts.ts` | ✅ "Demo Barınak C, 18 free, 90 m; Ring road exit 3 unconfirmed 650 m from it" |
+| Field teams and suppliers are told about a road not open within 1.5 km of their task's place, in the same line as their top task. Phone tasks (call, notify) are skipped | `view.ts` (`roadsNear`), `turn.ts` (`taskPlaces`), `prompts.ts` rule 3 | ✅ field: "Kernek road reported closed 560 m from the site, unconfirmed tweet, 20 min ago" |
+| **Fix:** volunteer and field chats failed with HTTP 400: their strict tools had 17 nullable parameters, the API allows 16. `ask_desk.page` and `answer_task.note` are no longer nullable (15 now) | `tools.ts` | ✅ both roles answer again. Keep the count ≤ 16 when adding a nullable field |
+| Prompt no longer asks to name records by id (it contradicted "never show internal ids") | `prompts.ts` | ✅ field reply has no ids |
+| Handoff to Role 1 for closures, shelter counts, hazards | `agents/HANDOFF-role1-roads-shelters-hazards.md` | — |
+
 ### Borrowed from "Related systems" (15 Nov, 01:40) — tested with real Claude
 
 | What | Source | Where | Test |

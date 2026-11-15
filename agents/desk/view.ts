@@ -3,7 +3,8 @@
 // Rules (Final system design §9, "Personal agents"): read only; every fact has a source and an
 // age from observedAt; a citizen never sees addresses or phone numbers.
 
-import type { Event, HistoryEntry, Incident, Need, Road, Role, Shelter, Site, Task } from "@/lib/types";
+import { haversineMeters } from "@/lib/geo";
+import type { Event, HistoryEntry, Incident, LatLng, Need, Road, Role, Shelter, Site, Task } from "@/lib/types";
 import { maskPhones } from "../shared/privacy";
 import type { Board } from "./port";
 
@@ -60,10 +61,51 @@ export function needLine(n: Need & { requestedBy?: string[] }, now: Date): strin
     `${n.lifeThreatening ? " · life-threatening" : ""} · ${n.support} person(s) asked · ` +
     `source ${lastSource(n.history, "desk")} · filed ${age(first, now)}`;
 }
-export function shelterLine(s: Shelter, now: Date): string {
+export function shelterLine(s: Shelter, now: Date, from?: LatLng): string {
   const free = s.bedsTotal - s.bedsUsed;
-  return `shelter ${s._id} · ${s.name} · ${s.region} · ${s.bedsUsed}/${s.bedsTotal} beds (${free} free) · ` +
+  const away = from && s.coords ? ` · ${distance(haversineMeters(from, s.coords))} away` : "";
+  return `shelter ${s._id} · ${s.name} · ${s.region} · ${s.bedsUsed}/${s.bedsTotal} beds (${free} free)${away} · ` +
     `source ${lastSource(s.history, "desk")} · number from ${age(s.observedAt, now)}`;
+}
+
+/** "350 m", "1.2 km". Straight line, not a route. */
+export function distance(m: number): string {
+  return m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(1)} km`;
+}
+
+/**
+ * Shelters for someone looking for a bed: ones with free beds first, then the nearest (when the
+ * person's position is known), then the most free beds. Full shelters go last.
+ */
+export function sheltersFor(shelters: Shelter[], from?: LatLng): Shelter[] {
+  const free = (s: Shelter) => s.bedsTotal - s.bedsUsed;
+  const far = (s: Shelter) => (from && s.coords ? haversineMeters(from, s.coords) : Infinity);
+  return [...shelters].sort((a, b) =>
+    Number(free(b) > 0) - Number(free(a) > 0) || far(a) - far(b) || free(b) - free(a));
+}
+
+/** A place this person is going to: a task's site, a shelter they were pointed to. */
+export interface Place { label: string; coords: LatLng }
+
+export const NEAR_ROAD_METERS = 1500;
+
+/**
+ * Roads that are not open, within `radius` of one of the places. One line per road, at its
+ * nearest place. Straight-line distance from the one point the road has, so it is a warning
+ * to check, not a routing answer.
+ */
+export function roadsNear(roads: Road[], places: Place[], now: Date, radius = NEAR_ROAD_METERS): string[] {
+  const out: { m: number; line: string }[] = [];
+  for (const r of roads) {
+    if (r.state === "open" || !r.coords) continue;
+    let best: { m: number; p: Place } | undefined;
+    for (const p of places) {
+      const m = haversineMeters(r.coords, p.coords);
+      if (m <= radius && (!best || m < best.m)) best = { m, p };
+    }
+    if (best) out.push({ m: best.m, line: `${roadLine(r, now)} · ${distance(best.m)} from ${best.p.label}` });
+  }
+  return out.sort((a, b) => a.m - b.m).map((x) => x.line);
 }
 export function roadLine(r: Road, now: Date): string {
   return `road ${r._id} · ${r.road} · ${r.state} (${r.confidence}) · ${r.reason} · ` +
@@ -97,7 +139,7 @@ const PAGE = 12;
 /** Answer for the ask_desk tool. Returns lines the model must quote, never invent around. */
 export function askDesk(args: {
   board: Board; events: Event[]; role: Role; topic: Topic; region?: string; now: Date;
-  userId?: string; page?: number;
+  userId?: string; page?: number; near?: LatLng;   // the person's position: shelters get a distance
 }): string {
   const { board: b, role, topic, region, now } = args;
   if (!CAN_SEE[role].includes(topic)) {
@@ -133,8 +175,8 @@ export function askDesk(args: {
       return cap(prio(b.needs.filter((n) => n.status !== "cancelled" && n.status !== "delivered" && inRegion(region, n.region)))
         .map((n) => needLine(n, now)));
     case "shelters":
-      return cap([...b.shelters].filter((s) => inRegion(region, s.region))
-        .sort((x, y) => (y.bedsTotal - y.bedsUsed) - (x.bedsTotal - x.bedsUsed)).map((s) => shelterLine(s, now)));
+      return cap(sheltersFor(b.shelters.filter((s) => inRegion(region, s.region)), args.near)
+        .map((s) => shelterLine(s, now, args.near)));
     case "roads":
       return cap(b.roads.filter((r) => r.state !== "open").map((r) => roadLine(r, now)));
     case "incidents":

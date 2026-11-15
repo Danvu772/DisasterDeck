@@ -33,7 +33,9 @@ const DEFS: Record<string, Tool> = {
     input_schema: obj({
       topic: { type: "string", enum: ["summary", "mine", "sites", "needs", "shelters", "roads", "incidents", "tasks"] },
       region: { ...nstr, description: "District or neighbourhood to filter by, or null for all." },
-      page: { ...nint, description: "0 for the first 12 lines, 1 for the next 12, and so on. null means 0." },
+      // Plain integer, not nullable: the API allows at most 16 nullable parameters across all of a
+      // request's strict tools, and the volunteer and field tool sets were at 17 (HTTP 400).
+      page: { type: "integer", description: "0 for the first 12 lines, 1 for the next 12, and so on." },
     }),
   },
   answer_task: {
@@ -42,7 +44,7 @@ const DEFS: Record<string, Tool> = {
     input_schema: obj({
       task_id: str,
       result: { type: "string", enum: ["accepted", "declined", "done"] },
-      note: nstr,
+      note: { ...str, description: "What they said about it, or an empty string. (Not nullable: see page above.)" },
       eta_minutes: { ...nint, description: "Minutes until done, if they said it." },
     }),
   },
@@ -195,7 +197,7 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       }
       const d = desk();
       const [board, events] = await Promise.all([d.getBoard(u.deskId), d.recentEvents(u.deskId, 60)]);
-      return { content: askDesk({ board, events, role: u.role, topic, region: s(i.region), now: ctx.now,
+      return { content: askDesk({ board, events, role: u.role, topic, region: s(i.region), now: ctx.now, near: u.coords,
         userId: u._id, page: n(i.page) }) };
     }
 
