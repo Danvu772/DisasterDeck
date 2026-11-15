@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { users } from "@/fixtures/desk";
+import { InboxBadge } from "./InboxBadge";
 import { StatusPill } from "./StatusPill";
 
 const LINKS = [
@@ -62,6 +63,7 @@ export function Nav({ account }: { account?: React.ReactNode }) {
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-3 lg:ml-0">
         <Suspense fallback={null}><ActingAs /></Suspense>
+        <InboxBadge />
         {account}
         <StatusPill />
       </div>

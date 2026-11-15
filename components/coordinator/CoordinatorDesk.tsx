@@ -1,6 +1,7 @@
 "use client";
 // The coordinator screen: decisions, tasks nobody fits, low-risk work handed out, open problems.
 // Polls GET /api/board. Until that route answers it shows the fixtures and says so.
+import { useEffect, useState } from "react";
 import type { User } from "@/lib/types";
 import { RecordCard } from "../RecordCard";
 import { IncidentCards } from "../BoardCards";
@@ -15,8 +16,18 @@ export function CoordinatorDesk({ initial, userId, people }: {
   const { data, live, now } = usePolled<CoordinatorSource>("/api/board", initial);
   const { approvals, escalated, problems } = fromBoard(data);
   const given = handedOut(data);
-  const nameOf = (id: string) => people.find((p) => p._id === id)?.name ?? id;
-  const pickable = people.filter((p) => p.role !== "coordinator" && p.role !== "public");
+  // The person list is asked once. Until it answers (or if it fails) the fixture people stand in.
+  const [roster, setRoster] = useState<User[] | null>(null);
+  useEffect(() => {
+    let stop = false;
+    fetch("/api/users", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => { if (!stop && Array.isArray(b)) setRoster(b as User[]); })
+      .catch(() => {});
+    return () => { stop = true; };
+  }, []);
+  const everyone = roster ?? people;
+  const nameOf = (id: string) => everyone.find((p) => p._id === id)?.name ?? id;
 
   return (
     <main className="mx-auto max-w-7xl p-4">
@@ -25,6 +36,7 @@ export function CoordinatorDesk({ initial, userId, people }: {
         <span className="text-sm text-muted">Acting as {nameOf(userId)} (demo)</span>
         <span className="ml-auto text-sm text-muted">
           {live ? "Live from the desk." : "Demo data, the board API is not answering."}
+          {!roster && " Demo data for the people list."}
         </span>
       </header>
 
@@ -39,7 +51,7 @@ export function CoordinatorDesk({ initial, userId, people }: {
             <div className="mt-2 space-y-2">
               {approvals.length === 0 && <p className="text-sm text-muted">Nothing is waiting.</p>}
               {approvals.map((it) => (
-                <ApprovalCard key={it.task._id} item={it} now={now} userId={userId} people={pickable} />
+                <ApprovalCard key={it.task._id} item={it} now={now} userId={userId} people={everyone} />
               ))}
             </div>
           </section>

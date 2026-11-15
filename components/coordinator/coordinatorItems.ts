@@ -1,5 +1,5 @@
 // Pure adapter: a board in, the three coordinator lists out. No fetching, no React.
-import type { Board, Confidence, Incident, Source, Task, Zone } from "@/lib/types";
+import type { Board, Confidence, Incident, Source, Task, User, Zone } from "@/lib/types";
 
 // Zones are optional so the fixture board (which has none) fits too.
 export type CoordinatorSource = Pick<Board, "sites" | "needs" | "roads" | "shelters" | "incidents" | "tasks"> & { zones?: Zone[] };
@@ -82,4 +82,13 @@ export function fromBoard(b: CoordinatorSource) {
     .filter((i) => i.status !== "resolved")
     .sort((x, y) => SEVERITY_ORDER[x.severity] - SEVERITY_ORDER[y.severity]);
   return { approvals, escalated, problems };
+}
+
+// Who Modify offers for a task. Rescue goes to field teams, call to volunteers, deliver to suppliers.
+// Other task types get every working role. Coordinators and citizens are never offered.
+const ROLE_FOR: Partial<Record<Task["type"], User["role"]>> = { rescue: "field", call: "volunteer", deliver: "supplier" };
+
+export function peopleFor(type: Task["type"], users: User[]): User[] {
+  const role = ROLE_FOR[type];
+  return users.filter((u) => (role ? u.role === role : u.role !== "coordinator" && u.role !== "public"));
 }

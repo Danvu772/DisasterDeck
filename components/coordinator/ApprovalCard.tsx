@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { User } from "@/lib/types";
 import { RecordCard } from "../RecordCard";
 import { button, minutesSince } from "../encode";
-import type { CoordinatorItem } from "./coordinatorItems";
+import { peopleFor, type CoordinatorItem } from "./coordinatorItems";
 
 type Sent = { busy: boolean; text?: string };
 
@@ -14,21 +14,23 @@ export function ApprovalCard({ item, now, userId, people }: {
   const { task, about } = item;
   const [sent, setSent] = useState<Sent>({ busy: false });
   const [modify, setModify] = useState(false);
-  const [pick, setPick] = useState(people[0]?._id ?? "");
+  const [pick, setPick] = useState("");
+  const options = peopleFor(task.type, people);
+  const chosen = options.find((p) => p._id === pick) ?? options[0];
 
   const waited = minutesSince(task.history[0]?.ts ?? task.deadline, now);
   const overdue = new Date(task.deadline).getTime() < now;
 
-  async function answer(approved: boolean) {
+  async function answer(approved: boolean, assignee?: string) {
     setSent({ busy: true, text: "Sending" });
     try {
       const r = await fetch(`/api/events?user=${encodeURIComponent(userId)}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ type: "approval", source: "person", payload: { taskId: task._id, approved } }),
+        body: JSON.stringify({ type: "approval", source: "person", payload: { taskId: task._id, approved, ...(assignee ? { assignee } : {}) } }),
       });
       if (r.ok) {
-        setSent({ busy: false, text: approved ? "Approved, sent" : "Rejected, sent" });
+        setSent({ busy: false, text: !approved ? "Rejected, sent" : assignee ? `Approved for ${chosen?.name ?? assignee}, sent` : "Approved, sent" });
       } else {
         const body = (await r.json().catch(() => null)) as { error?: string } | null;
         setSent({ busy: false, text: `Not sent: ${body?.error ?? `the desk answered ${r.status}`}` });
@@ -71,12 +73,14 @@ export function ApprovalCard({ item, now, userId, people }: {
         <div className="mt-2 rounded-card border border-line p-2 text-sm">
           <label className="flex flex-wrap items-center gap-2">
             Send someone else
-            <select value={pick} onChange={(e) => setPick(e.target.value)}
+            <select value={chosen?._id ?? ""} onChange={(e) => setPick(e.target.value)}
               className="rounded-button border border-muted bg-card px-2 py-1">
-              {people.map((p) => <option key={p._id} value={p._id}>{p.name}, {p.role}</option>)}
+              {options.map((p) => <option key={p._id} value={p._id}>{p.name}, {p.role}</option>)}
             </select>
+            <button className={button.primary} disabled={sent.busy || !chosen}
+              onClick={() => chosen && answer(true, chosen._id)}>Approve with this person</button>
           </label>
-          <p className="mt-1 text-muted">Modify is not wired to the API yet.</p>
+          {options.length === 0 && <p className="mt-1 text-muted">Nobody of the right kind is on the list.</p>}
         </div>
       )}
     </RecordCard>

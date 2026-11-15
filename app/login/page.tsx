@@ -1,9 +1,11 @@
 // Sign in. SSOJet handles Google, Microsoft and an agency's own sign-in (SAML/OIDC),
 // so one button covers all of them. Owner: Role 3.
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 import { button } from "@/components/encode";
+import { isLocalDemo } from "@/lib/localDemo";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,10 @@ export default async function LoginPage({ searchParams }: {
   const { error, callbackUrl } = await searchParams;
   const next = callbackUrl?.startsWith("/") ? callbackUrl : "/";
   if (await auth()) redirect(next);
+
+  // Only this laptop gets the shortcut. isLocalDemo also checks DEMO_MODE=1.
+  const h = await headers();
+  const localDemo = isLocalDemo({ headers: h, url: `http://${h.get("host") ?? "localhost"}/login` });
 
   async function signInWithSSOJet() {
     "use server";
@@ -45,7 +51,7 @@ export default async function LoginPage({ searchParams }: {
         <button type="submit" className={button.primary}>Sign in with SSOJet</button>
       </form>
 
-      {process.env.DEMO_MODE === "1" && (
+      {localDemo && (
         <p className="mt-6 text-sm text-muted">
           Demo laptop? <Link href="/" className="text-primary underline hover:text-primary-dark">Continue without signing in</Link>.
         </p>
