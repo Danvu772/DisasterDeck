@@ -6,9 +6,7 @@ Current pilot: **Antakya, Türkiye, February 2023**. The deterministic rehearsal
 
 ## Field voice
 
-The field phone (`/field`) takes voice reports through ElevenLabs. Hold to talk records a voice note, `/api/chat` turns it into text with ElevenLabs Scribe, the agent acts on it, and the answer comes back as ElevenLabs speech. **Start voice agent** turns on a hands-free mode: it listens, sends each sentence, reads the answer aloud and listens again, so a field team can answer tasks, report problems and file reports without touching the screen. It turns itself off after two minutes without speech.
-
-Set `ELEVENLABS_API_KEY` in `.env.local`. Without it the phone uses the browser's own speech recognition and voice, and voice agent mode is off. The microphone needs HTTPS or localhost.
+The field phone (`/field`) has hold to talk. It only dictates: the phone's own speech recognition (Web Speech API) types what the person says into the prompt box, and no audio leaves the phone. **Send** asks the agent exactly as the agents tab does (`components/agent/askDesk.ts`), and the same chart space shows the metric cards and map answers at the bottom of the screen. Talking needs HTTPS or localhost and a browser with speech recognition. Typing works everywhere.
 
 ## Replay real historical posts
 

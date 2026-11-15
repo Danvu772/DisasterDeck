@@ -34,9 +34,9 @@ const NEAR_SITE: LatLng = [37.5, 38.001];
 const AWAY: LatLng = [37.5, 37.9];
 
 const people = (): User[] => {
-  const base = { region: R, status: "available" as const, deskId: DESK };
+  const base = { region: R, status: "available" as const, deskId: DESK, lastSeen: new Date() };
   const mk = (id: string, role: User["role"], more: Partial<User> = {}): User => ({ ...base, _id: id, name: id, role, trust: "vetted", ...more });
-  const sup = (id: string, stock: Record<string, number>, more: Partial<User> = {}) => mk(id, "supplier", { profile: { stock }, ...more });
+  const sup = (id: string, stock: Record<string, number>, more: Partial<User> = {}) => mk(id, "supplier", { profile: { stock, vehicle: "truck" }, ...more });
   return [
     mk(U.ask, "public"), mk(U.ask2, "public"),
     sup(U.drv1, { blankets: 30 }, { coords: TRUCK }), sup(U.drv2, { water: 30 }, { coords: TRUCK }), sup(U.drv3, { tents: 10 }, { coords: TRUCK }),
@@ -71,8 +71,8 @@ async function again(id: string) {
   const ev = (await (await cols()).events.findOne({ _id: id }))!;
   await processEvent({ ...ev, status: "working" });
 }
-const need = (actor: string, item: string, quantity: number, siteId?: string) =>
-  send("need", "person", actor, { item, quantity, lifeThreatening: false, region: R, ...(siteId ? { siteId } : {}) });
+const need = (actor: string, item: string, quantity: number, siteId?: string, lifeThreatening = false) =>
+  send("need", "person", actor, { item, quantity, lifeThreatening, region: R, ...(siteId ? { siteId } : {}) });
 const answer = (actor: string, taskId: string, result: string, extra: object = {}) => send("answer", "person", actor, { taskId, result, ...extra });
 const incident = (actor: string, kind: string, textEn: string, taskId: string | undefined, canContinue: boolean, extra: object = {}) =>
   send("incident", "person", actor, { kind, text: textEn, textEn, canContinue, ...(taskId ? { taskId } : {}), ...extra });
@@ -117,9 +117,9 @@ const fixture = (over: Partial<Task> & Pick<Task, "type" | "recordId" | "assigne
 });
 
 /** The truck scenario: a deliver task accepted by `driver`, a field team waiting at the site, then the breakdown. */
-async function breakdown(item: string, driver: string, siteId: string) {
+async function breakdown(item: string, driver: string, siteId: string, lifeThreatening = false) {
   const c = await cols();
-  const created = await need(U.ask, item, 30, siteId);
+  const created = await need(U.ask, item, 30, siteId, lifeThreatening);
   const needId = created.result!.recordIds[0];
   const [t0] = await tasksFor(needId, "deliver");
   assert.equal(t0.assignee, driver, `the driver with ${item} gets the delivery`);
@@ -139,7 +139,8 @@ async function main() {
   await c.tasks.insertOne(fixture({ type: "rescue", recordId: "site-h-57", assignee: U.field, title: "Rescue at site 57" }));
 
   // ---------- 1. relay is closer ----------
-  const s1 = await breakdown("blankets", U.drv1, "site-h-57");
+  // Hypothermia at the site (flow 8.2): the blankets are life-threatening, so the breakdown is critical and gets a card (§6).
+  const s1 = await breakdown("blankets", U.drv1, "site-h-57", true);
   const inc1 = await incOf(s1.incId);
   const old1 = await taskById(s1.t0._id);
   assert.equal(old1.status, "blocked"); assert.equal(old1.open, false); assert.equal(old1.blockedBy, inc1._id);
@@ -179,7 +180,7 @@ async function main() {
   for (const re of [/reported vehicle breakdown/, /marked busy/, /blocked/, /replacement .* \(relay/, /assist task .* sent to/, /told the new ETA/]) {
     assert(lines.some((l) => re.test(l)), `an action line for ${re}: ${lines.join(" | ")}`);
   }
-  assert.equal(inc1.status, "helping"); assert.equal(inc1.severity, "high");
+  assert.equal(inc1.status, "helping"); assert.equal(inc1.severity, "critical", "a blocked life-threatening need");
   assert.equal((await userOf(U.drv1)).status, "busy");
   ok(`incident.actions has one line per step (${lines.length} lines), status helping, the driver is busy`);
 

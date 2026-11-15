@@ -420,6 +420,18 @@ export function buildSpec() {
         },
       },
       "/api/chat": {
+        get: {
+          tags: ["agents"],
+          summary: "Does this server have ElevenLabs voice?",
+          description: "Owned by Role 2. The field phone picks its microphone path from it. Only a yes or no leaves.",
+          security: [],
+          responses: {
+            200: {
+              description: "Voice notes go through ElevenLabs when true, the browser's own speech otherwise",
+              content: { "application/json": { schema: { type: "object", required: ["voice"], properties: { voice: { type: "boolean" } } } } },
+            },
+          },
+        },
         post: {
           tags: ["agents"],
           summary: "One turn with the person's own agent",

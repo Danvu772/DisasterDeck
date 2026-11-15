@@ -150,6 +150,8 @@ async function main() {
   assert.equal(evs[0].source, "system"); assert.equal(evs[0].lane, 0);
   ok("after the grace period exactly one unreachable incident event is posted by the sweeper");
 
+  // The others are on the app, so the replacement has someone to go to (a person never seen gets no task).
+  await c.users.updateMany({ _id: { $in: [U.v2, U.v3, U.v4] } }, { $set: { lastSeen: new Date() } });
   await settle();
   const ev = (await c.events.findOne({ _id: evs[0]._id }))!;
   assert.equal(ev.status, "done", ev.result?.reason);

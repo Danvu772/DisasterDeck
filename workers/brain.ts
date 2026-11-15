@@ -117,6 +117,9 @@ async function main() {
       if (s.timedOut || s.checkins || s.unreachable || s.reprioritized || s.created || s.reassigned) {
         log(`sweeper: ${s.timedOut} no answer, ${s.checkins} check-in(s), ${s.unreachable} unreachable, ${s.reprioritized} priority update(s), ${s.created} task(s) made, ${s.reassigned} task(s) reassigned`);
       }
+      if (s.approvalsLate || s.offline || s.sheltersAsked || s.roadsAsked || s.needsExpired) {
+        log(`sweeper: ${s.approvalsLate} approval(s) sent again, ${s.offline} task(s) off an offline person, ${s.sheltersAsked} shelter question(s), ${s.roadsAsked} road question(s), ${s.needsExpired} proposed need(s) cancelled`);
+      }
     }
     if (now - lastBeat >= 1000) { lastBeat = now; await markLoop(); }
     if (!event) await sleep(300);

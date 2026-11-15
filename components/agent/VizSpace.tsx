@@ -11,11 +11,16 @@ import type { MetricId } from "../metrics/types";
 import { ChartColumn, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MapCard } from "../metrics/MapCard";
+import type { MapItem } from "../map/mapItems";
 import { chip } from "../encode";
 import "./viz.css";
 
 // One prompt. `ids` is null while the agent thinks, [] when there is nothing to chart.
-export interface Ask { id: string; question: string; at: number; ids: MetricId[] | null }
+// `pins`: the record ids of the agent's show_on_map, in its order, when it showed a map.
+export interface Ask { id: string; question: string; at: number; ids: MetricId[] | null; pins?: string[] }
+
+const hasContent = (a: Ask) => !!(a.ids?.length || a.pins?.length);
 
 const STAGGER_MS = 120;
 const EMPTY_CLOSE_MS = 2000;
@@ -38,9 +43,10 @@ export function hhmm(ms: number): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-// "Shelters, 01:42" or "Shelters and roads, 01:44".
+// "Shelters, 01:42", "Shelters and roads, 01:44" or "Map, 01:45".
 export function askLabel(a: Ask): string {
-  const names = (a.ids ?? []).map((id, i) => (i === 0 ? NAME[id] : NAME[id].toLowerCase()));
+  const names = [...(a.ids ?? []).map((id) => NAME[id]), ...(a.pins?.length ? ["Map"] : [])]
+    .map((n, i) => (i === 0 ? n : n.toLowerCase()));
   return `${names.join(" and ")}, ${hhmm(a.at)}`;
 }
 
@@ -51,14 +57,14 @@ export type View =
 
 // Pure: what the space draws. A picked history row wins, else the newest prompt's state.
 export function viewOf(asks: Ask[], pick: string | null): View | null {
-  const charted = asks.filter((a) => a.ids?.length);
+  const charted = asks.filter(hasContent);
   const newest = charted.at(-1);
   const picked = pick ? charted.find((a) => a.id === pick) : undefined;
   if (picked) return { kind: "charts", ask: picked, live: picked === newest };
   const last = asks.at(-1);
   if (!last) return null;
   if (!last.ids) return { kind: "thinking", question: last.question };
-  if (!last.ids.length) return { kind: "empty" };
+  if (!hasContent(last)) return { kind: "empty" };
   return { kind: "charts", ask: last, live: true };
 }
 
@@ -77,8 +83,9 @@ function Thinking({ question }: { question: string }) {
   );
 }
 
-export function VizSpace({ asks, open, onClose, events, user }: {
+export function VizSpace({ asks, open, onClose, events, user, mapItems, now }: {
   asks: Ask[]; open: boolean; onClose: () => void; events?: Event[]; user?: string;
+  mapItems: MapItem[]; now: number;   // the live board as map records, for map answers
 }) {
   const [pick, setPick] = useState<string | null>(null);
   const [snaps, setSnaps] = useState<Record<string, Shown>>({});
@@ -90,8 +97,9 @@ export function VizSpace({ asks, open, onClose, events, user }: {
     setPick(null);
   }
 
-  const charted = asks.filter((a) => a.ids?.length);
-  const liveAsk = charted.at(-1);
+  const charted = asks.filter(hasContent);
+  // Only an ask with metrics polls them. A map answer reads the board AgentDesk already polls.
+  const liveAsk = asks.filter((a) => a.ids?.length).at(-1);
   const liveId = liveAsk?.id;
   const view = viewOf(asks, pick);
   const snap = view?.kind === "charts" ? snaps[view.ask.id] : undefined;
@@ -132,15 +140,15 @@ export function VizSpace({ asks, open, onClose, events, user }: {
     return () => clearInterval(t);
   }, [showLive]);
 
-  let body: ReactNode = null;
-  if (view?.kind === "thinking") body = <Thinking question={view.question} />;
-  else if (view?.kind === "empty") body = <p role="status" className="text-sm text-muted-foreground">Nothing to chart for this one.</p>;
-  else if (view?.kind === "charts" && !snap) {
-    body = view.live
+  // The charts part of an ask that has metrics. A map answer draws above it.
+  const metric = view?.kind === "charts" && !!view.ask.ids?.length;
+  let metrics: ReactNode = null;
+  if (view?.kind === "charts" && metric && !snap) {
+    metrics = view.live
       ? <Thinking question={view.ask.question} />
       : <p className="text-sm text-muted-foreground">Closed before the board answered. No values kept.</p>;
-  } else if (view?.kind === "charts" && snap) {
-    body = (
+  } else if (view?.kind === "charts" && metric && snap) {
+    metrics = (
       <>
         <div className="flex">
           {!view.live ? <Badge variant="outline">As of <span className="font-mono">{hhmm(snap.at)}</span></Badge>
@@ -156,6 +164,18 @@ export function VizSpace({ asks, open, onClose, events, user }: {
             <MetricCard result={r} />
           </div>
         ))}
+      </>
+    );
+  }
+
+  let body: ReactNode = null;
+  if (view?.kind === "thinking") body = <Thinking question={view.question} />;
+  else if (view?.kind === "empty") body = <p role="status" className="text-sm text-muted-foreground">Nothing to chart for this one.</p>;
+  else if (view?.kind === "charts") {
+    body = (
+      <>
+        {view.ask.pins?.length ? <MapCard key={view.ask.id} ids={view.ask.pins} items={mapItems} now={now} /> : null}
+        {metrics}
       </>
     );
   }

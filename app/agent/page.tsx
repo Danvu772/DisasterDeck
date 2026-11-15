@@ -1,6 +1,7 @@
 // Agent page: one person's own agent and tasks, with the desk's event feed below.
 // ?user=<id> picks the person (demo only, replaced by login later).
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { FirstMinute } from "@/components/FirstMinute";
 import { AgentDesk } from "@/components/AgentDesk";
 import { makeEvents, makeMessages, users } from "@/fixtures/desk";
@@ -13,6 +14,8 @@ export const dynamic = "force-dynamic";
 export default async function AgentPage({ searchParams }: { searchParams: Promise<{ user?: string }> }) {
   const { user: id } = await searchParams;
   const user = users.find((u) => u._id === id) ?? users[0];
+  // The inbox poll reads ?user= to stamp lastSeen, so the URL has to name the person on screen.
+  if (user._id !== id) redirect(`/agent?user=${encodeURIComponent(user._id)}`);
   const now = Date.now();
   // The real board first, so the top task is what the desk has for this person. The demo board
   // only when the database cannot be reached, and the screen says so.

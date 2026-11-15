@@ -99,9 +99,9 @@ async function main() {
 
   // Config-only subsystems
   rows.push({
-    subsystem: "voice (ElevenLabs, field)",
+    subsystem: "voice (ElevenLabs)",
     status: set("ELEVENLABS_API_KEY") ? "ok" : "off",
-    detail: set("ELEVENLABS_API_KEY") ? "key set: voice notes and the voice agent on /field" : "no key: /field falls back to the phone's own speech",
+    detail: set("ELEVENLABS_API_KEY") ? "key set: /api/chat takes voice notes" : "no key: /api/chat takes text only (/field dictates on the phone, it does not need this)",
   });
   rows.push({ subsystem: "auth (SSOJet)", status: set("SSOJET_CLIENT_ID") && set("AUTH_SECRET") ? "ok" : "off", detail: `${process.env.DEMO_MODE === "true" ? "demo mode on" : "demo mode off"}, AUTH_SECRET ${set("AUTH_SECRET") ? "set" : "missing"}` });
   rows.push({ subsystem: "map tiles (Mapbox)", status: set("NEXT_PUBLIC_MAPBOX_TOKEN") ? "ok" : "off", detail: set("NEXT_PUBLIC_MAPBOX_TOKEN") ? "token set" : "token missing" });

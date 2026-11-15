@@ -1,0 +1,6 @@
+[Unit]
+Description=Disaster Desk: redeploy if origin/main moved
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/desk-deploy

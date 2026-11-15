@@ -16,9 +16,18 @@
 .viz-in {
   animation: viz-in 250ms ease-out both;
 }
+/* A map answer's pins drop in once, one after another (the delay is inline, components/metrics/PinMap). */
+@keyframes viz-drop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: none; }
+}
+.viz-drop {
+  animation: viz-drop 120ms ease-out both;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .viz-shimmer,
+  .viz-drop,
   .viz-in {
     animation: none;
   }

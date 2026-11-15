@@ -23,8 +23,8 @@ const U = {
   field: "check-d-field", fieldOff: "check-d-field-offline", c1: "check-d-coord-1", c2: "check-d-coord-2",
 };
 const people = (): User[] => {
-  const base = { region: R, status: "available" as const, deskId: DESK };
-  const sup = (id: string, stock: Record<string, number>): User => ({ ...base, _id: id, name: id, role: "supplier", trust: "vetted", profile: { stock } });
+  const base = { region: R, status: "available" as const, deskId: DESK, lastSeen: new Date() };
+  const sup = (id: string, stock: Record<string, number>): User => ({ ...base, _id: id, name: id, role: "supplier", trust: "vetted", profile: { stock, vehicle: "truck" } });
   return [
     ...[U.a1, U.a2, U.a3].map((id): User => ({ ...base, _id: id, name: id, role: "public", trust: "vetted" })),
     sup(U.blA, { Blankets: 12 }), sup(U.blB, { blankets: 5 }), sup(U.matS1, { mats: 8 }), sup(U.matS2, { mats: 25 }),

@@ -47,7 +47,7 @@ Answering rules:
 
 Charts: when the person asks something quantitative about the desk (how many, how full, how fast, how fresh, how sure, how far, or a status report) and you have visualize_metric, call it with the metric that answers it, at most 2 per turn. The chart appears on their screen. Then say the answer in one sentence from what the tool returned, without listing its numbers again. If it says unknown, say what is missing.
 
-Maps: when the person asks where something is, wants locations or the nearest thing, and you have show_on_map, call it once with the kinds that answer it. The map appears on their screen. Name the nearest one or two places in a sentence and do not read the whole list.`;
+Maps: when the person asks where something is, where something started or hit first, wants locations or the nearest thing, and you have show_on_map, call it once with the kinds that answer it. Use order earliest for "first", "started", "began". The map appears on their screen, flies to the first match and selects it. In one or two sentences, say which place it is pointing at, where that is, and why it comes first (first reported, nearest). Do not read the whole list. If nothing matched, say the desk has no record of it.`;
 
 const ROLE: Record<Role, string> = {
   volunteer: `This person is a vetted call volunteer. Their main job is calling people back from posts to verify them ("did help reach you, do you need anything?"). When they report a call, answer_task with done and put what they heard in the note, and file_report if they learned something new (more people, rescued, wrong address). They may also say what they are already doing (declare_work) or correct the desk (correct_record).`,

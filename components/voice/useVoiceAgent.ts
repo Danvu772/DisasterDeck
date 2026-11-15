@@ -1,6 +1,6 @@
 "use client";
-// Voice agent mode: hands-free control of the field agent through ElevenLabs, for a team with full
-// hands or anyone who cannot use the screen. Turn it on once. It listens, records each sentence,
+// The voice agent (/voice): hands-free control of the person's own agent through ElevenLabs, for a
+// team with full hands or anyone who cannot use the screen. Turn it on once. It listens, records each sentence,
 // sends it to /api/chat as a voice note (ElevenLabs Scribe turns it into text, the agent acts on it,
 // ElevenLabs speaks the answer), plays the answer and listens again. Everything the agent does from
 // text it does from here: answer a task, report a problem, file a report or a closed road, ask the desk.
@@ -10,7 +10,7 @@
 // While the agent thinks or speaks, the microphone is ignored, so it never hears itself.
 // It turns itself off after IDLE_MS without speech, so a forgotten phone does not spend voice credits.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { askAgent, makePlayer, recorderMime, toDataUrl, type AgentAction, type Player } from "./voiceClient";
+import { askAgent, makePlayer, recorderMime, toDataUrl, type AgentAction, type Player } from "../field/voiceClient";
 
 export type AgentState = "off" | "starting" | "listening" | "hearing" | "thinking" | "speaking" | "waiting";
 export interface Exchange { said: string; reply: string; actions: AgentAction[] }

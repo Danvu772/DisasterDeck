@@ -4,7 +4,7 @@
 //   - The same site asking again is the same line said again: keep the larger number.
 //     Another site is a new line, and the lines travel together in one delivery.
 //   - Open at once for a trusted asker or danger to life. Public: proposed until 3 people ask.
-import type { Need, Trust } from "../types";
+import type { Need, Tier, Trust } from "../types";
 import { sameItem } from "./assign";
 
 export const OPEN_AFTER = 3;
@@ -27,3 +27,12 @@ export function needStatus(current: Need["status"] | undefined, support: number,
 }
 
 export const isTrusted = (t: Trust) => t === "official" || t === "vetted";
+
+/** §5 tier 2, comfort: hot meals, phone chargers and the like. Water, food, medicine, warmth stay urgent. */
+const COMFORT = /\bhot (meal|food|drink)s?\b|\bburgers?\b|\bpizzas?\b|\bsnacks?\b|\bcoffee\b|\btea\b|\bchargers?\b|power ?banks?|\btoys?\b|\bbooks?\b|\bcigarettes?\b|sıcak yemek|sicak yemek|şarj|sarj|\bçay\b|\bkahve\b|oyuncak/i;
+export const isComfortItem = (item: string) => COMFORT.test(item);
+
+/** 0 danger to life, 2 comfort, 1 the rest. */
+export function needTier(item: string, lifeThreatening: boolean): Tier {
+  return lifeThreatening ? 0 : isComfortItem(item) ? 2 : 1;
+}
