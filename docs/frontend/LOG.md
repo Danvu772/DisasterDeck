@@ -2,6 +2,11 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 23:30 t23 and t24 merged (`fbf48d2`, `865301d`)
+- **t23** every desk feed entry on `/agent` opens its report in the feed column: who and when, the payload in plain labels, what the desk did, and links to the records it touched (`/?open=`). Checked in the browser: the Instagram shelter photo says "Observed 2 h before the desk got it." and links Shelter A. Needs Role 1's `GET /api/events` to show more than the props.
+- **t24** `/field` lists "Your other tasks (3)" under the current task, sorted by tier then priority, overdue in red. Tap one to make it current, `?task=` keeps it. Checked at 390 px.
+- **Orchestra:** the first merge of both failed because the other session committed to main between our push and our fast-forward. A retry went through. If it happens again, `dd merge <id>` twice.
+
 ### 23:10 t22 merged (`250db0c`), SSO nonce (`26f9c3f`), t23 restarted, t24 queued
 - **t22** opening a card no longer covers the board. On a laptop the board and the detail panel sit side by side, the cards drop to fewer columns, and the clicked card stays in view. Phones keep the full-screen sheet.
 - **SSO:** Dan got through SSOJet's confirmation code. Auth.js then rejected the ID token with "unexpected nonce claim value": SSOJet always puts a nonce in the token, and we had not sent one. `checks: ["pkce", "state", "nonce"]` fixes it. A full sign-in still needs a person to confirm.

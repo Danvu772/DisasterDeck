@@ -6,8 +6,6 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 
 | Task | Effort | What |
 |---|---|---|
-| [t23-feed-report](tasks/t23-feed-report.md) | medium | click a desk feed entry on `/agent`, get its report |
-| [t24-field-task-list](tasks/t24-field-task-list.md) | medium | `/field` lists all the team's tasks, tap one to work on it |
 
 ## Next (queued)
 
@@ -49,3 +47,5 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 | [t19-phone-polish](tasks/t19-phone-polish.md): legend collapses on a phone, "Acting as" on `/field` | `40ad010` |
 | [t21-record-detail](tasks/t21-record-detail.md): card detail panel with map, one Incident sites tab | `ff2a002` |
 | [t22-panel-push](tasks/t22-panel-push.md): the detail panel pushes the board aside | `250db0c` |
+| [t23-feed-report](tasks/t23-feed-report.md): desk feed entries open a report | `fbf48d2` |
+| [t24-field-task-list](tasks/t24-field-task-list.md): `/field` lists every task of the team | `865301d` |
