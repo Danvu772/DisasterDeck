@@ -192,7 +192,7 @@ export function DetailPanel({ board, now, live, openKey, onOpen, onClose }: {
 
           <header>
             <div className="flex items-center gap-2.5">
-              <KindIcon type={kind} tier={head.tier} actNow={head.actNow} className="size-9" />
+              <KindIcon type={kind} record={record} tier={head.tier} actNow={head.actNow} className="size-9" />
               <span className="text-xs text-muted-foreground">{KIND_WORD[kind]}</span>
               <TierBadge tier={head.tier} actNow={head.actNow} className="ml-auto" />
             </div>
@@ -274,7 +274,7 @@ export function DetailPanel({ board, now, live, openKey, onOpen, onClose }: {
                     <li key={`${l.why}:${l.key}`}>
                       <button type="button" onClick={() => onOpen(l.key)}
                         className="group flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors hover:bg-secondary/60">
-                        <KindIcon type={l.kind} tier={s.tier} actNow={s.actNow} className="size-7" />
+                        <KindIcon type={l.kind} record={l.record} tier={s.tier} actNow={s.actNow} className="size-7" />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium first-letter:uppercase">{s.title}</span>
                           <span className="block text-xs text-muted-foreground">{KIND_WORD[l.kind]} · {statusWord(s.status)}</span>

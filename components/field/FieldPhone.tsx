@@ -1,10 +1,11 @@
 "use client";
 // The field team's phone. One task, big buttons, works with one thumb and a bad network.
 // Polls GET /api/board, falls back to the demo board and says so.
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ComponentType } from "react";
+import { INCIDENT_ICON } from "@/components/icons/things";
 import {
-  Ambulance, Car, ChevronDown, ChevronRight, CircleCheck, CircleAlert, Clock, CloudOff, HandHelping, LifeBuoy,
-  MapPin, MapPinOff, Megaphone, Mic, Navigation, Phone, Sparkles, TriangleAlert, Truck, Users, type LucideIcon,
+  Ambulance, ChevronDown, ChevronRight, CircleCheck, CircleAlert, Clock, CloudOff, HandHelping, LifeBuoy,
+  MapPin, Megaphone, Mic, Navigation, Phone, Sparkles, TriangleAlert, Truck, Users, type LucideIcon,
 } from "lucide-react";
 import type { IncidentKind, LatLng, Task } from "@/lib/types";
 import { usePolled } from "@/components/map/usePolled";
@@ -43,11 +44,12 @@ function Reply({ text }: { text: string }) {
 type Panel = "eta" | "done" | "problem" | null;
 
 const ETAS = [10, 20, 30, 60];
-const PROBLEMS: { kind: IncidentKind; label: string; text: string; icon: LucideIcon }[] = [
-  { kind: "vehicle_breakdown", label: "Vehicle", text: "Our vehicle broke down, we cannot continue.", icon: Car },
-  { kind: "road_blocked", label: "Road blocked", text: "The road is blocked, we cannot get through.", icon: TriangleAlert },
-  { kind: "cannot_find", label: "Can't find it", text: "We cannot find the address.", icon: MapPinOff },
-  { kind: "other", label: "Other", text: "We have a problem and cannot continue.", icon: CircleAlert },
+// The same icons these problems get on the map, from one table (icons/things.ts).
+const PROBLEMS: { kind: IncidentKind; label: string; text: string; icon: ComponentType<{ className?: string }> }[] = [
+  { kind: "vehicle_breakdown", label: "Vehicle", text: "Our vehicle broke down, we cannot continue.", icon: INCIDENT_ICON.vehicle_breakdown },
+  { kind: "road_blocked", label: "Road blocked", text: "The road is blocked, we cannot get through.", icon: INCIDENT_ICON.road_blocked },
+  { kind: "cannot_find", label: "Can't find it", text: "We cannot find the address.", icon: INCIDENT_ICON.cannot_find },
+  { kind: "other", label: "Other", text: "We have a problem and cannot continue.", icon: INCIDENT_ICON.other },
 ];
 
 const KIND: Record<Task["type"], { word: string; icon: LucideIcon }> = {
@@ -332,7 +334,7 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
                   {PROBLEMS.map((p) => (
                     <Button key={p.kind} variant="outline" disabled={busy} onClick={() => problem(p)}
                       className="h-20 flex-col gap-1.5 rounded-xl text-base [&_svg:not([class*='size-'])]:size-5">
-                      <p.icon />{p.label}
+                      <p.icon className="size-5" />{p.label}
                     </Button>
                   ))}
                 </div>

@@ -3,7 +3,6 @@
 // aftershocks up to the scenario time, on the desk's MapLibre basemap (same look as /map).
 // Hover a pin for its one-line label. Browser only: OpsRoom loads this with next/dynamic.
 import "maplibre-gl/dist/maplibre-gl.css";
-import { BedDouble, Construction, Package } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import MapGL, { Layer, Marker, NavigationControl, Source, type MapRef } from "react-map-gl/maplibre";
 import type { LatLng } from "@/lib/types";
@@ -12,6 +11,7 @@ import { DISTRICTS } from "@/fixtures/opsPosts";
 import { markerSize } from "../encode";
 import { tokenColor } from "../map/gl/tokens";
 import { useIsDark } from "../theme/theme";
+import { KCone, KPackage, KRoadblock, KTent } from "../icons/koboyo";
 import type { OpsPin, Quake } from "./opsModel";
 
 const CARTO = {
@@ -26,7 +26,7 @@ function Pin({ p, fresh }: { p: OpsPin; fresh: boolean }) {
     return (
       <span title={p.label} className={cn("flex h-5 items-center rounded-full border-2 bg-background px-1 text-foreground shadow-sm",
         p.label.startsWith("Road closed") ? "border-foreground" : "border-dashed border-muted-foreground", fresh && "map-ring")}>
-        <Construction className="size-3" />
+        {p.label.startsWith("Road closed") ? <KRoadblock className="size-3.5" /> : <KCone className="size-3" />}
       </span>
     );
   }
@@ -38,7 +38,7 @@ function Pin({ p, fresh }: { p: OpsPin; fresh: boolean }) {
           p.actNow && !p.closed && "marker-pulse", p.closed && "opacity-60", fresh && "map-ring")} />
     );
   }
-  const Icon = p.kind === "shelter" ? BedDouble : Package;
+  const Icon = p.kind === "shelter" ? KTent : KPackage;
   return (
     <span title={p.label} className={cn("flex size-5 items-center justify-center rounded-md border-2 border-background shadow-sm", tone, fresh && "map-ring")}>
       <Icon className="size-3" />
@@ -93,7 +93,8 @@ export default function OpsMap({ pins, quakes, freshKey }: { pins: OpsPin[]; qua
       </MapGL>
       <div className="pointer-events-none absolute top-3 left-3 hidden rounded-lg border bg-background/90 px-2.5 py-2 text-[11px] text-muted-foreground shadow-sm backdrop-blur md:block">
         <p className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-destructive" />Trapped people</p>
-        <p className="flex items-center gap-2"><span className="size-2.5 rounded-sm bg-warning" />Need</p>
+        <p className="flex items-center gap-2"><KPackage className="size-3 text-foreground" />Need</p>
+        <p className="flex items-center gap-2"><KTent className="size-3 text-foreground" />Shelter</p>
         <p className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-calm" />Rescued</p>
         <p className="flex items-center gap-2"><span className="size-2.5 rounded-full border-2 border-warning" />Aftershock</p>
       </div>

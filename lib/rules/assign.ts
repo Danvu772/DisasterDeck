@@ -6,8 +6,9 @@
 //   3. free: status available, seen in the last 3 minutes, fewer than 3 open tasks. Never seen
 //      counts as not seen: a person who never opened the app cannot answer a task (R1-1)
 //   4. not in the task's tried list
-// Among those: nearest first (straight line, or the same region when a position is missing),
-// then fewest open tasks. Nobody passes: the reason says which line stopped each person.
+// Among those: people whose screen is open now first (seen in the last 3 minutes), then nearest
+// (straight line, or the same region when a position is missing), then fewest open tasks.
+// Nobody passes: the reason says which line stopped each person.
 import { haversineMeters } from "../geo";
 import type { LatLng, Role, User } from "../types";
 
@@ -15,6 +16,11 @@ export const SEEN_WITHIN_MS = 3 * 60_000;
 export const MAX_OPEN_TASKS = 3;
 
 export interface Place { coords?: LatLng; region: string }
+
+/** The person's screen read their inbox in the last 3 minutes: they will see a task now. */
+export function isOnline(u: { lastSeen?: Date | string }, now: Date = new Date()): boolean {
+  return Boolean(u.lastSeen) && now.getTime() - new Date(u.lastSeen!).getTime() <= SEEN_WITHIN_MS;
+}
 
 export type Pick =
   | { ok: true; user: User; meters?: number; short?: { has: number; want: number } }
@@ -58,10 +64,10 @@ export function pickPerson(
   }
 
   const meters = (u: User) => (place.coords && u.coords ? haversineMeters(place.coords, u.coords) : undefined);
-  // Known distance first, then same region, then the rest. Ties: fewest open tasks.
+  // Online first. Then known distance, then same region, then the rest. Ties: fewest open tasks.
   const rank = (u: User) => {
     const m = meters(u);
-    return m !== undefined ? m : u.region === place.region ? 1e9 : 2e9;
+    return (isOnline(u, now) ? 0 : 1e10) + (m !== undefined ? m : u.region === place.region ? 1e9 : 2e9);
   };
   const best = [...fits].sort((a, b) => rank(a) - rank(b) || (openTasks.get(a._id) ?? 0) - (openTasks.get(b._id) ?? 0))[0];
   return { ok: true, user: best, meters: meters(best) };

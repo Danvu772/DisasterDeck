@@ -216,6 +216,7 @@ export function contextBlock(ctx: UserContext, quakes?: Quakes): string {
     section("Open incidents, most severe first", ctx.openIncidents, (i) => incidentLine(i, now), 10,
       (more) => `${countBy(more, (i) => i.severity)}; ${countBy(more, (i) => i.kind)}`, "incidents");
     section("Waiting for their approval", ctx.approvals, (t) => taskLine(t, now, { showDetail: true }), 8, taskRest, "summary");
+    section("Stuck, nobody took them (assign_task gives one to a person)", ctx.stuck, (t) => taskLine(t, now, { showDetail: true }), 8, taskRest, "tasks");
   }
   section("Needs they filed", ctx.myNeeds, (n) => needLine(n, now), 6, (more) => countBy(more, (n) => n.item), "mine");
   section("Their open problems", ctx.myIncidents, (i) => incidentLine(i, now), 6, (more) => countBy(more, (i) => i.status), "mine");

@@ -1,8 +1,8 @@
 // Human words for records: kind, status, trust, who did it. Pure, no JSX, safe in server components.
 // `fields()` is kept for callers that want a plain list, but it only returns what a person cares about.
-import {
-  BedDouble, ClipboardList, Construction, House, type LucideIcon, Package, Satellite, TriangleAlert,
-} from "lucide-react";
+import { ClipboardList, Satellite, Users } from "lucide-react";
+import type { ComponentType } from "react";
+import { KDanger, KPackage, KRoadblock, KTent } from "../icons/koboyo";
 import { users } from "@/fixtures/desk";
 import type { Confidence } from "@/lib/types";
 import { ageText } from "../encode";
@@ -14,9 +14,11 @@ export const KIND_WORD: Record<DetailKind, string> = {
   site: "Site", need: "Need", shelter: "Shelter", road: "Road", incident: "Field problem", task: "Task",
 };
 
-// One icon per record kind. "zone" is here so RecordCard can take any RecordType.
-export const KIND_ICON: Record<DetailKind | "zone", LucideIcon> = {
-  site: House, need: Package, shelter: BedDouble, road: Construction, incident: TriangleAlert, task: ClipboardList,
+// One icon per record kind (Koboyo, see icons/koboyo.tsx). The default only: with the record at hand,
+// KindIcon asks icons/things.ts thingIcon() first, so a fire site shows the fire, like its map marker.
+// A site with no danger shows people, as on the map list. "zone" is here so RecordCard can take any RecordType.
+export const KIND_ICON: Record<DetailKind | "zone", ComponentType<{ className?: string }>> = {
+  site: Users, need: KPackage, shelter: KTent, road: KRoadblock, incident: KDanger, task: ClipboardList,
   zone: Satellite,
 };
 

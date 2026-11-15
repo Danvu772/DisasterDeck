@@ -37,6 +37,7 @@ export interface UserContext {
   inbox: InboxItem[];                 // unread items for this person
   tasks: Task[];                      // their open tasks, tier then priority
   approvals: Task[];                  // coordinators only: tasks waiting for approval
+  stuck: Task[];                      // coordinators only: open tasks nobody took (escalated)
   myNeeds: NeedWithAsker[];           // needs this person filed
   myIncidents: Incident[];            // open incidents this person reported
   openIncidents: Incident[];          // coordinators only: every open incident, most severe first
@@ -70,6 +71,9 @@ export function composeContext(args: {
   const approvals = user.role === "coordinator"
     ? board.tasks.filter((t) => t.status === "waiting_approval").sort(byPriority)
     : [];
+  const stuck = user.role === "coordinator"
+    ? board.tasks.filter((t) => t.open && t.status === "escalated").sort(byPriority)
+    : [];
   const touched = new Set(tasks.map((t) => t.recordId));
   const myNeeds = board.needs
     .filter((n) => n.requestedBy?.includes(user._id) && n.status !== "cancelled")
@@ -82,7 +86,7 @@ export function composeContext(args: {
   return {
     user, now,
     inbox: inbox.filter((i) => i.userId === user._id && i.status === "unread"),
-    tasks, approvals, myNeeds, myIncidents, openIncidents,
+    tasks, approvals, stuck, myNeeds, myIncidents, openIncidents,
     records: {
       sites: board.sites.filter((s) => touched.has(s._id)),
       needs: board.needs.filter((n) => touched.has(n._id)),

@@ -20,7 +20,7 @@
 import { MongoServerError, type Filter } from "mongodb";
 import { cols, newId } from "../lib/db";
 import { haversineMeters } from "../lib/geo";
-import { distanceText, pickPerson, SEEN_WITHIN_MS, stockOf, type Pick, type Place } from "../lib/rules/assign";
+import { distanceText, isOnline, pickPerson, SEEN_WITHIN_MS, stockOf, type Pick, type Place } from "../lib/rules/assign";
 import { PLAYBOOK } from "../lib/rules/incidents";
 import type { HistoryEntry, Incident, InboxItem, LatLng, Need, Road, Role, ScorePart, Shelter, Site, Task, User } from "../lib/types";
 import { confirmedSince, noteIncidentStep, noteNeedAssigned, noteNeedResumed, restNeedId, setIncidentStatus, type Change, type TaskAction } from "./memory-keeper";
@@ -211,14 +211,46 @@ async function declined(task: Task, by: string, note?: string): Promise<void> {
 }
 
 /**
- * The sweeper's "no answer": the deadline passed on an assigned task. The person goes into
- * `tried` and the task moves on exactly like a decline. A conditional update, so a second tick
- * (or a second Brain) handles each task once. `now` also starts the next person's clock.
+ * The sweeper's "no answer": the deadline passed on an assigned task. Silence is not a no, so a
+ * task never dead-ends on it and the person does not go into `tried`:
+ *   - the person's screen is open (seen in the last 3 minutes): the task stays with them;
+ *   - else, someone else who fits has their screen open: the task moves to them;
+ *   - else it stays where it is, and the next person to open their screen sees it there.
+ * Staying only renews the deadline (no history line, no new inbox item). A conditional update,
+ * so a second tick (or a second Brain) handles each task once.
  */
 export async function timedOut(task: Task, now: Date = new Date()): Promise<void> {
-  if (!task.assignee) return;
-  const said = entry(`timed out, no answer from ${task.assignee} in ${ANSWER_MINUTES} min`);
-  await handOver(task, task.assignee, said, now, { status: "assigned", deadline: { $lt: now } });
+  await moveOnSilence(task, now, false);
+}
+
+/**
+ * The one rule behind both silences: past the deadline (timedOut) and gone from the app before it
+ * (offlineTimedOut, §5 "person not seen for 3 minutes: their unanswered tasks time out now"). The
+ * task moves only to someone whose screen is open, nobody goes into `tried`, nothing escalates.
+ * `early`: the deadline has not passed, so staying put writes nothing.
+ */
+async function moveOnSilence(task: Task, now: Date, early: boolean): Promise<boolean> {
+  if (!task.assignee) return false;
+  const { tasks, users } = await cols();
+  const guard = { _id: task._id, assignee: task.assignee, status: "assigned" as const, ...(early ? {} : { deadline: { $lt: now } }) };
+  const me = await users.findOne({ _id: task.assignee }, { projection: { lastSeen: 1 } });
+  const online = Boolean(me && isOnline(me, now));
+  if (early && online) return false;
+  const pick = online ? null : await pickFor(task, [...task.tried, task.assignee], now);
+  if (!pick?.ok || !isOnline(pick.user, now)) {
+    if (!early) await tasks.updateOne(guard, { $set: { deadline: deadline(now) } });
+    return false;
+  }
+  const said = early
+    ? `${task.assignee} not seen for ${SEEN_WITHIN_MS / 60_000} min, counts as offline: the task moves on now`
+    : `no answer from ${task.assignee} in ${ANSWER_MINUTES} min, not on the app`;
+  const r = await tasks.updateOne(guard, {
+    $set: { assignee: pick.user._id, deadline: deadline(now) },
+    $unset: { eta: "", progress: "", checkinAt: "" },
+    $push: { history: { $each: [entry(said), entry(`reassigned to ${pick.user._id}${near(pick)}`)] } },
+  });
+  if (r.modifiedCount) await inboxTask({ ...task, assignee: pick.user._id });
+  return r.modifiedCount > 0;
 }
 
 async function handOver(task: Task, by: string, said: HistoryEntry, now: Date, guard: Filter<Task>): Promise<boolean> {
@@ -278,15 +310,11 @@ export async function syncPriority(changes: { recordId: string; priority: number
 
 /**
  * The person on an assigned task has not been seen for SEEN_WITHIN_MS: they count as offline and the
- * task moves on now, without waiting for its deadline (§5 sweeper, "person not seen for 3 minutes").
+ * task moves now, without waiting for its deadline, to someone whose screen is open (§5 sweeper,
+ * "person not seen for 3 minutes"). Nobody free: it stays, and the deadline rule takes it from there.
  */
 export async function offlineTimedOut(task: Task, now: Date = new Date()): Promise<boolean> {
-  if (!task.assignee) return false;
-  const { users } = await cols();
-  const u = await users.findOne({ _id: task.assignee }, { projection: { lastSeen: 1 } });
-  if (u?.lastSeen && now.getTime() - new Date(u.lastSeen).getTime() <= SEEN_WITHIN_MS) return false;
-  const said = entry(`${task.assignee} not seen for ${SEEN_WITHIN_MS / 60_000} min, counts as offline: the task moves on now`);
-  return handOver(task, task.assignee, said, now, { status: "assigned" });
+  return moveOnSilence(task, now, true);
 }
 
 /** An approval nobody answered by its deadline: marked late and sent again to every coordinator. The desk never approves by itself (§5). */
@@ -387,7 +415,7 @@ async function approved(task: Task, by: string, assignee?: string, eventId?: str
     const u = proposed ? await users.findOne({ _id: proposed, deskId: task.deskId }) : null;
     pick = u ? { ok: true, user: u } : await pickFor(task, task.tried);
   }
-  const why = task.status === "escalated" ? `${by} picked ${assignee}` : assignee ? `approved by ${by}, sent ${assignee} instead` : `approved by ${by}`;
+  const why = task.status === "escalated" ? `assigned by ${by}` : assignee ? `approved by ${by}, sent ${assignee} instead` : `approved by ${by}`;
   const r = await tasks.updateOne({ _id: task._id, status: DECIDES }, pick.ok
     ? { $set: { status: "assigned", assignee: pick.user._id, deadline: deadline() }, $unset: { overdue: "" }, $push: { history: entry(`${why}, assigned to ${pick.user._id}${near(pick)}`, by) } }
     : { $set: { status: "escalated", deadline: deadline() }, $unset: { overdue: "" }, $push: { history: entry(`${why}, then escalated: ${pick.reason}`, by) } });

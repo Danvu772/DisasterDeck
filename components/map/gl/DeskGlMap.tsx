@@ -9,9 +9,7 @@
 // Browser only: load with next/dynamic, ssr off.
 import "maplibre-gl/dist/maplibre-gl.css";
 import { AnimatePresence, motion } from "motion/react";
-import {
-  BedDouble, Building2, Construction, Flame, Layers, Map as MapIcon, Satellite, TriangleAlert, Users, Waves, X,
-} from "lucide-react";
+import { Building2, Layers, Map as MapIcon, Satellite, Users, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import MapGL, {
   Layer, Marker, NavigationControl, Popup, ScaleControl, Source, type MapRef,
@@ -23,6 +21,8 @@ import { ageText, isStale, markerSize, tierText } from "../../encode";
 import { useIsDark } from "../../theme/theme";
 import type { MapItem } from "../mapItems";
 import { tokenColor } from "./tokens";
+import { KCollapse, KCone, KDanger, KFire, KQuake, KRoadblock, KTent } from "../../icons/koboyo";
+import { HAZARD_LEGEND, hazardType, INCIDENT_ICON } from "../../icons/things";
 
 export interface GlQuake { id: string; lat: number; lon: number; mag: number; time: string; place?: string }
 
@@ -95,7 +95,6 @@ function usePalette(dark: boolean) {
 }
 
 const hazardOf = (it: MapItem) => (it.kind === "site" ? (it.record as Site).hazard : undefined);
-const isFire = (h?: string) => !!h && /fire|smoke|burn|blaze|yangın|duman/i.test(h);
 
 // ---------- markers ----------
 
@@ -113,7 +112,7 @@ function RecordMarker({ it, selected, now, ringing, onClick }: {
       <button type="button" onClick={onClick} aria-label={`Road: ${it.title}`}
         className={cn("flex h-6 items-center gap-1 rounded-full border-2 bg-background px-1.5 text-foreground shadow-sm transition-transform",
           closed ? "border-foreground" : "border-dashed border-muted-foreground", sel, stale && "opacity-75 saturate-50")}>
-        <Construction className="size-3.5" />
+        {closed ? <KRoadblock className="size-4" /> : <KCone className="size-3.5" />}
       </button>
     );
   }
@@ -122,28 +121,35 @@ function RecordMarker({ it, selected, now, ringing, onClick }: {
       <button type="button" onClick={onClick} aria-label={`Shelter: ${it.title}`}
         className={cn("flex size-7 items-center justify-center rounded-lg border-2 border-background shadow-md transition-transform",
           it.tier === 1 ? "bg-warning text-warning-foreground" : "bg-success text-primary-foreground", sel, stale && "opacity-75 saturate-50")}>
-        <BedDouble className="size-4" />
+        <KTent className="size-4" />
       </button>
     );
   }
   if (it.kind === "incident") {
+    const Icon = INCIDENT_ICON[(it.record as Incident).kind] ?? KDanger;
     return (
       <button type="button" onClick={onClick} aria-label={`Problem: ${it.title}`}
         className={cn("flex size-7 items-center justify-center rounded-md border-2 border-background shadow-md transition-transform", tone, sel, stale && "opacity-75 saturate-50")}>
-        <TriangleAlert className="size-4" />
+        <Icon className="size-4" />
       </button>
     );
   }
-  // site
-  const s = Math.max(22, markerSize(it.support) + 6);
-  const hazard = hazardOf(it);
+  // site: a danger shows its own icon (fire, gas, live wires …) with the trapped count on a corner badge;
+  // without one, the marker is just the number of people trapped.
+  const hz = hazardType(hazardOf(it));
   const trapped = (it.record as Site).peopleTrapped;
+  const s = Math.max(hz ? 30 : 22, markerSize(it.support) + 6);
   return (
-    <button type="button" onClick={onClick} aria-label={`Site: ${it.title}`}
+    <button type="button" onClick={onClick} aria-label={`Site: ${it.title}${hz ? `, ${hz.word.toLowerCase()}` : ""}${trapped > 0 ? `, ${trapped} trapped` : ""}`}
       className={cn("relative isolate flex items-center justify-center rounded-full border-2 border-background font-mono text-[11px] font-semibold shadow-md transition-transform",
-        tone, sel, stale && "opacity-75 saturate-50", it.actNow && !stale && "marker-pulse", hazard && "marker-glow", ringing && "map-ring")}
+        tone, sel, stale && "opacity-75 saturate-50", it.actNow && !stale && "marker-pulse", hz && "marker-glow", ringing && "map-ring")}
       style={{ width: s, height: s }}>
-      {hazard ? (isFire(hazard) ? <Flame className="size-3.5" /> : <TriangleAlert className="size-3.5" />) : trapped > 0 ? trapped : null}
+      {hz ? <hz.icon className="size-[55%]" /> : trapped > 0 ? trapped : null}
+      {hz && trapped > 0 && (
+        <span aria-hidden className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-destructive bg-background px-1 text-[10px] leading-none text-foreground">
+          {trapped}
+        </span>
+      )}
     </button>
   );
 }
@@ -164,7 +170,7 @@ function RecordCard({ it, now, onClose }: { it: MapItem; now: number; onClose: (
     body = (
       <>
         <Fact icon={<Users />}>{s.peopleTrapped > 0 ? `${s.peopleTrapped} ${s.peopleTrapped === 1 ? "person" : "people"} trapped` : "No one reported trapped"}</Fact>
-        {s.hazard && <Fact icon={<Flame />}>{s.hazard}</Fact>}
+        {s.hazard && (() => { const h = hazardType(s.hazard)!; return <Fact icon={<h.icon />}>{s.hazard}</Fact>; })()}
         <Fact icon={<Building2 />}>{s.status === "team_on_site" ? "A team is on site" : s.status === "open" ? "Waiting for a team" : s.status === "closed" ? "Done" : "Withdrawn"}</Fact>
       </>
     );
@@ -175,7 +181,7 @@ function RecordCard({ it, now, onClose }: { it: MapItem; now: number; onClose: (
     body = (
       <>
         {(i.textEn || i.text) && <p className="text-xs text-foreground">“{i.textEn || i.text}”</p>}
-        <Fact icon={<TriangleAlert />}>{i.canContinue ? "The team can carry on" : "The team is stopped"}</Fact>
+        <Fact icon={<KDanger />}>{i.canContinue ? "The team can carry on" : "The team is stopped"}</Fact>
       </>
     );
   } else if (it.kind === "shelter") {
@@ -262,15 +268,21 @@ function LayerPanel({ layers, setLayers, sat, setSat, counts }: {
           <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
             className="w-56 rounded-xl border bg-background/95 p-1.5 shadow-lg backdrop-blur">
             {row("records", "Reports from the desk", <Users />)}
-            {row("hazards", "Fires and hazards", <Flame />, counts.hazards)}
-            {row("buildings", "Destroyed buildings", <Building2 />, counts.buildings || undefined)}
-            {row("quakes", "Earthquakes (USGS)", <Waves />, counts.quakes || undefined)}
+            {row("hazards", "Fires and hazards", <KFire />, counts.hazards)}
+            {row("buildings", "Destroyed buildings", <KCollapse />, counts.buildings || undefined)}
+            {row("quakes", "Earthquakes (USGS)", <KQuake />, counts.quakes || undefined)}
             {row("tilt", "3D view", <Layers />)}
             <div className="mt-1 space-y-1 border-t px-2 pt-2 pb-1 text-[11px] text-muted-foreground">
               <p className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-destructive" />Life-threatening</p>
               <p className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-warning" />Urgent</p>
               <p className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-calm" />Can wait</p>
               <p className="flex items-center gap-2"><span className="size-2.5 rounded-sm bg-success" />Shelter with room</p>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1 border-t pt-1.5 [&_svg]:size-3.5 [&_svg]:text-foreground">
+                {HAZARD_LEGEND.map(({ word, icon: Icon }) => <p key={word} className="flex items-center gap-1.5"><Icon />{word}</p>)}
+                <p className="flex items-center gap-1.5"><KTent />Shelter</p>
+                <p className="flex items-center gap-1.5"><KRoadblock />Road closed</p>
+                <p className="flex items-center gap-1.5"><KCone />Road unsure</p>
+              </div>
               <p>Number = people trapped. Faded = not updated lately.</p>
             </div>
           </motion.div>
@@ -304,7 +316,10 @@ export default function DeskGlMap({
   const map = useRef<MapRef>(null);
   const [sat, setSat] = useState(false);
   const [layers, setLayers] = useState<GlLayers>({ ...DEFAULT_LAYERS, ...initialLayers });
-  const [ready, setReady] = useState(false);
+  // Counts map loads, not just "loaded once": in dev StrictMode the map is made twice, and the
+  // effects below must run again for the second, real one.
+  const [loads, setLoads] = useState(0);
+  const ready = loads > 0;
   const buildings = useBuildings(layers.buildings);
 
   const placed = useMemo(() => items.filter((i) => i.coords), [items]);
@@ -312,17 +327,26 @@ export default function DeskGlMap({
   const shown = placed.filter((i) => (hazardOf(i) ? layers.hazards || layers.records : layers.records));
   const sel = placed.find((i) => i.key === selected);
 
-  // First view: all records. Again when the records move somewhere else (the fixtures give way to
-  // the live desk), until the person moves the map themselves.
+  // First view: all records, set when the map is made (no load event needed). After that, a glide
+  // to the new extent whenever the records move somewhere else (the fixtures give way to the live
+  // desk), until the person moves the map themselves.
   const userMoved = useRef(false);
   const lng = placed.map((i) => i.coords![1]), lat = placed.map((i) => i.coords![0]);
   const box = placed.length ? [Math.min(...lng), Math.min(...lat), Math.max(...lng), Math.max(...lat)].map((v) => v.toFixed(2)).join(",") : "";
-  useEffect(() => {
-    if (!ready || !box || userMoved.current) return;
+  const lastBox = useRef(box);
+  const [firstView] = useState(() => {
+    if (!box) return ANTAKYA;
     const [w, s, e, n] = box.split(",").map(Number);
-    if (w === e && s === n) map.current?.flyTo({ center: [w, s], zoom: 15, duration: 0 });
+    if (w === e && s === n) return { longitude: w, latitude: s, zoom: 15 };
+    return { bounds: [[w, s], [e, n]] as [[number, number], [number, number]], fitBoundsOptions: { padding: 70, maxZoom: 15.5 } };
+  });
+  useEffect(() => {
+    if (!ready || !box || userMoved.current || box === lastBox.current) return;
+    lastBox.current = box;
+    const [w, s, e, n] = box.split(",").map(Number);
+    if (w === e && s === n) map.current?.flyTo({ center: [w, s], zoom: 15, duration: 600 });
     else map.current?.fitBounds([[w, s], [e, n]], { padding: 70, maxZoom: 15.5, duration: 600 });
-  }, [ready, box]);
+  }, [ready, loads, box]);
 
   // Fly to a record the list picked.
   const flyTo = flyKey ? placed.find((i) => i.key === flyKey)?.coords : undefined;
@@ -332,13 +356,13 @@ export default function DeskGlMap({
     const m = map.current;
     userMoved.current = true;          // a picked record keeps the view; no refit after this
     m?.flyTo({ center: [flyLng, flyLat], zoom: Math.max(m.getZoom(), 15.5), duration: 900, essential: true });
-  }, [ready, flyKey, flyLat, flyLng]);
+  }, [ready, loads, flyKey, flyLat, flyLng]);
 
   // 3D: tilt and turn a little; flat again when off.
   useEffect(() => {
     if (!ready) return;
     map.current?.easeTo({ pitch: layers.tilt ? 55 : 0, bearing: layers.tilt ? -18 : 0, duration: 800 });
-  }, [ready, layers.tilt]);
+  }, [ready, loads, layers.tilt]);
 
   const quakeFC = useMemo<FC>(() => ({
     type: "FeatureCollection",
@@ -359,9 +383,9 @@ export default function DeskGlMap({
     <div className={cn("relative h-full w-full overflow-hidden", className)}>
       <MapGL
         ref={map}
-        initialViewState={ANTAKYA}
+        initialViewState={firstView}
         mapStyle={style}
-        onLoad={() => setReady(true)}
+        onLoad={() => setLoads((n) => n + 1)}
         onMoveStart={(e) => { if (e.originalEvent) userMoved.current = true; }}
         onClick={(e) => { if (!(e.originalEvent.target as HTMLElement).closest("button")) pick(null); }}
         maxPitch={70}

@@ -349,14 +349,13 @@ async function applyApproval(event: Event): Promise<KeeperResult> {
   if (!task) return reject(`task ${p.taskId} not found`);
   const me = await users.findOne({ _id: event.actor }, { projection: { role: 1 } });
   if (me?.role !== "coordinator") return reject(`only a coordinator can approve, and ${event.actor} is not one`);
-  if (task.status === "escalated") {
-    // §4 escalated → assigned: nobody could take it, a coordinator picks someone.
-    if (!p.approved || !p.assignee) return reject(`task ${task._id} is escalated: name the person who takes it (approved: true, assignee)`);
-    if (!(await users.findOne({ _id: p.assignee, deskId: task.deskId }, { projection: { _id: 1 } }))) return reject(`${p.assignee} is not a person on this desk`);
-    return done([task._id], `escalated task ${task._id}: ${event.actor} picked ${p.assignee}`, [],
-      [{ kind: "approve", taskId: task._id, by: event.actor, assignee: p.assignee, eventId: event._id }]);
+  // A stuck task (escalated: nobody took it) can be given to a named person by a coordinator.
+  const stuck = task.status === "escalated" && task.open && p.approved && Boolean(p.assignee);
+  if (task.status !== "waiting_approval" && !stuck) {
+    return reject(task.status === "escalated"
+      ? `task ${task._id} is escalated: name the person to send (assignee)`
+      : `task ${task._id} is ${task.status}, not waiting for approval`);
   }
-  if (task.status !== "waiting_approval") return reject(`task ${task._id} is ${task.status}, not waiting for approval`);
   if (!p.approved) {
     return done([task._id], `task ${task._id} rejected by ${event.actor}`, [], [{ kind: "reject", taskId: task._id, by: event.actor }]);
   }
@@ -364,7 +363,8 @@ async function applyApproval(event: Event): Promise<KeeperResult> {
   if (p.assignee && !(await users.findOne({ _id: p.assignee, deskId: task.deskId }, { projection: { _id: 1 } }))) {
     return reject(`${p.assignee} is not a person on this desk`);
   }
-  return done([task._id], `task ${task._id} approved by ${event.actor}${p.assignee ? `, send ${p.assignee} instead` : ""}`, [],
+  return done([task._id], stuck ? `task ${task._id} given to ${p.assignee} by ${event.actor}`
+    : `task ${task._id} approved by ${event.actor}${p.assignee ? `, send ${p.assignee} instead` : ""}`, [],
     [{ kind: "approve", taskId: task._id, by: event.actor, assignee: p.assignee, eventId: event._id }]);
 }
 

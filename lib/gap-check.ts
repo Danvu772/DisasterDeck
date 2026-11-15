@@ -141,10 +141,10 @@ async function sweeperRows() {
 
   const off = (await c.tasks.findOne({ _id: tOff._id }))!;
   assert.equal(off.assignee, U.vOn, "the task moved to the nearest person who is around");
-  assert(off.tried.includes(U.vOff));
+  assert(!off.tried.includes(U.vOff), "silence is not a no (e225d40): nobody lands in tried");
   assert(off.history.some((h) => /counts as offline/.test(h.reason)));
   assert(r1.offline >= 1);
-  ok("T4 a person not seen for 3 min: the unanswered task moves on before its deadline");
+  ok("T4 a person not seen for 3 min: the unanswered task moves on before its deadline, they are not in tried");
 
   const appr = (await c.tasks.findOne({ _id: tAppr._id }))!;
   assert.equal(appr.status, "waiting_approval", "the desk never approves by itself");
@@ -385,19 +385,25 @@ async function rules() {
 
 async function offlineIsNotNo() {
   const c = await cols();
-  // T4 with #38 (a timeout is not a no): going offline is a miss. Seen again, they get the task back.
+  // T4 with e225d40 (silence is not a no): gone from the app with nobody else on it, the task stays put.
+  // No escalation, nobody in tried. The first person who opens the app gets it.
   await c.sites.insertOne(site("g-again", { coords: [37.9, 37.9], callStatus: "not_called" }));
-  const said = (by: string) => ({ ts: new Date(), by, source: "person" as const, reason: "declined" });
-  const t = task("g-again", { assignee: U.vGone, tried: [U.vOn, U.vOn2], history: [said(U.vOn), said(U.vOn2)], deadline: min(new Date(), 30) });
+  const t = task("g-again", { assignee: U.vGone, deadline: min(new Date(), 30) });
   await c.tasks.insertOne(t);
+  const volunteers = [U.vOn, U.vOn2, U.vHand];
+  await c.users.updateMany({ _id: { $in: volunteers } }, { $set: { lastSeen: min(new Date(), -60) } });
   await tick(new Date(), { deskId: DESK });
   let now = (await c.tasks.findOne({ _id: t._id }))!;
-  assert.equal(now.status, "escalated", "offline is the third miss");
-  await c.users.updateOne({ _id: U.vGone }, { $set: { lastSeen: new Date(Date.now() + 24 * 3600_000) } });
+  assert.equal(now.status, "assigned"); assert.equal(now.assignee, U.vGone, "nobody on the app: it stays");
+  assert.deepEqual(now.tried, []);
+  // Only this task is in play: the earlier scenes' open tasks would also move to vHand and hit the 3-task cap.
+  await c.tasks.updateMany({ deskId: DESK, open: true, _id: { $ne: t._id } }, { $set: { status: "cancelled", open: false } });
+  await c.users.updateOne({ _id: U.vHand }, { $set: { lastSeen: new Date(Date.now() + 24 * 3600_000) } });
   await tick(new Date(Date.now() + 60_000), { deskId: DESK });
   now = (await c.tasks.findOne({ _id: t._id }))!;
-  assert.equal(now.status, "assigned"); assert.equal(now.assignee, U.vGone, "back to the nearest, who is around again");
-  ok("T4 + #38 going offline is a miss, not a no: seen again, the person gets the task back");
+  assert.equal(now.assignee, U.vHand, "the first person back on the app gets it");
+  assert.deepEqual(now.tried, []);
+  ok("T4 + e225d40 offline with nobody else on the app: the task stays, never escalates, moves to the first person back");
 }
 
 async function main() {

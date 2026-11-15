@@ -101,7 +101,7 @@ function ListRow({ r, board, now, selected, onOpen }: {
       <button type="button" data-card={r.key} aria-pressed={selected} onClick={() => onOpen(r.key)}
         className={`flex w-full gap-3 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
           selected ? "bg-secondary ring-1 ring-border" : "hover:bg-secondary/60"}`}>
-        <KindIcon type={r.kind} tier={s.tier} actNow={s.actNow} />
+        <KindIcon type={r.kind} record={r.record} tier={s.tier} actNow={s.actNow} />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="flex items-baseline gap-2">
             <span className="truncate text-sm font-semibold">

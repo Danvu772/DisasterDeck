@@ -296,6 +296,20 @@ async function main() {
   assert.equal((await c.zones.findOne({ _id: "d-zone-b" }))!.exitAssigned, undefined);
   ok("rejecting a plan changes nothing on the zones");
 
+  // --- a stuck task: a coordinator gives it to a named person ---
+  await need(U.a3, "mats", 4);
+  const st = await taskFor((await c.needs.findOne({ deskId: DESK, item: "mats", status: { $ne: "cancelled" } }, { sort: { _id: -1 } }))!._id, "deliver");
+  await c.tasks.updateOne({ _id: st._id }, { $set: { status: "escalated" }, $unset: { assignee: "" } });
+  assert.equal((await approval(U.c1, st._id, true)).status === "done", false, "escalated without a person: refused");
+  assert.equal((await taskById(st._id)).status, "escalated");
+  const given = await approval(U.c1, st._id, true, U.matS2);
+  assert.equal(given.status, "done");
+  const st2 = await taskById(st._id);
+  assert.equal(st2.status, "assigned"); assert.equal(st2.assignee, U.matS2);
+  assert(st2.history.some((h) => h.reason.startsWith(`assigned by ${U.c1}`)));
+  assert((await inboxOf(U.matS2, "task")).some((i) => i.taskId === st._id));
+  ok("a coordinator gives a stuck (escalated) task to a named person: assigned, inbox item sent; without a name it is refused");
+
   console.log(`\n${passed} checks passed`);
 }
 

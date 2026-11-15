@@ -136,6 +136,11 @@ const DEFS: Record<string, Tool> = {
     description: "Coordinator only. Approve or reject a task that waits for approval. Only when the coordinator clearly said so.",
     input_schema: obj({ task_id: str, approved: { type: "boolean" }, reason: str }),
   },
+  assign_task: {
+    name: "assign_task",
+    description: "Coordinator only. Give a task to a named person: a stuck task nobody took, or a task waiting for approval (this also approves it). Use when the coordinator says who should do it ('give it to Ayşe', 'send the mechanic'). Use the task id from the context and the person's user id. If you do not know who fits, call it with an empty person_id: the result lists who can take it.",
+    input_schema: obj({ task_id: str, person_id: str }),
+  },
   shift_handoff: {
     name: "shift_handoff",
     description: "Coordinator only. Write the shift handoff note for whoever takes over: what was done, what is open, what is stuck.",
@@ -163,12 +168,18 @@ const DEFS: Record<string, Tool> = {
   },
 };
 
+/** Who can take each task type. Mirrors the dispatcher's ROLE_FOR (workers/dispatcher.ts). */
+const ROLE_FOR_TASK: Record<string, Role[]> = {
+  call: ["volunteer"], rescue: ["field"], deliver: ["supplier"],
+  assist: ["volunteer", "field"], notify: ["volunteer"], evacuate: ["field"],
+};
+
 const ROLE_TOOLS: Record<Role, string[]> = {
   volunteer: ["ask_desk", "answer_task", "file_need", "file_report", "file_closure", "report_problem", "declare_work", "correct_record", "visualize_metric", "show_on_map"],
   field: ["ask_desk", "answer_task", "file_need", "file_report", "file_closure", "report_problem", "declare_work", "correct_record", "visualize_metric", "show_on_map"],
   supplier: ["ask_desk", "answer_task", "file_need", "file_closure", "report_problem", "declare_work", "visualize_metric", "show_on_map"],
   shelter: ["ask_desk", "answer_task", "file_need", "file_report", "file_capacity", "report_problem", "correct_record", "visualize_metric", "show_on_map"],
-  coordinator: ["ask_desk", "decide_approval", "shift_handoff", "file_report", "file_closure", "file_need", "correct_record", "visualize_metric", "show_on_map"],
+  coordinator: ["ask_desk", "decide_approval", "assign_task", "shift_handoff", "file_report", "file_closure", "file_need", "correct_record", "visualize_metric", "show_on_map"],
   public: ["ask_desk", "file_need", "file_report", "file_closure"],
 };
 
@@ -324,6 +335,25 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       if (!task) throw new ToolInputError(`Task ${String(i.task_id)} is not waiting for approval. Waiting: ${ctx.approvals.map((t) => t._id).join(", ") || "none"}.`);
       const p: ApprovalPayload = { taskId: task._id, approved: i.approved === true };
       return post(ctx, "approval", p, `${p.approved ? "Approved" : "Rejected"}: ${task.title}`);
+    }
+
+    case "assign_task": {
+      if (u.role !== "coordinator") throw new ToolInputError("Only a coordinator can assign a task.");
+      const open = [...ctx.stuck, ...ctx.approvals];
+      const task = open.find((t) => t._id === s(i.task_id));
+      if (!task) {
+        throw new ToolInputError(`Task ${String(i.task_id)} is not stuck or waiting for approval. ` +
+          `Stuck: ${ctx.stuck.map((t) => t._id).join(", ") || "none"}. Waiting: ${ctx.approvals.map((t) => t._id).join(", ") || "none"}.`);
+      }
+      const people = (await desk().listUsers()).filter((p) => p.deskId === u.deskId && p.status !== "offline" && ROLE_FOR_TASK[task.type].includes(p.role));
+      const who = people.find((p) => p._id === s(i.person_id));
+      if (!who) {
+        const list = people.map((p) => `${p._id} (${p.name}, ${p.role}${p.lastSeen && +ctx.now - +new Date(p.lastSeen) <= 3 * 60_000 ? ", on the app now" : ""})`);
+        throw new ToolInputError(`${s(i.person_id) ? `${String(i.person_id)} cannot take a ${task.type} task. ` : ""}` +
+          `Who can: ${list.join("; ") || `nobody, no ${ROLE_FOR_TASK[task.type].join(" or ")} is available`}. Ask the coordinator which one.`);
+      }
+      const p: ApprovalPayload = { taskId: task._id, approved: true, assignee: who._id };
+      return post(ctx, "approval", p, `Assigned to ${who.name}: ${task.title}`);
     }
 
     case "shift_handoff": {
