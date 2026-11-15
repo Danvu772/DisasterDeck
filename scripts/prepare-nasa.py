@@ -40,6 +40,11 @@ def source_urls():
             "parameters": "T2M_MIN", "community": "RE", "longitude": 38.31, "latitude": 38.35,
             "start": "20230206", "end": "20230210", "format": "JSON",
         }),
+        "power-weather-malatya.json": "https://power.larc.nasa.gov/api/temporal/daily/point?" + urlencode({
+            "parameters": "T2M_MIN,T2M_MAX,RH2M,PRECTOTCORR,WS2M", "community": "AG",
+            "longitude": 38.31, "latitude": 38.35,
+            "start": "20230206", "end": "20230210", "format": "JSON",
+        }),
         "landmark.json": "https://nominatim.openstreetmap.org/search?" + urlencode({"q": "Yeni Cami, Malatya, Turkey", "format": "json", "limit": 1}),
     }
     for name, date in [("before", CONFIG["lightsBeforeDate"]), ("after", CONFIG["lightsAfterDate"])]:
@@ -160,6 +165,29 @@ def zone_box(center):
     return [round(longitude - half_lon, 8), round(latitude - half_lat, 8), round(longitude + half_lon, 8), round(latitude + half_lat, 8)]
 
 
+def weather_series(power):
+    fields = {
+        "T2M_MIN": ("minTempC", "C"), "T2M_MAX": ("maxTempC", "C"),
+        "RH2M": ("humidityPct", "%"), "PRECTOTCORR": ("precipitationMm", "mm/day"),
+        "WS2M": ("windMs", "m/s"),
+    }
+    values = power["properties"]["parameter"]
+    dates = sorted({day for parameter in fields for day in values[parameter]})
+    for parameter, (_, units) in fields.items():
+        if power["parameters"][parameter]["units"] != units:
+            raise ValueError(f"Unexpected weather units for {parameter}")
+    if power["header"]["time_standard"] != "LST":
+        raise ValueError("Weather series must use local solar days")
+    observations = []
+    for day in dates:
+        observation = {"date": datetime.strptime(day, "%Y%m%d").date().isoformat()}
+        for parameter, (field, _) in fields.items():
+            value = values[parameter].get(day)
+            observation[field] = value if value is not None and value != power["header"]["fill_value"] and math.isfinite(value) else None
+        observations.append(observation)
+    return observations
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--download", action="store_true", help="Download missing source files")
@@ -179,6 +207,7 @@ def main():
     colormap = ET.parse(CACHE / "lights-colormap.xml")
     white = next(node for node in colormap.iter("ColorMapEntry") if node.get("rgb") == "255,255,255")
     power = load_json(CACHE / "power-malatya.json")
+    weather = weather_series(load_json(CACHE / "power-weather-malatya.json"))
     values = power["properties"]["parameter"]["T2M_MIN"]
     minimum = values[CONFIG["temperatureDate"].replace("-", "")]
     if power["parameters"]["T2M_MIN"]["units"] != "C" or minimum == power["header"]["fill_value"] or not math.isfinite(minimum):
@@ -232,6 +261,8 @@ def main():
             for day, value in sorted(values.items())
             if value != power["header"]["fill_value"] and math.isfinite(value)
         ],
+        "weatherSeries": weather,
+        "weatherSourceURL": source_urls()["power-weather-malatya.json"],
         "sourcesManifestRepositoryPath": "data/nasa/manifest.json", "reportWindowSeconds": CONFIG["reportWindowSeconds"],
         "sourceURLs": {"damage": ARIA, "nightLights": CAPABILITIES, "nightLightsColormap": source_urls()["lights-colormap.xml"], "temperature": source_urls()["power-malatya.json"]},
         "attribution": "NASA JPL/Caltech ARIA Team, Copernicus, ESA; NASA GIBS / Suomi NPP VIIRS Black Marble; NASA POWER / MERRA-2",

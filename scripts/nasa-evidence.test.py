@@ -17,6 +17,25 @@ spec.loader.exec_module(prepare)
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_weather_units_missing_values_and_output_provenance(self):
+        raw = json.loads((ROOT / "data/nasa/power-weather-malatya.json").read_text(encoding="utf-8"))
+        series = prepare.weather_series(raw)
+        output = json.loads((ROOT / "public/data/zones.geojson").read_text(encoding="utf-8"))
+        self.assertEqual(series, output["metadata"]["weatherSeries"])
+        self.assertEqual(len(series), 5)
+        for row in series:
+            self.assertEqual(row["minTempC"], raw["properties"]["parameter"]["T2M_MIN"][row["date"].replace("-", "")])
+        day = next(row for row in series if row["date"] == "2023-02-09")
+        self.assertEqual(day["humidityPct"], 78.93)
+        self.assertEqual(day["precipitationMm"], 0.04)
+        self.assertEqual(day["windMs"], 2.45)
+        self.assertEqual(day["maxTempC"], -0.24)
+        raw["properties"]["parameter"]["RH2M"]["20230209"] = raw["header"]["fill_value"]
+        self.assertIsNone(next(row for row in prepare.weather_series(raw) if row["date"] == "2023-02-09")["humidityPct"])
+        raw["parameters"]["WS2M"]["units"] = "km/h"
+        with self.assertRaisesRegex(ValueError, "units"):
+            prepare.weather_series(raw)
+
     def test_offline_cache_preserves_original_download_times_after_checkout(self):
         original_cache = prepare.CACHE
         manifest = json.loads((original_cache / "manifest.json").read_text(encoding="utf-8"))

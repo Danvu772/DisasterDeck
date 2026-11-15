@@ -2,6 +2,12 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v0.7 Malatya weather series · 2026-11-14 22:15 EST
+
+- Added a direct NASA POWER query for minimum/maximum temperature, relative humidity, mean wind speed and daily precipitation over 6–10 February 2023. Stored the unmodified response with manifest URL, timestamp and SHA-256.
+- Added day and trend-metric selectors to the map, with correct units, sources and measurement limitations. Malatya and its existing exercise identities are retained.
+- Seven Python checks verify cache/output provenance, missing-value handling and rejection of changed units. TypeScript, scoped lint and desktop/phone interaction checks passed.
+
 ## v0.6 NASA map presentation · 2026-11-14 22:08 EST
 
 - Added a collapsible map evidence card with the archived five-day POWER series, exact minimum, regional scale, source links and controls to locate both demo cells.

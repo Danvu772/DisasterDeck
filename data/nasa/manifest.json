@@ -50,6 +50,13 @@
       "transformation": "Unmodified HTTP body"
     },
     {
+      "file": "data/nasa/power-weather-malatya.json",
+      "url": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MIN%2CT2M_MAX%2CRH2M%2CPRECTOTCORR%2CWS2M&community=AG&longitude=38.31&latitude=38.35&start=20230206&end=20230210&format=JSON",
+      "sha256": "2492c5f3668676d1f2813f0e5bfded2010d2215b79989bd291b272fae88f9f31",
+      "cachedAt": "2026-11-15T03:13:35.582196+00:00",
+      "transformation": "Unmodified HTTP body"
+    },
+    {
       "file": "data/nasa/landmark.json",
       "url": "https://nominatim.openstreetmap.org/search?q=Yeni+Cami%2C+Malatya%2C+Turkey&format=json&limit=1",
       "sha256": "d1debaf79b1bc875094badbed275c610cb24cf6146767e91d01c776a0eaec748",

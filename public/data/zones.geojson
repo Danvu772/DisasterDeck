@@ -53,6 +53,49 @@
         "minTempC": -11.04
       }
     ],
+    "weatherSeries": [
+      {
+        "date": "2023-02-06",
+        "minTempC": -3.49,
+        "maxTempC": 2.97,
+        "humidityPct": 90.26,
+        "precipitationMm": 11.05,
+        "windMs": 2.9
+      },
+      {
+        "date": "2023-02-07",
+        "minTempC": -9.56,
+        "maxTempC": -0.75,
+        "humidityPct": 80.91,
+        "precipitationMm": 2.69,
+        "windMs": 3.96
+      },
+      {
+        "date": "2023-02-08",
+        "minTempC": -10.79,
+        "maxTempC": -1.2,
+        "humidityPct": 78.26,
+        "precipitationMm": 0.0,
+        "windMs": 3.82
+      },
+      {
+        "date": "2023-02-09",
+        "minTempC": -14.38,
+        "maxTempC": -0.24,
+        "humidityPct": 78.93,
+        "precipitationMm": 0.04,
+        "windMs": 2.45
+      },
+      {
+        "date": "2023-02-10",
+        "minTempC": -11.04,
+        "maxTempC": 0.35,
+        "humidityPct": 80.19,
+        "precipitationMm": 0.02,
+        "windMs": 1.27
+      }
+    ],
+    "weatherSourceURL": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MIN%2CT2M_MAX%2CRH2M%2CPRECTOTCORR%2CWS2M&community=AG&longitude=38.31&latitude=38.35&start=20230206&end=20230210&format=JSON",
     "sourcesManifestRepositoryPath": "data/nasa/manifest.json",
     "reportWindowSeconds": [
       0,
