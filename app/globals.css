@@ -136,3 +136,14 @@ body .leaflet-container .leaflet-control-zoom-out {
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after { display: none; }
 }
+
+/* A loading surface waits 300 ms before it appears. A page that answers inside that time never shows one.
+   Reduced motion keeps the delay and drops the fade. */
+.loading-surface { animation: loading-appear 150ms ease-out 300ms both; }
+@keyframes loading-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-surface { animation-duration: 1ms; }
+}
