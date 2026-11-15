@@ -25,6 +25,12 @@ export function SiteCards({ items, now, tasks }: { items: Site[]; now: number; t
           </p>
         )}
         {unseen && <p className="mt-1 text-xs text-muted">Automated, not yet seen by a person.</p>}
+        {(s.posts ?? []).slice(-3).map((p) => (
+          <div key={p.eventId} className="mt-2 text-xs">
+            <p>{p.textEn}</p>
+            <p className="text-muted">{p.text}</p>
+          </div>
+        ))}
       </RecordCard>
     );
   });

@@ -179,7 +179,7 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
               <div className="grid grid-cols-2 gap-3">
                 {ETAS.map((m) => (
                   <button key={m} className={big(button.outline)} disabled={busy}
-                    onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "accepted", etaMinutes: m } },
+                    onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "accepted", etaMinutes: m, progress: "en_route" } },
                       `On our way, ${m} min`, 1)}>
                     {m} min
                   </button>
@@ -219,7 +219,7 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
             <section className="space-y-3">
               <button className={primaryIf(0)} disabled={busy} onClick={() => setPanel("eta")}>On our way</button>
               <button className={primaryIf(1)} disabled={busy}
-                onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "accepted", etaMinutes: 0, note: "Arrived" } },
+                onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "accepted", etaMinutes: 0, progress: "arrived" } },
                   "Arrived", 2)}>
                 Arrived
               </button>

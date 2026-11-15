@@ -2,6 +2,10 @@
 // Source of truth: docs/.../Roles/Team contracts.md §3.
 // v2.1: Need.requestedBy (asked for in "Personal agents"), and the helper types at the
 //       bottom for the functions in lib/db.ts. No existing field changed.
+// v2.2 (P-002): every new field is optional, so no existing document or route breaks.
+//       AnswerPayload.progress, ApprovalPayload.assignee (G-05, G-09), Site.posts,
+//       Site.supporters, scoreParts on records (G-06), caseNo on records (G-07),
+//       Task.progress. Posts are masked before they are stored (decision D3).
 export type Role = "volunteer" | "field" | "supplier" | "shelter" | "coordinator"
                  | "public";                                              // v2: a citizen
 export type Trust = "official" | "vetted" | "public";                     // v2
@@ -81,8 +85,12 @@ export interface CapacityPayload {
 export interface AnswerPayload {
   taskId: string; result: "accepted" | "declined" | "done";
   note?: string; etaMinutes?: number;
+  progress?: "en_route" | "arrived";     // v2.2: only with result "accepted" (G-09, decision D7)
 }
-export interface ApprovalPayload { taskId: string; approved: boolean; }
+export interface ApprovalPayload {
+  taskId: string; approved: boolean;
+  assignee?: string;                     // v2.2: Modify. Send this person instead (G-05)
+}
 export interface AlertPayload {
   zoneId: string; kind: "silent_zone" | "cold";                       // v2: cold
   evidence: { damage?: number; dark?: boolean; calls?: number; minTempC?: number };
@@ -128,6 +136,16 @@ export interface PlanPayload {
 // ---------- Records: written only by the memory keeper ----------
 export type RecordType = "site" | "need" | "road" | "shelter" | "zone" | "incident";
 
+/** v2.2: one part of a priority score, so the screen shows why (G-06). */
+export interface ScorePart { name: string; value: number; }
+
+/** v2.2: one post behind a site, with the text masked (decision D3). Newest last, at most 5 kept. */
+export interface Post {
+  eventId: string; source: Source; actor: string;
+  text: string; textEn: string;          // phone numbers already masked
+  observedAt: Date;
+}
+
 export interface Site {
   _id: string; address: string; coords?: LatLng; region: string;
   peopleTrapped: number;
@@ -138,6 +156,10 @@ export interface Site {
   deskId: string; confidence: Confidence; observedAt: Date;           // v2
   tier: Tier; priority: number; support: number;                      // v2
   hazard?: string;                                                    // v2: set by an unsafe incident
+  posts?: Post[];                        // v2.2: the latest posts, shown under the card (G-08)
+  supporters?: string[];                 // v2.2: who has posted about it. support = its length
+  scoreParts?: ScorePart[];              // v2.2 (G-06)
+  caseNo?: number;                       // v2.2: "Site 57" (G-07)
 }
 export interface Need {
   _id: string; item: string; quantity: number; region: string; siteIds: string[];
@@ -149,6 +171,8 @@ export interface Need {
   lines: { siteId?: string; quantity: number }[];                     // v2: who gets how many
   tier: Tier; priority: number; support: number;                      // v2
   requestedBy: string[];                 // v2.1: user ids, one per different person who asked
+  scoreParts?: ScorePart[];              // v2.2 (G-06)
+  caseNo?: number;                       // v2.2 (G-07)
 }
 export interface Road {
   _id: string; road: string; state: "open" | "closed" | "unconfirmed";
@@ -175,6 +199,7 @@ export interface Incident {                                           // v2
   status: "open" | "helping" | "escalated" | "resolved";
   actions: { ts: Date; what: string; taskId?: string }[];   // what the Brain did about it
   history: HistoryEntry[];
+  caseNo?: number;                       // v2.2 (G-07)
 }
 
 // ---------- Work: written only by the dispatcher ----------
@@ -200,6 +225,8 @@ export interface Task {
   eta?: Date;                            // v2: promised finish, from the person's answer
   blockedBy?: string;                    // v2: incident id
   replaces?: string;                     // v2: the task this one took over from
+  progress?: "en_route" | "arrived";     // v2.2: from the field phone (G-09)
+  scoreParts?: ScorePart[];              // v2.2 (G-06)
   history: HistoryEntry[];
   deskId: string;                        // v2
 }
