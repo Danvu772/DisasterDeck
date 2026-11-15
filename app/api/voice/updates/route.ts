@@ -26,8 +26,8 @@ export async function POST(req:Request) {
       typeof body.summary!=="string" || !body.summary.trim() || body.summary.length>1500 || typeof body.sourceAt!=="string" || !Number.isFinite(Date.parse(body.sourceAt)) || Date.parse(body.sourceAt)>Date.now()) return json({error:"Provide a case, display name, approved update and a valid past source timestamp"},400);
     const board=await desk().getBoard(user.deskId);
     if(!board.sites.some(s=>s._id===body.siteId && s.deskId===user.deskId))return json({error:"Case not found on your desk"},404);
-    const {update,pin}=makeUpdate({deskId:user.deskId,siteId:body.siteId,alias:body.alias.trim(),summary:body.summary.trim(),sourceAt:new Date(body.sourceAt).toISOString(),publishedBy:user._id,expiresAt:new Date(Date.now()+24*3600_000).toISOString(),demo:process.env.DEMO_MODE==="1"});
+    const {update}=makeUpdate({deskId:user.deskId,siteId:body.siteId,alias:body.alias.trim(),summary:body.summary.trim(),sourceAt:new Date(body.sourceAt).toISOString(),publishedBy:user._id,expiresAt:new Date(Date.now()+24*3600_000).toISOString(),demo:process.env.DEMO_MODE==="1"});
     await saveUpdate(update);
-    return json({reference:update._id,pin,expiresAt:update.expiresAt},201);
+    return json({reference:update._id,expiresAt:update.expiresAt},201);
   } catch {return json({error:"Could not publish the update"},500);}
 }

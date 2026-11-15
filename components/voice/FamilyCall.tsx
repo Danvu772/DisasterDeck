@@ -3,9 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { Conversation } from "@elevenlabs/client";
 
+type PersonUpdate = { id: string; alias: string; summary: string; sourceAt: string; demo: boolean };
+
 export function FamilyCall() {
-  const [reference, setReference] = useState("");
-  const [pin, setPin] = useState("");
+  const [people, setPeople] = useState<PersonUpdate[]>([]);
+  const [personId, setPersonId] = useState("");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("disconnected");
   const [mode, setMode] = useState("");
   const [error, setError] = useState("");
@@ -19,6 +23,18 @@ export function FamilyCall() {
   const starting = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const active = status !== "disconnected";
+  const matches = people.filter(person => person.alias.toLocaleLowerCase("tr-TR").includes(search.trim().toLocaleLowerCase("tr-TR")));
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/voice/people", { signal: controller.signal, cache: "no-store" }).then(async response => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setPeople(data.people);
+    }).catch(() => { if (!controller.signal.aborted) setError("Yayımlanmış bilgiler yüklenemedi. Sayfayı yenileyerek tekrar deneyin."); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, []);
 
   async function end() {
     generation.current++;
@@ -43,11 +59,11 @@ export function FamilyCall() {
     const attempt = ++generation.current;
     setError(""); setMessages([]); setSourceAt(""); setStatus("connecting");
     try {
-      const response = await fetch("/api/voice/session", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reference: reference.trim().toLowerCase(), pin }) });
+      const response = await fetch("/api/voice/session", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ personId }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Görüşme başlatılamadı.");
       if (attempt !== generation.current) return;
-      setDemo(data.demo === true); setPin("");
+      setDemo(data.demo === true);
       // Access material stays in this closure, never in localStorage or a URL.
       const { Conversation } = await import("@elevenlabs/client");
       if (attempt !== generation.current) return;
@@ -84,11 +100,14 @@ export function FamilyCall() {
 
   return <section className="space-y-4 rounded-card border border-line bg-card p-5">
     <form onSubmit={start} className="space-y-4">
-      <label className="block font-bold">Referans kodu<input required pattern="[a-fA-F0-9]{16}" maxLength={16} disabled={active} value={reference} onChange={e => setReference(e.target.value)} autoComplete="off" className="mt-1 block w-full rounded-button border border-line bg-paper p-3 font-mono" /></label>
-      <label className="block font-bold">8 haneli PIN<input required pattern="[0-9]{8}" maxLength={8} inputMode="numeric" type="password" disabled={active} value={pin} onChange={e => setPin(e.target.value)} autoComplete="off" className="mt-1 block w-full rounded-button border border-line bg-paper p-3" /></label>
+      <label className="block font-bold">Kimi arıyorsunuz?<input maxLength={100} disabled={active} value={search} onChange={e => { setSearch(e.target.value); setPersonId(""); }} placeholder="Ad veya isim yazın" className="mt-1 block w-full rounded-button border border-line bg-paper p-3" /></label>
+      {loading ? <p role="status">Bilgiler yükleniyor…</p> : matches.length ? <fieldset className="max-h-80 space-y-3 overflow-y-auto"><legend className="mb-2 text-sm text-muted">Bilgi almak istediğiniz kaydı seçin ({matches.length})</legend>{matches.map(person => <label key={person.id} className="flex cursor-pointer items-start gap-3 rounded-button border border-line p-3">
+        <input type="radio" name="person" required checked={personId === person.id} disabled={active} onChange={() => setPersonId(person.id)} className="mt-1" />
+        <span className="min-w-0"><strong className="block">{person.alias}{person.demo && " · DEMO"}</strong><span className="mt-1 block whitespace-pre-wrap text-sm">{person.summary}</span><span className="mt-2 block text-xs text-muted">Kaynak: {new Date(person.sourceAt).toLocaleString("tr-TR")}</span></span>
+      </label>)}</fieldset> : <p className="text-muted">{people.length ? "Bu isimle yayımlanmış bir bilgi bulunamadı. İsmi kontrol edin veya farklı bir isimle arayın." : "Henüz yayımlanmış bir bilgi yok. Yeni güncellemeler yayımlandığında burada görünecek."}</p>}
       <p className="text-sm text-muted">“Sesli ara” düğmesine basınca aşağıdaki açıklamada belirtilen ses işleme başlar ve tarayıcı mikrofon izni ister. Görüşme en fazla 10 dakika sürer.</p>
       <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={active} className="rounded-button bg-primary px-5 py-3 font-bold text-card disabled:opacity-50">Sesli ara</button>
+        <button type="submit" disabled={active || !personId} className="rounded-button bg-primary px-5 py-3 font-bold text-card disabled:opacity-50">Sesli ara</button>
         {active && <button type="button" onClick={() => void end()} className="rounded-button border border-line px-5 py-3 font-bold">Görüşmeyi bitir</button>}
         {status === "connected" && <button type="button" onClick={() => { call.current?.setMicMuted(!muted); setMuted(!muted); }} className="rounded-button border border-line px-4 py-3">{muted ? "Mikrofonu aç" : "Mikrofonu kapat"}</button>}
       </div>

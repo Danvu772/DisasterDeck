@@ -1,10 +1,10 @@
-import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { getDb } from "./db";
 
 export interface FamilyUpdate {
   _id: string; deskId: string; siteId: string; alias: string; summary: string;
   sourceAt: string; publishedAt: string; expiresAt: string; publishedBy: string;
-  salt: string; pinHash: string; revoked: boolean; demo: boolean;
+  revoked: boolean; demo: boolean;
 }
 const g = globalThis as typeof globalThis & { familyVoiceDemo?: Map<string, FamilyUpdate>; familyVoiceHits?: Map<string, number[]> };
 const demo = g.familyVoiceDemo ??= new Map<string, FamilyUpdate>();
@@ -31,14 +31,8 @@ export function same(a: string, b: string): boolean {
   const h = (v: string) => createHmac("sha256", "family-voice-compare").update(v).digest();
   return timingSafeEqual(h(a),h(b));
 }
-export function makeUpdate(input: Omit<FamilyUpdate, "_id"|"salt"|"pinHash"|"revoked"|"publishedAt">): { update: FamilyUpdate; pin: string } {
-  const pin = String(randomInt(0,100_000_000)).padStart(8,"0");
-  const salt = randomBytes(16).toString("hex");
-  return { pin, update: { ...input, _id: randomBytes(8).toString("hex"), salt,
-    pinHash: scryptSync(pin,salt,32).toString("hex"), publishedAt: new Date().toISOString(), revoked: false } };
-}
-export function checkPin(update: FamilyUpdate, pin: string): boolean {
-  return /^\d{8}$/.test(pin) && !update.revoked && Date.parse(update.expiresAt)>Date.now() && same(scryptSync(pin,update.salt,32).toString("hex"),update.pinHash);
+export function makeUpdate(input: Omit<FamilyUpdate, "_id"|"revoked"|"publishedAt">): { update: FamilyUpdate } {
+  return { update: { ...input, _id: randomBytes(8).toString("hex"), publishedAt: new Date().toISOString(), revoked: false } };
 }
 async function collection() { return (await getDb()).collection<FamilyUpdate>("family_voice"); }
 function demoStorage() { return !process.env.MONGODB_URI && process.env.DEMO_MODE === "1"; }
@@ -55,7 +49,15 @@ export async function getUpdate(reference: string): Promise<FamilyUpdate|null> {
 }
 export async function listUpdates(deskId: string) {
   const all = demoStorage() ? [...demo.values()].filter(d=>d.deskId===deskId).sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt)) : await (await collection()).find({deskId}).sort({publishedAt:-1}).limit(100).toArray();
-  return all.map(({salt: _salt,pinHash: _hash,...safe})=>{ void _salt; void _hash; return safe; });
+  // Explicit projection also excludes legacy PIN fields on previously stored documents.
+  return all.map(doc=>({_id:doc._id,deskId:doc.deskId,siteId:doc.siteId,publishedBy:doc.publishedBy,revoked:doc.revoked,...publicUpdate(doc)}));
+}
+export async function listPublicUpdates() {
+  const now = new Date().toISOString();
+  const all = demoStorage()
+    ? [...demo.values()].filter(d=>!d.revoked && d.expiresAt>now).sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt)).slice(0,100)
+    : await (await collection()).find({revoked:false,expiresAt:{$gt:now}}).sort({publishedAt:-1}).limit(100).toArray();
+  return all.map(doc=>({id:doc._id,...publicUpdate(doc)}));
 }
 export async function revokeUpdate(reference: string, deskId: string) {
   if (demoStorage()) { const doc=demo.get(reference); if(doc?.deskId===deskId) doc.revoked=true; }
