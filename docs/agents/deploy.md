@@ -23,7 +23,8 @@ Promote only when the person asks. A Deploy run takes about 5 minutes.
 
 The VM is **IPv6-only**. Vultr gave it `100.68.113.147/18` with no IPv4 default route, and that range is not routable on the internet. So:
 
-- `/etc/resolv.conf` points at nat64.net's DNS64 servers. IPv4-only hosts (GitHub, Atlas, ElevenLabs) are reached through their NAT64. Atlas sees their addresses, so Atlas Network Access must allow `0.0.0.0/0`.
+- **Outbound IPv4 goes through Cloudflare WARP** (`wg-quick@wgcf`, Atlanta exit), set up by `deploy/vultr/warp-ipv4.sh`. It carries IPv4 only. IPv6, Tailscale and the site tunnel do not use it. `/etc/resolv.conf` is plain `1.1.1.1`. Atlas sees WARP's addresses, so Atlas Network Access must allow `0.0.0.0/0`.
+- Before WARP the VM used nat64.net's DNS64/NAT64. Their relays are all in Europe: an Atlas round trip took ~190 ms and the Brain handled about 2 events a minute. Through WARP it is ~20 ms. If WARP is down, `cp /etc/resolv.conf.nat64 /etc/resolv.conf` is the slow fallback.
 - Visitors on IPv4 cannot reach the VM directly. The Cloudflare tunnel connects outward over IPv6 and Cloudflare serves the domain on both.
 - GitHub runners are IPv4-only, so the workflow reaches the VM over Tailscale.
 - The VM never pulls from GitHub. It has no deploy key (only the repo owner can add one). The workflow pushes to it instead.
@@ -37,7 +38,8 @@ The VM is **IPv6-only**. Vultr gave it `100.68.113.147/18` with no IPv4 default 
 | `/opt/desk-stage` | Where the workflow uploads (user `deployer`). |
 | `desk-web` | `next start` on `127.0.0.1:3000`, user `desk`. |
 | `desk-brain` | `npm run brain`, user `desk`. The prod Brain. |
-| `desk-tunnel` | `cloudflared`, the public URL. |
+| `desk-tunnel` | `cloudflared`, tunnel `desk`, config `/etc/cloudflared/config.yml`. The public URL. |
+| `wg-quick@wgcf` | WARP, the VM's only IPv4 route. `desk-web` and `desk-brain` start after it. |
 | `/var/lib/desk/deployed` | Commit of the live release. |
 
 `deployer` can only upload and run `sudo /usr/local/bin/desk-release`. Its key accepts connections from the tailnet only.
@@ -64,6 +66,7 @@ ssh root@100.114.100.30                          # needs Dan's tailnet
 journalctl -u desk-web -n 50 --no-pager
 journalctl -u desk-brain -n 50 --no-pager
 journalctl -u desk-tunnel -n 50 --no-pager
+curl -4 -s https://www.cloudflare.com/cdn-cgi/trace | grep -E 'colo|warp'   # on the VM: IPv4 through WARP
 curl -s http://127.0.0.1:3000/api/health         # on the VM: database and Brain loop
 ```
 
