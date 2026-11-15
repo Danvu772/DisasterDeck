@@ -57,7 +57,7 @@ export async function processEvent(event: Event): Promise<void> {
     const out = await apply(event);
     await events.updateOne({ _id: event._id }, { $set: { status: out.status, result: out.result }, $unset: { lockedAt: "" } });
     log(`${event.type} ${event._id} (${event.source}) → ${out.status} ${out.result.recordIds.join(", ")}: ${out.result.reason}`);
-    await dispatcher.react(out.changes);
+    await dispatcher.react(out.changes, out.actions);
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     const giveUp = (event.attempts ?? 1) >= sweeper.MAX_ATTEMPTS;
