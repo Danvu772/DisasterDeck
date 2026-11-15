@@ -24,7 +24,7 @@ const KIND_WORD: Record<DetailKind, string> = {
 
 // Full height under the nav at md and up. The nav is not a fixed height (the account
 // button wraps), so measure where it ends.
-function useNavBottom() {
+export function useNavBottom() {
   const [px, setPx] = useState(0);
   useLayoutEffect(() => {
     const nav = document.querySelector("nav");
@@ -38,11 +38,17 @@ function useNavBottom() {
   return px;
 }
 
-export function DetailPanel({ board, now, live, openKey, onOpen, onClose }: {
-  board: Board; now: number; live: boolean; openKey: string;
+export function DetailPanel({ board, now, live, openKey, closing = false, onOpen, onClose }: {
+  board: Board; now: number; live: boolean; openKey: string; closing?: boolean;
   onOpen: (key: string) => void; onClose: () => void;
 }) {
   const top = useNavBottom();
+  // Slides in from the right at md and up. Mount off screen, then move on the next frame.
+  const [in_, setIn] = useState(false);
+  useEffect(() => {
+    const f = requestAnimationFrame(() => setIn(true));
+    return () => cancelAnimationFrame(f);
+  }, []);
   const box = useRef<HTMLDivElement>(null);
   const ref = parseKey(openKey);
   const record = ref ? findRecord(board, ref.kind, ref.id) : undefined;
@@ -63,7 +69,8 @@ export function DetailPanel({ board, now, live, openKey, onOpen, onClose }: {
   const shell = (title: string, body: React.ReactNode) => (
     <div ref={box} tabIndex={-1} role="dialog" aria-label={title}
       style={{ "--nav-bottom": `${top}px` } as React.CSSProperties}
-      className="fixed inset-0 z-[1100] flex flex-col bg-card md:left-auto md:top-(--nav-bottom) md:w-[45%] md:border-l md:border-line">
+      className={`fixed inset-0 z-[1100] flex flex-col bg-card md:left-auto md:top-(--nav-bottom) md:w-[max(45%,420px)] md:border-l md:border-line md:transition-transform md:duration-200 md:ease-out motion-reduce:transition-none ${
+        in_ && !closing ? "md:translate-x-0" : "md:translate-x-full"}`}>
       <div className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-2">
         <p className="text-sm text-muted">{ref ? KIND_WORD[ref.kind] : "Record"}</p>
         {!live && <p className="text-sm text-muted">Demo data, the board API is not answering.</p>}

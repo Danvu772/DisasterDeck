@@ -1,6 +1,6 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Incident, Site } from "@/lib/types";
 import {
   type Board, IncidentCards, NeedCards, RoadCards, ShelterCards, SiteCards, TaskCards,
@@ -76,7 +76,7 @@ function Openable({ id, openKey, onOpen, children }: {
 }) {
   const on = openKey === id;
   return (
-    <div tabIndex={0}
+    <div tabIndex={0} data-card={id}
       onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a, details, input")) onOpen(id); }}
       onKeyDown={(e) => {
         if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(id); }
@@ -110,6 +110,23 @@ export function BoardTabs({ board, now, live = true, initial = "incident_sites" 
   }, [setOpen]);
   const close = useCallback(() => setOpen(null), [setOpen]);
 
+  // Keep the panel mounted for the slide out, same 200 ms as the slide in.
+  const [held, setHeld] = useState(openKey);
+  useEffect(() => {
+    if (openKey) { setHeld(openKey); return; }
+    const t = setTimeout(() => setHeld(null), 200);
+    return () => clearTimeout(t);
+  }, [openKey]);
+
+  // The board column narrows while the panel is open, so after it settles bring the open card back into view.
+  useEffect(() => {
+    if (!openKey || !window.matchMedia("(min-width: 768px)").matches) return;
+    const t = setTimeout(() => {
+      document.querySelector(`[data-card="${CSS.escape(openKey)}"]`)?.scrollIntoView({ block: "nearest" });
+    }, 220);
+    return () => clearTimeout(t);
+  }, [openKey]);
+
   const card = (id: string, node: React.ReactNode) => (
     <Openable key={id} id={id} openKey={openKey} onOpen={open}>{node}</Openable>
   );
@@ -131,7 +148,8 @@ export function BoardTabs({ board, now, live = true, initial = "incident_sites" 
           );
         })}
       </div>
-      <div role="tabpanel" className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+      <div role="tabpanel" className={`mt-4 grid gap-3 ${
+        openKey ? "md:grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3" : "md:grid-cols-2 lg:grid-cols-3"}`}>
         {tab === "incident_sites" && incidentSiteRows(board).map((r) => "site" in r ? (
           <div key={`site:${r.site._id}`} className="flex flex-col gap-2">
             {card(`site:${r.site._id}`, <SiteCards items={[r.site]} now={now} tasks={board.tasks} />)}
@@ -147,7 +165,7 @@ export function BoardTabs({ board, now, live = true, initial = "incident_sites" 
         {tab === "roads" && board.roads.map((r) => card(`road:${r._id}`, <RoadCards items={[r]} now={now} />))}
         {tab === "tasks" && board.tasks.map((t) => card(`task:${t._id}`, <TaskCards items={[t]} now={now} />))}
       </div>
-      {openKey && <DetailPanel board={board} now={now} live={live} openKey={openKey} onOpen={open} onClose={close} />}
+      {held && <DetailPanel board={board} now={now} live={live} openKey={held} closing={!openKey} onOpen={open} onClose={close} />}
     </div>
   );
 }

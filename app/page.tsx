@@ -7,8 +7,6 @@ export const dynamic = "force-dynamic";
 
 export default function Desk() {
   return (
-    <main className="mx-auto max-w-6xl p-4">
-      <LiveBoard initial={makeBoard(Date.now())} />
-    </main>
+    <LiveBoard initial={makeBoard(Date.now())} />
   );
 }
