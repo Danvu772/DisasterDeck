@@ -2,6 +2,12 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 23:10 t22 merged (`250db0c`), SSO nonce (`26f9c3f`), t23 restarted, t24 queued
+- **t22** opening a card no longer covers the board. On a laptop the board and the detail panel sit side by side, the cards drop to fewer columns, and the clicked card stays in view. Phones keep the full-screen sheet.
+- **SSO:** Dan got through SSOJet's confirmation code. Auth.js then rejected the ID token with "unexpected nonce claim value": SSOJet always puts a nonce in the token, and we had not sent one. `checks: ["pkce", "state", "nonce"]` fixes it. A full sign-in still needs a person to confirm.
+- **t23** (feed reports) died when the usage limit hit, with no code written. Restarted.
+- **t24** (Dan): `/field` lists every open task of the team, tap one to make it the current task, `?task=` remembers it.
+
 ### 22:30 t21 record detail merged (`ff2a002`), SSO reaches the SSOJet login page
 - **t21** (opus, $2.31). Five tabs, Sites and Incidents merged into **Incident sites**, each incident indented under the site its task was heading to. Any card opens a panel: a small map that pins the record (a need or task rings its site, nothing guessed, "No location yet" otherwise), every field in plain labels, linked records you can click through, history. `?open=incident:inc-1` links straight to it, "Open on the full map" goes to `/map?focus=`. Checked in the browser for an incident and a need.
 - **Token guard:** Role 1's Swagger page (`app/api/docs`) has inline CSS with `#fff`, which made `check:tokens` fail on main for everyone. The guard now skips `app/api`, API routes are not screens.
