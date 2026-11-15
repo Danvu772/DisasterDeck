@@ -1,8 +1,8 @@
 // POST /api/chat — one turn with the person's own agent. Owner: Role 2.
 // Body: { text?, imageBase64?, audioBase64?, coords? } → { reply, eventIds, actions }
 // Who is talking: the login, once SSOJet is in. Until then ?user=<id> (or body.userId),
-// accepted only when DEMO_MODE=1. Anyone who can reach the server can then talk as anyone,
-// so keep DEMO_MODE off on a public URL once login works.
+// accepted only when DEMO_MODE=1 and the request comes from this laptop (isLocalDemo, #11).
+// Through a tunnel or the network, people must sign in.
 // Voice: Claude has no speech-to-text. The browser turns speech into text (Web Speech API)
 // and sends it as `text`. A raw audioBase64 gets a polite reply, not an error.
 
@@ -11,13 +11,13 @@ import { refreshChatSummary } from "@/agents/personal/memory";
 import { runTurn, type TurnInput } from "@/agents/personal/turn";
 import { desk } from "@/agents/desk";
 import { sessionUserId } from "@/auth";
+import { isLocalDemo } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_TEXT = 4000;
 const MAX_IMAGE_BASE64 = 5 * 1024 * 1024; // the API's 5 MB image limit applies to the base64 data
-const demoAllowed = () => process.env.DEMO_MODE === "1";
 
 // Small in-memory rate limit: protects the $20 key from a stuck client or a curious visitor.
 const PER_MINUTE = 8;
@@ -61,12 +61,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "body must be JSON" }, { status: 400 });
   }
 
-  // The SSOJet login wins. ?user= / body.userId is the demo fallback, only with DEMO_MODE=1.
+  // The SSOJet login wins. ?user= / body.userId is the demo fallback, only on this laptop.
   let userId = await sessionUserId();
   if (!userId) {
     userId = new URL(req.url).searchParams.get("user") ?? (typeof body.userId === "string" ? body.userId : null);
     if (!userId) return NextResponse.json({ error: "who is talking? (login, or ?user= in demo mode)" }, { status: 401 });
-    if (!demoAllowed()) return NextResponse.json({ error: "?user= works only with DEMO_MODE=1" }, { status: 401 });
+    if (!isLocalDemo(req)) return NextResponse.json({ error: "Sign in. Demo users work only on this laptop." }, { status: 401 });
   }
   if (!(await desk().getUser(userId))) return NextResponse.json({ error: `unknown user ${userId}` }, { status: 404 });
 

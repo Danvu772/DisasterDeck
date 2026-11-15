@@ -21,6 +21,20 @@ function json(status: number, body: unknown): Response {
   return Response.json(body, { status });
 }
 
+// Small in-memory rate limit per person, same style as /api/chat. The agent key is not limited:
+// the scenario player and the workers post in bursts on purpose.
+const POSTS_PER_MINUTE = 60;
+const g = globalThis as unknown as { __eventHits?: Map<string, number[]> };
+const hits: Map<string, number[]> = (g.__eventHits ??= new Map<string, number[]>());
+function limited(key: string): boolean {
+  const now = Date.now();
+  const xs = (hits.get(key) ?? []).filter((t) => now - t < 60_000);
+  const over = xs.length >= POSTS_PER_MINUTE;
+  if (!over) xs.push(now);
+  hits.set(key, xs);
+  return over;
+}
+
 const FEED_DEFAULT = 50;
 const FEED_MAX = 500;
 
@@ -80,6 +94,9 @@ export async function POST(req: Request): Promise<Response> {
     const who = await resolveCaller(req);
     if (!who.ok) return json(who.status, { error: who.error });
     const caller = who.caller;
+    if (caller.kind === "person" && limited(caller.user._id)) {
+      return json(429, { error: "too many posts, wait a minute" });
+    }
 
     let raw: unknown;
     try {
