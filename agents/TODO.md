@@ -1,6 +1,6 @@
 # Role 2: Agents — status and TODO
 
-Owner: Ömer. Design: `docs/Multiplayer Disaster Desk/Final system design.md` §6–7, `Personal agents.md`. Shapes: `lib/types.ts`.
+Owner: Ömer until 15 Nov morning, **Göktürk from then on**. Design: `docs/Multiplayer Disaster Desk/Final system design.md` §6–7, `Personal agents.md`. Shapes: `lib/types.ts`.
 
 **In one line:** every AI part of the desk. Research agents turn tweets and news into events. Every person has a personal agent that reads their slice of the desk and files what they say as events. **Agents never write records**: they read context and post events; Role 1's Brain does the rest.
 
@@ -11,6 +11,23 @@ web ──── news-agent ───┤
 people ── /api/chat ───┘          ▲
           personal agent ── desk().getUserContext() → lib/db.ts getUserContext() + getBoard()
 ```
+
+---
+
+## Handoff to Göktürk (15 Nov)
+
+Start here, in this order:
+1. **Run it.** `npm install`, then `npm run dev` and open `/talk?user=field-alpha` (voice page) and `/agent`. Your `.env.local` needs `ANTHROPIC_API_KEY`, `MONGODB_URI` (shared Atlas, from Darshal), `DEMO_MODE=1`, and for voice `ELEVENLABS_API_KEY`. Ask Ömer for the keys privately; never commit them. Add `DESK_BACKEND=fixture` to try things without writing to the team's database.
+2. **Read three files:** `agents/desk/port.ts` (what an agent can read and post), `agents/personal/turn.ts` (one chat turn), `agents/personal/tools.ts` (the agent's tools).
+3. **Check nothing broke:** `DESK_BACKEND=fixture npx tsx agents/scripts/contract-check.ts` (every event shape vs Role 1's schema, free) and `npx tsx --env-file=.env.local agents/scripts/events-check.ts` (how the Brain handled our events, read only).
+
+What is live on the shared desk now: the 5 replay tweets (→ 2 sites), 2 road closures from the news agent, 3 shelter counts from the Google Sheet. Workers are run by hand: `workers/x-agent.ts`, `workers/news-agent.ts`, `workers/sheet-sync.ts` (keeps running), `workers/quake-watcher.ts --replay`.
+
+Open, in priority order:
+- **`/talk` with a real microphone:** built and tested with typed text and spoken replies; the hold-to-talk microphone path still needs one test on a laptop (and a tunnel for a phone: the mic needs https).
+- **Demo script:** the strongest voice beat is a field team speaking one sentence and the chips showing several events filed.
+- **Budget:** `npx tsx agents/scripts/spend.ts`. About $1 of Claude spent so far; the agents stop at `AGENT_BUDGET_USD` (15).
+- Role 1 items below (keeper handlers for need / closure / capacity, the "quake" alert kind).
 
 ---
 
@@ -28,6 +45,8 @@ people ── /api/chat ───┘          ▲
 | X agent | `agents/research/x-extract.ts`, `workers/x-agent.ts` | Tweet → `report`, `need`, `closure` (road closed, blocked or open again) and `capacity` (shelter fullness, only when the tweet gives numbers) events. A danger at a report's place (gas, fire, a wall still falling) goes into `textEn` as `[Hazard: …]`. Phones masked in code first | ✅ 15 tweets, $0.002 each. 15 Nov 05:40: 8 English test tweets all right (3 roads, 2 shelter counts, 1 hazard); the 11 Turkish samples gave no false road, shelter or hazard |
 | News agent | `agents/research/news-search.ts`, `workers/news-agent.ts` | Claude web search for one region → `closure` / `need` / `report` / `capacity` (reports may carry `[Hazard: …]`), each with a source URL the search really returned. Two channels: `news` (any site) and `official` (AFAD, Karayolları, governor, municipality, Interior Ministry, Kızılay, Anadolu Ajansı, TRT Haber) | ✅ ~$0.06 per channel. Official found the Feb 2023 Erkenek–Gölbaşı closure (AA) |
 | Google Sheets sync | `agents/research/sheets.ts`, `workers/sheet-sync.ts` | Volunteers' shelter sheet ↔ desk. A row a person changes → `capacity` event (source `sheet`). A newer number the desk got elsewhere → written into the row with source and time; never over a person's edit from the last 5 min (goes to the Note column), never echoing the sheet's own numbers. No model call | ✅ both ways on the real sheet (15 Nov): 3 shelters written in, a person's edit (24 → 31) became a `capacity` event, own writes not read back |
+| Voice page `/talk` | `app/talk/page.tsx`, `components/talk/` | Phone-first page: hold to talk with a live wave of your voice, ElevenLabs transcript shown as "heard", the agent's spoken reply with its own wave, filed events as chips, the top task, an aftershock strip. Design tokens only (`check:tokens` passes) | ✅ typed turn + spoken reply + agent wave in the browser · ⏳ microphone path needs a test with a real mic |
+| Voice (ElevenLabs) | `agents/shared/voice.ts`, `app/api/chat/route.ts` | `audioBase64` (a phone voice note) → Scribe v3 speech-to-text → the agent turn; `heard` returns the transcript. `speak: true` → the reply also as speech (`replyAudio`, mp3 data URL, Eleven v4 Turbo). Off without `ELEVENLABS_API_KEY`: the browser's own speech recognition still works | ✅ 15 Nov: round trip EN + TR exact (2 s to speak, 0.5 s to hear); a Turkish voice note through `/api/chat` was heard word for word and answered with `replyAudio`. `agents/scripts/voice-check.ts` tests both ways |
 | Aftershock warnings | `agents/research/quakes.ts`, `workers/quake-watcher.ts` | Replay: the real Feb 2023 sequence from USGS (cached in `agents/fixtures/`) on a scenario clock. Live: AFAD + USGS every minute. A quake worth a warning (M5 ≤100 km, M6 ≤200 km, M7 ≤400 km) goes into every personal agent's context, and the agent's next reply starts with the warning. No model call, no cost | ✅ field team got "M6.0, 40 km, 2 min ago, get out" |
 | Desk connection | `agents/desk/` | `MONGODB_URI` set → **Role 1's `lib/db.ts` functions in the same process** (`lib-desk.ts`): every payload checked with Role 1's `payloadSchemas`, `actor` = the person talking. Else `DESK_API_URL` → HTTP. Else fake data | ✅ MongoDB (15 Nov 01:40) · ✅ fake |
 | Spend meter | `agents/shared/cost.ts`, `agents/scripts/spend.ts` | Every call priced and logged to `agents/.usage/usage.jsonl`. Stops at `AGENT_BUDGET_USD` (default $15) | ✅ |
@@ -120,6 +139,7 @@ No key? Publish the sheet (File → Share → Publish to web → CSV) and set `G
 | **Role 3 (Dan)** | Photo button: resize to ≤1568 px JPEG before sending `imageBase64` | Keeps under the 5 MB limit and costs fewer tokens |
 | **Role 3 (Dan)** | Add `shelter-b-staff` and `citizen-1` to the "talk as" list | They exist in the agent's fake desk, not in `fixtures/desk.ts` |
 | **Role 1** | Optional `needsCheck?: string` on `ReportPayload` | The X agent's "unclear" note rides in `textEn` today because the schema strips unknown fields. With a field the Brain could open a call task for it directly |
+| **Role 3 (Dan)** | Field phone view: send the hold-to-talk recording as `audioBase64` (MediaRecorder, webm/opus) with `speak: true`, show `heard` as the person's line, and play `replyAudio` | ElevenLabs track: "the voice is the product". A field team in the rubble talks and listens, hands free. Browser speech recognition stays as the fallback |
 | **Everyone** | Set a spend limit of about $18 on the API key's workspace in the Anthropic Console | `AGENT_BUDGET_USD` only guards this machine |
 
 ---

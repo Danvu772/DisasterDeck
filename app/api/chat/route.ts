@@ -1,15 +1,21 @@
 // POST /api/chat — one turn with the person's own agent. Owner: Role 2.
-// Body: { text?, imageBase64?, audioBase64?, coords? } → { reply, eventIds, actions }
+// Body: { text?, imageBase64?, audioBase64?, coords?, speak? }
+//   → { reply, eventIds, actions, heard?, replyAudio? }
 // Who is talking: the login, once SSOJet is in. Until then ?user=<id> (or body.userId),
 // accepted only when DEMO_MODE=1 and the request comes from this laptop (isLocalDemo, #11).
 // Through a tunnel or the network, people must sign in.
-// Voice: Claude has no speech-to-text. The browser turns speech into text (Web Speech API)
-// and sends it as `text`. A raw audioBase64 gets a polite reply, not an error.
+// Voice (ElevenLabs, when ELEVENLABS_API_KEY is set):
+//   audioBase64  a voice note (webm/opus from the phone's MediaRecorder, m4a, mp3, wav) is turned
+//                into text with Scribe and handled like typed text; `heard` returns what was heard.
+//   speak: true  the reply also comes back as speech: `replyAudio` is a data URL (audio/mpeg).
+// Without the key, the browser's own speech recognition still works (it sends `text`), and a raw
+// audioBase64 gets a polite reply, not an error.
 
 import { after, NextResponse } from "next/server";
 import { refreshChatSummary } from "@/agents/personal/memory";
 import { runTurn, type TurnInput } from "@/agents/personal/turn";
 import { desk } from "@/agents/desk";
+import { speak, transcribe, voiceEnabled } from "@/agents/shared/voice";
 import { sessionUserId } from "@/auth";
 import { isLocalDemo } from "@/lib/auth";
 
@@ -18,6 +24,7 @@ export const dynamic = "force-dynamic";
 
 const MAX_TEXT = 4000;
 const MAX_IMAGE_BASE64 = 5 * 1024 * 1024; // the API's 5 MB image limit applies to the base64 data
+const MAX_AUDIO_BASE64 = 10 * 1024 * 1024; // about 7 MB of audio: minutes of voice, far more than a report
 
 // Small in-memory rate limit: protects the $20 key from a stuck client or a curious visitor.
 const PER_MINUTE = 8;
@@ -51,6 +58,7 @@ interface Body {
   imageBase64?: unknown;
   audioBase64?: unknown;
   coords?: unknown;
+  speak?: unknown;
 }
 
 export async function POST(req: Request) {
@@ -75,12 +83,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "too many messages, wait a minute" }, { status: 429 });
   }
 
-  const text = typeof body.text === "string" ? body.text.slice(0, MAX_TEXT) : undefined;
-  if (!text && body.audioBase64 && !body.imageBase64) {
-    return NextResponse.json({
-      reply: "I can't listen to audio files yet. Hold the mic button so your phone types what you say, or write it.",
-      eventIds: [], actions: [],
-    });
+  let text = typeof body.text === "string" ? body.text.slice(0, MAX_TEXT) : undefined;
+  let heard: string | undefined;
+  if (!text && body.audioBase64 !== undefined) {
+    if (typeof body.audioBase64 !== "string") return NextResponse.json({ error: "audioBase64 must be a string" }, { status: 400 });
+    if (!voiceEnabled()) {
+      if (!body.imageBase64) {
+        return NextResponse.json({
+          reply: "I can't listen to audio files yet. Hold the mic button so your phone types what you say, or write it.",
+          eventIds: [], actions: [],
+        });
+      }
+    } else {
+      const m = /^data:([^;,]+)[^,]*;base64,/.exec(body.audioBase64);
+      const base64 = body.audioBase64.replace(/^data:[^,]*,/, "").replace(/\s/g, "");
+      if (base64.length > MAX_AUDIO_BASE64) return NextResponse.json({ error: "voice note too long" }, { status: 413 });
+      try {
+        const t = await transcribe(Buffer.from(base64, "base64"), m?.[1] ?? "audio/webm");
+        if (!t.text) {
+          return NextResponse.json({ reply: "I couldn't hear any words. Hold the button a little longer and speak close to the phone.",
+            eventIds: [], actions: [], heard: "" });
+        }
+        text = t.text.slice(0, MAX_TEXT);
+        heard = text;
+      } catch (e) {
+        console.error("[api/chat] speech-to-text", e);
+        return NextResponse.json({ reply: "I couldn't turn that voice note into text. Please try again or type it.",
+          eventIds: [], actions: [] });
+      }
+    }
   }
 
   let image: TurnInput["image"];
@@ -103,7 +134,13 @@ export async function POST(req: Request) {
     const result = await runTurn({ userId, text, image, coords });
     // After the reply is sent: fold old chat lines into the summary (MongoDB desk only).
     if (desk().name === "mongodb") after(() => refreshChatSummary(userId!));
-    return NextResponse.json(result);
+    // The reply as speech, when asked for. A voice failure never loses the written reply.
+    let replyAudio: string | undefined;
+    if (body.speak === true && voiceEnabled() && result.reply) {
+      try { replyAudio = `data:audio/mpeg;base64,${(await speak(result.reply)).toString("base64")}`; }
+      catch (e) { console.error("[api/chat] text-to-speech", e); }
+    }
+    return NextResponse.json({ ...result, ...(heard !== undefined ? { heard } : {}), ...(replyAudio ? { replyAudio } : {}) });
   } catch (e) {
     console.error("[api/chat]", e);
     return NextResponse.json({ error: "the agent failed this turn, try again" }, { status: 502 });
