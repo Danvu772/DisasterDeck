@@ -93,7 +93,8 @@ export function ZoneLayer({ fc }: { fc: ZoneFC }) {
       data={fc}
       style={(f) => {
         const p = (f as Feature<Polygon, ZoneProps>).properties;
-        return { className: className(p), weight: 2, dashArray: p.silentZone === null ? "6 6" : undefined, fillOpacity: 1 };
+        // map-fade-in: the layer appears once, when it mounts (globals.css). Nothing repeats.
+        return { className: `${className(p)} map-fade-in`, weight: 2, dashArray: p.silentZone === null ? "6 6" : undefined, fillOpacity: 1 };
       }}
       onEachFeature={(f, layer) => {
         const p = f.properties as ZoneProps;

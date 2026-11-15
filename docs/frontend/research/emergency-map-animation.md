@@ -93,9 +93,24 @@ The marketable part is not a flashy map. It is a "since you last looked" view: w
 - **Keep Leaflet for the demo.** Build A to F in Leaflet. Estimated work is small, because each is a CSS class or a layer call.
 - **Mapbox only as a later spike,** if the team wants vector tiles, after the demo. It needs a token and a new dependency.
 
+## Built (15 Nov)
+
+- **A, new critical record:** one ring around the marker, 1.2 s, only for a critical site or incident that is new since the first live board. Opening the page does not ring everything.
+- **D, zones:** silent and cold zones fade in once when their layer mounts (300 ms).
+- **F, feed to map:** the record in `/map?focus=` gets one 600 ms flash, then stays static.
+- **G, off-screen criticals:** a button shows how many critical records are outside the view. It moves the view only when clicked, never on its own.
+- **Reduced motion:** every motion above is turned off by `prefers-reduced-motion: reduce` in `app/globals.css`. The state each one shows stays on screen.
+- **Marker reuse:** icons are cached by content, so a one-second poll does not rebuild a marker and restart its animation.
+
+## Deferred, and why
+
+- **B, team route line:** the board carries no team positions. The route needs each assignee's coordinates, which means an API change (a gap for Role 1).
+- **C, arrival cross-fade:** a colour fade needs the same marker element to survive a change. Today a state change replaces the marker's HTML, so there is nothing to fade.
+- **E, count-up on post counts:** that number lives on the site card, not on the map.
+
 ## Next steps
 
 1. Read the Mapbox `flyTo` and `easeTo` reduced-motion sentences on the page directly, and fix the caveat above.
 2. Find a working Mapbox Studio page to cite, and replace the 404 link.
-3. Build A (new critical site ring) and G (off-screen critical count) first. They carry the most information for the least motion.
-4. Test every animation on a phone with the system reduced-motion setting turned on.
+3. Test every motion on a phone with the system reduced-motion setting turned on, in a browser that can run the page.
+4. Decide on B with Role 1: the team positions it needs are an API change.

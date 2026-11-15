@@ -197,6 +197,33 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
   const [onlyInView, setOnlyInView] = useState(false);
 
+  // New critical records get one ring (research note, proposal A). The first live board is the
+  // baseline, so opening the page does not ring everything, and fixtures never count as new.
+  const [ringKeys, setRingKeys] = useState<Set<string>>(() => new Set());
+  const baseline = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!live) { baseline.current = null; return; }
+    const critical = items.filter((i) => i.actNow && (i.kind === "site" || i.kind === "incident"));
+    if (baseline.current === null) { baseline.current = new Set(critical.map((i) => i.key)); return; }
+    const fresh = critical.filter((i) => !baseline.current!.has(i.key)).map((i) => i.key);
+    if (fresh.length === 0) return;
+    for (const k of fresh) baseline.current.add(k);
+    setRingKeys((prev) => new Set([...prev, ...fresh]));
+    setTimeout(() => setRingKeys((prev) => {
+      const next = new Set(prev);
+      for (const k of fresh) next.delete(k);
+      return next;
+    }), 1400);
+  }, [items, live]);
+
+  // A record the operator opened from the feed (/map?focus=) gets one flash, then nothing (proposal F).
+  const [flashKey, setFlashKey] = useState<string | null>(focus ?? null);
+  useEffect(() => {
+    if (flashKey === null) return;
+    const t = setTimeout(() => setFlashKey(null), 700);
+    return () => clearTimeout(t);
+  }, [flashKey]);
+
   const placed = items.filter((i) => i.coords);
   const unplaced = items.filter((i) => !i.coords);
   const isExtra = (i: MapItem) => i.kind === "shelter" || i.kind === "road";
@@ -205,6 +232,30 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
   const listed = onlyInView && bounds ? placed.filter((i) => bounds.contains(i.coords!)) : placed;
   const listedMain = listed.filter((i) => !isExtra(i));
   const listedExtra = listed.filter(isExtra);
+
+  // Off-screen criticals are counted, never flown to. The operator decides when the map moves (proposal G).
+  const offscreen = bounds ? placed.filter((i) => i.actNow && !bounds.contains(i.coords!)) : [];
+  function showOffscreen() {
+    const pts = offscreen.map((i) => i.coords!);
+    if (pts.length === 0) return;
+    const lat = pts.map((p) => p[0]);
+    const lng = pts.map((p) => p[1]);
+    setCityBounds([[Math.min(...lat), Math.min(...lng)], [Math.max(...lat), Math.max(...lng)]]);
+  }
+
+  // Same record, same html: reuse the icon, so Leaflet does not rebuild the marker and restart
+  // its animation on every one-second poll.
+  const iconCache = useRef(new Map<string, L.DivIcon>());
+  function iconFor(it: MapItem, isSelected: boolean): L.DivIcon {
+    const motion = [ringKeys.has(it.key) ? "map-ring" : "", flashKey === it.key ? "map-flash" : ""].join(" ").trim();
+    const built = icon(it, isSelected, now, false, motion);
+    const cacheKey = `${it.key}|${String(built.options.html)}`;
+    const hit = iconCache.current.get(cacheKey);
+    if (hit) return hit;
+    if (iconCache.current.size > 2000) iconCache.current.clear();
+    iconCache.current.set(cacheKey, built);
+    return built;
+  }
 
   function pick(it: MapItem) {
     setSelected((cur) => (cur === it.key ? null : it.key));
@@ -223,6 +274,11 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
           <button type="button" aria-pressed={onlyInView} onClick={() => setOnlyInView((v) => !v)} className={`${chip(onlyInView)} mt-2`}>
             Only list what is in the map area
           </button>
+          {offscreen.length > 0 && (
+            <button type="button" onClick={showOffscreen} className={`${chip(false)} mt-2 ml-2`}>
+              <span className="font-mono">{offscreen.length}</span> critical outside this view. Show them
+            </button>
+          )}
         </header>
         <ul className="min-h-0 flex-1 overflow-y-auto">
           {listedMain.map((it) => (
@@ -269,7 +325,7 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
             </Tooltip>
           </Marker>}
           {placed.map((it) => (
-            <Marker key={it.key} position={it.coords!} icon={icon(it, selected === it.key, now)}
+            <Marker key={it.key} position={it.coords!} icon={iconFor(it, selected === it.key)}
               zIndexOffset={selected === it.key ? 1000 : it.kind === "incident" ? 500 : isExtra(it) ? 250 : 0}
               title={it.title} eventHandlers={{ click: () => pick(it) }} />
           ))}

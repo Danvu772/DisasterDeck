@@ -76,3 +76,40 @@ body .leaflet-container .leaflet-control-zoom-in,
 body .leaflet-container .leaflet-control-zoom-out {
   font-family: var(--font-sans);
 }
+
+/* Map motion (docs/frontend/research/emergency-map-animation.md). Every one is a single pass,
+   never a loop. Reduced motion turns all of them off, and the state they show stays on screen. */
+@keyframes desk-ring {
+  from { transform: scale(1); opacity: 0.9; }
+  to   { transform: scale(3); opacity: 0; }
+}
+@keyframes desk-flash {
+  0%   { box-shadow: 0 0 0 0 var(--color-focus); }
+  50%  { box-shadow: 0 0 0 6px var(--color-focus); }
+  100% { box-shadow: 0 0 0 0 var(--color-focus); }
+}
+@keyframes desk-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+/* A new critical record: one ring around the marker, then nothing. */
+.map-ring { position: relative; }
+.map-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid var(--color-act);
+  pointer-events: none;
+  animation: desk-ring 1.2s ease-out 1 both;
+}
+/* A record the operator just opened from the feed: one flash, then static. */
+.map-flash { animation: desk-flash 600ms ease-out 1; }
+/* Silent zones and cold zones appear once when their layer mounts. */
+.map-fade-in { animation: desk-fade-in 300ms ease-out 1 both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .map-ring::after { display: none; }
+  .map-flash,
+  .map-fade-in { animation: none; }
+}
