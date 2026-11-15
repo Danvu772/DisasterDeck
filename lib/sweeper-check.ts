@@ -19,7 +19,8 @@ const U = { v1: "check-sweep-v1", v2: "check-sweep-v2", v3: "check-sweep-v3", v4
 const ids = Object.values(U);
 
 function people(): User[] {
-  const base = { region: "malatya-merkez", status: "available" as const, deskId: DESK, trust: "vetted" as const };
+  // The check moves its clock forward: its people keep a screen open the whole time (seen "in the future").
+  const base = { region: "malatya-merkez", status: "available" as const, deskId: DESK, trust: "vetted" as const, lastSeen: new Date(Date.now() + 24 * 3600_000) };
   const vol = (_id: string, name: string, d: number): User => ({ ...base, _id, name, role: "volunteer", coords: [38.4 + d, 38.4] });
   return [
     vol(U.v1, "Sweep volunteer 1", 0.001), vol(U.v2, "Sweep volunteer 2", 0.002),
@@ -104,6 +105,9 @@ async function main() {
   t = (await c.tasks.findOne({ _id: t1._id }))!;
   assert.equal(t.assignee, U.v3); assert.deepEqual(t.tried, [U.v1, U.v2]);
   assert.equal(await inboxOf(U.v1, "task", t1._id), 0); assert.equal(await inboxOf(U.v2, "task", t1._id), 1);
+  // All three walked away: nobody who missed it has been seen since, so redelegate() does not offer
+  // it back (a timeout is not a no, #38). v3, still holding it, now counts as offline (T4).
+  await c.users.updateMany({ _id: { $in: [U.v1, U.v2, U.v3] } }, { $set: { lastSeen: min(base, -60) } });
   now = min(now, ANSWER_MINUTES + 1);
   await tick(now, { deskId: DESK });
   t = (await c.tasks.findOne({ _id: t1._id }))!;
@@ -113,6 +117,7 @@ async function main() {
   await tick(now, { deskId: DESK });
   for (const co of [U.c1, U.c2]) assert.equal(await inboxOf(co, "notice", t1._id), 1);
   ok(`after ${MAX_TRIES} timeouts the task is escalated, each coordinator gets one notice, never repeated`);
+  await c.users.updateMany({ _id: { $in: [U.v1, U.v2, U.v3] } }, { $set: { lastSeen: new Date(Date.now() + 24 * 3600_000) } });
 
   // --- 2. check-in, then unreachable ---
   const t2 = task("s2", { assignee: U.v1, status: "accepted", eta: min(base, 100), deadline: min(base, 100) });

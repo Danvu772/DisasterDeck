@@ -16,14 +16,14 @@ import { haversineMeters, normalizeAddress, normalizeText, pointInPolygon } from
 import { conflictNote, resolveConflict, trustedClash, trustRank, type Stamp } from "../lib/rules/conflict";
 import { blocks, PLAYBOOK, severity } from "../lib/rules/incidents";
 import { decideReport, type SiteLite } from "../lib/rules/merge";
-import { isTrusted, matchNeed, mergeLines, needStatus } from "../lib/rules/needs";
-import { confidence, scored, siteTier, support, type Voice } from "../lib/rules/priority";
+import { isTrusted, matchNeed, mergeLines, needStatus, needTier } from "../lib/rules/needs";
+import { confidence, kept, scored, siteTier, support, type Voice } from "../lib/rules/priority";
 import {
   alertPayload, answerPayload, approvalPayload, capacityPayload, claimPayload, closurePayload, correctionPayload,
   incidentPayload, needPayload, planPayload, reportPayload,
 } from "../lib/schemas";
 import type {
-  ClaimPayload, Confidence, Event, EventType, HistoryEntry, Incident, LatLng, Need, Post, RecordType, ReportPayload, Road,
+  ClaimPayload, Confidence, Event, EventType, HistoryEntry, Incident, LatLng, Need, Pin, Post, RecordType, ReportPayload, Road,
   ScorePart, Shelter, Site, Source, Trust, Zone,
 } from "../lib/types";
 import { z } from "zod";
@@ -226,7 +226,7 @@ async function applyReport(event: Event): Promise<KeeperResult> {
     supporters: supportersOf(voices),
     tier: siteTier(people, []),
     observedAt: firstSeen,
-    ...scored({ support: sup, waitingSince: firstSeen }, now),
+    ...scored({ support: sup, waitingSince: firstSeen, ...kept(site) }, now),
   };
   // A later report can fill in what the first one did not know. It never overwrites.
   if (site.address === "address unknown" && p.address) set.address = p.address;
@@ -328,6 +328,13 @@ async function applyAnswer(event: Event): Promise<KeeperResult> {
   if (onNeed && task.type === "deliver") {
     changes.push(...await moveNeed(event, task.recordId, ["open", "assigned", "on_the_way"], { status: "delivered" }, `delivered by ${who}`));
   }
+  if (onNeed && task.type === "call") {
+    // A volunteer checked a danger-to-life need from a citizen by phone (§5): the need is confirmed.
+    const { needs } = await cols();
+    const r = await needs.updateOne({ _id: task.recordId, confidence: { $ne: "confirmed" } },
+      { $set: { confidence: "confirmed" }, $push: { history: historyOf(event, `verified by ${who}'s call${note ? `: ${note}` : ""}`) } });
+    if (r.modifiedCount) changes.push({ recordType: "need", recordId: task.recordId, op: "updated", eventId: event._id!, fields: ["confidence", "history"] });
+  }
   return done([task._id, task.recordId], `task ${task._id} done by ${who}`, changes, [{ kind: "done", taskId: task._id, by: who, note }]);
 }
 
@@ -342,6 +349,13 @@ async function applyApproval(event: Event): Promise<KeeperResult> {
   if (!task) return reject(`task ${p.taskId} not found`);
   const me = await users.findOne({ _id: event.actor }, { projection: { role: 1 } });
   if (me?.role !== "coordinator") return reject(`only a coordinator can approve, and ${event.actor} is not one`);
+  if (task.status === "escalated") {
+    // §4 escalated → assigned: nobody could take it, a coordinator picks someone.
+    if (!p.approved || !p.assignee) return reject(`task ${task._id} is escalated: name the person who takes it (approved: true, assignee)`);
+    if (!(await users.findOne({ _id: p.assignee, deskId: task.deskId }, { projection: { _id: 1 } }))) return reject(`${p.assignee} is not a person on this desk`);
+    return done([task._id], `escalated task ${task._id}: ${event.actor} picked ${p.assignee}`, [],
+      [{ kind: "approve", taskId: task._id, by: event.actor, assignee: p.assignee, eventId: event._id }]);
+  }
   if (task.status !== "waiting_approval") return reject(`task ${task._id} is ${task.status}, not waiting for approval`);
   if (!p.approved) {
     return done([task._id], `task ${task._id} rejected by ${event.actor}`, [], [{ kind: "reject", taskId: task._id, by: event.actor }]);
@@ -508,9 +522,17 @@ async function applyIncident(event: Event): Promise<KeeperResult> {
     }
     if (plan.closure) changes.push(...await closeRoad(event, id, p, textEn, step));
   }
-  return done([id, ...(task ? [task._id] : [])],
-    `incident ${id} opened (${p.kind})${block ? `, task ${task!._id} blocked` : ""}`, changes,
-    block ? [{ kind: "block", taskId: task!._id, by: event.actor, incidentId: id, reason: `${p.kind.replace(/_/g, " ")}: ${textEn}` }] : []);
+  const reason = `${p.kind.replace(/_/g, " ")}: ${textEn}`;
+  const actions: TaskAction[] = block ? [{ kind: "block", taskId: task!._id, by: event.actor, incidentId: id, reason }] : [];
+  // §6 handover: "the person's open tasks go to the next person", all of them, not only the one named.
+  if (p.kind === "handover" && !p.canContinue && fresh) {
+    for (const t of await c.tasks.find({ deskId: event.deskId, assignee: event.actor, open: true, status: { $in: ["assigned", "accepted"] } }).toArray()) {
+      if (!actions.some((a) => a.kind === "block" && a.taskId === t._id)) actions.push({ kind: "block", taskId: t._id, by: event.actor, incidentId: id, reason });
+    }
+  }
+  const blocked = actions.map((a) => (a as { taskId: string }).taskId);
+  return done([id, ...(task ? [task._id] : []), ...blocked.filter((t) => t !== task?._id)],
+    `incident ${id} opened (${p.kind})${blocked.length ? `, ${blocked.length === 1 ? `task ${blocked[0]}` : `${blocked.length} tasks`} blocked` : ""}`, changes, actions);
 }
 
 /**
@@ -634,7 +656,7 @@ async function applyNeed(event: Event): Promise<KeeperResult> {
         confidence: trusted ? "confirmed" : "unconfirmed",
         lifeThreatening: p.lifeThreatening,
         lines: [{ ...(p.siteId ? { siteId: p.siteId } : {}), quantity: p.quantity }],
-        tier: p.lifeThreatening ? 0 : 1,
+        tier: needTier(item, p.lifeThreatening),
         ...scored({ support: 1, waitingSince: observedAt }, now),
         support: 1,
         requestedBy: [event.actor],
@@ -657,8 +679,8 @@ async function applyNeed(event: Event): Promise<KeeperResult> {
     siteIds: p.siteId && !same.siteIds.includes(p.siteId) ? [...same.siteIds, p.siteId] : same.siteIds,
     status: needStatus(same.status, sup, trusted, life),
     confidence: trusted ? "confirmed" : same.confidence === "unconfirmed" && sup >= 3 ? "corroborated" : same.confidence,
-    tier: life ? 0 : same.tier,
-    ...scored({ support: sup, waitingSince: same.history[0]?.ts ?? observedAt }, now),
+    tier: life ? 0 : needTier(same.item, false),
+    ...scored({ support: sup, waitingSince: same.history[0]?.ts ?? observedAt, ...kept(same) }, now),
   };
   await c.needs.updateOne({ _id: same._id }, { $set: set, $push: { history: historyOf(event, `asked again for ${p.quantity} ${item}`) } });
   const fields = Object.keys(set).filter((k) => JSON.stringify(set[k as keyof Need]) !== JSON.stringify(same[k as keyof Need]));
@@ -731,6 +753,20 @@ async function regionFor(event: Event, coords?: LatLng): Promise<string | undefi
 const roadKey = (name: string) => normalizeAddress(name) ?? normalizeText(name);
 const closedLike = (state: Road["state"]) => state !== "open";
 
+/** Different public voices behind a road's closure events that agree with `closed` (this event included). */
+async function publicVoicesOn(road: Road, eventId: string, closed: boolean): Promise<number> {
+  const { events } = await cols();
+  const ids = [...new Set([...road.history.map((h) => h.eventId).filter((x): x is string => Boolean(x)), eventId])];
+  const evs = await events.find({ _id: { $in: ids }, type: "closure" }, { projection: { _id: 1, source: 1, actor: 1, result: 1, payload: 1 } }).toArray();
+  const keys = new Set<string>();
+  for (const e of evs) {
+    if (closedLike((e.payload as { state: Road["state"] }).state) !== closed) continue;
+    const v = await voiceOf(e, e.result?.textKey);
+    if (v.trust === "public") keys.add(v.key);
+  }
+  return keys.size;
+}
+
 async function applyClosure(event: Event): Promise<KeeperResult> {
   const parsed = closurePayload.safeParse(event.payload);
   if (!parsed.success) return reject(`payload is not a valid closure: ${firstIssue(parsed.error)}`);
@@ -770,6 +806,9 @@ async function applyClosure(event: Event): Promise<KeeperResult> {
   if (closedLike(same.state) !== closedLike(p.state)) {
     const verdict = resolveConflict(stored, stamp);
     note = conflictNote(verdict, stored, same.state, stamp, p.state);
+    // §5: two trusted sources disagree within 10 minutes → someone on the ground confirms.
+    const clash = trustedClash(stored, stamp);
+    if (clash) note += "; two trusted sources disagree within 10 min, a field team is asked to check";
     if (verdict.winner === "incoming") {
       set = {
         state: p.state, reason: reason || same.reason, observedAt: stamp.observedAt, source: event.source, trust,
@@ -777,6 +816,7 @@ async function applyClosure(event: Event): Promise<KeeperResult> {
       };
       flags = ["notify"];
     } else set = {};
+    if (clash) flags = [...flags, "confirm"];
   } else if (trustRank(trust) >= trustRank(stored.trust)) {
     // Same story from someone at least as trusted: the record is refreshed and may firm up.
     note = `${p.state} again from ${stamp.who} (${trust})`;
@@ -791,6 +831,12 @@ async function applyClosure(event: Event): Promise<KeeperResult> {
   if (!same.region && !set.region) {
     const region = await regionFor(event, same.coords ?? p.coords);
     if (region) set.region = region;
+  }
+  // §5: 3 or more different public voices saying the same thing make it corroborated, as for sites.
+  const state = set.state ?? same.state;
+  if ((set.confidence ?? same.confidence) === "unconfirmed" && await publicVoicesOn(same, eventId, closedLike(state)) >= 3) {
+    set.confidence = "corroborated";
+    note += ", 3 different public sources say so: corroborated";
   }
   await c.roads.updateOne({ _id: same._id, "history.eventId": { $ne: eventId } }, {
     ...(Object.keys(set).length ? { $set: set } : {}), $push: { history: withEvent(event, note) },
@@ -952,7 +998,7 @@ async function applyAlert(event: Event): Promise<KeeperResult> {
   if (p.kind === "silent_zone") {
     for (const s of await c.sites.find({ deskId: event.deskId, status: { $in: ["open", "team_on_site"] }, _id: { $in: [...siteIdsIn] } }).toArray()) {
       if (has(s.scoreParts, "silent zone")) continue;
-      const next = scored({ support: s.support, waitingSince: new Date(s.observedAt), silentZone: true, warmthInCold: has(s.scoreParts, "cold night") }, now);
+      const next = scored({ support: s.support, waitingSince: new Date(s.observedAt), ...kept(s), silentZone: true }, now);
       await c.sites.updateOne({ _id: s._id }, { $set: next, $push: { history: withEvent(event, `silent zone ${zone.name}: priority +30`) } });
       changes.push({ recordType: "site", recordId: s._id, op: "updated", eventId, fields: ["priority", "scoreParts", "history"], flags: ["rescored"] });
     }
@@ -963,7 +1009,7 @@ async function applyAlert(event: Event): Promise<KeeperResult> {
     const cold = p.kind === "cold" && here && isWarmthItem(n.item) && !has(n.scoreParts, "cold night");
     if (!silent && !cold) continue;
     const next = scored({
-      support: n.support, waitingSince: new Date(n.history[0]?.ts ?? now),
+      support: n.support, waitingSince: new Date(n.history[0]?.ts ?? now), ...kept(n),
       silentZone: silent || has(n.scoreParts, "silent zone"), warmthInCold: cold || has(n.scoreParts, "cold night"),
     }, now);
     await c.needs.updateOne({ _id: n._id }, {
@@ -1002,6 +1048,11 @@ async function applyCorrection(event: Event): Promise<KeeperResult> {
   if (!rec) return reject(`${p.recordType} ${p.recordId} not found on this desk`);
   if (hasEvent(rec.history, eventId)) return done([rec._id], "already applied", [], [], "merged");
   const why = mask(p.reason);
+  // §5: a public voice alone never closes or cancels anything. A citizen may withdraw a need only they asked for.
+  if (!isTrusted(await trustOf(event.actor))) {
+    const own = p.recordType === "need" && p.action === "retract" && (rec as Need).requestedBy?.every((u) => u === event.actor);
+    if (!own) return reject(`${event.actor} is not vetted: a ${p.action} of a ${p.recordType} needs a volunteer, a field team or a coordinator to check it first`);
+  }
   const change = (fields: string[]): Change =>
     ({ recordType: p.recordType as "site" | "need", recordId: rec._id, op: "updated", eventId, fields: [...fields, "history"] });
 
@@ -1018,6 +1069,29 @@ async function applyCorrection(event: Event): Promise<KeeperResult> {
     }
     return done([rec._id], `${p.recordType} ${rec._id} retracted by ${event.actor}: ${why}`, [change(["status"])],
       [{ kind: "cancel", recordType: p.recordType, recordId: rec._id, deskId: event.deskId, by: event.actor, reason: why }], "merged");
+  }
+
+  // pin: a coordinator moves a site or need to the top or the bottom of its tier (§5 "a person makes
+  // the final call"). The reason is required (the schema) and goes into the history. Tier still wins.
+  if (p.action === "edit" && p.fields && "pin" in p.fields) {
+    if (Object.keys(p.fields).length > 1) return reject("a pin is changed on its own, not together with other fields");
+    const me = await c.users.findOne({ _id: event.actor, deskId: event.deskId }, { projection: { role: 1 } });
+    if (me?.role !== "coordinator") return reject(`only a coordinator can pin or push down, and ${event.actor} is not one`);
+    const dir = p.fields.pin;
+    if (dir !== "top" && dir !== "down" && dir !== null) return reject('pin must be "top", "down" or null (remove the pin)');
+    const status = (rec as Site | Need).status;
+    if (["closed", "retracted", "delivered", "cancelled"].includes(status)) return reject(`${p.recordType} ${rec._id} is ${status}, there is nothing to rank`);
+    if ((rec.pin?.dir ?? null) === dir) return done([rec._id], "nothing to change, the pin is already like that", [], [], "merged");
+    const pin: Pin | undefined = dir ? { dir, by: event.actor, reason: why, ts: new Date() } : undefined;
+    const since = p.recordType === "site" ? new Date((rec as Site).observedAt) : new Date((rec as Need).history[0]?.ts ?? new Date());
+    const next = scored({ support: rec.support, waitingSince: since, ...kept({ scoreParts: rec.scoreParts, pin }) }, new Date());
+    const said = dir === "top" ? `pinned to the top of tier ${rec.tier}` : dir === "down" ? `pushed down in tier ${rec.tier}` : "pin removed";
+    const entry = withEvent(event, `${said} by ${event.actor}: ${why}`);
+    const update = { $set: { ...next, ...(pin ? { pin } : {}) }, ...(pin ? {} : { $unset: { pin: "" as const } }), $push: { history: entry } };
+    const fresh = { ...q, "history.eventId": { $ne: eventId } };
+    if (p.recordType === "site") await c.sites.updateOne(fresh, update);
+    else await c.needs.updateOne(fresh, update);
+    return done([rec._id], entry.reason, [{ ...change(["pin", "priority", "scoreParts"]), flags: ["rescored"] }], [], "merged");
   }
 
   // edit: a short list of fields per record type, each checked, and the old value kept.
@@ -1053,6 +1127,15 @@ async function applyCorrection(event: Event): Promise<KeeperResult> {
 }
 
 // ---------- follow-ups the dispatcher asks for (records stay the keeper's) ----------
+
+/** A blocked delivery carries on after the problem: what went back to open is on the way again. */
+export async function noteNeedResumed(needId: string, taskId: string): Promise<boolean> {
+  const { needs } = await cols();
+  const r = await needs.updateOne({ _id: needId, status: { $in: ["open", "assigned"] } }, {
+    $set: { status: "on_the_way" }, $push: { history: { ts: new Date(), by: "dispatcher", source: "system", reason: `on the way again: task ${taskId} carries on` } },
+  });
+  return r.modifiedCount > 0;
+}
 
 /** A deliver task went out with an owner: the need is assigned. */
 export async function noteNeedAssigned(needId: string, taskId: string, assignee: string): Promise<boolean> {
@@ -1108,21 +1191,36 @@ export async function setIncidentStatus(incidentId: string, status: "helping" | 
 export async function refreshPriorities(now: Date, desk?: string): Promise<{ recordType: "site" | "need"; recordId: string; deskId: string; priority: number; scoreParts: ScorePart[] }[]> {
   const { sites, needs } = await cols();
   const out: { recordType: "site" | "need"; recordId: string; deskId: string; priority: number; scoreParts: ScorePart[] }[] = [];
-  const keep = (parts?: ScorePart[]) => ({
-    silentZone: parts?.some((p) => p.name === "silent zone") ?? false,
-    warmthInCold: parts?.some((p) => p.name === "cold night") ?? false,
-  });
   const scope = desk ? { deskId: desk } : {};
   const live = [
     ...(await sites.find({ ...scope, status: { $in: ["open", "team_on_site"] } }).toArray()).map((r) => ({ type: "site" as const, r, since: r.observedAt })),
     ...(await needs.find({ ...scope, status: { $nin: ["delivered", "cancelled"] } }).toArray()).map((r) => ({ type: "need" as const, r, since: r.history[0]?.ts ?? now })),
   ];
   for (const { type, r, since } of live) {
-    const next = scored({ support: r.support, waitingSince: new Date(since), ...keep(r.scoreParts) }, now);
+    const next = scored({ support: r.support, waitingSince: new Date(since), ...kept(r) }, now);
     if (next.priority === r.priority && JSON.stringify(next.scoreParts) === JSON.stringify(r.scoreParts)) continue;
     const coll = type === "site" ? sites : needs;
     const res = await (coll as typeof sites).updateOne({ _id: r._id, priority: r.priority }, { $set: next });
     if (res.modifiedCount) out.push({ recordType: type, recordId: r._id, deskId: r.deskId, ...next });
+  }
+  return out;
+}
+
+/** A proposed need opens when 3 different people ask (§5). Nobody else asked in this long: it is cancelled (§4 need lifecycle). */
+export const PROPOSED_QUIET_MS = 2 * 3600_000;
+
+/** Proposed needs whose last ask is older than PROPOSED_QUIET_MS go to cancelled. Returns them, for the dispatcher to tell the askers. */
+export async function expireProposed(now: Date, desk?: string): Promise<Need[]> {
+  const { needs } = await cols();
+  const out: Need[] = [];
+  for (const n of await needs.find({ ...(desk ? { deskId: desk } : {}), status: "proposed" }).toArray()) {
+    const last = Math.max(...n.history.map((h) => new Date(h.ts).getTime()), 0);
+    if (!last || now.getTime() - last < PROPOSED_QUIET_MS) continue;
+    const r = await needs.updateOne({ _id: n._id, status: "proposed" }, {
+      $set: { status: "cancelled" },
+      $push: { history: { ts: now, by: "sweeper", source: "system", reason: `nobody else asked in ${PROPOSED_QUIET_MS / 3600_000} hours, cancelled` } },
+    });
+    if (r.modifiedCount) out.push(n);
   }
   return out;
 }

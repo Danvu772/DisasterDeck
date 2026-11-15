@@ -22,6 +22,7 @@
     "health": "tsx --env-file=.env.local lib/health-report.ts",
     "feed:synthetic": "tsx --env-file=.env.local workers/synthetic-feed.ts",
     "top:check": "tsx --env-file=.env.local lib/top-check.ts",
+    "gap:check": "tsx --env-file=.env.local lib/gap-check.ts",
     "security:check": "tsx --env-file=.env.local lib/security-check.ts",
     "brain": "tsx --env-file=.env.local workers/brain.ts",
     "check:contract": "node docs/frontend/contract-check.mjs",

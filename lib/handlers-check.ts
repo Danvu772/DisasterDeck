@@ -58,7 +58,7 @@ const U = {
 const R = "check-region";
 
 function people(): User[] {
-  const base = { region: R, status: "available" as const, deskId: DESK };
+  const base = { region: R, status: "available" as const, deskId: DESK, lastSeen: new Date() };
   return [
     { ...base, _id: U.volNear, name: "Near volunteer", role: "volunteer", trust: "vetted" },
     { ...base, _id: U.volFar, name: "Far volunteer", role: "volunteer", trust: "vetted" },
