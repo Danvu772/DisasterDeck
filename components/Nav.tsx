@@ -18,7 +18,6 @@ const LINKS = [
   { href: "/coordinator", label: "Coordinator" },
   { href: "/field", label: "Field" },
   { href: "/talk", label: "Talk" },
-  { href: "/voice", label: "Voice" },
 ];
 
 // ?user=<id> is who presses the buttons on Agent, Coordinator and Field (demo only).

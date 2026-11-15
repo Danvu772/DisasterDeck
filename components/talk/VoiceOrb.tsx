@@ -78,9 +78,10 @@ export function VoiceOrb({ state, analyser, disabled, onDown, onUp }: {
 
   return (
     <div className="relative flex size-60 items-center justify-center sm:size-72">
-      {/* Glow that breathes with the voice */}
-      <motion.div aria-hidden className="pointer-events-none absolute inset-6 rounded-full blur-2xl"
-        style={{ scale: haloScale, opacity: haloOpacity, background: `radial-gradient(circle, ${tone} 0%, transparent 70%)` }} />
+      {/* Glow that breathes with the voice. A soft gradient, not a CSS blur: a blurred layer that
+          scales every frame is cut into rectangles by the browser, which showed as boxes round the orb. */}
+      <motion.div aria-hidden className="pointer-events-none absolute inset-0 rounded-full"
+        style={{ scale: haloScale, opacity: haloOpacity, background: `radial-gradient(circle closest-side, ${tone} 0%, color-mix(in oklch, ${tone} 35%, transparent) 45%, transparent 100%)` }} />
       {/* Rings that ripple out while you hold */}
       {state === "listening" && [0, 0.7].map((delay) => (
         <motion.span key={delay} aria-hidden className="pointer-events-none absolute inset-10 rounded-full border-2"
@@ -102,7 +103,9 @@ export function VoiceOrb({ state, analyser, disabled, onDown, onUp }: {
         className={cn(
           "relative z-10 flex size-36 touch-none select-none items-center justify-center rounded-full text-primary-foreground outline-none sm:size-40",
           "[-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none]",
-          "focus-visible:ring-4 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-40",
+          "focus-visible:ring-4 focus-visible:ring-ring/50 disabled:cursor-not-allowed",
+          // Thinking keeps the orb solid (the spinner says it is busy); only a voice that is off fades it.
+          state !== "thinking" && "disabled:opacity-40",
         )}
       >
         {state === "thinking" ? <Loader2 className="size-9 animate-spin opacity-90" />
