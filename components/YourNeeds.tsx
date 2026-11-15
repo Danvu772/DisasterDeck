@@ -19,7 +19,7 @@ export function YourNeeds({ needs, now }: { needs: MyNeed[]; now: number }) {
               <p className="flex items-baseline gap-2 text-sm">
                 <span className="font-bold">{n.quantity} {n.item}</span>
                 <span className={statusTag}>{statusText(n.status)}</span>
-                <span className="ml-auto whitespace-nowrap text-xs text-muted">Priority {n.priority}</span>
+                <span className="ml-auto whitespace-nowrap text-xs text-muted">Priority <span className="font-mono">{n.priority}</span></span>
               </p>
               {n.status === "proposed" && (
                 <p className="mt-0.5 text-xs text-muted">

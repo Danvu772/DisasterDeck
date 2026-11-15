@@ -9,13 +9,13 @@ import { openHref, recordKind } from "./recordKind";
 import { LANE_TEXT, exactTime, gapText } from "./timing";
 
 // What came in and what the desk did with it. Written against Event, so a future GET /api/events plugs in.
-export function EventReport({ e, now, actorName, onBack }: { e: Event; now: number; actorName: string; onBack: () => void }) {
+export function EventReport({ e, now, actorName, onBack, demo }: { e: Event & { _id?: string }; now: number; actorName: string; onBack: () => void; demo?: boolean }) {
   const s = summary(e);
   const gap = gapText(e);
   const rows = fieldRows(e.type, e.payload);
   const kind = recordKind(e);
   const ids = e.result?.recordIds ?? [];
-  const waiting = e.status === "pending" || e.status === "working";
+  const waiting = !demo && (e.status === "pending" || e.status === "working");
   return (
     <article className="text-sm">
       <button type="button" onClick={onBack} className={button.outline}>Back to feed</button>
@@ -26,6 +26,11 @@ export function EventReport({ e, now, actorName, onBack }: { e: Event; now: numb
           <span className={statusTag}>{statusText(e.status)}</span>
         </div>
         {s.original && <p className="text-muted">{s.original}</p>}
+        {(e._id || demo) && (
+          <p className="text-xs text-muted">
+            {e._id && <span className="font-mono">{e._id}</span>}{e._id && demo && ", "}{demo && "Demo, nothing reached the desk"}
+          </p>
+        )}
       </header>
 
       <section className="mt-4">
@@ -72,7 +77,7 @@ export function EventReport({ e, now, actorName, onBack }: { e: Event; now: numb
           <ul className="mt-1 space-y-0.5">
             {ids.map((id) => {
               const href = openHref(kind, id);
-              return <li key={id}>{href ? <Link href={href} className={link}>{id}</Link> : <span>{id}</span>}</li>;
+              return <li key={id}>{href ? <Link href={href} className={`${link} font-mono`}>{id}</Link> : <span className="font-mono">{id}</span>}</li>;
             })}
           </ul>
         )}

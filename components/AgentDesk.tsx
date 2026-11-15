@@ -1,30 +1,45 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { Event, Message, Task, User } from "@/lib/types";
+import type { Event, Message, User } from "@/lib/types";
+import type { makeBoard } from "@/fixtures/board";
 import { EventRow } from "./EventRow";
 import { EventReport } from "./event/EventReport";
 import { TaskCard } from "./TaskCard";
 import { getCoords, sendTaskEvent, taskEventBody, type ProblemKind, type TaskAction } from "./taskEvents";
 import { ChatLine } from "./ChatLine";
 import { stubReply } from "./stubAgent";
-import { YourNeeds, type MyNeed } from "./YourNeeds";
-import { button } from "./encode";
+import { YourNeeds } from "./YourNeeds";
+import { usePolled } from "./map/usePolled";
+import { isRealTask, needsFor, nextLocalStatus, openTasksFor, viewTask, type LocalTask } from "./taskState";
+import { button, statusTag, statusText } from "./encode";
 
 type FeedEvent = Event & { _id: string };
+type DeskBoard = ReturnType<typeof makeBoard>;
+
+const demoTag = "rounded-tag border border-line px-1.5 text-xs font-normal text-muted";
 
 // Left: everything entering the desk, from anyone. Right: this person and their own agent.
 export function AgentDesk(props: {
-  user: User; users: User[]; events: FeedEvent[]; messages: Message[]; tasks: Task[]; needs: MyNeed[];
-  now: number;
+  user: User; users: User[]; events: FeedEvent[]; messages: Message[]; initial: DeskBoard;
 }) {
-  const { user, now } = props;
+  const { user } = props;
+  const { data: board, live, now } = usePolled<DeskBoard>("/api/board", props.initial);
   const [events, setEvents] = useState(props.events);
   const [messages, setMessages] = useState(props.messages);
   const [text, setText] = useState("");
   const [stub, setStub] = useState(false);
-  const [notice, setNotice] = useState("");
-  const top = props.tasks[0];
+  // Per task id: what the card shows until the board catches up, and the words under the buttons.
+  const [local, setLocal] = useState<Record<string, LocalTask>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [demoLines, setDemoLines] = useState<Set<string>>(new Set());
+  const inFlight = useRef(new Set<string>());
+  const lineSeq = useRef(0);
+  const views = openTasksFor(board.tasks, user._id).map((t) => ({ raw: t, ...viewTask(t, local[t._id]) }));
+  const open = views.filter((v) => v.task.open);
+  const top = open[0];
+  const needs = needsFor(board.needs, user._id);
+  const closed = Object.entries(local).filter(([, l]) => l.status === "done" || l.status === "declined");
   const feedRef = useRef<HTMLElement>(null);
   const feedScroll = useRef(0);
   const eventId = useSearchParams().get("event");
@@ -51,9 +66,12 @@ export function AgentDesk(props: {
     if (feedRef.current) feedRef.current.scrollTop = report ? 0 : feedScroll.current;
   }, [report]);
 
-  function localEvent(e: Omit<FeedEvent, "_id" | "ts" | "deskId" | "lane" | "status" | "actor">) {
-    setEvents((xs) => [{ ...e, _id: `local-${xs.length}`, ts: new Date(), deskId: user.deskId,
+  function localEvent(e: Omit<FeedEvent, "_id" | "ts" | "deskId" | "lane" | "status" | "actor">, demo: boolean) {
+    const id = `local-${lineSeq.current++}`;
+    setEvents((xs) => [{ ...e, _id: id, ts: new Date(), deskId: user.deskId,
       lane: 0, status: "pending", actor: user._id }, ...xs]);
+    if (demo) setDemoLines((d) => new Set(d).add(id));
+    return id;
   }
 
   async function send() {
@@ -70,75 +88,118 @@ export function AgentDesk(props: {
       reply = (await r.json()).reply;
       setStub(false);
     } catch {
-      reply = stubReply(user, top, said);
+      reply = stubReply(user, top?.task, said);
       setStub(true);
     }
     setMessages((m) => [...m, { _id: `a${m.length}`, userId: user._id, from: "agent", text: reply, ts: new Date() }]);
   }
 
+  const note = (id: string, text: string) => setNotes((n) => ({ ...n, [id]: text }));
+
+  // One press is one feed line. A real task locks the card until the desk answers, a demo task
+  // (id not on the live board) applies at once and posts nothing.
   async function onAction(a: TaskAction, kind?: ProblemKind) {
     if (!top) return;
-    setNotice("Sending");
+    const id = top.raw._id;
+    if (inFlight.current.has(id)) return;
+    const demo = !isRealTask(id, live ? board : null);
+    const prev = local[id];
+    setLocal((l) => ({ ...l, [id]: { status: nextLocalStatus(a), base: top.raw.status, title: top.raw.title, pending: !demo, demo } }));
+    if (demo) {
+      note(id, "");
+      localEvent(taskEventBody(id, a, kind), true);
+      return;
+    }
+    inFlight.current.add(id);
+    note(id, "Sending");
     const coords = a === "problem" ? await getCoords() : undefined;
-    const body = taskEventBody(top._id, a, kind, coords);
-    // Local copy first so the demo works when the API is down.
-    localEvent(body);
-    setNotice(await sendTaskEvent(user._id, body));
+    const body = taskEventBody(id, a, kind, coords);
+    const line = localEvent(body, false);
+    const result = await sendTaskEvent(user._id, body);
+    inFlight.current.delete(id);
+    if (result === "Sent") {
+      setLocal((l) => ({ ...l, [id]: { ...l[id], pending: false } }));
+    } else {
+      setLocal((l) => { const rest = { ...l }; delete rest[id]; return prev ? { ...rest, [id]: prev } : rest; });
+      setEvents((xs) => xs.filter((x) => x._id !== line));
+    }
+    note(id, result);
   }
 
+  const card = "rounded-card border border-line bg-card";
   return (
-    <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-[5fr_7fr]">
-      <section ref={feedRef} className="order-2 min-h-0 overflow-y-auto md:order-1">
-        {report ? <EventReport e={report} now={now} actorName={nameOf(report.actor)} onBack={closeReport} /> : <>
-          <h2 className="text-lg font-bold">Desk feed</h2>
-          <ul>{events.map((e) => <EventRow key={e._id} e={e} now={now} actorName={nameOf(e.actor)} onOpen={() => openReport(e._id)} />)}</ul>
-        </>}
-      </section>
+    <div className="flex flex-col gap-5">
+      {!live && <p className="text-sm text-muted">Demo data, the board API is not answering.</p>}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        <section aria-label="Your tasks" className="flex min-w-0 flex-col gap-4">
+          <details className={`${card} p-3 text-sm`}>
+            <summary className="cursor-pointer">
+              <span className="font-bold">{user.name}</span>
+              <span className="text-muted">, {user.role}, {user.trust}, {user.region}</span>
+              <span className="ml-2 text-primary underline">Context file</span>
+            </summary>
+            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+              {user.profile?.skills && <><dt className="text-muted">skills</dt><dd>{user.profile.skills.join(", ")}</dd></>}
+              {user.profile?.vehicle && <><dt className="text-muted">vehicle</dt><dd>{user.profile.vehicle}</dd></>}
+              {user.profile?.stock && <><dt className="text-muted">stock</dt>
+                <dd>{Object.entries(user.profile.stock).map(([k, v]) => `${v} ${k}`).join(", ")}</dd></>}
+              {user.profile?.notes && <><dt className="text-muted">notes</dt><dd>{user.profile.notes}</dd></>}
+            </dl>
+          </details>
 
-      <section className="order-1 flex min-h-0 flex-col gap-4 md:order-2">
-        <details className="rounded-card border border-line bg-card p-3 text-sm">
-          <summary className="cursor-pointer">
-            <span className="font-bold">{user.name}</span>
-            <span className="text-muted">, {user.role}, {user.trust}, {user.region}</span>
-            <span className="ml-2 text-primary underline">Context file</span>
-          </summary>
-          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-            {user.profile?.skills && <><dt className="text-muted">skills</dt><dd>{user.profile.skills.join(", ")}</dd></>}
-            {user.profile?.vehicle && <><dt className="text-muted">vehicle</dt><dd>{user.profile.vehicle}</dd></>}
-            {user.profile?.stock && <><dt className="text-muted">stock</dt>
-              <dd>{Object.entries(user.profile.stock).map(([k, v]) => `${v} ${k}`).join(", ")}</dd></>}
-            {user.profile?.notes && <><dt className="text-muted">notes</dt><dd>{user.profile.notes}</dd></>}
-          </dl>
-        </details>
+          <div>
+            <h2 className="mb-2 text-xl font-bold">
+              Your top task {open.length > 1 && <span className="text-sm font-normal text-muted">({open.length - 1} more)</span>}
+            </h2>
+            {top ? <TaskCard task={top.task} now={now} onAction={onAction} notice={notes[top.raw._id]}
+              busy={local[top.raw._id]?.pending} reported={top.reported} demo={local[top.raw._id]?.demo}
+              assigneeName={props.users.find((u) => u._id === top.task.assignee)?.name} />
+                 : <p className="text-sm text-muted">Nothing assigned to you.</p>}
+            {closed.length > 0 && (
+              <ul className="mt-2 space-y-1 text-sm">
+                {closed.map(([id, l]) => (
+                  <li key={id} className="flex flex-wrap items-center gap-2">
+                    <span className={statusTag}>{statusText(l.status)}</span>
+                    <span>{l.title}</span>
+                    {l.demo && <span className={demoTag}>Demo</span>}
+                    {notes[id] && <span className="text-muted">{notes[id]}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-        <div>
-          <h2 className="mb-2 text-lg font-bold">
-            Your top task {props.tasks.length > 1 && <span className="font-sans text-sm font-normal text-muted">({props.tasks.length - 1} more)</span>}
-          </h2>
-          {top ? <TaskCard task={top} now={now} onAction={onAction} notice={notice}
-            assigneeName={props.users.find((u) => u._id === top.assignee)?.name} />
-               : <p className="text-sm text-muted">Nothing assigned to you.</p>}
-        </div>
+          <div>
+            <h2 className="mb-2 text-xl font-bold">
+              Your needs {needs.length > 0 && <span className="text-sm font-normal text-muted">({needs.length})</span>}
+            </h2>
+            <YourNeeds needs={needs} now={now} />
+          </div>
+        </section>
 
-        <div>
-          <h2 className="mb-2 text-lg font-bold">
-            Your needs {props.needs.length > 0 && <span className="font-sans text-sm font-normal text-muted">({props.needs.length})</span>}
-          </h2>
-          <YourNeeds needs={props.needs} now={now} />
-        </div>
-
-        <div className="flex min-h-48 flex-1 flex-col rounded-card border border-line bg-card">
-          <div className="flex-1 space-y-2 overflow-y-auto p-3">
+        <section aria-label="Your agent" className={`${card} flex min-w-0 flex-col overflow-hidden`}>
+          <h2 className="border-b border-line px-4 py-3 text-xl font-bold">Your agent</h2>
+          <div className="flex min-h-80 flex-1 flex-col gap-3 overflow-y-auto bg-paper p-4 lg:max-h-[32rem]">
             {messages.length === 0 && <p className="text-sm text-muted">Talk to your agent.</p>}
             {messages.map((m) => <ChatLine key={m._id} m={m} name={user.name} />)}
           </div>
-          <form className="flex gap-2 border-t border-line p-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Tell your agent"
-              className="min-w-0 flex-1 rounded-button border border-muted px-2 py-1.5 text-sm" />
+          <form className="flex gap-2 border-t border-line p-3" onSubmit={(e) => { e.preventDefault(); send(); }}>
+            <label htmlFor="agent-msg" className="sr-only">Message your agent</label>
+            <input id="agent-msg" value={text} onChange={(e) => setText(e.target.value)} placeholder="Tell your agent"
+              className="min-w-0 flex-1 rounded-button border border-muted px-3 py-2 text-sm" />
             <button className={button.primary}>Send</button>
           </form>
-          {stub && <p className="px-3 pb-2 text-xs text-muted">Stub agent. /api/chat is not up yet.</p>}
-        </div>
+          {stub && <p className="px-4 pb-3 text-xs text-muted">Stub agent. /api/chat is not up yet.</p>}
+        </section>
+      </div>
+
+      <section ref={feedRef} className={`${card} max-h-[28rem] min-h-0 overflow-y-auto p-4`}>
+        {report ? <EventReport e={report} now={now} actorName={nameOf(report.actor)} onBack={closeReport}
+          demo={demoLines.has(report._id)} /> : <>
+          <h2 className="text-xl font-bold">Desk feed</h2>
+          <ul>{events.map((e) => <EventRow key={e._id} e={e} now={now} actorName={nameOf(e.actor)}
+            demo={demoLines.has(e._id)} onOpen={() => openReport(e._id)} />)}</ul>
+        </>}
       </section>
     </div>
   );
