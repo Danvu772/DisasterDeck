@@ -2,6 +2,13 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v0.9 city view and simpler controls · 2026-11-14 23:52 EST
+
+- Grouped the imagery into four main products with separate date selection. Moved cloud, acquisition gaps, original quality layers and EONET into expandable details.
+- The map opens on Malatya's approximately 30 × 33 km city study extent with a satellite image. Added a city reset button and kept record-focus links working. Purple masks and synthetic cells are opt-in.
+- Documented building-damage input requirements and the distinction between acquisition cadence, processing latency and the app's archived snapshots.
+- TypeScript and scoped lint passed. Chrome checks covered all four groups, date options, city reset, mask/cell toggles and phone layout.
+
 ## v0.8 satellite atlas and observation limits · 2026-11-14 23:31 EST
 
 - Added 27 dated map layer choices covering MODIS snow, IMERG precipitation rate, MODIS daytime cloud fraction, HLS Sentinel-2, Black Marble, original-file quality layers and four HLS acquisition gaps.

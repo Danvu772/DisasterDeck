@@ -2,7 +2,11 @@
 
 ## Use the map
 
-Open `/map`, expand **NASA · Satellite & weather**, and use **Image and acquisition date**. **Locate image area** frames the approximately 30 km regional extent. **Show observation limits (purple)** toggles the selected product's limitation mask. Weather observations below the layer controls retain their own date selector.
+Open `/map` and expand **NASA · Satellite & weather**. **Map view** offers Satellite image, Snow, Precipitation and Night lights alongside the street map. **Image date** selects a date within the chosen product.
+
+The map starts with the 9 February satellite image covering Malatya's urban area and surroundings, approximately 30 × 33 km. Pan and zoom to explore, or use **Show whole city area** to return to the image extent. This rectangular study area covers the city centre and surrounding terrain. It is smaller than Malatya province.
+
+**Quality & additional sources** holds the original quality layers, cloud observations, acquisition gaps, EONET and the two synthetic scenario cells. Purple limits and scenario cells are disabled initially. **Show observation limits (purple)** toggles the selected product's mask. Weather observations retain their own date selector.
 
 | Layer | Acquisition dates | Interpretation |
 |---|---|---|
@@ -50,7 +54,15 @@ The interactive downloader prompts for Earthdata credentials and uses `persist=F
 
 ## Prithvi scope
 
-The map links to NASA/IBM's Prithvi model cards and flood/burn-scar examples. Six HLS Sentinel-2 bands were downloaded for each selected scene, alongside Fmask. Model inference has not been run. A flood or burn classification on this snowy earthquake scene needs its own validation before it can support an operational claim.
+The [NASA/IBM Prithvi model cards](https://huggingface.co/ibm-nasa-geospatial) include flood and burn-scar examples. Six HLS Sentinel-2 bands were downloaded for each selected scene, alongside Fmask. Model inference has not been run. A flood or burn classification on this snowy earthquake scene needs its own validation before it can support an operational claim.
+
+Model cards and requirements are retained in this document. The main map controls focus on the four city-view products.
+
+## Building damage and acquisition timing
+
+The existing 30 m HLS imagery provides regional context. A pixel covers approximately 900 m². Building-level damage classification needs sufficiently detailed imagery, aligned pre/post acquisitions, building footprints, a damage-specific model and validation. The xBD research dataset illustrates this workflow. Microsoft's 2023 Türkiye response used high-resolution imagery for building-level estimates. The current map has no implemented building-damage classifier. [xBD research](https://arxiv.org/abs/1911.09296) · [Microsoft Türkiye report](https://www.microsoft.com/en-us/research/publication/turkey-earthquake-report/)
+
+HLS combines sensors for a nominal 2–3 day observation frequency; standard HLS products also have roughly 2–3 days of processing latency. Clouds and local acquisition gaps can extend the usable-image interval. Landsat 8/9 together revisit in eight days. MODIS snow and Black Marble are daily products. IMERG has half-hourly products, with its Early Run typically available about four hours after observation. The current app displays committed historical snapshots. A live ingestion service would need its own product/latency choices. [NASA HLS frequency](https://hls.gsfc.nasa.gov/) · [HLS delivery latency](https://hls.gsfc.nasa.gov/data-access-and-tools/) · [Landsat acquisition](https://www.usgs.gov/faqs/what-are-acquisition-schedules-landsat-satellites) · [IMERG latency](https://gpm.nasa.gov/data/faq)
 
 ## Sources
 

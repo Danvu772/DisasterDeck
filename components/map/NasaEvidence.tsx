@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import type { LatLng } from "@/lib/types";
 import type { ZoneFC, ZoneMeta } from "./ZoneLayer";
 
 type WeatherDay = NonNullable<ZoneMeta["weatherSeries"]>[number];
@@ -15,7 +14,7 @@ const METRICS = [
 type WeatherKey = typeof METRICS[number]["key"];
 const dateLabel = (date: string) => new Date(date + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
-export function NasaEvidence({ fc, onLocate, children }: { fc: ZoneFC; onLocate: (coords: LatLng) => void; children?: ReactNode }) {
+export function NasaEvidence({ fc, children }: { fc: ZoneFC; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState("");
   const [metricKey, setMetricKey] = useState<WeatherKey>("minTempC");
@@ -37,7 +36,7 @@ export function NasaEvidence({ fc, onLocate, children }: { fc: ZoneFC; onLocate:
         </span>
         {coldest && <span className="mt-1 block text-3xl font-bold tabular-nums">{coldest.minTempC.toFixed(2)} °C</span>}
         <span className="block text-xs text-muted">Coldest daily minimum · {coldest && dateLabel(coldest.date)}</span>
-        <span className="block text-xs text-muted">Malatya · Historical regional weather</span>
+        <span className="block text-xs text-muted">Malatya city area · Historical observations</span>
         <span className="mt-1 block text-xs text-primary">{open ? "Hide evidence" : "View dates, sources and limitations"}</span>
       </button>
       {open && (
@@ -71,21 +70,9 @@ export function NasaEvidence({ fc, onLocate, children }: { fc: ZoneFC; onLocate:
               ))}</tbody>
             </table>
             <p className="mt-2 text-xs">{metric.description}</p>
-            <p className="mt-2 text-xs text-muted">Bar length shows magnitude. Blue marks the selected day. NASA POWER / MERRA-2 · daily local solar time · approximately 50 km grid. Both demo cells share these measurements.</p>
+            <p className="mt-2 text-xs text-muted">Bar length shows magnitude. Blue marks the selected day. NASA POWER / MERRA-2 · daily local solar time · approximately 50 km grid. Regional weather is shared across the mapped city area.</p>
           </figure>}
           <p className="mt-3">Cold exposure gives the coordinator a reason to review blanket and shelter requests.</p>
-          <div className="mt-3 space-y-1">
-            {fc.features.map((feature) => {
-              const ring = feature.geometry.coordinates[0];
-              const lat = (ring[0][1] + ring[2][1]) / 2;
-              const lng = (ring[0][0] + ring[2][0]) / 2;
-              return <button key={feature.properties._id} type="button" onClick={() => onLocate([lat, lng])}
-                className="block w-full rounded-button border border-line px-2 py-1 text-left text-primary hover:bg-primary-lighter">
-                Locate {feature.properties.name.replace(" demo cell", "")}
-              </button>;
-            })}
-          </div>
-          <p className="mt-2 text-xs text-muted">The outlined 500 m cells are synthetic exercise areas.</p>
           {withheld && <details className="mt-3 border-t border-line pt-2">
             <summary className="cursor-pointer font-bold">Why satellite alerts are withheld</summary>
             <p className="mt-2 text-xs">ARIA radar · 10 Feb 2023 · about 30 m. Surface-change pixels are visible, but transparent pixels lack a reliable validity mask. A damaged-area percentage needs more information.</p>

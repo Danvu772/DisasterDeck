@@ -15,13 +15,14 @@ interface AtlasEvent {
   sourceURL: string; categories: string[];
 }
 export interface NasaAtlas {
+  bbox: [number, number, number, number];
   dates: string[]; frames: AtlasFrame[]; events: AtlasEvent[];
   eonetSourceURL: string; limitsMeaning: string;
   hlsScenes: { title: string; date: string; sceneCloudPct?: string }[];
   hlsMissingDates: string[];
   originalMeasurements?: { status: string; zones?: { name: string; before?: number | null; after?: number | null; beforeValid: number; afterValid: number }[] };
 }
-export interface AtlasSelection { frameId: string; showLimits: boolean; eventScope: "off" | "regional" | "global" }
+export interface AtlasSelection { frameId: string; showLimits: boolean; eventScope: "off" | "regional" | "global"; showDemoCells: boolean }
 
 export function useNasaAtlas() {
   const [atlas, setAtlas] = useState<NasaAtlas | null>(null);
@@ -39,7 +40,7 @@ export function NasaAtlasOverlay({ atlas, selection }: { atlas: NasaAtlas; selec
   const frame = atlas.frames.find((item) => item.id === selection.frameId);
   const events = selection.eventScope === "off" ? [] : atlas.events.filter((event) => selection.eventScope === "global" || event.regional);
   return <>
-    {frame && <ImageOverlay key={frame.id} url={frame.image} bounds={frame.bounds} opacity={0.75} zIndex={210} />}
+    {frame && <ImageOverlay key={frame.id} url={frame.image} bounds={frame.bounds} opacity={frame.kind.startsWith("hls") ? 1 : 0.75} zIndex={210} />}
     {frame && selection.showLimits && frame.limitation && <ImageOverlay key={frame.id + "-limits"} url={frame.limitsImage} bounds={frame.bounds} opacity={0.85} zIndex={220} />}
     {events.map((event) => <CircleMarker key={event.id} center={event.coords} radius={7} pathOptions={{ className: "stroke-primary fill-primary", fillOpacity: 0.8 }} pane="markerPane">
       <Popup><strong>{event.title}</strong><br />{event.categories.join(", ")}<br />Observation: {event.date}<br /><a href={event.sourceURL} target="_blank" rel="noreferrer">NASA EONET record</a></Popup>
@@ -47,55 +48,89 @@ export function NasaAtlasOverlay({ atlas, selection }: { atlas: NasaAtlas; selec
   </>;
 }
 
-export function NasaAtlasControls({ atlas, selection, onChange, onLocate }: {
-  atlas: NasaAtlas; selection: AtlasSelection; onChange: (selection: AtlasSelection) => void; onLocate: (coords: LatLng) => void;
+const PRIMARY_LAYERS = [
+  { id: "imagery", label: "Satellite image", kinds: ["hls-before", "hls-after"] },
+  { id: "snow", label: "Snow", kinds: ["snow"] },
+  { id: "precipitation", label: "Precipitation", kinds: ["precipitation"] },
+  { id: "lights", label: "Night lights", kinds: ["lights-before", "lights-after"] },
+];
+
+export function NasaAtlasControls({ atlas, selection, onChange, onLocate, onCityView }: {
+  atlas: NasaAtlas; selection: AtlasSelection; onChange: (selection: AtlasSelection) => void;
+  onLocate: (coords: LatLng) => void; onCityView: () => void;
 }) {
   const frame = atlas.frames.find((item) => item.id === selection.frameId);
+  const group = PRIMARY_LAYERS.find((item) => item.kinds.includes(frame?.kind ?? ""));
+  const frames = atlas.frames.filter((item) => group?.kinds.includes(item.kind));
+  const analysisFrames = atlas.frames.filter((item) => !PRIMARY_LAYERS.some((layer) => layer.kinds.includes(item.kind)));
   const events = atlas.events.filter((event) => selection.eventScope === "global" || event.regional);
-  return <details open className="mb-4 border-b border-line pb-3">
-    <summary className="cursor-pointer font-bold">Satellite layers & observation limits</summary>
-    <label htmlFor="nasa-layer" className="mt-3 block text-xs font-bold">Image and acquisition date</label>
-    <select id="nasa-layer" className="mt-1 w-full rounded-button border border-line bg-card p-2 text-xs" value={selection.frameId}
-      onChange={(event) => onChange({ ...selection, frameId: event.target.value })}>
-      <option value="">Base map</option>
-      {atlas.frames.map((item) => <option key={item.id} value={item.id}>{item.title} · {item.date}</option>)}
+
+  function chooseLayer(id: string) {
+    const kinds = PRIMARY_LAYERS.find((item) => item.id === id)?.kinds ?? [];
+    const candidates = atlas.frames.filter((item) => kinds.includes(item.kind));
+    const closest = candidates.sort((a, b) =>
+      Math.abs(Date.parse(a.date) - Date.parse(frame?.date ?? "2023-02-09")) -
+      Math.abs(Date.parse(b.date) - Date.parse(frame?.date ?? "2023-02-09")))[0];
+    onChange({ ...selection, frameId: closest?.id ?? "" });
+  }
+
+  return <div className="mb-4 border-b border-line pb-3">
+    <label htmlFor="nasa-view" className="block text-xs font-bold">Map view</label>
+    <select id="nasa-view" className="mt-1 w-full rounded-button border border-line bg-card p-2 text-sm" value={group?.id ?? (frame ? "analysis" : "")}
+      onChange={(event) => chooseLayer(event.target.value)}>
+      <option value="">Street map</option>
+      {PRIMARY_LAYERS.map((layer) => <option key={layer.id} value={layer.id}>{layer.label}</option>)}
+      {frame && !group && <option value="analysis">Detailed analysis</option>}
     </select>
-    {frame && <>
-      <p className="mt-2 text-xs">{frame.scale} · {frame.date}. Visible rendered area: {(frame.renderedCoverage * 100).toFixed(1)}% of the image extent.</p>
-      <button type="button" className="mt-2 text-xs text-primary underline" onClick={() => onLocate([(frame.bounds[0][0] + frame.bounds[1][0]) / 2, (frame.bounds[0][1] + frame.bounds[1][1]) / 2])}>Locate image area</button>
-      {frame.legendURL && <p className="mt-2 text-xs"><a className="text-primary underline" href={frame.legendURL} target="_blank" rel="noreferrer">Open NASA color scale</a></p>}
-      <p className="mt-2 text-xs"><a className="text-primary underline" href={frame.sourceURL} target="_blank" rel="noreferrer">Source image or product</a></p>
-      {frame.limitation ? <>
-        <label className="mt-3 flex items-start gap-2 text-xs"><input type="checkbox" className="mt-0.5" checked={selection.showLimits} onChange={(event) => onChange({ ...selection, showLimits: event.target.checked })} />Show observation limits (purple)</label>
-        <p className="mt-2 text-xs">{frame.limitation}</p>
-        <p className="mt-1 text-xs text-muted">Flagged rendered area: {(frame.limitedFraction * 100).toFixed(1)}%. The remaining area still needs product quality checks.</p>
-      </> : <p className="mt-2 text-xs text-muted">Transparency alone cannot establish cloud cover or absence of snow or precipitation. Use the MODIS cloud layer for a separate cloud observation.</p>}
-    </>}
-    <p className="mt-3 text-xs text-muted">Optical clouds, gaps between acquisitions and clipped browse pixels describe different limits. Each overlay applies to its selected product and date.</p>
-    <details className="mt-3 text-xs">
-      <summary className="cursor-pointer font-bold">HLS scene availability</summary>
-      {atlas.hlsScenes.map((scene) => <p key={scene.title} className="mt-2">{scene.date.slice(0, 10)} · scene cloud cover {scene.sceneCloudPct ?? "unavailable"}%. This percentage describes the whole satellite scene.</p>)}
-      <p className="mt-2">Dates without matching HLS Sentinel-2 scenes in the queried area: {atlas.hlsMissingDates.join(", ") || "none"}. Select an acquisition-gap layer to see the queried extent.</p>
-    </details>
-    <details className="mt-3 text-xs">
-      <summary className="cursor-pointer font-bold">Original radiance and quality flags</summary>
-      <p className="mt-2">{atlas.originalMeasurements?.status ?? "Original NASA files require Earthdata sign-in. Browse images remain available."}</p>
-      {atlas.originalMeasurements?.zones?.map((zone) => <p className="mt-2" key={zone.name}>{zone.name}: {zone.before?.toFixed(2) ?? "insufficient valid pixels"} → {zone.after?.toFixed(2) ?? "insufficient valid pixels"} nW/(cm² sr). Valid samples: {zone.beforeValid} / {zone.afterValid}.</p>)}
-    </details>
-    <label htmlFor="nasa-events" className="mt-4 block text-xs font-bold">EONET event catalogue · 6–10 Feb 2023</label>
-    <select id="nasa-events" className="mt-1 w-full rounded-button border border-line bg-card p-2 text-xs" value={selection.eventScope}
-      onChange={(event) => onChange({ ...selection, eventScope: event.target.value as AtlasSelection["eventScope"] })}>
-      <option value="off">Hidden</option><option value="regional">Malatya extent</option><option value="global">Worldwide catalogue results</option>
-    </select>
-    {selection.eventScope !== "off" && <div className="mt-2 space-y-2 text-xs">
-      {events.length === 0 && <p>No EONET records returned for this area and query window. Local reports and other hazard sources still matter.</p>}
-      {events.map((event) => <button type="button" className="block text-left text-primary underline" key={event.id} onClick={() => onLocate(event.coords)}>{event.title} · {event.date.slice(0, 10)}</button>)}
-      <a className="block text-primary underline" href={atlas.eonetSourceURL} target="_blank" rel="noreferrer">NASA catalogue response</a>
+    {group && <div className="mt-3">
+      <label htmlFor="nasa-image-date" className="block text-xs font-bold">Image date</label>
+      <select id="nasa-image-date" className="mt-1 w-full rounded-button border border-line bg-card p-2 text-sm" value={selection.frameId}
+        onChange={(event) => onChange({ ...selection, frameId: event.target.value })}>
+        {frames.map((item) => <option key={item.id} value={item.id}>{item.date}</option>)}
+      </select>
     </div>}
-    <details className="mt-3 text-xs">
-      <summary className="cursor-pointer font-bold">Prithvi flood and burn-scar workflows</summary>
-      <p className="mt-2">These models require appropriate multispectral inputs and validation for a flood or fire. No model inference has been run on this earthquake exercise.</p>
-      <p className="mt-2"><a className="text-primary underline" href="https://huggingface.co/ibm-nasa-geospatial" target="_blank" rel="noreferrer">NASA / IBM model cards and examples</a></p>
+    <button type="button" onClick={onCityView} className="mt-3 rounded-button border border-line px-3 py-2 text-sm text-primary hover:bg-primary-lighter">Show whole city area</button>
+    <p className="mt-2 text-xs text-muted">Malatya urban area and surroundings · about 30 × 33 km. Pan and zoom to explore any neighbourhood.</p>
+    {frame && <p className="mt-2 text-xs">
+      {frame.scale} · {frame.date}.{" "}
+      <a className="text-primary underline" href={frame.sourceURL} target="_blank" rel="noreferrer">NASA source</a>
+      {frame.legendURL && <> · <a className="text-primary underline" href={frame.legendURL} target="_blank" rel="noreferrer">Color scale</a></>}
+    </p>}
+    {selection.showLimits && frame?.limitation && <p className="mt-2 text-xs">Purple marks selected observation limits. {frame.limitation}</p>}
+    <details className="mt-4 text-xs">
+      <summary className="cursor-pointer font-bold">Quality & additional sources</summary>
+      <label className="mt-3 flex items-start gap-2">
+        <input type="checkbox" className="mt-0.5" checked={selection.showLimits} onChange={(event) => onChange({ ...selection, showLimits: event.target.checked })} />
+        Show observation limits (purple)
+      </label>
+      {frame?.limitation && <p className="mt-2">{frame.limitation} Flagged area: {(frame.limitedFraction * 100).toFixed(1)}%.</p>}
+      <label htmlFor="nasa-analysis-layer" className="mt-3 block font-bold">Cloud, acquisition gap or original quality layer</label>
+      <select id="nasa-analysis-layer" className="mt-1 w-full rounded-button border border-line bg-card p-2" value={group || !frame ? "" : selection.frameId}
+        onChange={(event) => onChange({ ...selection, frameId: event.target.value || "hls-after-2023-02-09" })}>
+        <option value="">Choose a detailed layer</option>
+        {analysisFrames.map((item) => <option key={item.id} value={item.id}>{item.title} · {item.date}</option>)}
+      </select>
+      <p className="mt-2 text-muted">Each mask applies to one product and date. Unmarked areas still need quality checks. Transparent snow pixels can include snow-free ground, clouds, water or missing data.</p>
+      <details className="mt-3">
+        <summary className="cursor-pointer font-bold">Scene availability and radiance</summary>
+        {atlas.hlsScenes.map((scene) => <p key={scene.title} className="mt-2">{scene.date.slice(0, 10)} · whole-scene cloud cover {scene.sceneCloudPct ?? "unavailable"}%.</p>)}
+        <p className="mt-2">HLS Sentinel-2 dates without matching scenes: {atlas.hlsMissingDates.join(", ") || "none"}.</p>
+        <p className="mt-2">{atlas.originalMeasurements?.status}</p>
+      </details>
+      <label className="mt-3 flex items-start gap-2">
+        <input type="checkbox" className="mt-0.5" checked={selection.showDemoCells} onChange={(event) => onChange({ ...selection, showDemoCells: event.target.checked })} />
+        Show two synthetic scenario cells
+      </label>
+      <label htmlFor="nasa-events" className="mt-4 block font-bold">EONET · 6–10 Feb 2023</label>
+      <select id="nasa-events" className="mt-1 w-full rounded-button border border-line bg-card p-2" value={selection.eventScope}
+        onChange={(event) => onChange({ ...selection, eventScope: event.target.value as AtlasSelection["eventScope"] })}>
+        <option value="off">Hidden</option><option value="regional">Malatya extent</option><option value="global">Worldwide catalogue results</option>
+      </select>
+      {selection.eventScope !== "off" && <div className="mt-2 space-y-2">
+        {events.length === 0 && <p>No EONET records returned here. Other hazard sources and local reports still matter.</p>}
+        {events.map((event) => <button type="button" className="block text-left text-primary underline" key={event.id} onClick={() => onLocate(event.coords)}>{event.title} · {event.date.slice(0, 10)}</button>)}
+        <a className="block text-primary underline" href={atlas.eonetSourceURL} target="_blank" rel="noreferrer">NASA catalogue response</a>
+      </div>}
     </details>
-  </details>;
+  </div>;
 }

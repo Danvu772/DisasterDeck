@@ -59,6 +59,14 @@ function FlyTo({ to, zoom }: { to?: LatLng; zoom?: number }) {
   return null;
 }
 
+function FitCity({ bounds }: { bounds?: [LatLng, LatLng] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds) map.flyToBounds(bounds, { padding: [24, 24], maxZoom: 13, duration: 0.4 });
+  }, [map, bounds]);
+  return null;
+}
+
 function TrackBounds({ onChange }: { onChange: (b: L.LatLngBounds) => void }) {
   const map = useMapEvents({ moveend: () => onChange(map.getBounds()) });
   useEffect(() => { onChange(map.getBounds()); }, [map, onChange]);
@@ -161,7 +169,7 @@ function Legend({ meta, zones }: { meta?: ZoneMeta; zones: boolean }) {
       <p><span className={`inline-block h-3 w-3 rounded-tag align-middle ${tierBar(2)}`} /> Shelter with room</p>
       <p className="mt-1"><span className="inline-block h-2 w-5 border-4 border-solid border-ink bg-card align-middle" /> Road closed</p>
       <p><span className="inline-block h-2 w-5 border-2 border-dashed border-ink bg-card align-middle" /> Road unconfirmed</p>
-      <p className="mt-1"><span className="inline-block h-3 w-3 rounded-full border-2 border-solid border-ink align-middle" /> Independent check, {validation.landmark.name} (DHA)</p>
+      {zones && <p className="mt-1"><span className="inline-block h-3 w-3 rounded-full border-2 border-solid border-ink align-middle" /> Independent check, {validation.landmark.name} (DHA)</p>}
       <p className="mt-1">Bigger means more people reported it.</p>
       <p>Dashed outline: unconfirmed. Thick: confirmed.</p>
       <p>Faded: the number is stale.</p>
@@ -177,8 +185,9 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
 }) {
   const zones = useZones(zonesUrl ?? "");
   const atlas = useNasaAtlas();
-  const [atlasSelection, setAtlasSelection] = useState<AtlasSelection>({ frameId: "", showLimits: true, eventScope: "off" });
+  const [atlasSelection, setAtlasSelection] = useState<AtlasSelection>({ frameId: "hls-after-2023-02-09", showLimits: false, eventScope: "off", showDemoCells: false });
   const [atlasTarget, setAtlasTarget] = useState<LatLng>();
+  const [cityBounds, setCityBounds] = useState<[LatLng, LatLng]>();
   const [selected, setSelected] = useState<string | null>(focus ?? null);
   const [flyTarget, setFlyTarget] = useState<LatLng | undefined>();
   const focused = useRef(false);
@@ -196,6 +205,7 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
   const unplaced = items.filter((i) => !i.coords);
   const isExtra = (i: MapItem) => i.kind === "shelter" || i.kind === "road";
   const points = placed.map((i) => i.coords!);
+  const cityPoints: [LatLng, LatLng] | undefined = atlas ? [[atlas.bbox[1], atlas.bbox[0]], [atlas.bbox[3], atlas.bbox[2]]] : undefined;
   const listed = onlyInView && bounds ? placed.filter((i) => bounds.contains(i.coords!)) : placed;
   const listedMain = listed.filter((i) => !isExtra(i));
   const listedExtra = listed.filter(isExtra);
@@ -247,8 +257,9 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
           <TileLayer url={TILES} attribution={`${TILES_ATTR}${zones?.metadata?.attribution ? `. Zones: ${zones.metadata.attribution}` : ""}${atlas ? ". Atlas: NASA GIBS, MODIS, GPM IMERG, NASA/USGS/ESA HLS, NASA EONET" : ""}`} maxZoom={16} />
           <KeepSized />
           {atlas && <NasaAtlasOverlay atlas={atlas} selection={atlasSelection} />}
-          {zones && <ZoneLayer fc={zones} />}
-          <FitOnce points={points} />
+          {zones && atlasSelection.showDemoCells && <ZoneLayer fc={zones} />}
+          <FitOnce key={cityPoints && !focus ? "city" : "records"} points={cityPoints && !focus ? cityPoints : points} />
+          <FitCity bounds={cityBounds} />
           <FlyTo to={flyTarget} />
           <FlyTo to={atlasTarget} zoom={10} />
           <TrackBounds onChange={setBounds} />
@@ -256,12 +267,12 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
             <Polyline key={`link:${i.key}`} positions={[i.coords!, i.linkTo!]}
               pathOptions={{ className: "stroke-muted", dashArray: "4 6", weight: 2 }} />
           ))}
-          <Marker position={CHECK_AT} icon={checkRing()} interactive>
+          {atlasSelection.showDemoCells && <Marker position={CHECK_AT} icon={checkRing()} interactive>
             <Tooltip>
               Independent check: {validation.landmark.name} collapsed, {day(validation.independentReport.publishedAt.slice(0, 10))} (DHA).
               ARIA overlay covers {CHECK_PCT}% of its 500 m cell.
             </Tooltip>
-          </Marker>
+          </Marker>}
           {placed.map((it) => (
             <Marker key={it.key} position={it.coords!} icon={icon(it, selected === it.key, now)}
               zIndexOffset={selected === it.key ? 1000 : it.kind === "incident" ? 500 : isExtra(it) ? 250 : 0}
@@ -269,9 +280,9 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
           ))}
         </MapContainer>
         <HatchDefs />
-        <Legend meta={zones?.metadata} zones={!!zones} />
-        {zones && <NasaEvidence fc={zones} onLocate={setFlyTarget}>
-          {atlas && <NasaAtlasControls atlas={atlas} selection={atlasSelection} onChange={setAtlasSelection} onLocate={setAtlasTarget} />}
+        <Legend meta={zones?.metadata} zones={!!zones && atlasSelection.showDemoCells} />
+        {zones && <NasaEvidence fc={zones}>
+          {atlas && <NasaAtlasControls atlas={atlas} selection={atlasSelection} onChange={setAtlasSelection} onLocate={setAtlasTarget} onCityView={() => setCityBounds(cityPoints ? [...cityPoints] : undefined)} />}
         </NasaEvidence>}
       </div>
     </div>
