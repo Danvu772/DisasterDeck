@@ -195,22 +195,6 @@ export function buildSpec() {
       },
     },
     paths: {
-      "/api/voice/updates": {
-        get: { tags: ["agents"], summary: "Coordinator-only published family updates and selectable cases", responses: { "200": { description: "Desk-scoped updates, case choices and storage mode" }, "403": errorResponse("Coordinator required") } },
-        post: { tags: ["agents"], summary: "Publish a 24-hour family update or revoke access (coordinator only, same origin)", requestBody: { required: true, content: { "application/json": { schema: { oneOf: [
-          { type: "object", required: ["siteId", "alias", "summary", "sourceAt"], properties: { siteId: { type: "string" }, alias: { type: "string", maxLength: 80 }, summary: { type: "string", maxLength: 1500 }, sourceAt: { type: "string", format: "date-time" } } },
-          { type: "object", required: ["reference", "revoke"], properties: { reference: { type: "string" }, revoke: { const: true } } },
-        ] } } } }, responses: { "201": { description: "Published update ID and expiry; no PIN generated" }, "200": { description: "Withdrawn" }, "403": errorResponse("Coordinator required"), "404": errorResponse("Case outside your desk"), "400": errorResponse("Invalid update") } },
-      },
-      "/api/voice/session": {
-        post: { tags: ["agents"], summary: "Start a voice call about a public update; no login or PIN (same origin)", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["personId"], properties: { personId: { type: "string", pattern: "^[a-f0-9]{16}$", description: "ID selected from the public directory; not an access credential" } } } } } }, responses: { "200": { description: "Short-lived provider token, transparent 10-minute session ticket and demo marker" }, "404": errorResponse("Update no longer published"), "429": errorResponse("Session limit"), "503": errorResponse("Voice setup unavailable") } },
-      },
-      "/api/voice/people": {
-        get: { tags: ["agents"], summary: "Public name directory with published family updates; no authentication", responses: { "200": { description: "Active public updates: id, alias, summary, sourceAt, publishedAt, expiresAt, demo" }, "503": errorResponse("Directory unavailable") } },
-      },
-      "/api/voice/answer": {
-        post: { tags: ["agents"], summary: "Read-only Claude answer scoped to one signed family grant (same origin)", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["ticket", "question"], properties: { ticket: { type: "string", maxLength: 1024 }, question: { type: "string", maxLength: 2000 } } } } } }, responses: { "200": { description: "Grounded answer, sourceAt and demo marker" }, "403": errorResponse("Expired or revoked grant"), "429": errorResponse("Turn limit"), "502": errorResponse("Assistant unavailable") } },
-      },
       "/api/board": {
         get: {
           tags: ["desk"],

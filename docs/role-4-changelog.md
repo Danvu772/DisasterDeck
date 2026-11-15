@@ -2,6 +2,24 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## Shared workstation handoff - 2026-11-15 04:27 EST
+
+- Confirmed the full English voice implementation is on team main; integrated teammates' updates through `cb5e54d` without overwriting them.
+- Added the original fictional Ayşe callback record with its English summary to the reusable dataset so all seven current demo scenarios can be loaded on another workstation.
+- Added a concise [team setup checklist](family-voice-team-setup.md) covering clean install, private keys, English agent setup, loading examples, restarts and the difference between separate memory demos and shared MongoDB publications.
+
+## English-only family voice - 2026-11-15 04:09 EST
+
+- Translated family search, call controls, transcripts, dates, disclosures and API/fallback messages into English. Changed the provider language/greeting and both the ElevenLabs and Claude instructions to English-only responses.
+- Updated and read back the existing private provider agent to verify `language=en` and an English greeting. Restored all seven active local publications with their original observation times; translated the original fictional Ayşe summary into English while retaining the original backup locally.
+- Nine voice tests, scoped ESLint and isolated production build passed. A live Edge/WebRTC test with a synthetic microphone verified the English greeting, a real English Claude answer to a Turkish language-switch request, English narrator output, mute/end and no page errors. No human microphone or shared Atlas write was used.
+
+## English family examples - 2026-11-15 04:02 EST
+
+- Added six clearly fictional English family-information examples covering shelter registration, an unverified inquiry, pending transport, a family check-in, an old observation and an equipment request.
+- Published them to the running local memory demo and committed the reusable JSON plus `npm run voice:examples` loader. The loader refuses shared databases/non-loopback targets and skips active matching names.
+- Verified all six public entries exactly once, a second load adding zero records, script lint and diff formatting. No model/audio calls or shared-database writes were performed. The runbook now explains manual creation and reusable examples.
+
 ## Public family information - 2026-11-15 03:51 EST
 
 - Removed visitor reference/PIN entry and backend PIN verification/generation at the user's request. Added an anonymous published-name directory, immediate readable updates and PIN-free voice sessions. Public record IDs are selected automatically by the UI.

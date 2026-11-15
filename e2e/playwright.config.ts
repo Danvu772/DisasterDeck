@@ -26,12 +26,12 @@ export default defineConfig({
   projects: [
     {
       name: "laptop",
-      testIgnore: /field\.spec\.ts/,
+      testIgnore: /field(-voice)?\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
     {
       name: "phone",
-      testMatch: /field\.spec\.ts/,
+      testMatch: /field(-voice)?\.spec\.ts/,
       use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
     },
   ],

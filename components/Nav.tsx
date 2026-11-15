@@ -12,13 +12,12 @@ import { ThemeToggle } from "./theme/theme";
 
 const LINKS = [
   { href: "/", label: "Desk" },
+  { href: "/agent", label: "Agent" },
   { href: "/map", label: "Map" },
   { href: "/ops", label: "Ops room" },
   { href: "/coordinator", label: "Coordinator" },
   { href: "/field", label: "Field" },
-  { href: "/agent", label: "Agent" },
   { href: "/talk", label: "Talk" },
-  { href: "/family", label: "Family voice" },
 ];
 
 // ?user=<id> is who presses the buttons on Agent, Coordinator and Field (demo only).
@@ -65,9 +64,9 @@ export function Nav({ account }: { account?: React.ReactNode }) {
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
         <Suspense fallback={null}><ActingAs /></Suspense>
-        {!path.startsWith("/family") && <InboxBadge />}
+        <InboxBadge />
         {account}
-        {!path.startsWith("/family") && <StatusPill />}
+        <StatusPill />
         <ThemeToggle />
       </div>
     </nav>

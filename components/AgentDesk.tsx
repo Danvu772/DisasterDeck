@@ -22,8 +22,9 @@ import { cursorOf, feedUrl, mergeServer, shownEvents } from "./agentFeed";
 import { YourNeeds } from "./YourNeeds";
 import { ExpandablePersonCard } from "./motion/ExpandablePersonCard";
 import { usePolled } from "./map/usePolled";
-import { isRealTask, needsFor, nextLocalStatus, openTasksFor, viewTask, type LocalTask } from "./taskState";
+import { isRealTask, needsFor, nextLocalStatus, viewTask, type LocalTask } from "./taskState";
 import { statusWord } from "./detail/fields";
+import { rankOpen } from "@/lib/rules/top";
 
 type FeedEvent = Event & { _id: string };
 type DeskBoard = ReturnType<typeof makeBoard>;
@@ -118,10 +119,10 @@ function Context({ user }: { user: User }) {
 
 // Left: this person's own task and needs. Right: their agent. Below: everything entering the desk.
 export function AgentDesk(props: {
-  user: User; users: User[]; events: FeedEvent[]; messages: Message[]; initial: DeskBoard;
+  user: User; users: User[]; events: FeedEvent[]; messages: Message[]; initial: DeskBoard; initialLive?: boolean;
 }) {
   const { user } = props;
-  const { data: board, live, now } = usePolled<DeskBoard>("/api/board", props.initial);
+  const { data: board, live, now } = usePolled<DeskBoard>("/api/board", props.initial, 1000, props.initialLive);
   // Server events (null until the first answer), the lines the buttons add, and fixtures as the start.
   const [server, setServer] = useState<FeedEvent[] | null>(null);
   const [locals, setLocals] = useState<FeedEvent[]>([]);
@@ -146,7 +147,8 @@ export function AgentDesk(props: {
   const [demoLines, setDemoLines] = useState<Set<string>>(new Set());
   const inFlight = useRef(new Set<string>());
   const lineSeq = useRef(0);
-  const views = openTasksFor(board.tasks, user._id).map((t) => ({ raw: t, ...viewTask(t, local[t._id]) }));
+  // The top task is decided from the board as it is now (lib/rules/top.ts), not the priority the task was made with.
+  const views = rankOpen(board.tasks, board, user._id, now).map(({ task: t }) => ({ raw: t, ...viewTask(t, local[t._id]) }));
   const open = views.filter((v) => v.task.open);
   const top = open[0];
   const needs = needsFor(board.needs, user._id);
@@ -258,8 +260,7 @@ export function AgentDesk(props: {
   return (
     <MotionConfig reducedMotion="user">
     <div className="flex flex-col gap-5">
-      <div className={`grid gap-5 lg:transition-[grid-template-columns] lg:duration-250 lg:ease-out motion-reduce:transition-none ${
-        vizOpen ? "lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]" : "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"}`}>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <section aria-label="Your tasks" className="flex min-w-0 flex-col gap-5">
           <ExpandablePersonCard id={user._id} name={user.name} subtitle={`${ROLE[user.role]} · ${place(user.region)}`}
             badge={<Badge variant="secondary"><ShieldCheck />{TRUST[user.trust]}</Badge>}>
@@ -298,7 +299,7 @@ export function AgentDesk(props: {
           </div>
         </section>
 
-        <div className="flex min-w-0">
+        <div className="flex min-w-0 flex-col">
           <section aria-label="Your agent" className={cn(card, "flex h-[32rem] min-w-0 flex-1 flex-col overflow-hidden lg:h-[38rem]")}>
             <header className="flex items-center gap-3 border-b px-4 py-3">
               <AgentAvatar size="md" />
@@ -345,9 +346,10 @@ export function AgentDesk(props: {
               {stub && <p className="px-1 text-xs text-muted-foreground">Agent offline, this is a stub reply.</p>}
             </form>
           </section>
-          <VizSpace asks={asks} open={vizOpen} onClose={closeViz} events={server ? events : undefined} user={user._id} />
         </div>
       </div>
+      {/* Full page width under both columns, so the charts use the space the left column leaves. */}
+      <VizSpace asks={asks} open={vizOpen} onClose={closeViz} events={server ? events : undefined} user={user._id} />
 
       <section ref={feedRef} className={cn(card, "max-h-[28rem] min-h-0 overflow-y-auto")}>
         {report ? (

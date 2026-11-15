@@ -19,6 +19,9 @@
     "helpdesk:check": "tsx --env-file=.env.local lib/helpdesk-check.ts",
     "sweeper:check": "tsx --env-file=.env.local lib/sweeper-check.ts",
     "reconcile:check": "tsx --env-file=.env.local lib/reconcile-check.ts",
+    "health": "tsx --env-file=.env.local lib/health-report.ts",
+    "feed:synthetic": "tsx --env-file=.env.local workers/synthetic-feed.ts",
+    "top:check": "tsx --env-file=.env.local lib/top-check.ts",
     "security:check": "tsx --env-file=.env.local lib/security-check.ts",
     "brain": "tsx --env-file=.env.local workers/brain.ts",
     "check:contract": "node docs/frontend/contract-check.mjs",
@@ -27,14 +30,10 @@
     "check:pilot": "node scripts/validate-demo-data.mjs && node scripts/check-antakya.mjs",
     "replay:real": "node --env-file-if-exists=.env.local --import tsx workers/x-agent.ts --file data/replays/antakya-real-tweets.json --require-live",
     "replay:synthetic": "node --env-file-if-exists=.env.local --import tsx workers/x-agent.ts --file data/tweets_replay.json",
-    "check:replay": "node --import tsx --test scripts/real-replay.test.mjs",
-    "check:voice": "node --import tsx --test scripts/family-voice.test.mjs",
-    "voice:setup": "node --env-file=.env.local scripts/setup-family-voice.mjs",
-    "voice:smoke": "node scripts/smoke-family-voice.mjs"
+    "check:replay": "node --import tsx --test scripts/real-replay.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
-    "@elevenlabs/client": "^1.36.1",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "leaflet": "^1.9.4",

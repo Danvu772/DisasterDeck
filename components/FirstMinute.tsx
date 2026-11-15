@@ -9,7 +9,7 @@ export type Screen = "agent" | "coordinator" | "field";
 export const FIRST_MINUTE: Record<Screen, string> = {
   agent: "Ask your agent anything, or tell it what happened.",
   coordinator: "Risky work waits here. Approve, send someone else, or reject.",
-  field: "Your task is on top. Tap Problem if something goes wrong.",
+  field: "Your task is on top. Tap Problem if something goes wrong. Hold to talk.",
 };
 
 const key = (s: Screen) => `desk-first-minute-${s}`;

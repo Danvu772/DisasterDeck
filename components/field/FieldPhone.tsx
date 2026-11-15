@@ -3,7 +3,7 @@
 // Polls GET /api/board, falls back to the demo board and says so.
 import { useState } from "react";
 import {
-  Ambulance, Car, ChevronDown, ChevronRight, CircleCheck, CircleAlert, Clock, CloudOff, HandHelping, LifeBuoy,
+  Ambulance, AudioLines, Car, ChevronDown, ChevronRight, CircleCheck, CircleAlert, Clock, CloudOff, HandHelping, LifeBuoy,
   MapPin, MapPinOff, Megaphone, Mic, Navigation, Phone, Sparkles, TriangleAlert, Truck, Users, type LucideIcon,
 } from "lucide-react";
 import type { IncidentKind, LatLng, Task } from "@/lib/types";
@@ -19,6 +19,45 @@ import { Input } from "@/components/ui/input";
 import { openTasksFor, type FieldBoard, type FieldTask } from "./pickTask";
 import { useOutbox, type FieldEvent } from "./useOutbox";
 import { useHoldToTalk } from "./useHoldToTalk";
+import { useVoiceAgent, type AgentState } from "./useVoiceAgent";
+import type { AgentAction } from "./voiceClient";
+
+// What the voice agent is doing, in words. "off" shows nothing.
+const AGENT_STATE: Record<AgentState, string> = {
+  off: "", starting: "Starting the microphone", listening: "Listening", hearing: "Hearing you",
+  thinking: "Your agent is working", speaking: "Your agent is speaking", waiting: "Waiting a minute",
+};
+
+// What the agent did with the last message: the tools it ran, done or not.
+function Actions({ list }: { list: AgentAction[] }) {
+  if (!list.length) return null;
+  return (
+    <ul className="space-y-1.5 text-sm">
+      {list.map((a, i) => (
+        <li key={i} className="flex items-start gap-2">
+          {a.ok ? <CircleCheck className="mt-0.5 size-4 shrink-0 text-success" /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />}
+          <span>{`${a.ok ? "Done" : "Not done"}: ${a.summary}`}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// The person's words on the right, the agent's answer on the left (same bubbles as /agent and /talk).
+function Said({ text }: { text: string }) {
+  return (
+    <p className="ml-auto w-fit max-w-[85%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-4 py-3 text-base text-primary-foreground">
+      <span className="sr-only">You:</span> {text}
+    </p>
+  );
+}
+function Reply({ text }: { text: string }) {
+  return (
+    <p className="whitespace-pre-line rounded-2xl rounded-bl-md bg-info-soft px-4 py-3 text-base">
+      <span className="sr-only">Agent:</span> {text}
+    </p>
+  );
+}
 
 type Panel = "eta" | "done" | "problem" | null;
 
@@ -95,6 +134,7 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
   const { data, live, now } = usePolled<FieldBoard>("/api/board", initial, 1000, initialLive);
   const { send, waiting } = useOutbox(user);
   const talk = useHoldToTalk(user);
+  const agent = useVoiceAgent(user);
   const [panel, setPanel] = useState<Panel>(null);
   const [details, setDetails] = useState(false);
   const [note, setNote] = useState("");
@@ -313,14 +353,40 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
       )}
 
       <section className="space-y-3 pt-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <span className="flex size-6 items-center justify-center rounded-full bg-info text-info-foreground"><Sparkles className="size-3.5" /></span>
-          Your agent
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex size-6 items-center justify-center rounded-full bg-info text-info-foreground"><Sparkles className="size-3.5" /></span>
+            Your agent
+          </h2>
+          <span className="ml-auto text-xs text-muted-foreground">
+            {talk.engine === null ? "Checking voice…" : talk.engine === "elevenlabs" ? "Voice: ElevenLabs." : "Voice: this phone's own speech."}
+          </span>
+        </div>
+
+        <Button type="button" variant={agent.on ? "default" : "outline"} aria-pressed={agent.on} onClick={agent.toggle}
+          className={cn(mid, agent.on && "ring-4 ring-ring/40")}
+          disabled={talk.engine !== "elevenlabs" || talk.state === "recording" || talk.state === "starting" || talk.state === "sending"}>
+          <AudioLines />
+          {agent.on ? "Voice agent on, tap to stop" : "Start voice agent (hands-free)"}
+        </Button>
+        {agent.on && AGENT_STATE[agent.state] && (
+          <p className="flex items-center gap-2 text-base font-medium">
+            <span className="size-2 animate-pulse rounded-full bg-info" />{AGENT_STATE[agent.state]}
+          </p>
+        )}
+        {agent.note && <p aria-live="polite" className="text-sm text-muted-foreground">{agent.note}</p>}
+        {agent.last && (
+          <div className="space-y-2">
+            {agent.last.said && <Said text={agent.last.said} />}
+            <Reply text={agent.last.reply} />
+            <Actions list={agent.last.actions} />
+          </div>
+        )}
+
         <Button
           className={cn("h-20 w-full touch-none select-none rounded-2xl text-lg [-webkit-touch-callout:none] [&_svg:not([class*='size-'])]:size-6",
             talk.state === "recording" && "animate-pulse ring-4 ring-ring/50")}
-          disabled={talk.state === "unsupported" || talk.state === "sending"}
+          disabled={talk.engine === null || talk.state === "unsupported" || talk.state === "sending" || agent.on}
           onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); talk.start(); }}
           onPointerUp={talk.stop}
           onPointerCancel={talk.stop}
@@ -349,18 +415,11 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
           </Button>
         </form>
         <div aria-live="polite" className="space-y-2">
-          {talk.said && (
-            <p className="ml-auto w-fit max-w-[85%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-4 py-3 text-base text-primary-foreground">
-              <span className="sr-only">You:</span> {talk.said}
-            </p>
-          )}
+          {talk.said && <Said text={talk.said} />}
           {talk.state === "sending" && <p className="text-sm text-muted-foreground">Your agent is answering…</p>}
           {talk.error && <p className="text-sm">{talk.error}</p>}
-          {talk.reply && (
-            <p className="whitespace-pre-line rounded-2xl rounded-bl-md bg-info-soft px-4 py-3 text-base">
-              <span className="sr-only">Agent:</span> {talk.reply}
-            </p>
-          )}
+          {talk.reply && <Reply text={talk.reply} />}
+          <Actions list={talk.actions} />
         </div>
         {talk.speaking && <Button variant="ghost" className="h-11" onClick={talk.hush}>Stop reading aloud</Button>}
       </section>
