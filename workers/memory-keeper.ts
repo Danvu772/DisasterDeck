@@ -8,22 +8,30 @@
 // the event): a site never gets the same source twice, a new record's id comes from the event,
 // and every status move is guarded by the status it moves from.
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { MongoServerError, type Filter } from "mongodb";
 import { maskPhones } from "../agents/shared/privacy";
 import { cols, getDb } from "../lib/db";
-import { normalizeText } from "../lib/geo";
+import { haversineMeters, normalizeAddress, normalizeText, pointInPolygon } from "../lib/geo";
+import { conflictNote, resolveConflict, trustedClash, trustRank, type Stamp } from "../lib/rules/conflict";
 import { HAZARD_KINDS, severity } from "../lib/rules/incidents";
 import { decideReport, type SiteLite } from "../lib/rules/merge";
 import { isTrusted, matchNeed, mergeLines, needStatus } from "../lib/rules/needs";
 import { confidence, scored, siteTier, support, type Voice } from "../lib/rules/priority";
-import { answerPayload, approvalPayload, claimPayload, incidentPayload, needPayload, reportPayload } from "../lib/schemas";
+import {
+  alertPayload, answerPayload, approvalPayload, capacityPayload, claimPayload, closurePayload, correctionPayload,
+  incidentPayload, needPayload, reportPayload,
+} from "../lib/schemas";
 import type {
-  ClaimPayload, Event, EventType, HistoryEntry, Incident, Need, Post, RecordType, ReportPayload, ScorePart, Site,
-  Trust,
+  ClaimPayload, Confidence, Event, EventType, HistoryEntry, Incident, LatLng, Need, Post, RecordType, ReportPayload, Road,
+  ScorePart, Shelter, Site, Source, Trust, Zone,
 } from "../lib/types";
+import { z } from "zod";
 
 /** Event types the keeper handles today. Others stay pending until their handler lands. */
-export const HANDLED: EventType[] = ["report", "answer", "approval", "incident", "need", "claim"];
+export const HANDLED: EventType[] = [
+  "report", "answer", "approval", "incident", "need", "claim", "closure", "capacity", "alert", "correction",
+];
 
 /** One record the keeper created or changed: what the dispatcher reacts to. */
 export interface Change {
@@ -32,6 +40,10 @@ export interface Change {
   op: "created" | "updated";
   eventId: string;
   fields: string[];
+  /** What the dispatcher should do about it: "notify" (a road changed), "full", "confirm" (shelters),
+   * "silent" (a zone), "rescored" (a record got a satellite term). */
+  flags?: ("notify" | "full" | "confirm" | "silent" | "rescored")[];
+  note?: string;
 }
 
 /** What must happen to a task. The keeper decides it, the dispatcher (the tasks' writer) does it. */
@@ -45,7 +57,8 @@ export type TaskAction =
   | {
       kind: "claim"; type: ClaimPayload["what"]; recordType: "site" | "need"; recordId: string;
       deskId: string; by: string; etaMinutes?: number; text: string;
-    };
+    }
+  | { kind: "cancel"; recordType: "site" | "need"; recordId: string; deskId: string; by: string; reason: string };
 
 export interface KeeperResult {
   status: "done" | "merged" | "rejected";
@@ -62,6 +75,10 @@ export async function apply(event: Event): Promise<KeeperResult> {
     case "incident": return applyIncident(event);
     case "need": return applyNeed(event);
     case "claim": return applyClaim(event);
+    case "closure": return applyClosure(event);
+    case "capacity": return applyCapacity(event);
+    case "alert": return applyAlert(event);
+    case "correction": return applyCorrection(event);
     default:
       // The Brain only takes HANDLED types, so this means a bug, not bad input.
       throw new Error(`memory keeper has no handler for "${event.type}"`);
@@ -476,6 +493,364 @@ async function applyClaim(event: Event): Promise<KeeperResult> {
     [{ recordType, recordId: p.recordId, op: "updated", eventId: event._id!, fields: ["history"] }],
     [{ kind: "claim", type: p.what, recordType, recordId: p.recordId, deskId: event.deskId, by: event.actor, etaMinutes: p.etaMinutes, text }],
     "merged");
+}
+
+// ---------- group B: roads, shelters, zones, corrections ----------
+
+/** Trust of whoever sent the event: a person's own record, system and nasa official, the sheet vetted, the rest public. */
+async function eventTrust(event: Pick<Event, "source" | "actor">): Promise<Trust> {
+  if (event.source === "person") return trustOf(event.actor);
+  if (SYSTEM_SOURCES.has(event.source)) return "official";
+  return event.source === "sheet" ? "vetted" : "public";
+}
+
+const stampOf = (event: Event, trust: Trust): Stamp => ({
+  trust, observedAt: event.observedAt ?? event.ts, source: event.source,
+  who: event.source === "person" ? event.actor : event.source,
+});
+const storedStamp = (r: { trust?: Trust; observedAt: Date; source?: Source }): Stamp => ({
+  trust: r.trust ?? "public", observedAt: new Date(r.observedAt), source: r.source, who: r.source,
+});
+const confidenceOf = (t: Trust): Confidence => (t === "public" ? "unconfirmed" : "confirmed");
+const hasEvent = (history: HistoryEntry[] | undefined, eventId: string) => Boolean(history?.some((h) => h.eventId === eventId));
+const withEvent = (event: Event, reason: string): HistoryEntry => ({ ...historyOf(event, reason), eventId: event._id! });
+const later = (a: Date, b: Date) => (new Date(a).getTime() >= b.getTime() ? new Date(a) : b);
+
+/** The region of a place we only know by who told us or where it is: the sender's, else the nearest site's within 1 km. */
+async function regionFor(event: Event, coords?: LatLng): Promise<string | undefined> {
+  const { users, sites } = await cols();
+  if (event.source === "person") {
+    const u = await users.findOne({ _id: event.actor, deskId: event.deskId }, { projection: { region: 1 } });
+    if (u?.region) return u.region;
+  }
+  if (!coords) return undefined;
+  const near = (await sites.find({ deskId: event.deskId, coords: { $exists: true } }, { projection: { coords: 1, region: 1 } }).toArray())
+    .map((s) => ({ region: s.region, m: haversineMeters(coords, s.coords!) }))
+    .filter((s) => s.m <= 1000 && s.region !== "unknown")
+    .sort((a, b) => a.m - b.m)[0];
+  return near?.region;
+}
+
+// --- closure → roads (§8.3) ---
+
+const roadKey = (name: string) => normalizeAddress(name) ?? normalizeText(name);
+const closedLike = (state: Road["state"]) => state !== "open";
+
+async function applyClosure(event: Event): Promise<KeeperResult> {
+  const parsed = closurePayload.safeParse(event.payload);
+  if (!parsed.success) return reject(`payload is not a valid closure: ${firstIssue(parsed.error)}`);
+  const p = parsed.data;
+  const eventId = event._id!;
+  const c = await cols();
+  const trust = await eventTrust(event);
+  const stamp = stampOf(event, trust);
+  const reason = mask(p.reason);
+  const key = roadKey(p.road);
+
+  const roads = await c.roads.find({ deskId: event.deskId }).toArray();
+  const same = roads.find((r) => key && roadKey(r.road) === key)
+    ?? (p.coords ? roads.find((r) => r.coords && haversineMeters(r.coords, p.coords!) <= 100) : undefined);
+
+  if (!same) {
+    const id = `road-${eventId}`;
+    if (!(await c.roads.findOne({ _id: id }, { projection: { _id: 1 } }))) {
+      const region = await regionFor(event, p.coords);
+      const road: Road = {
+        _id: id, road: mask(p.road).trim(), state: p.state, reason, ...(p.coords ? { coords: p.coords } : {}),
+        ...(region ? { region } : {}),
+        history: [withEvent(event, `${p.state}: ${reason || "no reason given"} (${stamp.who}, ${trust})`)],
+        deskId: event.deskId, confidence: confidenceOf(trust), observedAt: stamp.observedAt, source: event.source, trust,
+      };
+      await insertOnce(() => c.roads.insertOne(road));
+    }
+    return done([id], `road ${p.road}: ${p.state}, new`,
+      [{ recordType: "road", recordId: id, op: "created", eventId, fields: ["state", "reason", "confidence"], flags: closedLike(p.state) ? ["notify"] : [] }], []);
+  }
+
+  if (hasEvent(same.history, eventId)) return done([same._id], "already applied", [], [], "merged");
+  const stored = storedStamp(same);
+  let set: Partial<Road>;
+  let note: string;
+  let flags: Change["flags"] = [];
+  if (closedLike(same.state) !== closedLike(p.state)) {
+    const verdict = resolveConflict(stored, stamp);
+    note = conflictNote(verdict, stored, same.state, stamp, p.state);
+    if (verdict.winner === "incoming") {
+      set = {
+        state: p.state, reason: reason || same.reason, observedAt: stamp.observedAt, source: event.source, trust,
+        confidence: confidenceOf(trust), ...(!same.coords && p.coords ? { coords: p.coords } : {}),
+      };
+      flags = ["notify"];
+    } else set = {};
+  } else if (trustRank(trust) >= trustRank(stored.trust)) {
+    // Same story from someone at least as trusted: the record is refreshed and may firm up.
+    note = `${p.state} again from ${stamp.who} (${trust})`;
+    set = {
+      state: p.state, reason: reason || same.reason, observedAt: later(stamp.observedAt, new Date(same.observedAt)),
+      source: event.source, trust, confidence: confidenceOf(trust), ...(!same.coords && p.coords ? { coords: p.coords } : {}),
+    };
+  } else {
+    note = `${p.state} also reported by ${stamp.who} (${trust}), the stored ${same.state} from ${stored.who ?? "unknown"} (${stored.trust}) stays`;
+    set = { observedAt: later(stamp.observedAt, new Date(same.observedAt)) };
+  }
+  if (!same.region && !set.region) {
+    const region = await regionFor(event, same.coords ?? p.coords);
+    if (region) set.region = region;
+  }
+  await c.roads.updateOne({ _id: same._id, "history.eventId": { $ne: eventId } }, {
+    ...(Object.keys(set).length ? { $set: set } : {}), $push: { history: withEvent(event, note) },
+  });
+  return done([same._id], `road ${same.road}: ${note}`,
+    [{ recordType: "road", recordId: same._id, op: "updated", eventId, fields: [...Object.keys(set), "history"], flags, note }], [], "merged");
+}
+
+// --- capacity → shelters (§8.4) ---
+
+const OVERFULL = 0.9;
+const full = (used: number, total: number) => total > 0 && used / total > OVERFULL;
+
+async function applyCapacity(event: Event): Promise<KeeperResult> {
+  const parsed = capacityPayload.safeParse(event.payload);
+  if (!parsed.success) return reject(`payload is not a valid capacity update: ${firstIssue(parsed.error)}`);
+  const p = parsed.data;
+  const eventId = event._id!;
+  const c = await cols();
+  const trust = await eventTrust(event);
+  const stamp = stampOf(event, trust);
+  const name = mask(p.shelter).trim();
+  const value = `${p.bedsUsed}/${p.bedsTotal}`;
+  const nameKey = normalizeText(p.shelter);
+
+  const shelters = await c.shelters.find({ deskId: event.deskId }).toArray();
+  const same = shelters.find((s) => s._id === p.shelter || (nameKey && normalizeText(s.name) === nameKey));
+
+  if (!same) {
+    const id = `shelter-${eventId}`;
+    if (!(await c.shelters.findOne({ _id: id }, { projection: { _id: 1 } }))) {
+      const shelter: Shelter = {
+        _id: id, name, region: (await regionFor(event)) ?? "unknown", bedsUsed: p.bedsUsed, bedsTotal: p.bedsTotal,
+        updated: new Date(), observedAt: stamp.observedAt, source: event.source, trust,
+        history: [withEvent(event, `${value} beds from ${stamp.who} (${trust})`)], deskId: event.deskId,
+      };
+      await insertOnce(() => c.shelters.insertOne(shelter));
+    }
+    return done([id], `shelter ${name}: ${value}, new`,
+      [{ recordType: "shelter", recordId: id, op: "created", eventId, fields: ["bedsUsed", "bedsTotal"], flags: full(p.bedsUsed, p.bedsTotal) ? ["full"] : [] }], []);
+  }
+
+  if (hasEvent(same.history, eventId)) return done([same._id], "already applied", [], [], "merged");
+  const stored = storedStamp(same);
+  const storedValue = `${same.bedsUsed}/${same.bedsTotal}`;
+  const flags: NonNullable<Change["flags"]> = [];
+  let set: Partial<Shelter> = {};
+  let note: string;
+  let clash: string | undefined;
+  if (storedValue !== value) {
+    const verdict = resolveConflict(stored, stamp);
+    note = conflictNote(verdict, stored, storedValue, stamp, value);
+    if (trustedClash(stored, stamp)) {
+      flags.push("confirm");
+      clash = `${same.name}: ${stored.who ?? "one source"} (${stored.trust}) says ${storedValue}, ${stamp.who} (${trust}) says ${value}. Please confirm the real number.`;
+    }
+    if (verdict.winner === "incoming") {
+      set = { bedsUsed: p.bedsUsed, bedsTotal: p.bedsTotal, observedAt: stamp.observedAt, updated: new Date(), source: event.source, trust };
+      if (full(p.bedsUsed, p.bedsTotal) && !full(same.bedsUsed, same.bedsTotal)) flags.push("full");
+    }
+  } else {
+    note = `${value} confirmed by ${stamp.who} (${trust})`;
+    if (trustRank(trust) >= trustRank(stored.trust)) {
+      set = { observedAt: later(stamp.observedAt, new Date(same.observedAt)), updated: new Date(), source: event.source, trust };
+    }
+  }
+  await c.shelters.updateOne({ _id: same._id, "history.eventId": { $ne: eventId } }, {
+    ...(Object.keys(set).length ? { $set: set } : {}), $push: { history: withEvent(event, note) },
+  });
+  return done([same._id], `shelter ${same.name}: ${note}`,
+    [{ recordType: "shelter", recordId: same._id, op: "updated", eventId, fields: [...Object.keys(set), "history"], flags, ...(clash ? { note: clash } : {}) }], [], "merged");
+}
+
+// --- alert → zones (§8.5) ---
+
+interface Shape { name?: string; region?: string; rings: number[][][][] }
+let shapes: Map<string, Shape> | undefined;
+
+/** The zone outlines from public/data/zones.geojson (read once). Polygon and MultiPolygon. */
+async function shapeOf(zoneId: string): Promise<Shape | undefined> {
+  if (!shapes) {
+    shapes = new Map();
+    try {
+      const gj = JSON.parse(await readFile(new URL("../public/data/zones.geojson", import.meta.url), "utf8")) as {
+        features: { id?: string; properties?: { _id?: string; name?: string; region?: string };
+          geometry?: { type: string; coordinates: number[][][] | number[][][][] } }[];
+      };
+      for (const f of gj.features ?? []) {
+        const id = f.id ?? f.properties?._id;
+        if (!id || !f.geometry) continue;
+        const rings = f.geometry.type === "Polygon" ? [f.geometry.coordinates as number[][][]]
+          : f.geometry.type === "MultiPolygon" ? (f.geometry.coordinates as number[][][][]) : [];
+        shapes.set(id, { name: f.properties?.name, region: f.properties?.region, rings });
+      }
+    } catch { /* no file: zones match by region only */ }
+  }
+  return shapes.get(zoneId);
+}
+
+const WARMTH = /blanket|tent|heater|heating|stove|sleeping bag|warm|coat|jacket|battaniye|cadir|çadır|soba|mont|isitici|ısıtıcı/i;
+export const isWarmthItem = (item: string) => WARMTH.test(item);
+
+const prettyZone = (id: string) => id.split(/[-_]/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+
+async function applyAlert(event: Event): Promise<KeeperResult> {
+  const parsed = alertPayload.safeParse(event.payload);
+  if (!parsed.success) return reject(`payload is not a valid alert: ${firstIssue(parsed.error)}`);
+  const p = parsed.data;
+  const eventId = event._id!;
+  const c = await cols();
+  const now = new Date();
+  const shape = await shapeOf(p.zoneId);
+
+  // The zone id is global in the collection. Another desk with the same id keeps its own zone.
+  const zone0 = await c.zones.findOne({ deskId: event.deskId, _id: { $in: [p.zoneId, `${event.deskId}:${p.zoneId}`] } });
+  if (zone0 && hasEvent(zone0.history, eventId)) return done([zone0._id], "already applied", [], [], "merged");
+
+  const ev = p.evidence;
+  const set: Partial<Zone> = p.kind === "silent_zone"
+    ? { silentZone: true, ...(ev.damage !== undefined ? { damage: ev.damage } : {}), ...(ev.dark !== undefined ? { dark: ev.dark } : {}), ...(ev.calls !== undefined ? { calls: ev.calls } : {}) }
+    : { cold: true, ...(ev.minTempC !== undefined ? { minTempC: ev.minTempC } : {}) };
+  const note = p.kind === "silent_zone"
+    ? `silent zone: damage ${ev.damage ?? "?"}, ${ev.dark === undefined ? "lights unknown" : ev.dark ? "power out" : "lights on"}, ${ev.calls ?? "?"} calls`
+    : `cold night: ${ev.minTempC ?? "?"} °C`;
+  let zone: Zone;
+  let op: Change["op"];
+  if (zone0) {
+    await c.zones.updateOne({ _id: zone0._id, "history.eventId": { $ne: eventId } }, { $set: set, $push: { history: withEvent(event, note) } });
+    zone = { ...zone0, ...set };
+    op = "updated";
+  } else {
+    const taken = await c.zones.findOne({ _id: p.zoneId }, { projection: { deskId: 1 } });
+    zone = {
+      _id: taken && taken.deskId !== event.deskId ? `${event.deskId}:${p.zoneId}` : p.zoneId,
+      name: shape?.name ?? prettyZone(p.zoneId), silentZone: false, damage: 0, dark: false, calls: 0, deskId: event.deskId,
+      ...(shape?.region ? { region: shape.region } : {}), ...set, history: [withEvent(event, note)],
+    };
+    await insertOnce(() => c.zones.insertOne(zone));
+    op = "created";
+  }
+
+  // Satellite data only raises a score, never lowers one.
+  const inZone = (coords: LatLng | undefined, region: string) => coords && shape
+    ? shape.rings.some((r) => pointInPolygon(coords, r))
+    : !coords && Boolean(zone.region) && region === zone.region;
+  const siteIdsIn = new Set(
+    (await c.sites.find({ deskId: event.deskId, status: { $ne: "retracted" } }).toArray()).filter((s) => inZone(s.coords, s.region)).map((s) => s._id),
+  );
+  const changes: Change[] = [{
+    recordType: "zone", recordId: zone._id, op, eventId, fields: Object.keys(set),
+    flags: p.kind === "silent_zone" ? ["silent"] : [],
+  }];
+  const has = (parts: ScorePart[] | undefined, name: string) => parts?.some((x) => x.name === name) ?? false;
+
+  if (p.kind === "silent_zone") {
+    for (const s of await c.sites.find({ deskId: event.deskId, status: { $in: ["open", "team_on_site"] }, _id: { $in: [...siteIdsIn] } }).toArray()) {
+      if (has(s.scoreParts, "silent zone")) continue;
+      const next = scored({ support: s.support, waitingSince: new Date(s.observedAt), silentZone: true, warmthInCold: has(s.scoreParts, "cold night") }, now);
+      await c.sites.updateOne({ _id: s._id }, { $set: next, $push: { history: withEvent(event, `silent zone ${zone.name}: priority +30`) } });
+      changes.push({ recordType: "site", recordId: s._id, op: "updated", eventId, fields: ["priority", "scoreParts", "history"], flags: ["rescored"] });
+    }
+  }
+  for (const n of await c.needs.find({ deskId: event.deskId, status: { $nin: ["delivered", "cancelled"] } }).toArray()) {
+    const here = n.siteIds.some((id) => siteIdsIn.has(id)) || (Boolean(zone.region) && n.region === zone.region);
+    const silent = p.kind === "silent_zone" && here && !has(n.scoreParts, "silent zone");
+    const cold = p.kind === "cold" && here && isWarmthItem(n.item) && !has(n.scoreParts, "cold night");
+    if (!silent && !cold) continue;
+    const next = scored({
+      support: n.support, waitingSince: new Date(n.history[0]?.ts ?? now),
+      silentZone: silent || has(n.scoreParts, "silent zone"), warmthInCold: cold || has(n.scoreParts, "cold night"),
+    }, now);
+    await c.needs.updateOne({ _id: n._id }, {
+      $set: next, $push: { history: withEvent(event, silent ? `silent zone ${zone.name}: priority +30` : `cold night in ${zone.name}: warmth need, priority +20`) },
+    });
+    changes.push({ recordType: "need", recordId: n._id, op: "updated", eventId, fields: ["priority", "scoreParts", "history"], flags: ["rescored"] });
+  }
+  return done([zone._id], `zone ${zone.name}: ${note}, ${changes.length - 1} record(s) raised`, changes, [], op === "created" ? "done" : "merged");
+}
+
+// --- correction: retract and edit (split and merge are out of scope) ---
+
+const latLngSchema = z.tuple([z.number().min(-90).max(90), z.number().min(-180).max(180)]);
+const EDITABLE = {
+  site: {
+    address: z.string().min(1).max(500), coords: latLngSchema, peopleTrapped: z.number().int().min(0).max(1_000_000),
+  },
+  need: { quantity: z.number().int().min(1).max(1_000_000) },
+} as const;
+
+async function applyCorrection(event: Event): Promise<KeeperResult> {
+  const parsed = correctionPayload.safeParse(event.payload);
+  if (!parsed.success) return reject(`payload is not a valid correction: ${firstIssue(parsed.error)}`);
+  const p = parsed.data;
+  const eventId = event._id!;
+  if (event.source !== "person") return reject("only a person can correct a record");
+  if (p.action !== "retract" && p.action !== "edit") {
+    return reject(`a ${p.action} correction is not supported yet: ask a coordinator to fix it by hand`);
+  }
+  if (p.recordType !== "site" && p.recordType !== "need") {
+    return reject(`a ${p.action} of a ${p.recordType} is not supported: only sites and needs can be corrected`);
+  }
+  const c = await cols();
+  const q = { _id: p.recordId, deskId: event.deskId };
+  const rec = p.recordType === "site" ? await c.sites.findOne(q) : await c.needs.findOne(q);
+  if (!rec) return reject(`${p.recordType} ${p.recordId} not found on this desk`);
+  if (hasEvent(rec.history, eventId)) return done([rec._id], "already applied", [], [], "merged");
+  const why = mask(p.reason);
+  const change = (fields: string[]): Change =>
+    ({ recordType: p.recordType as "site" | "need", recordId: rec._id, op: "updated", eventId, fields: [...fields, "history"] });
+
+  if (p.action === "retract") {
+    const entry = withEvent(event, `retracted by ${event.actor}: ${why}`);
+    if (p.recordType === "site") {
+      if ((rec as Site).status === "retracted") return done([rec._id], "already retracted", [], [], "merged");
+      await c.sites.updateOne({ ...q, status: { $ne: "retracted" } }, { $set: { status: "retracted" }, $push: { history: entry } });
+    } else {
+      const status = (rec as Need).status;
+      if (status === "cancelled") return done([rec._id], "already cancelled", [], [], "merged");
+      if (status === "delivered") return reject(`need ${rec._id} was already delivered, it cannot be retracted`);
+      await c.needs.updateOne({ ...q, status: { $nin: ["cancelled", "delivered"] } }, { $set: { status: "cancelled" }, $push: { history: entry } });
+    }
+    return done([rec._id], `${p.recordType} ${rec._id} retracted by ${event.actor}: ${why}`, [change(["status"])],
+      [{ kind: "cancel", recordType: p.recordType, recordId: rec._id, deskId: event.deskId, by: event.actor, reason: why }], "merged");
+  }
+
+  // edit: a short list of fields per record type, each checked, and the old value kept.
+  const allowed: Record<string, z.ZodType> = EDITABLE[p.recordType];
+  const asked = Object.entries(p.fields ?? {});
+  if (!asked.length) return reject("an edit must say which fields to change");
+  const bad = asked.filter(([k]) => !(k in allowed)).map(([k]) => k);
+  if (bad.length) return reject(`cannot edit ${bad.join(", ")} on a ${p.recordType}: only ${Object.keys(allowed).join(", ")} can be edited`);
+  const values: Record<string, unknown> = {};
+  for (const [k, v] of asked) {
+    const ok = allowed[k].safeParse(v);
+    if (!ok.success) return reject(`${k} is not a valid value: ${ok.error.issues[0]?.message}`);
+    values[k] = ok.data;
+  }
+  const current = rec as unknown as Record<string, unknown>;
+  const changed = Object.keys(values).filter((k) => JSON.stringify(values[k]) !== JSON.stringify(current[k]));
+  if (!changed.length) return done([rec._id], "nothing to change, the record already has these values", [], [], "merged");
+  const arrow = changed.map((k) => `${k} ${JSON.stringify(current[k] ?? null)} → ${JSON.stringify(values[k])}`).join(", ");
+  const entry = withEvent(event, `edited by ${event.actor}: ${arrow} (${why})`);
+  const set: Record<string, unknown> = Object.fromEntries(changed.map((k) => [k, values[k]]));
+  if (p.recordType === "site") {
+    if ((rec as Site).status === "retracted") return reject(`site ${rec._id} is retracted, it cannot be edited`);
+    if (changed.includes("peopleTrapped")) set.tier = siteTier(values.peopleTrapped as number, []);
+    await c.sites.updateOne({ ...q, "history.eventId": { $ne: eventId } }, { $set: set, $push: { history: entry } });
+  } else {
+    const need = rec as Need;
+    if (need.status === "delivered" || need.status === "cancelled") return reject(`need ${need._id} is ${need.status}, it cannot be edited`);
+    if (need.lines.length > 1) return reject(`need ${need._id} has ${need.lines.length} lines: edit each by hand`);
+    set.lines = need.lines.length ? [{ ...need.lines[0], quantity: values.quantity }] : need.lines;
+    await c.needs.updateOne({ ...q, "history.eventId": { $ne: eventId } }, { $set: set, $push: { history: entry } });
+  }
+  return done([rec._id], entry.reason, [change(changed)], [], "merged");
 }
 
 // ---------- follow-ups the dispatcher asks for (records stay the keeper's) ----------

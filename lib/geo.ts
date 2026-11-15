@@ -48,3 +48,17 @@ export function normalizeText(text: string | undefined | null): string | null {
   s = fold(s.toLocaleLowerCase("tr")).replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
   return s.length ? s : null;
 }
+
+/** Ray casting. `rings` is a GeoJSON Polygon: [outer, ...holes], each a ring of [lng, lat]. */
+export function pointInPolygon(p: LatLng, rings: number[][][]): boolean {
+  const inRing = (ring: number[][]) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+      if (yi > p[0] !== yj > p[0] && p[1] < ((xj - xi) * (p[0] - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  return rings.length > 0 && inRing(rings[0]) && !rings.slice(1).some(inRing);
+}

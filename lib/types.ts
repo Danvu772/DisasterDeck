@@ -1,4 +1,4 @@
-// Owned by Role 1. Ask before changing.          Version 2.2, 14 Nov.
+// Owned by Role 1. Ask before changing.          Version 2.4, 15 Nov.
 // Source of truth: docs/.../Roles/Team contracts.md §3.
 // v2.1: Need.requestedBy (asked for in "Personal agents"), and the helper types at the
 //       bottom for the functions in lib/db.ts. No existing field changed.
@@ -34,7 +34,10 @@ export interface Message {               // v2: chat history, loaded by the pers
   text: string; ts: Date; eventIds?: string[];
 }
 
-export interface HistoryEntry { ts: Date; by: string; source: Source; reason: string; }
+export interface HistoryEntry {
+  ts: Date; by: string; source: Source; reason: string;
+  eventId?: string;                      // v2.4: the event behind it, so a re-run adds nothing
+}
 
 // ---------- Events: the only way anything enters memory ----------
 export type EventType = "report" | "need" | "closure" | "capacity"
@@ -178,17 +181,21 @@ export interface Road {
   _id: string; road: string; state: "open" | "closed" | "unconfirmed";
   reason: string; coords?: LatLng; history: HistoryEntry[];
   deskId: string; confidence: Confidence; observedAt: Date;           // v2
+  region?: string;                       // v2.4: where it is, for "who is near this road"
+  source?: Source; trust?: Trust;        // v2.4: who said the stored state (for "two sources disagree")
 }
 export interface Shelter {
   _id: string; name: string; region: string; coords?: LatLng;
   bedsUsed: number; bedsTotal: number; updated: Date; history: HistoryEntry[];
   deskId: string; observedAt: Date;      // v2: when the number was true, not when we got it
+  source?: Source; trust?: Trust;        // v2.4: who said the stored number
 }
 export interface Zone {
   _id: string; name: string; silentZone: boolean;
   damage: number; dark: boolean; calls: number;
   deskId: string; cold?: boolean; minTempC?: number;                  // v2
   exitAssigned?: string;                                              // v2: was in the design only
+  region?: string; history?: HistoryEntry[];                          // v2.4
 }
 export interface Incident {                                           // v2
   _id: string; deskId: string; kind: IncidentKind;
@@ -236,6 +243,7 @@ export interface InboxItem {
   message: string; status: "unread" | "read"; ts: Date;
   kind: "task" | "notice" | "approval" | "incident" | "checkin";      // v2: the UI needs it
   incidentId?: string; priority: number;                              // v2
+  key?: string;                          // v2.4: one item per person and key (a notice is sent once)
 }
 
 // ---------- v2.1: helper types for lib/db.ts ----------

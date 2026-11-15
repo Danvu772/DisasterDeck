@@ -14,6 +14,7 @@
 // one open task per record and type, so a second run of the same event makes nothing new.
 import { MongoServerError, type Filter } from "mongodb";
 import { cols, newId } from "../lib/db";
+import { haversineMeters } from "../lib/geo";
 import { distanceText, pickPerson, stockOf, type Pick, type Place } from "../lib/rules/assign";
 import type { HistoryEntry, InboxItem, Need, Role, ScorePart, Site, Task, User } from "../lib/types";
 import { noteIncidentOutcome, noteNeedAssigned, type Change, type TaskAction } from "./memory-keeper";
@@ -38,6 +39,12 @@ export async function react(changes: Change[], actions: TaskAction[] = []): Prom
     if (ch.recordType === "site") await siteChanged(ch.recordId);
     else if (ch.recordType === "need") await needChanged(ch.recordId);
     else if (ch.recordType === "incident" && ch.op === "created") await incidentOpened(ch.recordId);
+    else if (ch.recordType === "road") { if (ch.flags?.includes("notify")) await roadChanged(ch); }
+    else if (ch.recordType === "shelter") await shelterChanged(ch);
+    else if (ch.recordType === "zone" && ch.flags?.includes("silent")) await silentZone(ch.recordId);
+    if ((ch.recordType === "site" || ch.recordType === "need") && ch.flags?.includes("rescored")) {
+      await syncRecordPriority(ch.recordType, ch.recordId);
+    }
   }
 }
 
@@ -46,6 +53,7 @@ export async function react(changes: Change[], actions: TaskAction[] = []): Prom
 async function act(a: TaskAction): Promise<void> {
   const { tasks } = await cols();
   if (a.kind === "claim") return claimed(a);
+  if (a.kind === "cancel") return cancelled(a);
   const task = await tasks.findOne({ _id: a.taskId });
   if (!task) return;
 
@@ -312,6 +320,111 @@ async function insertTask(task: Task): Promise<boolean> {
   }
 }
 
+// ---------- group B: roads, shelters, zones, corrections ----------
+
+const minutesAgo = (d: Date) => {
+  const m = Math.floor((Date.now() - new Date(d).getTime()) / 60_000);
+  return m < 1 ? "just now" : `${m} min ago`;
+};
+/** "unknown" is a place nobody could name: it matches every region instead of none. */
+const sameRegion = (a: string | undefined, b: string | undefined) => !a || !b || a === "unknown" || b === "unknown" || a === b;
+
+/** A road changed: tell whoever has open work near it, once each. No alternative road is named (§8.3). */
+async function roadChanged(ch: Change): Promise<void> {
+  const { roads, tasks, sites, needs } = await cols();
+  const road = await roads.findOne({ _id: ch.recordId });
+  if (!road) return;
+  const open = await tasks.find({ deskId: road.deskId, open: true, assignee: { $exists: true } }).toArray();
+  const siteById = new Map((await sites.find({ _id: { $in: open.filter((t) => t.recordType === "site").map((t) => t.recordId) } }).toArray()).map((s) => [s._id, s]));
+  const needById = new Map((await needs.find({ _id: { $in: open.filter((t) => t.recordType === "need").map((t) => t.recordId) } }).toArray()).map((n) => [n._id, n]));
+  const nearRoad = (t: Task): boolean => {
+    const rec = t.recordType === "site" ? siteById.get(t.recordId) : t.recordType === "need" ? needById.get(t.recordId) : undefined;
+    if (!rec) return false;
+    if (road.coords && "coords" in rec && rec.coords) return haversineMeters(road.coords, rec.coords) <= 1000;
+    return Boolean(road.region) && rec.region === road.region;
+  };
+  const who = new Map<string, Task>();
+  for (const t of open) if (t.assignee && !who.has(t.assignee) && nearRoad(t)) who.set(t.assignee, t);
+  const message = `${road.road} is ${road.state === "open" ? "open again" : "closed"} (${road.confidence}, ${road.source ?? "unknown source"}, ${minutesAgo(road.observedAt)})`;
+  await inbox([...who].map(([userId, t]) => ({
+    userId, taskId: t._id, kind: "notice" as const, priority: 10, message, key: `road:${road._id}:${ch.eventId}`,
+  })));
+}
+
+async function shelterChanged(ch: Change): Promise<void> {
+  const { shelters } = await cols();
+  const shelter = await shelters.findOne({ _id: ch.recordId });
+  if (!shelter) return;
+  if (ch.flags?.includes("full") && shelter.bedsTotal > 0 && shelter.bedsUsed / shelter.bedsTotal > 0.9) {
+    const others = (await shelters.find({ deskId: shelter.deskId, _id: { $ne: shelter._id } }).toArray())
+      .filter((s) => sameRegion(s.region, shelter.region) && s.bedsTotal > s.bedsUsed)
+      .sort((a, b) => (b.bedsTotal - b.bedsUsed) - (a.bedsTotal - a.bedsUsed));
+    const alt = others[0];
+    if (alt) {
+      const crowd = (await peopleOn(shelter.deskId, ["volunteer"])).filter((u) => sameRegion(u.region, shelter.region));
+      await inbox(crowd.map((u) => ({
+        userId: u._id, kind: "notice" as const, priority: 20, key: `full:${shelter._id}:${ch.eventId}`,
+        message: `${shelter.name} ${shelter.bedsUsed}/${shelter.bedsTotal}: send new arrivals to ${alt.name} (${alt.bedsUsed}/${alt.bedsTotal})`,
+      })));
+    }
+  }
+  if (ch.flags?.includes("confirm") && ch.note) {
+    const keepers = (await peopleOn(shelter.deskId, ["shelter"])).filter((u) => sameRegion(u.region, shelter.region));
+    await inbox(keepers.map((u) => ({
+      userId: u._id, kind: "notice" as const, priority: 30, message: ch.note!, key: `confirm:${shelter._id}:${ch.eventId}`,
+    })));
+  }
+}
+
+/** Zone records got a satellite term: copy the new priority onto their open tasks. */
+async function syncRecordPriority(type: "site" | "need", id: string): Promise<void> {
+  const rec = await recordOf(type, id);
+  if (rec) await syncPriority([{ recordId: id, priority: rec.priority, scoreParts: rec.scoreParts ?? [] }]);
+}
+
+/** A silent zone: one high-risk task for the coordinators, ever ("send a field team to district Y?"). */
+async function silentZone(zoneId: string): Promise<void> {
+  const { zones, tasks } = await cols();
+  const zone = await zones.findOne({ _id: zoneId });
+  if (!zone?.silentZone) return;
+  if (await tasks.findOne({ recordType: "zone", recordId: zone._id, type: "assist" }, { projection: { _id: 1 } })) return;
+  const calls = `${zone.calls} ${zone.calls === 1 ? "call" : "calls"}`;
+  const base: Task = {
+    _id: newId(), type: "assist", recordType: "zone", recordId: zone._id, tried: [], risk: "high", tier: 1, priority: 60,
+    status: "created", open: true, title: `Send a field team to ${zone.name}?`,
+    detail: `Silent zone: heavy damage, ${zone.dark ? "power out" : "lights on"}, ${calls}. Nobody is reporting from here.`,
+    deadline: deadline(), history: [entry("silent zone: satellite shows damage but almost no calls")], deskId: zone.deskId,
+  };
+  const pick = await pickFor(base, []);
+  let task: Task;
+  if (pick.ok) {
+    const team = `Proposed team: ${pick.user.name} (${pick.user._id})${pick.meters !== undefined ? `, ${distanceText(pick.meters)} away` : ""}.`;
+    task = { ...base, status: "waiting_approval", detail: `${base.detail} ${team}`, history: [...base.history, entry(`waiting for a coordinator, ${team}`)] };
+  } else {
+    task = { ...base, status: "escalated", history: [...base.history, entry(`escalated, ${pick.reason}`)] };
+  }
+  if (!(await insertTask(task))) return;
+  if (task.status === "waiting_approval") await inboxCoordinators(task, "approval", `Approve: ${task.title}. ${task.detail}`);
+  else await inboxCoordinators(task, "notice", `Nobody fits: ${task.title}. ${cap(pick.ok ? "" : pick.reason)}.`);
+  log(`assist task ${task._id} for zone ${zone._id}: ${task.status}`);
+}
+
+/** A person retracted a record: its open tasks stop, and whoever held one is told. */
+async function cancelled(a: Extract<TaskAction, { kind: "cancel" }>): Promise<void> {
+  const { tasks } = await cols();
+  for (const t of await tasks.find({ deskId: a.deskId, recordId: a.recordId, open: true }).toArray()) {
+    const r = await tasks.updateOne({ _id: t._id, open: true }, {
+      $set: { status: "cancelled", open: false }, $push: { history: entry(`cancelled, the ${a.recordType} was retracted: ${a.reason}`, a.by) },
+    });
+    if (r.modifiedCount && t.assignee) {
+      await inbox([{
+        userId: t.assignee, taskId: t._id, kind: "notice", priority: 20, key: `cancel:${t._id}`,
+        message: `Stop: ${t.title}. It was withdrawn by ${a.by}: ${a.reason}`,
+      }]);
+    }
+  }
+}
+
 // ---------- who ----------
 
 async function peopleOn(desk: string, roles: Role[]): Promise<User[]> {
@@ -327,6 +440,11 @@ async function pickFor(task: Task, tried: string[], now: Date = new Date()): Pro
     { $match: { deskId: task.deskId, open: true, assignee: { $in: users.map((u) => u._id) } } },
     { $group: { _id: "$assignee", n: { $sum: 1 } } },
   ]).toArray();
+  if (task.recordType === "zone") {
+    const { zones } = await cols();
+    const zone = await zones.findOne({ _id: task.recordId });
+    return pickPerson(users, new Map(counts.map((c) => [c._id, c.n])), { region: zone?.region ?? "unknown" }, { roles, exclude: tried }, now);
+  }
   const rec = await recordOf(task.recordType as "site" | "need", task.recordId);
   const place: Place = rec && "coords" in rec ? { coords: rec.coords, region: rec.region } : { region: rec?.region ?? "unknown" };
   const item = rec && "item" in rec ? rec.item : undefined;
@@ -344,10 +462,16 @@ async function recordOf(type: "site" | "need", id: string): Promise<Site | Need 
 // ---------- inboxes ----------
 
 async function inbox(items: Omit<InboxItem, "_id" | "status" | "ts">[]): Promise<void> {
-  if (!items.length) return;
   const { inbox } = await cols();
+  // An item with a key goes to a person once: the same notice twice (a re-run) is skipped.
+  const fresh: typeof items = [];
+  for (const i of items) {
+    if (i.key && await inbox.findOne({ userId: i.userId, key: i.key }, { projection: { _id: 1 } })) continue;
+    fresh.push(i);
+  }
+  if (!fresh.length) return;
   const ts = new Date();
-  await inbox.insertMany(items.map((i) => ({ ...i, _id: newId(), status: "unread" as const, ts })));
+  await inbox.insertMany(fresh.map((i) => ({ ...i, _id: newId(), status: "unread" as const, ts })));
 }
 
 async function inboxTask(task: Task): Promise<void> {
