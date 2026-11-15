@@ -19,7 +19,8 @@ const U = { v1: "check-sweep-v1", v2: "check-sweep-v2", v3: "check-sweep-v3", v4
 const ids = Object.values(U);
 
 function people(): User[] {
-  const base = { region: "malatya-merkez", status: "available" as const, deskId: DESK, trust: "vetted" as const };
+  // The check moves its clock forward: its people keep a screen open the whole time (seen "in the future").
+  const base = { region: "malatya-merkez", status: "available" as const, deskId: DESK, trust: "vetted" as const, lastSeen: new Date(Date.now() + 24 * 3600_000) };
   const vol = (_id: string, name: string, d: number): User => ({ ...base, _id, name, role: "volunteer", coords: [38.4 + d, 38.4] });
   return [
     vol(U.v1, "Sweep volunteer 1", 0.001), vol(U.v2, "Sweep volunteer 2", 0.002),

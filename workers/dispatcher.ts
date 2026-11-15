@@ -25,8 +25,8 @@ import { PLAYBOOK } from "../lib/rules/incidents";
 import type { HistoryEntry, Incident, InboxItem, LatLng, Need, Role, ScorePart, Site, Task, User } from "../lib/types";
 import { confirmedSince, noteIncidentStep, noteNeedAssigned, restNeedId, setIncidentStatus, type Change, type TaskAction } from "./memory-keeper";
 
-/** How long a person has to answer (N in §5, 2 in the demo). The board turns it red after. */
-export const ANSWER_MINUTES = 2;
+/** How long a person has to answer (N in §5, 2 in the demo). The board turns it red after. ANSWER_MINUTES=10 for unattended runs (R1-2). */
+export const ANSWER_MINUTES = Number(process.env.ANSWER_MINUTES) > 0 ? Number(process.env.ANSWER_MINUTES) : 2;
 /** Three people said no: a coordinator decides. */
 export const MAX_TRIES = 3;
 /** A deliver task for this many items or more is a big supply move: high risk, a coordinator decides. */
@@ -255,6 +255,7 @@ async function whyNot(u: User, task: Task): Promise<string | null> {
   if (task.type === "deliver") {
     const need = await recordOf("need", task.recordId);
     if (need && "item" in need && stockOf(u, need.item) <= 0) return `${u._id} cannot take a deliver task: no ${need.item} in stock`;
+    if (!hasVehicle(u)) return `${u._id} cannot take a deliver task: no vehicle`;
   }
   return null;
 }
@@ -947,12 +948,13 @@ async function pickFor(task: Task, tried: string[], now: Date = new Date(), plac
   const open = new Map(counts.map((c) => [c._id, c.n]));
   if (task.type === "deliver" && rec && "item" in rec) {
     // A supplier who has all of it first. Else the one with the most, and the task says so.
+    // Stock and a vehicle (§5, line 2): stock alone cannot move.
     const { item, quantity } = rec;
-    const first = pickPerson(users, open, place, { roles, exclude: tried, has: (u) => stockOf(u, item) >= quantity, what: `${quantity} ${item} in stock` }, now);
+    const first = pickPerson(users, open, place, { roles, exclude: tried, has: (u) => hasVehicle(u) && stockOf(u, item) >= quantity, what: `${quantity} ${item} in stock and a vehicle` }, now);
     if (first.ok) return first;
-    const levels = [...new Set(users.filter((u) => roles.includes(u.role)).map((u) => stockOf(u, item)).filter((n) => n > 0 && n < quantity))].sort((a, b) => b - a);
+    const levels = [...new Set(users.filter((u) => roles.includes(u.role) && hasVehicle(u)).map((u) => stockOf(u, item)).filter((n) => n > 0 && n < quantity))].sort((a, b) => b - a);
     for (const level of levels) {
-      const p = pickPerson(users, open, place, { roles, exclude: tried, has: (u) => stockOf(u, item) >= level, what: `${item} in stock` }, now);
+      const p = pickPerson(users, open, place, { roles, exclude: tried, has: (u) => hasVehicle(u) && stockOf(u, item) >= level, what: `${item} in stock and a vehicle` }, now);
       if (p.ok) return { ...p, short: { has: stockOf(p.user, item), want: quantity } };
     }
     return first;

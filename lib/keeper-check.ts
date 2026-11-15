@@ -53,7 +53,7 @@ const SITE_A: LatLng = [36.244, 36.247];
 const SITE_B: LatLng = [36.249, 36.252];
 
 function people(): User[] {
-  const base = { region: "antakya-merkez", status: "available" as const, deskId: DESK };
+  const base = { region: "antakya-merkez", status: "available" as const, deskId: DESK, lastSeen: new Date() };
   const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000);
   return [
     { ...base, _id: U.volA, name: "Check volunteer A", role: "volunteer", trust: "vetted", coords: [36.2445, 36.2475], lastSeen: new Date() },
@@ -65,7 +65,7 @@ function people(): User[] {
     { ...base, _id: U.field2, name: "Check team 2", role: "field", trust: "official", coords: [36.274, 36.277] },
     { ...base, _id: U.coord1, name: "Check coordinator 1", role: "coordinator", trust: "official" },
     { ...base, _id: U.coord2, name: "Check coordinator 2", role: "coordinator", trust: "official" },
-    { ...base, _id: U.supplier, name: "Check supplier", role: "supplier", trust: "vetted", coords: [36.234, 36.237], profile: { stock: { blankets: 50 } } },
+    { ...base, _id: U.supplier, name: "Check supplier", role: "supplier", trust: "vetted", coords: [36.234, 36.237], profile: { stock: { blankets: 50 }, vehicle: "truck" } },
   ];
 }
 
@@ -155,7 +155,10 @@ async function main() {
   assert(all.body.every((e: { ts: string }, i: number, a: { ts: string }[]) => i === 0 || a[i - 1].ts <= e.ts), "oldest first");
   const last = all.body[all.body.length - 1];
   assert.equal((await get(`since=${encodeURIComponent(last.ts)}`)).body.length, 0, "nothing after the last one");
-  assert.equal((await get(`since=${new Date(last.ts).getTime() - 1}`)).body.length, 1, "epoch ms works");
+  // Two events can land in the same or the next millisecond: count what the cursor should return instead of assuming 1.
+  const cut = new Date(last.ts).getTime() - 1;
+  const want = all.body.filter((e: { ts: string }) => new Date(e.ts).getTime() > cut).length;
+  assert.equal((await get(`since=${cut}`)).body.length, want, "epoch ms works");
   assert.equal((await get("limit=3")).body.length, 3);
   assert.equal((await get("since=yesterday")).status, 400); assert.equal((await get("limit=9999")).status, 400);
   assert(all.body.some((e: { status: string; result?: { recordIds: string[] } }) => e.status === "merged" && e.result?.recordIds.length));

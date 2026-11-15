@@ -3,7 +3,8 @@
 // A candidate passes every line, in this order:
 //   1. a role that fits the task
 //   2. has what the task needs (a supplier's stock for a delivery)
-//   3. free: status available, seen in the last 3 minutes (when we know), fewer than 3 open tasks
+//   3. free: status available, seen in the last 3 minutes, fewer than 3 open tasks. Never seen
+//      counts as not seen: a person who never opened the app cannot answer a task (R1-1)
 //   4. not in the task's tried list
 // Among those: nearest first (straight line, or the same region when a position is missing),
 // then fewest open tasks. Nobody passes: the reason says which line stopped each person.
@@ -32,7 +33,7 @@ export function pickPerson(
     if (!need.roles.includes(u.role)) { out.role++; continue; }
     if (need.has && !need.has(u)) { out.has++; continue; }
     if (u.status !== "available") { out.busy++; continue; }
-    if (u.lastSeen && now.getTime() - new Date(u.lastSeen).getTime() > SEEN_WITHIN_MS) { out.unseen++; continue; }
+    if (!u.lastSeen || now.getTime() - new Date(u.lastSeen).getTime() > SEEN_WITHIN_MS) { out.unseen++; continue; }
     if ((openTasks.get(u._id) ?? 0) >= MAX_OPEN_TASKS) { out.full++; continue; }
     if (need.exclude.includes(u._id)) { out.tried++; continue; }
     fits.push(u);
@@ -43,7 +44,7 @@ export function pickPerson(
     const parts = [
       out.has && `${out.has} without ${need.what ?? "what it needs"}`,
       out.busy && `${out.busy} busy or offline`,
-      out.unseen && `${out.unseen} not seen in 3 minutes`,
+      out.unseen && `${out.unseen} not seen in 3 minutes (or never)`,
       out.full && `${out.full} with ${MAX_OPEN_TASKS} open tasks`,
       out.tried && `${out.tried} already asked`,
     ].filter(Boolean);

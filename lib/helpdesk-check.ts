@@ -34,9 +34,9 @@ const NEAR_SITE: LatLng = [37.5, 38.001];
 const AWAY: LatLng = [37.5, 37.9];
 
 const people = (): User[] => {
-  const base = { region: R, status: "available" as const, deskId: DESK };
+  const base = { region: R, status: "available" as const, deskId: DESK, lastSeen: new Date() };
   const mk = (id: string, role: User["role"], more: Partial<User> = {}): User => ({ ...base, _id: id, name: id, role, trust: "vetted", ...more });
-  const sup = (id: string, stock: Record<string, number>, more: Partial<User> = {}) => mk(id, "supplier", { profile: { stock }, ...more });
+  const sup = (id: string, stock: Record<string, number>, more: Partial<User> = {}) => mk(id, "supplier", { profile: { stock, vehicle: "truck" }, ...more });
   return [
     mk(U.ask, "public"), mk(U.ask2, "public"),
     sup(U.drv1, { blankets: 30 }, { coords: TRUCK }), sup(U.drv2, { water: 30 }, { coords: TRUCK }), sup(U.drv3, { tents: 10 }, { coords: TRUCK }),
