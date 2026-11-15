@@ -28,6 +28,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientId: process.env.SSOJET_CLIENT_ID,
       clientSecret: process.env.SSOJET_CLIENT_SECRET,
       authorization: { params: { scope: "openid profile email" } },
+      checks: ["pkce", "state"], // SSOJet rejects an authorize request without `state`
     },
   ],
   session: { strategy: "jwt" },
