@@ -25,7 +25,7 @@ const inbox: InboxItem[] = Array.from({ length: 40 }, (_, i) => ({
 }));
 const user = { _id: "coord-1", name: "Coord", role: "coordinator", trust: "verified", region: "Battalgazi", deskId: "d" } as unknown as User;
 const ctx: UserContext = {
-  user, now, inbox, tasks, approvals: tasks.slice(0, 50), myNeeds: [], myIncidents: [], openIncidents: incidents,
+  user, now, inbox, tasks, approvals: tasks.slice(0, 50), stuck: tasks.slice(50, 70), myNeeds: [], myIncidents: [], openIncidents: incidents,
   records: { sites: [], needs: [], roads: [], shelters: [] }, messages: [], postedThisSession: [],
   chatSummary: "The coordinator asked for a list of stuck deliveries; the agent named three.",
 };
@@ -34,7 +34,7 @@ const block = contextBlock(ctx);
 const lineCount = block.split("\n").length;
 console.log(block.split("\n").filter((l) => l.includes("more not shown") || l.startsWith("Earlier")).join("\n"));
 console.log(`\n${lineCount} lines, ${block.length} chars (~${Math.round(block.length / 4)} tokens) for 300 tasks + 120 incidents + 40 inbox`);
-assert(lineCount < 60, "context block must stay bounded");
+assert(lineCount < 75, "context block must stay bounded");
 assert(block.includes("...and 292 more not shown"));
 assert(block.includes("Earlier in this chat, summarized"));
 

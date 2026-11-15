@@ -72,7 +72,7 @@ async function main() {
   await c.users.insertMany(people());
   const base = new Date();
 
-  // --- 1. no answer, next person ---
+  // --- 1. no answer: silence is not a no, and a task never dead-ends on it ---
   // s2 and s3 are already called, so the tick's reconcile pass makes no call task for them and only t1 can time out.
   await c.sites.insertMany([site("s1", min(base, -5)), { ...site("s2", min(base, -5)), callStatus: "called" }, { ...site("s3", min(base, -5)), callStatus: "called" }]);
   const t1 = task("s1", { assignee: U.v1, deadline: min(base, ANSWER_MINUTES) });
@@ -81,38 +81,44 @@ async function main() {
   let now = min(base, 1);
   await tick(now, { deskId: DESK });
   assert.equal((await c.tasks.findOne({ _id: t1._id }))!.assignee, U.v1, "deadline not reached: nothing happens");
+
+  // v1 never opened the app; v3 has it open (v2 is nearer, but not on the app).
   now = min(base, ANSWER_MINUTES + 1);
+  await c.users.updateOne({ _id: U.v3 }, { $set: { lastSeen: now } });
   const r1 = await tick(now, { deskId: DESK });
   let t = (await c.tasks.findOne({ _id: t1._id }))!;
   assert.equal(r1.timedOut, 1);
-  assert.equal(t.assignee, U.v2, "nearest not yet asked: volunteer 2"); assert.equal(t.status, "assigned");
-  assert.deepEqual(t.tried, [U.v1]);
-  assert(t.history.some((h) => h.reason.startsWith("timed out")), "history says it timed out");
+  assert.equal(t.assignee, U.v3, "the person on the app gets it"); assert.equal(t.status, "assigned");
+  assert.deepEqual(t.tried, [], "silence does not go into tried");
+  assert(t.history.some((h) => h.reason.startsWith("no answer from")), "history says nobody answered");
   assert(t.deadline > now, "the next person gets a fresh deadline");
-  assert.equal(await inboxOf(U.v2, "task", t1._id), 1); assert.equal(await inboxOf(U.v1, "task", t1._id), 0);
-  ok("assigned task past its deadline goes to the next person, the first lands in tried, one inbox item for the new one");
+  assert.equal(await inboxOf(U.v3, "task", t1._id), 1); assert.equal(await inboxOf(U.v1, "task", t1._id), 0);
+  ok("no answer from someone not on the app: the task moves to someone on the app, nobody lands in tried");
 
   const before = JSON.stringify(await c.tasks.findOne({ _id: t1._id }));
   const again = await tick(now, { deskId: DESK });
   assert.equal(again.timedOut, 0);
   assert.equal(JSON.stringify(await c.tasks.findOne({ _id: t1._id })), before);
-  assert.equal(await inboxOf(U.v2, "task", t1._id), 1);
+  assert.equal(await inboxOf(U.v3, "task", t1._id), 1);
   ok("a second tick at the same time changes nothing");
 
+  // v3 is on the app but slow: the task stays with them, only the deadline is renewed.
   now = min(now, ANSWER_MINUTES + 1);
+  await c.users.updateOne({ _id: U.v3 }, { $set: { lastSeen: now } });
+  const lines = t.history.length;
   await tick(now, { deskId: DESK });
   t = (await c.tasks.findOne({ _id: t1._id }))!;
-  assert.equal(t.assignee, U.v3); assert.deepEqual(t.tried, [U.v1, U.v2]);
-  assert.equal(await inboxOf(U.v1, "task", t1._id), 0); assert.equal(await inboxOf(U.v2, "task", t1._id), 1);
-  now = min(now, ANSWER_MINUTES + 1);
+  assert.equal(t.assignee, U.v3); assert.equal(t.status, "assigned"); assert.equal(t.history.length, lines);
+  assert(t.deadline > now); assert.equal(await inboxOf(U.v3, "task", t1._id), 1);
+  // Nobody on the app at all: still with v3, never escalated, no coordinator notice.
+  now = min(now, 10);
   await tick(now, { deskId: DESK });
   t = (await c.tasks.findOne({ _id: t1._id }))!;
-  assert.equal(t.tried.length, MAX_TRIES); assert.equal(t.status, "escalated"); assert.equal(t.assignee, undefined);
-  assert.equal(t.open, true);
-  for (const co of [U.c1, U.c2]) assert.equal(await inboxOf(co, "notice", t1._id), 1, `${co} got a notice`);
-  await tick(now, { deskId: DESK });
-  for (const co of [U.c1, U.c2]) assert.equal(await inboxOf(co, "notice", t1._id), 1);
-  ok(`after ${MAX_TRIES} timeouts the task is escalated, each coordinator gets one notice, never repeated`);
+  assert.equal(t.assignee, U.v3); assert.equal(t.status, "assigned"); assert.equal(t.open, true); assert.deepEqual(t.tried, []);
+  for (const co of [U.c1, U.c2]) assert.equal(await inboxOf(co, "notice", t1._id), 0);
+  ok("a task stays with a person on the app; with nobody on the app it stays put; silence never escalates it");
+  await c.tasks.updateOne({ _id: t1._id }, { $set: { status: "done", open: false } });
+  await c.users.updateOne({ _id: U.v3 }, { $unset: { lastSeen: "" } });
 
   // --- 2. check-in, then unreachable ---
   const t2 = task("s2", { assignee: U.v1, status: "accepted", eta: min(base, 100), deadline: min(base, 100) });

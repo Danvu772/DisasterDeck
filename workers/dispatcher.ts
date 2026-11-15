@@ -20,7 +20,7 @@
 import { MongoServerError, type Filter } from "mongodb";
 import { cols, newId } from "../lib/db";
 import { haversineMeters } from "../lib/geo";
-import { distanceText, pickPerson, stockOf, type Pick, type Place } from "../lib/rules/assign";
+import { distanceText, isOnline, pickPerson, stockOf, type Pick, type Place } from "../lib/rules/assign";
 import { PLAYBOOK } from "../lib/rules/incidents";
 import type { HistoryEntry, Incident, InboxItem, LatLng, Need, Role, ScorePart, Site, Task, User } from "../lib/types";
 import { confirmedSince, noteIncidentStep, noteNeedAssigned, restNeedId, setIncidentStatus, type Change, type TaskAction } from "./memory-keeper";
@@ -185,14 +185,33 @@ async function declined(task: Task, by: string, note?: string): Promise<void> {
 }
 
 /**
- * The sweeper's "no answer": the deadline passed on an assigned task. The person goes into
- * `tried` and the task moves on exactly like a decline. A conditional update, so a second tick
- * (or a second Brain) handles each task once. `now` also starts the next person's clock.
+ * The sweeper's "no answer": the deadline passed on an assigned task. Silence is not a no, so a
+ * task never dead-ends on it and the person does not go into `tried`:
+ *   - the person's screen is open (seen in the last 3 minutes): the task stays with them;
+ *   - else, someone else who fits has their screen open: the task moves to them;
+ *   - else it stays where it is, and the next person to open their screen sees it there.
+ * Staying only renews the deadline (no history line, no new inbox item). A conditional update,
+ * so a second tick (or a second Brain) handles each task once.
  */
 export async function timedOut(task: Task, now: Date = new Date()): Promise<void> {
   if (!task.assignee) return;
-  const said = entry(`timed out, no answer from ${task.assignee} in ${ANSWER_MINUTES} min`);
-  await handOver(task, task.assignee, said, now, { status: "assigned", deadline: { $lt: now } });
+  const { tasks, users } = await cols();
+  const guard = { _id: task._id, assignee: task.assignee, status: "assigned" as const, deadline: { $lt: now } };
+  const me = await users.findOne({ _id: task.assignee }, { projection: { lastSeen: 1 } });
+  const pick = me && isOnline(me, now) ? null : await pickFor(task, [...task.tried, task.assignee], now);
+  if (!pick?.ok || !isOnline(pick.user, now)) {
+    await tasks.updateOne(guard, { $set: { deadline: deadline(now) } });
+    return;
+  }
+  const r = await tasks.updateOne(guard, {
+    $set: { assignee: pick.user._id, deadline: deadline(now) },
+    $unset: { eta: "", progress: "", checkinAt: "" },
+    $push: { history: { $each: [
+      entry(`no answer from ${task.assignee} in ${ANSWER_MINUTES} min, not on the app`),
+      entry(`reassigned to ${pick.user._id}${near(pick)}`),
+    ] } },
+  });
+  if (r.modifiedCount) await inboxTask({ ...task, assignee: pick.user._id });
 }
 
 async function handOver(task: Task, by: string, said: HistoryEntry, now: Date, guard: Filter<Task>): Promise<void> {
@@ -276,7 +295,7 @@ async function approved(task: Task, by: string, assignee?: string, eventId?: str
     const problem = u ? await whyNot(u, task) : `${assignee} is not on the desk`;
     if (problem) {
       // Not sent: the task keeps waiting, and the coordinator is told why.
-      const r = await tasks.updateOne({ _id: task._id, status: "waiting_approval", ...(eventId ? { "history.eventId": { $ne: eventId } } : {}) },
+      const r = await tasks.updateOne({ _id: task._id, status: { $in: ["waiting_approval", "escalated"] }, ...(eventId ? { "history.eventId": { $ne: eventId } } : {}) },
         { $push: { history: { ...entry(`approval by ${by} not carried out: ${problem}`, by), ...(eventId ? { eventId } : {}) } } });
       if (r.modifiedCount) {
         await inbox([{
@@ -292,8 +311,8 @@ async function approved(task: Task, by: string, assignee?: string, eventId?: str
     const u = proposed ? await users.findOne({ _id: proposed, deskId: task.deskId }) : null;
     pick = u ? { ok: true, user: u } : await pickFor(task, task.tried);
   }
-  const why = assignee ? `approved by ${by}, sent ${assignee} instead` : `approved by ${by}`;
-  const r = await tasks.updateOne({ _id: task._id, status: "waiting_approval" }, pick.ok
+  const why = task.status === "escalated" ? `assigned by ${by}` : assignee ? `approved by ${by}, sent ${assignee} instead` : `approved by ${by}`;
+  const r = await tasks.updateOne({ _id: task._id, status: { $in: ["waiting_approval", "escalated"] } }, pick.ok
     ? { $set: { status: "assigned", assignee: pick.user._id, deadline: deadline() }, $push: { history: entry(`${why}, assigned to ${pick.user._id}${near(pick)}`, by) } }
     : { $set: { status: "escalated", deadline: deadline() }, $push: { history: entry(`${why}, then escalated: ${pick.reason}`, by) } });
   if (!r.modifiedCount) return;
