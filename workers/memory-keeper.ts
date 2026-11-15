@@ -17,13 +17,13 @@ import { conflictNote, resolveConflict, trustedClash, trustRank, type Stamp } fr
 import { blocks, PLAYBOOK, severity } from "../lib/rules/incidents";
 import { decideReport, type SiteLite } from "../lib/rules/merge";
 import { isTrusted, matchNeed, mergeLines, needStatus } from "../lib/rules/needs";
-import { confidence, scored, siteTier, support, type Voice } from "../lib/rules/priority";
+import { confidence, kept, scored, siteTier, support, type Voice } from "../lib/rules/priority";
 import {
   alertPayload, answerPayload, approvalPayload, capacityPayload, claimPayload, closurePayload, correctionPayload,
   incidentPayload, needPayload, planPayload, reportPayload,
 } from "../lib/schemas";
 import type {
-  ClaimPayload, Confidence, Event, EventType, HistoryEntry, Incident, LatLng, Need, Post, RecordType, ReportPayload, Road,
+  ClaimPayload, Confidence, Event, EventType, HistoryEntry, Incident, LatLng, Need, Pin, Post, RecordType, ReportPayload, Road,
   ScorePart, Shelter, Site, Source, Trust, Zone,
 } from "../lib/types";
 import { z } from "zod";
@@ -226,7 +226,7 @@ async function applyReport(event: Event): Promise<KeeperResult> {
     supporters: supportersOf(voices),
     tier: siteTier(people, []),
     observedAt: firstSeen,
-    ...scored({ support: sup, waitingSince: firstSeen }, now),
+    ...scored({ support: sup, waitingSince: firstSeen, ...kept(site) }, now),
   };
   // A later report can fill in what the first one did not know. It never overwrites.
   if (site.address === "address unknown" && p.address) set.address = p.address;
@@ -658,7 +658,7 @@ async function applyNeed(event: Event): Promise<KeeperResult> {
     status: needStatus(same.status, sup, trusted, life),
     confidence: trusted ? "confirmed" : same.confidence === "unconfirmed" && sup >= 3 ? "corroborated" : same.confidence,
     tier: life ? 0 : same.tier,
-    ...scored({ support: sup, waitingSince: same.history[0]?.ts ?? observedAt }, now),
+    ...scored({ support: sup, waitingSince: same.history[0]?.ts ?? observedAt, ...kept(same) }, now),
   };
   await c.needs.updateOne({ _id: same._id }, { $set: set, $push: { history: historyOf(event, `asked again for ${p.quantity} ${item}`) } });
   const fields = Object.keys(set).filter((k) => JSON.stringify(set[k as keyof Need]) !== JSON.stringify(same[k as keyof Need]));
@@ -952,7 +952,7 @@ async function applyAlert(event: Event): Promise<KeeperResult> {
   if (p.kind === "silent_zone") {
     for (const s of await c.sites.find({ deskId: event.deskId, status: { $in: ["open", "team_on_site"] }, _id: { $in: [...siteIdsIn] } }).toArray()) {
       if (has(s.scoreParts, "silent zone")) continue;
-      const next = scored({ support: s.support, waitingSince: new Date(s.observedAt), silentZone: true, warmthInCold: has(s.scoreParts, "cold night") }, now);
+      const next = scored({ support: s.support, waitingSince: new Date(s.observedAt), ...kept(s), silentZone: true }, now);
       await c.sites.updateOne({ _id: s._id }, { $set: next, $push: { history: withEvent(event, `silent zone ${zone.name}: priority +30`) } });
       changes.push({ recordType: "site", recordId: s._id, op: "updated", eventId, fields: ["priority", "scoreParts", "history"], flags: ["rescored"] });
     }
@@ -963,7 +963,7 @@ async function applyAlert(event: Event): Promise<KeeperResult> {
     const cold = p.kind === "cold" && here && isWarmthItem(n.item) && !has(n.scoreParts, "cold night");
     if (!silent && !cold) continue;
     const next = scored({
-      support: n.support, waitingSince: new Date(n.history[0]?.ts ?? now),
+      support: n.support, waitingSince: new Date(n.history[0]?.ts ?? now), ...kept(n),
       silentZone: silent || has(n.scoreParts, "silent zone"), warmthInCold: cold || has(n.scoreParts, "cold night"),
     }, now);
     await c.needs.updateOne({ _id: n._id }, {
@@ -1018,6 +1018,29 @@ async function applyCorrection(event: Event): Promise<KeeperResult> {
     }
     return done([rec._id], `${p.recordType} ${rec._id} retracted by ${event.actor}: ${why}`, [change(["status"])],
       [{ kind: "cancel", recordType: p.recordType, recordId: rec._id, deskId: event.deskId, by: event.actor, reason: why }], "merged");
+  }
+
+  // pin: a coordinator moves a site or need to the top or the bottom of its tier (§5 "a person makes
+  // the final call"). The reason is required (the schema) and goes into the history. Tier still wins.
+  if (p.action === "edit" && p.fields && "pin" in p.fields) {
+    if (Object.keys(p.fields).length > 1) return reject("a pin is changed on its own, not together with other fields");
+    const me = await c.users.findOne({ _id: event.actor, deskId: event.deskId }, { projection: { role: 1 } });
+    if (me?.role !== "coordinator") return reject(`only a coordinator can pin or push down, and ${event.actor} is not one`);
+    const dir = p.fields.pin;
+    if (dir !== "top" && dir !== "down" && dir !== null) return reject('pin must be "top", "down" or null (remove the pin)');
+    const status = (rec as Site | Need).status;
+    if (["closed", "retracted", "delivered", "cancelled"].includes(status)) return reject(`${p.recordType} ${rec._id} is ${status}, there is nothing to rank`);
+    if ((rec.pin?.dir ?? null) === dir) return done([rec._id], "nothing to change, the pin is already like that", [], [], "merged");
+    const pin: Pin | undefined = dir ? { dir, by: event.actor, reason: why, ts: new Date() } : undefined;
+    const since = p.recordType === "site" ? new Date((rec as Site).observedAt) : new Date((rec as Need).history[0]?.ts ?? new Date());
+    const next = scored({ support: rec.support, waitingSince: since, ...kept({ scoreParts: rec.scoreParts, pin }) }, new Date());
+    const said = dir === "top" ? `pinned to the top of tier ${rec.tier}` : dir === "down" ? `pushed down in tier ${rec.tier}` : "pin removed";
+    const entry = withEvent(event, `${said} by ${event.actor}: ${why}`);
+    const update = { $set: { ...next, ...(pin ? { pin } : {}) }, ...(pin ? {} : { $unset: { pin: "" as const } }), $push: { history: entry } };
+    const fresh = { ...q, "history.eventId": { $ne: eventId } };
+    if (p.recordType === "site") await c.sites.updateOne(fresh, update);
+    else await c.needs.updateOne(fresh, update);
+    return done([rec._id], entry.reason, [{ ...change(["pin", "priority", "scoreParts"]), flags: ["rescored"] }], [], "merged");
   }
 
   // edit: a short list of fields per record type, each checked, and the old value kept.
@@ -1108,17 +1131,13 @@ export async function setIncidentStatus(incidentId: string, status: "helping" | 
 export async function refreshPriorities(now: Date, desk?: string): Promise<{ recordType: "site" | "need"; recordId: string; deskId: string; priority: number; scoreParts: ScorePart[] }[]> {
   const { sites, needs } = await cols();
   const out: { recordType: "site" | "need"; recordId: string; deskId: string; priority: number; scoreParts: ScorePart[] }[] = [];
-  const keep = (parts?: ScorePart[]) => ({
-    silentZone: parts?.some((p) => p.name === "silent zone") ?? false,
-    warmthInCold: parts?.some((p) => p.name === "cold night") ?? false,
-  });
   const scope = desk ? { deskId: desk } : {};
   const live = [
     ...(await sites.find({ ...scope, status: { $in: ["open", "team_on_site"] } }).toArray()).map((r) => ({ type: "site" as const, r, since: r.observedAt })),
     ...(await needs.find({ ...scope, status: { $nin: ["delivered", "cancelled"] } }).toArray()).map((r) => ({ type: "need" as const, r, since: r.history[0]?.ts ?? now })),
   ];
   for (const { type, r, since } of live) {
-    const next = scored({ support: r.support, waitingSince: new Date(since), ...keep(r.scoreParts) }, now);
+    const next = scored({ support: r.support, waitingSince: new Date(since), ...kept(r) }, now);
     if (next.priority === r.priority && JSON.stringify(next.scoreParts) === JSON.stringify(r.scoreParts)) continue;
     const coll = type === "site" ? sites : needs;
     const res = await (coll as typeof sites).updateOne({ _id: r._id, priority: r.priority }, { $set: next });

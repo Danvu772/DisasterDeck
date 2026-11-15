@@ -8,7 +8,7 @@ import { runOnce } from "../workers/brain";
 import { ANSWER_MINUTES } from "../workers/dispatcher";
 import { PROPOSED_QUIET_MS } from "../workers/memory-keeper";
 import { ROAD_UNCONFIRMED_MINUTES, SHELTER_STALE_MINUTES, SILENT_MINUTES, tick } from "../workers/sweeper";
-import { closeDb, cols, newId, postEvent } from "./db";
+import { closeDb, cols, getBoard, newId, postEvent } from "./db";
 import { scored } from "./rules/priority";
 import type { Event, EventType, Need, Road, Shelter, Site, Source, Task, User } from "./types";
 
@@ -187,11 +187,66 @@ async function sweeperRows() {
   ok("T1 a late approval that gets decided is no longer marked late");
 }
 
+async function pins() {
+  const c = await cols();
+  const now = new Date();
+  await c.sites.insertMany([
+    site("g-pin-low", { support: 1, ...scored({ support: 1, waitingSince: now }, now) }),
+    site("g-pin-high", { support: 4, ...scored({ support: 4, waitingSince: now }, now) }),
+    site("g-pin-tier1", { tier: 1, peopleTrapped: 0, support: 1, ...scored({ support: 1, waitingSince: now }, now) }),
+  ]);
+  const t = task("g-pin-low", { assignee: U.vOn, status: "accepted", priority: 10 });
+  await c.tasks.insertOne(t);
+
+  let ev = await say(U.vOn, "correction", { action: "edit", recordType: "site", recordId: "g-pin-low", fields: { pin: "top" }, reason: "family called the desk twice" });
+  assert.equal(ev.status, "rejected"); assert.match(ev.result!.reason, /only a coordinator/);
+  ok("T7 only a coordinator can pin");
+
+  ev = await say(U.c1, "correction", { action: "edit", recordType: "site", recordId: "g-pin-low", fields: { pin: "top" }, reason: "family called the desk twice" });
+  assert.equal(ev.status, "merged", ev.result?.reason);
+  let low = (await c.sites.findOne({ _id: "g-pin-low" }))!;
+  const high = (await c.sites.findOne({ _id: "g-pin-high" }))!;
+  assert.equal(low.pin?.dir, "top"); assert.equal(low.pin?.by, U.c1);
+  assert(low.priority > high.priority, "pinned goes first in its tier");
+  assert(low.scoreParts!.some((p) => p.name === "pinned by a coordinator"));
+  assert(low.history.some((h) => /pinned to the top of tier 0 by check-gap-coord-1: family called the desk twice/.test(h.reason)), "the reason is on the record");
+  assert.equal((await c.tasks.findOne({ _id: t._id }))!.priority, low.priority, "the open task copied the new priority");
+  ok("T7 a pin to the top: first in its tier, the reason in the history, the task follows");
+
+  await c.sites.updateOne({ _id: "g-pin-tier1" }, { $set: { priority: 0 } });
+  await say(U.c1, "correction", { action: "edit", recordType: "site", recordId: "g-pin-tier1", fields: { pin: "top" }, reason: "test" });
+  const order = (await getBoard(DESK)).sites.map((x) => x._id).filter((id) => id.startsWith("g-pin"));
+  assert.deepEqual(order, ["g-pin-low", "g-pin-high", "g-pin-tier1"], "tier always wins, even over a pin");
+  ok("T7 tier still wins: a pinned tier 1 site stays below every tier 0 site");
+
+  await tick(new Date(Date.now() + 10 * 60_000), { deskId: DESK });
+  low = (await c.sites.findOne({ _id: "g-pin-low" }))!;
+  assert(low.scoreParts!.some((p) => p.name === "pinned by a coordinator"), "time passing keeps the pin");
+  await say(U.c1, "correction", { action: "edit", recordType: "site", recordId: "g-pin-low", fields: { pin: "down" }, reason: "duplicate of another call" });
+  low = (await c.sites.findOne({ _id: "g-pin-low" }))!;
+  assert(low.priority < 0 && low.scoreParts!.some((p) => p.name === "pushed down by a coordinator"));
+  await say(U.c1, "correction", { action: "edit", recordType: "site", recordId: "g-pin-low", fields: { pin: null }, reason: "cleared" });
+  low = (await c.sites.findOne({ _id: "g-pin-low" }))!;
+  assert.equal(low.pin, undefined); assert(!low.scoreParts!.some((p) => /coordinator/.test(p.name)));
+  ok("T7 the pin survives the waiting recount, push down goes last, null removes it");
+
+  // T19: a new report on a silent-zone site keeps the +30 (satellite terms only ever raise a score).
+  const sz = scored({ support: 1, waitingSince: now, silentZone: true }, now);
+  await c.sites.insertOne(site("g-silent", { address: "Sessiz Sokak 4", coords: [38.9, 38.9], ...sz }));
+  await say(U.vOn2, "report", { kind: "trapped", text: "Sessiz Sokak 4, iki kişi", textEn: "Sessiz Sokak 4, two people", address: "Sessiz Sokak 4", coords: [38.9, 38.9], region: R, peopleCount: 2 });
+  const silent = (await c.sites.findOne({ _id: "g-silent" }))!;
+  assert(silent.history.some((h) => /trapped \(2 people\)/.test(h.reason)), "the report merged into the site");
+  assert.equal(silent.peopleTrapped, 2);
+  assert(silent.scoreParts!.some((p) => p.name === "silent zone"), "the satellite term is still there");
+  ok("T19 a merged report keeps the silent-zone term (it used to drop it)");
+}
+
 async function main() {
   await cleanup();
   const c = await cols();
   await c.users.insertMany(people(new Date()));
   await sweeperRows();
+  await pins();
   console.log(`\nAll ${passed} checks passed.`);
 }
 

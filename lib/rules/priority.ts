@@ -1,13 +1,17 @@
 // Owned by Role 1. Tier, score and confidence (Final system design §5). Plain code, no LLM:
 // the same inputs always give the same order, and anyone can read why.
-import type { Confidence, ScorePart, Tier, Trust } from "../types";
+import type { Confidence, Pin, ScorePart, Tier, Trust } from "../types";
 
 export interface ScoreInput {
   support: number;          // different people or sources asking (copies do not count)
   waitingSince: Date;       // when the fact was first true
   silentZone?: boolean;     // NASA silent zone (+30)
   warmthInCold?: boolean;   // a warmth need where the night is below 0 °C (+20)
+  pin?: Pin["dir"];         // a coordinator moved it to the top (+PIN) or the bottom (-PIN) of its tier
 }
+
+/** Bigger than any score the rules can reach (50 + 60 + 30 + 20), so a pin decides inside the tier. Tier still wins. */
+export const PIN = 500;
 
 /**
  * score = 10 × support (at most 50) + 1 × minutes waiting (at most 60)
@@ -26,7 +30,20 @@ export function scoreParts(s: ScoreInput, now: Date = new Date()): ScorePart[] {
     { name: "waiting", value: Math.min(60, minutes) },
     ...(s.silentZone ? [{ name: "silent zone", value: 30 }] : []),
     ...(s.warmthInCold ? [{ name: "cold night", value: 20 }] : []),
+    ...(s.pin === "top" ? [{ name: "pinned by a coordinator", value: PIN }] : s.pin === "down" ? [{ name: "pushed down by a coordinator", value: -PIN }] : []),
   ];
+}
+
+/**
+ * The terms a record keeps when its score is worked out again: the satellite ones (only ever
+ * added, §5) and a coordinator's pin. A recount from support and waiting alone would drop them.
+ */
+export function kept(rec: { scoreParts?: ScorePart[]; pin?: Pin }): Pick<ScoreInput, "silentZone" | "warmthInCold" | "pin"> {
+  return {
+    silentZone: rec.scoreParts?.some((p) => p.name === "silent zone") ?? false,
+    warmthInCold: rec.scoreParts?.some((p) => p.name === "cold night") ?? false,
+    ...(rec.pin ? { pin: rec.pin.dir } : {}),
+  };
 }
 
 /** Score and its parts in one go, for the keeper and the dispatcher to store side by side. */
