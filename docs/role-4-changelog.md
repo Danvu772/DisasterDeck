@@ -2,6 +2,12 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## Shared workstation handoff - 2026-11-15 04:27 EST
+
+- Confirmed the full English voice implementation is on team main; integrated teammates' updates through `cb5e54d` without overwriting them.
+- Added the original fictional Ayşe callback record with its English summary to the reusable dataset so all seven current demo scenarios can be loaded on another workstation.
+- Added a concise [team setup checklist](family-voice-team-setup.md) covering clean install, private keys, English agent setup, loading examples, restarts and the difference between separate memory demos and shared MongoDB publications.
+
 ## English-only family voice - 2026-11-15 04:09 EST
 
 - Translated family search, call controls, transcripts, dates, disclosures and API/fallback messages into English. Changed the provider language/greeting and both the ElevenLabs and Claude instructions to English-only responses.

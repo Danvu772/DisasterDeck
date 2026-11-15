@@ -1,5 +1,7 @@
 # Family voice demo
 
+For a fresh teammate workstation, use the [shared-demo setup checklist](family-voice-team-setup.md).
+
 Anyone can search published family updates by name, read them immediately and start an ElevenLabs conversation backed by Claude. **No account, reference code, PIN or relationship verification is required to read or call.** Coordinators still sign in to publish or withdraw updates. This browser demo does not receive calls to a normal telephone number.
 
 The family interface, timestamps, service messages, voice greeting and responses use English. The voice and Claude configurations explicitly keep responses in English even if a caller requests another language. Run `npm run voice:setup` after pulling this version to update an existing provider agent; restart the app and start a new call to use the new settings.
@@ -20,7 +22,7 @@ With MongoDB, updates persist in `family_voice` in `MONGODB_DB`. Real coordinato
 
 Use [coordinator updates](http://127.0.0.1:3675/coordinator/family?user=coordinator-duty): select an existing case, enter the searchable display name and the exact facts to share, set when those facts were observed, then press **Publish approved update**. Refresh `/family` and search the name. Use **Withdraw publication** to remove an outdated example.
 
-Six fictional English examples are included in `data/family-voice-examples.json`: Emma Wilson (shelter registration), Daniel Brooks (unverified missing-person inquiry), Olivia Bennett (pending transport), Noah Carter (family check-in), Sophia Reed (old observation) and James Parker (pending equipment request). With the local demo running, load them using:
+Seven fictional examples with English summaries are included in `data/family-voice-examples.json`: Ayşe (callback inquiry), Emma Wilson (shelter registration), Daniel Brooks (unverified missing-person inquiry), Olivia Bennett (pending transport), Noah Carter (family check-in), Sophia Reed (old observation) and James Parker (pending equipment request). With the local demo running, load them using:
 
 ```sh
 npm run voice:examples
