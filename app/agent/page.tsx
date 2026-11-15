@@ -1,6 +1,7 @@
 // Agent page: one person's own agent and tasks, with the desk's event feed below.
 // ?user=<id> picks the person (demo only, replaced by login later).
 import Link from "next/link";
+import { FirstMinute } from "@/components/FirstMinute";
 import { AgentDesk } from "@/components/AgentDesk";
 import { chip } from "@/components/encode";
 import { makeEvents, makeMessages, users } from "@/fixtures/desk";
@@ -14,6 +15,8 @@ export default async function AgentPage({ searchParams }: { searchParams: Promis
   const now = Date.now();
 
   return (
+    <>
+    <FirstMinute screen="agent" />
     <main className="mx-auto flex max-w-7xl flex-col gap-4 p-4 md:p-6">
       <nav className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted">Demo. Talk as:</span>
@@ -27,5 +30,6 @@ export default async function AgentPage({ searchParams }: { searchParams: Promis
       <AgentDesk key={user._id} user={user} users={users} events={makeEvents(now)}
         messages={makeMessages(user._id, now)} initial={makeBoard(now)} />
     </main>
+    </>
   );
 }
