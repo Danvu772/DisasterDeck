@@ -100,7 +100,9 @@ test.describe("field voice", () => {
     await expect.poll(() => posts.length, { timeout: 20_000 }).toBeGreaterThan(0);
     expect(posts[0].audioBase64).toMatch(/^data:audio\/[a-z0-9]+/);
     expect(posts[0].speak).toBe(true);
-    await expect(page.getByText("Done: checked your tasks on the desk", { exact: true })).toBeVisible();
+    // The screen reader announcement says what the agent did. The same line is also in the visible list.
+    await expect(page.locator('p[aria-live="polite"]', { hasText: "Done: checked your tasks on the desk" })).toBeVisible();
+    await expect(page.getByRole("listitem").filter({ hasText: "checked your tasks on the desk" })).toBeVisible();
     await expect(page.getByText("You have no open tasks right now.")).toBeVisible();
 
     await page.getByRole("button", { name: "Voice agent on, tap to stop" }).click();

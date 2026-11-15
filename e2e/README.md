@@ -15,9 +15,11 @@ npm run report                 # prints the path of report/index.html, opens not
 
 `BASE_URL` points it at another server, `BASE_URL=http://127.0.0.1:3001 npm test`. The default is `http://127.0.0.1:3000`.
 
+**Flaky against the dev server?** When another browser has the desk open, the dev server recompiles as that browser moves between pages, and every recompile refreshes the page under test. A page that refreshes before it hydrates never polls, so its test times out on server-rendered text. That is what made the field tests fail at random on 15 Nov. For a stable run, stop the dev server and test a production build: `npm run build && npm start` in the repo root, then `npm test` here. 19 of 19 passed five times in a row that way. Restart the dev server afterwards.
+
 ## What it covers
 
-Two projects, laptop (1440 by 900) and phone (390 by 844). `field.spec.ts` runs on the phone, the rest on the laptop.
+Two projects, laptop (1440 by 900) and phone (390 by 844). `field.spec.ts` and `field-voice.spec.ts` run on the phone, the rest on the laptop.
 
 | Spec | Checks |
 | --- | --- |
@@ -25,6 +27,7 @@ Two projects, laptop (1440 by 900) and phone (390 by 844). `field.spec.ts` runs 
 | `agent.spec.ts` | `/agent?user=volunteer-callback` feed, a feed item opens its report and Back returns, a chat question gets an answer (or the error sentence) and a metric chart |
 | `coordinator.spec.ts` | `/coordinator` sections, the Modify picker opens and lists people |
 | `field.spec.ts` | `/field` task card, the four big buttons, Your other tasks |
+| `field-voice.spec.ts` | Hold to talk sends an ElevenLabs voice note and lists what the agent did, voice agent mode hears a sentence from a fake microphone and answers, the fallback without ElevenLabs. `/api/chat` is answered in the test, so no credit is spent |
 | `map.spec.ts` | `/map` markers and legend, `?focus=` selects a record |
 | `security.spec.ts` | a request with `x-forwarded-for: 1.2.3.4` ends on `/login` for `/coordinator` and gets 401 from `/api/board`, and both work from the laptop |
 
