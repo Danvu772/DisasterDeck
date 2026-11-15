@@ -6,7 +6,6 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 
 | Task | Effort | What |
 |---|---|---|
-| [t21-record-detail](tasks/t21-record-detail.md) | high | click any card on any tab: all its metadata, pinned on a map. `/map?focus=` |
 
 ## Next (queued)
 
@@ -46,3 +45,4 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 | [t12-ask-the-desk](tasks/t12-ask-the-desk.md): Ask the desk box | `4562601` |
 | [t14-loop-step](tasks/t14-loop-step.md): "Step 4 of 5: team on site." | `7e0bdc3` |
 | [t19-phone-polish](tasks/t19-phone-polish.md): legend collapses on a phone, "Acting as" on `/field` | `40ad010` |
+| [t21-record-detail](tasks/t21-record-detail.md): card detail panel with map, one Incident sites tab | `ff2a002` |

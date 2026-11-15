@@ -2,6 +2,11 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 22:30 t21 record detail merged (`ff2a002`), SSO reaches the SSOJet login page
+- **t21** (opus, $2.31). Five tabs, Sites and Incidents merged into **Incident sites**, each incident indented under the site its task was heading to. Any card opens a panel: a small map that pins the record (a need or task rings its site, nothing guessed, "No location yet" otherwise), every field in plain labels, linked records you can click through, history. `?open=incident:inc-1` links straight to it, "Open on the full map" goes to `/map?focus=`. Checked in the browser for an incident and a need.
+- **Token guard:** Role 1's Swagger page (`app/api/docs`) has inline CSS with `#fff`, which made `check:tokens` fail on main for everyone. The guard now skips `app/api`, API routes are not screens.
+- **SSO:** the project issuer is `https://automated-coordination-dev.auth.ssojet.com/` (from the dashboard's Advanced tab), not the generic `api.ssojet.com`. With the callback URL registered under "Sign-in callback URLs", SSOJet accepts the client and shows its login page. I guessed wrong once: the 80-character client id with a dot is fine, the callback field was the real problem. What is left is a real sign-in by a person.
+
 ### 22:00 SSO: two of three bugs fixed (`84dda40`)
 1. `SSOJET_ISSUER_URL` was `https://api.ssojet.com/oidc`. That path has no discovery document (404), so Auth.js failed with "not a conform Authorization Server Metadata response". Fixed in `.env.local` to `https://api.ssojet.com/`, the issuer SSOJet's discovery declares.
 2. Auth.js sent no `state`, and SSOJet answered "invalid_request, required parameters missing". Fixed in `auth.ts` with `checks: ["pkce", "state"]`.
