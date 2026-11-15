@@ -1,6 +1,7 @@
-// Copied verbatim from docs/.../Roles/Team contracts.md §3 (version 2) so the skeleton compiles.
-// Role 1 owns this file. Replace it freely.
-// Owned by Role 1. Ask before changing.          Version 2, 14 Nov.
+// Owned by Role 1. Ask before changing.          Version 2.1, 14 Nov.
+// Source of truth: docs/.../Roles/Team contracts.md §3.
+// v2.1: Need.requestedBy (asked for in "Personal agents"), and the helper types at the
+//       bottom for the functions in lib/db.ts. No existing field changed.
 export type Role = "volunteer" | "field" | "supplier" | "shelter" | "coordinator"
                  | "public";                                              // v2: a citizen
 export type Trust = "official" | "vetted" | "public";                     // v2
@@ -144,6 +145,7 @@ export interface Need {
   deskId: string; confidence: Confidence; lifeThreatening: boolean;   // v2
   lines: { siteId?: string; quantity: number }[];                     // v2: who gets how many
   tier: Tier; priority: number; support: number;                      // v2
+  requestedBy: string[];                 // v2.1: user ids, one per different person who asked
 }
 export interface Road {
   _id: string; road: string; state: "open" | "closed" | "unconfirmed";
@@ -203,4 +205,59 @@ export interface InboxItem {
   message: string; status: "unread" | "read"; ts: Date;
   kind: "task" | "notice" | "approval" | "incident" | "checkin";      // v2: the UI needs it
   incidentId?: string; priority: number;                              // v2
+}
+
+// ---------- v2.1: helper types for lib/db.ts ----------
+
+/** What a caller passes to postEvent(). The desk fills in _id, ts, lane and status. */
+export interface NewEvent<P = unknown> {
+  type: EventType;
+  source: Source;
+  actor: string;          // the API route sets it from the login, a worker passes its agent name
+  payload: P;
+  deskId?: string;        // default: process.env.DESK_ID
+  observedAt?: Date;      // default: now
+  dedupeKey?: string;     // e.g. "x:<tweet id>"
+}
+
+/** One snapshot of the queue, shown in one line at the bottom of the board. */
+export interface Health {
+  pending: number;
+  oldestPendingSeconds: number;
+  failed: number;
+  lastLoopAt: Date | null; // stamped by the Brain loop
+}
+
+/** Everything the shared board shows. Each list is sorted by tier, then priority. */
+export interface Board {
+  sites: Site[]; needs: Need[]; roads: Road[]; shelters: Shelter[];
+  zones: Zone[]; incidents: Incident[]; tasks: Task[];
+  health: Health;
+}
+
+/** What a personal agent loads every turn. */
+export interface UserContext {
+  user: User | null;
+  inbox: InboxItem[];      // unread, newest first
+  tasks: Task[];           // their open tasks, by tier then priority
+  records: (Site | Need | Road | Shelter | Zone | Incident)[]; // what those tasks point to
+  needs: Need[];           // v2.1: needs this person asked for, not yet delivered or cancelled
+  incidents: Incident[];   // their incidents that are not resolved
+  messages: Message[];     // last 10, oldest first
+}
+
+export type SearchCollection = "sites" | "needs" | "roads" | "shelters" | "zones" | "incidents";
+
+/** searchMemory(): read only, behind the personal agents' ask_desk tool. */
+export interface SearchQuery {
+  collection: SearchCollection;
+  region?: string;
+  status?: string;
+  text?: string;           // case-insensitive, matched against names, addresses, items, roads
+  limit?: number;          // default 20
+  deskId?: string;         // default: process.env.DESK_ID
+}
+export interface SearchHit<R = Site | Need | Road | Shelter | Zone | Incident> {
+  record: R;
+  ageSeconds: number | null; // age of the fact (observedAt), null when unknown
 }

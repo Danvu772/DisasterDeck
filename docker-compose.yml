@@ -1,0 +1,30 @@
+# Local MongoDB for development. Atlas replaces it later: only MONGODB_URI changes.
+#   npm run db:up          (same as: docker compose up -d --wait mongo)
+#   docker compose down    stop it, keep the data
+#   docker compose down -v stop it and wipe the data
+#
+# Runs as a single-node replica set, like Atlas, so transactions and change streams
+# behave the same locally. The healthcheck initiates the set on first start.
+services:
+  mongo:
+    image: mongo:8.0
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] }).ok }"
+      interval: 5s
+      timeout: 10s
+      start_period: 10s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
