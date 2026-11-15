@@ -2,7 +2,7 @@ import type { Row } from "./adapt";
 
 // What volunteers had in 2023: a plain sheet. The last two columns are empty on purpose.
 export function TodayTable({ rows }: { rows: Row[] }) {
-  const th = "border border-line bg-line/40 px-2 py-1 text-left text-xs font-bold";
+  const th = "border border-line bg-paper px-2 py-1 text-left text-xs font-bold";
   const td = "border border-line px-2 py-1 align-top text-xs";
   return (
     <table className="w-full table-fixed border-collapse">

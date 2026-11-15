@@ -11,9 +11,9 @@ import type { Incident, LatLng, Site } from "@/lib/types";
 import validation from "../../data/nasa/validation.json";
 import { IncidentCards, SiteCards } from "../BoardCards";
 import { Stamp } from "../Stamp";
-import { button, statusTag, statusText, tierBadge, tierBar } from "../encode";
+import { chip, pill, statusTag, statusText, tierBadge, tierBar, tierText } from "../encode";
 import type { MapItem } from "./mapItems";
-import { icon, roadLine, TILES, TILES_ATTR } from "./markers";
+import { icon, TILES, TILES_ATTR } from "./markers";
 import { HatchDefs, useZones, ZoneLayer, type ZoneMeta } from "./ZoneLayer";
 import { NasaEvidence } from "./NasaEvidence";
 import { NasaAtlasControls, NasaAtlasOverlay, useNasaAtlas, type AtlasSelection } from "./NasaAtlas";
@@ -78,23 +78,16 @@ function Row({ it, selected, onPick, now }: {
 }) {
   const site = it.kind === "site" ? (it.record as Site) : undefined;
   return (
-    <li className={`border-b border-line ${selected ? "bg-primary-lighter" : ""}`}>
+    <li className={`border-b border-line ${selected ? "bg-primary-lighter" : "bg-card"}`}>
       <button onClick={onPick} className="flex w-full items-start gap-3 p-3 text-left hover:bg-primary-lighter">
-        {it.kind === "site" ? (
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-tag font-bold ${tierBadge(it.tier, it.actNow)}`}>
-            {it.priority}
-          </span>
-        ) : it.kind === "road" ? (
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-            <span className={`block h-3 w-7 bg-card ${roadLine(it.status === "closed")}`} />
-          </span>
-        ) : (
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-            <span className={`block h-6 w-6 rounded-tag ${it.kind === "incident" ? "rotate-45" : ""} ${tierBar(it.tier, it.actNow)}`} />
-          </span>
-        )}
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-bold text-primary first-letter:uppercase">{it.title}</span>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className={`rounded-tag px-1.5 text-xs font-bold ${tierBadge(it.tier, it.actNow)}`}>
+              <span className="font-mono">{tierText(it.tier).code}</span> {tierText(it.tier).word}
+            </span>
+            <span className="font-mono text-xs text-muted">{it.kind} {it.key.slice(it.kind.length + 1)}</span>
+          </span>
+          <span className="mt-1 block truncate font-bold text-ink first-letter:uppercase">{it.title}</span>
           <span className="block">
             <Stamp type={it.staleType} at={it.at} source={it.source} sources={it.sources} now={now} />
           </span>
@@ -103,7 +96,8 @@ function Row({ it, selected, onPick, now }: {
         </span>
         <span className="flex shrink-0 flex-col items-end gap-1">
           <span className={statusTag}>{statusText(it.status)}</span>
-          {site && <span className="text-xs text-muted">{site.peopleTrapped} trapped</span>}
+          {it.priority !== undefined && <span className="text-xs text-muted">Priority <span className="font-mono">{it.priority}</span></span>}
+          {site && <span className="text-xs text-muted"><span className="font-mono">{site.peopleTrapped}</span> trapped</span>}
         </span>
       </button>
       {selected && (it.kind === "site" || it.kind === "incident") && (
@@ -133,7 +127,7 @@ function NasaLegend({ meta }: { meta?: ZoneMeta }) {
   return (
     <div className="mt-2 border-t border-line pt-2">
       <p className="font-bold">NASA zones</p>
-      <p><Swatch fill="fill-[url(#nasa-hatch)]" /> Cold exposure · POWER, {day(d?.temperatureDate)}</p>
+      <p><Swatch fill="fill-[url(#nasa-hatch)]" /> Cold exposure, POWER, {day(d?.temperatureDate)}</p>
       <p><Swatch fill="fill-[url(#nasa-cross)]" /> Silent-zone signal, when supported</p>
       <p><Swatch dashed /> Satellite assessment needs more evidence</p>
       <p className="mt-1 max-w-64 text-muted">
@@ -152,24 +146,26 @@ function Legend({ meta, zones }: { meta?: ZoneMeta; zones: boolean }) {
     <>
       {!open && (
         <button type="button" onClick={() => setOpen(true)} aria-expanded={false}
-          className={`${button.outline} pointer-events-auto absolute bottom-6 left-3 z-[1000] bg-card md:hidden`}>
+          className={`${chip(false)} pointer-events-auto absolute bottom-6 left-3 z-[1000] md:hidden`}>
           Legend
         </button>
       )}
-    <div className={`pointer-events-auto absolute bottom-6 left-3 z-[1000] max-h-[calc(100%-3rem)] overflow-y-auto rounded-card border border-line bg-card p-3 text-xs md:block ${open ? "block" : "hidden"}`}>
+    <div className={`pointer-events-auto absolute bottom-6 left-3 z-[1000] max-h-[calc(100%-3rem)] overflow-y-auto rounded-card border border-line bg-card p-3 text-xs md:block md:max-w-80 ${open ? "block" : "hidden"}`}>
       <div className="mb-1 flex items-center justify-between gap-3">
         <p className="font-bold">Legend</p>
-        <button type="button" onClick={() => setOpen(false)} className={`${button.outline} md:hidden`}>Close</button>
+        <button type="button" onClick={() => setOpen(false)} className={`${chip(false)} md:hidden`}>Close</button>
       </div>
-      <p><span className={`${dot} ${tierBar(0)}`} /> Danger to life</p>
-      <p><span className={`${dot} ${tierBar(1)}`} /> Urgent</p>
-      <p><span className={`${dot} ${tierBar(2)}`} /> Comfort</p>
-      <p className="mt-1"><span className={`inline-block h-3 w-3 rotate-45 rounded-tag align-middle ${tierBar(2)}`} /> Problem in the field</p>
-      <p className="mt-1"><span className={`inline-block h-3 w-3 rounded-tag align-middle ${tierBar(1)}`} /> Shelter, full or over 90% of beds</p>
-      <p><span className={`inline-block h-3 w-3 rounded-tag align-middle ${tierBar(2)}`} /> Shelter with room</p>
-      <p className="mt-1"><span className="inline-block h-2 w-5 border-4 border-solid border-ink bg-card align-middle" /> Road closed</p>
-      <p><span className="inline-block h-2 w-5 border-2 border-dashed border-ink bg-card align-middle" /> Road unconfirmed</p>
-      {zones && <p className="mt-1"><span className="inline-block h-3 w-3 rounded-full border-2 border-solid border-ink align-middle" /> Independent check, {validation.landmark.name} (DHA)</p>}
+      <div className="flex flex-wrap gap-1">
+        <span className={pill}><span className={`${dot} ${tierBar(0)}`} /> Danger to life</span>
+        <span className={pill}><span className={`${dot} ${tierBar(1)}`} /> Urgent</span>
+        <span className={pill}><span className={`${dot} ${tierBar(2)}`} /> Comfort</span>
+        <span className={pill}><span className={`inline-block h-3 w-3 rotate-45 rounded-tag align-middle ${tierBar(2)}`} /> Problem in the field</span>
+        <span className={pill}><span className={`inline-block h-3 w-3 rounded-tag align-middle ${tierBar(1)}`} /> Shelter, full or over 90% of beds</span>
+        <span className={pill}><span className={`inline-block h-3 w-3 rounded-tag align-middle ${tierBar(2)}`} /> Shelter with room</span>
+        <span className={pill}><span className="inline-block h-2 w-5 border-4 border-solid border-ink bg-card align-middle" /> Road closed</span>
+        <span className={pill}><span className="inline-block h-2 w-5 border-2 border-dashed border-ink bg-card align-middle" /> Road unconfirmed</span>
+        {zones && <span className={pill}><span className="inline-block h-3 w-3 rounded-full border-2 border-solid border-ink align-middle" /> Independent check, {validation.landmark.name} (DHA)</span>}
+      </div>
       <p className="mt-1">Bigger means more people reported it.</p>
       <p>Dashed outline: unconfirmed. Thick: confirmed.</p>
       <p>Faded: the number is stale.</p>
@@ -217,17 +213,16 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
 
   return (
     <div className="flex h-full flex-col md:flex-row">
-      <aside className="order-2 flex min-h-0 flex-1 flex-col border-line md:order-1 md:w-96 md:flex-none md:border-r">
-        <header className="border-b border-line p-3">
+      <aside className="order-2 flex min-h-0 flex-1 flex-col border-line bg-paper md:order-1 md:w-96 md:flex-none md:border-r">
+        <header className="border-b border-line bg-card p-3">
           <h1 className="text-lg font-bold">Sites and problems</h1>
-          <p className="text-sm text-muted">
-            {listed.length} of {placed.length} on the map{onlyInView ? " in this area" : ""}.{" "}
-            {live ? "Live from the desk." : "Demo data, the board API is not answering."}
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
+            <span className={pill}><span className="font-mono">{listed.length}</span> of <span className="font-mono">{placed.length}</span> on the map{onlyInView ? " in this area" : ""}</span>
+            <span className={pill}>{live ? "Live from the desk" : "Demo data, the board API is not answering"}</span>
           </p>
-          <label className="mt-1 flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={onlyInView} onChange={(e) => setOnlyInView(e.target.checked)} />
+          <button type="button" aria-pressed={onlyInView} onClick={() => setOnlyInView((v) => !v)} className={`${chip(onlyInView)} mt-2`}>
             Only list what is in the map area
-          </label>
+          </button>
         </header>
         <ul className="min-h-0 flex-1 overflow-y-auto">
           {listedMain.map((it) => (
@@ -235,7 +230,7 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
           ))}
           {listedExtra.length > 0 && (
             <>
-              <li className="bg-paper px-3 pb-1 pt-4 text-sm font-bold">Shelters and roads ({listedExtra.length})</li>
+              <li className="px-3 pb-1 pt-4 text-sm font-bold">Shelters and roads (<span className="font-mono">{listedExtra.length}</span>)</li>
               {listedExtra.map((it) => (
                 <Row key={it.key} it={it} selected={selected === it.key} onPick={() => pick(it)} now={now} />
               ))}
@@ -243,7 +238,7 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
           )}
           {unplaced.length > 0 && (
             <>
-              <li className="bg-paper px-3 pb-1 pt-4 text-sm font-bold">No location yet ({unplaced.length})</li>
+              <li className="px-3 pb-1 pt-4 text-sm font-bold">No location yet (<span className="font-mono">{unplaced.length}</span>)</li>
               {unplaced.map((it) => (
                 <Row key={it.key} it={it} selected={selected === it.key} onPick={() => pick(it)} now={now} />
               ))}

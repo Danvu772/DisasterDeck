@@ -26,7 +26,8 @@ export default async function LoginPage({ searchParams }: {
   }
 
   return (
-    <main className="mx-auto max-w-md p-6">
+    <main className="flex h-full items-center justify-center bg-paper p-6">
+     <div className="w-full max-w-md rounded-card border border-line bg-card p-6">
       <h1 className="text-2xl font-bold">Sign in to Disaster Desk</h1>
       <p className="mt-2 text-muted">
         Use your work account. Agencies sign in with their own organization account.
@@ -49,6 +50,7 @@ export default async function LoginPage({ searchParams }: {
           Demo laptop? <Link href="/" className="text-primary underline hover:text-primary-dark">Continue without signing in</Link>.
         </p>
       )}
+     </div>
     </main>
   );
 }

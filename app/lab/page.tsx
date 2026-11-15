@@ -6,6 +6,9 @@ import {
 } from "@/components/BoardCards";
 import { HealthLine } from "@/components/HealthLine";
 import { ChatLine } from "@/components/ChatLine";
+import { HealthPill } from "@/components/StatusPill";
+import { chip, pill, statusTag, tierBadge, tierText } from "@/components/encode";
+import type { Tier } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +42,37 @@ export default function Lab() {
           <div className="space-y-1 rounded-card border border-line bg-card p-3">
             <ChatLine name="Zeynep" m={{ from: "user", text: "called, voices heard" }} />
             <ChatLine name="Zeynep" m={{ from: "agent", text: "Marked Örnek St. 12 as verified. Asking the coordinator to send Saha Ekibi A." }} />
+          </div>
+        </Section>
+
+        <Section title="Status pill">
+          <div className="flex flex-wrap gap-2">
+            <HealthPill health={{ pending: 0, lastLoopAt: new Date(now) }} now={now} />
+            <HealthPill health={{ pending: 1, oldestPendingSeconds: 5760, lastLoopAt: new Date(now - 600000) }} now={now} />
+            <HealthPill health={{}} live={false} now={now} />
+          </div>
+        </Section>
+
+        <Section title="Chips and pills">
+          <div className="flex flex-wrap gap-2">
+            <span className={chip(true)}>All <span className="font-mono">12</span></span>
+            <span className={chip(false)}>Sites <span className="font-mono">5</span></span>
+            <span className={chip(false)}>Needs <span className="font-mono">3</span></span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className={pill}>Demo data</span>
+            <span className={pill}><span className="font-mono">4</span> of <span className="font-mono">9</span> on the map</span>
+            <span className={statusTag}>verified</span>
+          </div>
+        </Section>
+
+        <Section title="Tier badges">
+          <div className="flex flex-wrap gap-2">
+            {([0, 1, 2] as Tier[]).map((t) => (
+              <span key={t} className={`rounded-tag px-1.5 text-xs font-bold ${tierBadge(t)}`}>
+                <span className="font-mono">{tierText(t).code}</span> {tierText(t).word}
+              </span>
+            ))}
           </div>
         </Section>
 
