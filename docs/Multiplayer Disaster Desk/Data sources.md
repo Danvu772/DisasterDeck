@@ -12,7 +12,7 @@ Main note: [[Multiplayer Disaster Desk]]
 
 | Data                                     | What it gives                                                                                    | What it does in the app                                        | Status                                                  |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------- |
-| **2023 earthquake tweet dataset**        | ~1,000 Turkish tweets, labeled as help call or not, with person, city, address and status tagged | "Live" replay of the tweet stream                              | Open license, ready                                     |
+| **2023 earthquake tweet dataset** | Original study: 1,000 tweet IDs and labels, no full text. Alternative: 43 real archived Antakya posts, 7-10 Feb 2023 | Historical real-text replay | Packaged under `data/replays/`; source audit and instructions in the real-tweet runbook |
 | **Earthquake NER models**                | Ready models that pull person, address, city and status out of a tweet                           | Optional extra tool for the agent (OpenAI can already do this) | Optional                                                |
 | **NASA ARIA Damage Proxy Map**           | Likely building damage from the Sentinel-1 radar satellite (10 Feb 2023). Pixels of about 30 m   | Finding silent zones, raising priority                         | **Service moved. New address works, checked 14 Nov** (see "Checked on 14 Nov" below) |
 | **NASA Black Marble**                    | Night lights before and after the earthquake (3 Jan and 8 Feb 2023). Pixels of about 500 m       | Power outage, a sign of "areas that cannot tweet"              | **Available as a map layer through NASA GIBS, no login, checked 14 Nov** |
@@ -149,3 +149,7 @@ curl "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=20"
 - Instagram hashtag search: [Meta docs](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/hashtag-search)
 - CrowdTangle shutdown and Meta Content Library: [TechCrunch](https://techcrunch.com/2024/08/15/meta-shut-down-crowdtangle-a-tool-for-tracking-disinformation-heres-how-its-replacement-compares)
 - Lahaina FSRI report coverage: [AP via ABC News](https://abcnews.go.com/US/wireStory/hawaii-wildfire-victims-made-blocks-becoming-trapped-flames-113682489), [NPR](https://www.npr.org/2024/09/14/g-s1-23028/report-hawaii-officials-wildfire-warnings)
+
+## Real tweet source audit - 2026-11-15 02:31 EST
+
+The original research and Hugging Face TSV publish IDs/annotations only. A GitHub analysis project links to the Gabriel Preda archive; its reviewed version 24 supplies the packaged 43-post Antakya subset. Texts have contact redactions, preserve original IDs and publication times, and have no invented coordinates. These are real archived posts, including news and commentary, not verified current help calls. The X worker now defaults to this file; synthetic rehearsal is explicit. See [the source audit and replay runbook](../real-tweets.md).

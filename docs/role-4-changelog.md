@@ -2,6 +2,14 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v1.1 Real historical tweet replay - 2026-11-15 02:31 EST
+
+- Confirmed both pre-existing tweet files were synthetic and the planned ctoraman/avaapm research dataset contains 1,000 IDs/labels without text.
+- Prepared 43 contact-redacted real archived posts mentioning Antakya, dated 7-10 Feb 2023, from Gabriel Preda's public version-24 archive (28,844 rows, archive-declared CC0), linked by a GitHub analysis project. Added source/version/hash records, per-post provenance, original IDs and reproducible standard-library preparation.
+- Made the X worker default to the real archive; retained explicit synthetic rehearsal. Preserved original publication dates, validated Snowflake/string-ID precision, added desk-scoped real-post keys, dry-run mode and a real-backend preflight before paid extraction.
+- Added `replay:real`, `replay:synthetic`, `check:replay` and English setup/source notes. The real command refuses silent fixture-only operation. Raw author-profile exports remain ignored. No coordinates, translations or missing source text were invented.
+- Verified the pinned archive download/rebuild and seven replay integrity/worker tests. The no-cost mock pass skips all 43 mainly English records because the existing mock rules are Turkish-only; this does not claim AI extraction accuracy. No paid model calls or shared MongoDB posting were performed.
+
 ## v1.0 Antakya pilot and portable imagery · 2026-11-15 01:40 EST
 
 - Migrated the active seed, five replay reports, scenario, fixture geography, worker/backend defaults, map centres and presenter documentation to `antakya-2023`. Existing Malatya data/history is retained; old worker environments must be updated explicitly.

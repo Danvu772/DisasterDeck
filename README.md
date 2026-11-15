@@ -2,7 +2,23 @@
 
 [![CI](https://github.com/DarshalShetty/HackTheNest26/actions/workflows/ci.yml/badge.svg)](https://github.com/DarshalShetty/HackTheNest26/actions/workflows/ci.yml)
 
-Current pilot: **Antakya, Türkiye, February 2023**. Operational reports, users, shelters and logistics are synthetic. Satellite imagery, NASA measurements and the separately credited HOT/OSM reference building database are historical real data.
+Current pilot: **Antakya, Türkiye, February 2023**. The deterministic rehearsal reports, users, shelters and logistics are synthetic. A separate real-data replay contains 43 archived social posts. Satellite imagery, NASA measurements and the separately credited HOT/OSM reference building database are historical real data.
+
+## Replay real historical posts
+
+```sh
+npm run replay:real -- --dry-run --mock --limit 5
+```
+
+This previews the committed real dataset without database writes or paid model calls. The mock extractor is Turkish-only and skips this mainly English archive sample. For actual language extraction and ingestion, configure the model key and the MongoDB/HTTP destination in `.env.local`, then run:
+
+```sh
+npm run replay:real -- --limit 5
+```
+
+This command refuses a fixture-only destination, checks board access first, and preserves the 2023 publication times. It is a retrospective replay, not live emergency monitoring. See [real-tweet source findings and pipeline setup](docs/real-tweets.md). The five-post synthetic rehearsal remains available with `npm run replay:synthetic`.
+
+The bare X worker also defaults to this real archive now; restart an old running worker after pulling.
 
 ## Run the map on your workstation
 

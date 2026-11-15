@@ -1,0 +1,867 @@
+[
+  {
+    "id": "1622920281160548357",
+    "text": "Consequences of the #earthquake in the city of #Antakya.\n#Turkey #TurkeyEarthquake #Turqui\n#syriaearthquake #Syrie… [link redacted]",
+    "observedAt": "2023-02-07T11:28:42Z",
+    "ts_offset_seconds": 0,
+    "sourceURL": "https://x.com/i/status/1622920281160548357",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 774,
+      "originalTextSha256": "df63e82560460ca0d94a3679553113d1b54608e3f8601601c7c3141c81ce1551",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623220518043414531",
+    "text": "#Journalist Omar Kayed from #Adana to #AlMayadeen: #Rescue #operations are ongoing, #Antakya considered #disaster a… [link redacted]",
+    "observedAt": "2023-02-08T07:21:44Z",
+    "ts_offset_seconds": 4,
+    "sourceURL": "https://x.com/i/status/1623220518043414531",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 3320,
+      "originalTextSha256": "72797d095513e1d98e69b8b640eed13aeaa2c739426f01b52827d76b8915bd3d",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623338801664872448",
+    "text": "Ceasar and Victor the rescue dogs are already in Antioch (Antakya) and Talos is on his way too 🤍🙏🏻\n\n#deprem… [link redacted]",
+    "observedAt": "2023-02-08T15:11:45Z",
+    "ts_offset_seconds": 8,
+    "sourceURL": "https://x.com/i/status/1623338801664872448",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 5963,
+      "originalTextSha256": "0fd1e666296c0db5eef2b31fde85958cb43a9440a5a99070d4589a9fad71fad9",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623377175004221441",
+    "text": "Search teams rescued an child  from the wreckage in Antakya, Syria. \n#earthquake #Turkey #Syria #earthquakeinturkey… [link redacted]",
+    "observedAt": "2023-02-08T17:44:14Z",
+    "ts_offset_seconds": 12,
+    "sourceURL": "https://x.com/i/status/1623377175004221441",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 5891,
+      "originalTextSha256": "78a0c50846d96ae34add8947dfaa018c42808a896fe900da842a93c3e5d6f517",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623601767454851074",
+    "text": "Many in the disaster zone slept in their cars or in streets under blankets in freezing cold.\n\n.\n#maxum #antakya… [link redacted]",
+    "observedAt": "2023-02-09T08:36:41Z",
+    "ts_offset_seconds": 16,
+    "sourceURL": "https://x.com/i/status/1623601767454851074",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 5746,
+      "originalTextSha256": "f27fa0645f0ee9a032009ba9648f49912a5b82ed2133c09e446c5dade451ba1c",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623705047430307841",
+    "text": "Earthquake deaths surpass 19,000 as survivors struggle to stay warm, fed #TurkeySyriaEarthquake #Elbistan #antakya… [link redacted]",
+    "observedAt": "2023-02-09T15:27:04Z",
+    "ts_offset_seconds": 20,
+    "sourceURL": "https://x.com/i/status/1623705047430307841",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 5620,
+      "originalTextSha256": "92ed016b6dca91021b5712b4885cea318df7f867fb63cb6e53ccb775dc715b70",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623736489526820864",
+    "text": "The scale of need in #Antakya is overwhelming. #TurkeyEarthquake [link redacted]",
+    "observedAt": "2023-02-09T17:32:01Z",
+    "ts_offset_seconds": 24,
+    "sourceURL": "https://x.com/i/status/1623736489526820864",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 3202,
+      "originalTextSha256": "cb77679994273d8f68d719614534115143c9c22a361006da6ff01da3f10d6a89",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623739594289061891",
+    "text": "Skynews is in #Antakya\n\n#PrayForTurkey #TurkeyEarthquake #earthquakeinturkey #turkey #TurkeyQuake #earthquaketurkey… [link redacted]",
+    "observedAt": "2023-02-09T17:44:21Z",
+    "ts_offset_seconds": 28,
+    "sourceURL": "https://x.com/i/status/1623739594289061891",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 5564,
+      "originalTextSha256": "c133964dcd5ea85ac786af883efec18dd0311a92a00912e241078ec51fc0b017",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623743308097896450",
+    "text": "■ Earthquake in Turkey (ANTAKYA)\n\n#earthquakeinturkey #TurkeyEarthquake #PrayForTurkey #eartquake #Turkey #σεισμος… [link redacted]",
+    "observedAt": "2023-02-09T17:59:06Z",
+    "ts_offset_seconds": 32,
+    "sourceURL": "https://x.com/i/status/1623743308097896450",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 3148,
+      "originalTextSha256": "b8d941c963a122c4bf9245c81fa6305f6c7a4378a652b89ac9e5cc48039ea308",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623749412743704579",
+    "text": "Unfortunately Antioch–Antakya and the whole of Eastern Turkey and Syria suffers the aftermath of two devastating ea… [link redacted]",
+    "observedAt": "2023-02-09T18:23:22Z",
+    "ts_offset_seconds": 36,
+    "sourceURL": "https://x.com/i/status/1623749412743704579",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 3109,
+      "originalTextSha256": "9ba4ca431f189da9637b8aa6cbabb7e774412e2c0fbe3bcb381ae2656c7107fd",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623753441808994310",
+    "text": "20,000 killed.\n\nA two-year-old rescued from the rubble in Antakya.\n\n[handle redacted] A whole neighbourhood destroyed. P… [link redacted]",
+    "observedAt": "2023-02-09T18:39:23Z",
+    "ts_offset_seconds": 40,
+    "sourceURL": "https://x.com/i/status/1623753441808994310",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 3085,
+      "originalTextSha256": "4cbbe6634943b985ac6945e1f504ada47de82b82887fb7e507239fadfd174e7c",
+      "redactions": [
+        "url",
+        "handle"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623773567312883714",
+    "text": "Turkish rescue workers giving water to a Syrian boy as they save him from under the rubble in Antakya ♥️… [link redacted]",
+    "observedAt": "2023-02-09T19:59:21Z",
+    "ts_offset_seconds": 44,
+    "sourceURL": "https://x.com/i/status/1623773567312883714",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 8486,
+      "originalTextSha256": "b1c4e55de4157192b2bff0d8fcaa15b1f67b519537dd2146df3e72389e73a584",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623787542846836737",
+    "text": "Please help!! Are there any rescueworkers in #Antakya who want to continue the rescue operation of Sal Köse? He is… [link redacted]",
+    "observedAt": "2023-02-09T20:54:53Z",
+    "ts_offset_seconds": 48,
+    "sourceURL": "https://x.com/i/status/1623787542846836737",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 5490,
+      "originalTextSha256": "985ecdb186da675ba54a9eae5434a125aab9357dc886ba385bea5b9c3f76ffa5",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623799195537707008",
+    "text": "'We were married for 52 years': Earthquake survivors painful search for families in Antakya\n-… [link redacted]",
+    "observedAt": "2023-02-09T21:41:11Z",
+    "ts_offset_seconds": 52,
+    "sourceURL": "https://x.com/i/status/1623799195537707008",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 8344,
+      "originalTextSha256": "98ecf5fdb41a051ba6b8da374616583fd40c7f1b4b4a896678dd69dcfbbd1a2e",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623817827487567875",
+    "text": "Honestly lost for words #earthquakeinturkey #earthquaketurkey #deprem #hayat #antakya #TurkeySyriaEarthquake… [link redacted]",
+    "observedAt": "2023-02-09T22:55:13Z",
+    "ts_offset_seconds": 56,
+    "sourceURL": "https://x.com/i/status/1623817827487567875",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 5449,
+      "originalTextSha256": "ac7c0b50f675534345625e4188603ac953238529304c9fe1c889ea884a04ac8f",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623834470724796416",
+    "text": "#Turkiye #TurkeyEarthquake \n\nFOOD &amp; SANITARY NAPKINS NEEDED IN #HatayAntakya #Hatay #Antakya \n\n#Turkey… [link redacted]",
+    "observedAt": "2023-02-10T00:01:21Z",
+    "ts_offset_seconds": 60,
+    "sourceURL": "https://x.com/i/status/1623834470724796416",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 8177,
+      "originalTextSha256": "49d5d64a1b9bf012ed553870f0cf0fa2128c35eff3bf8b40ea7f50bacd8c7743",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623904020992610304",
+    "text": "[handle redacted] #antakya #earthquakeinturkey #earthquaketurkey PLEASE HELP [link redacted]",
+    "observedAt": "2023-02-10T04:37:43Z",
+    "ts_offset_seconds": 64,
+    "sourceURL": "https://x.com/i/status/1623904020992610304",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 5382,
+      "originalTextSha256": "c9c501cac399f1aedb7a5dc4ad1dc3bf1718d5f5f585bb820695d8b5555c905a",
+      "redactions": [
+        "url",
+        "handle"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623925375612116992",
+    "text": "On the way to #Antakya #Hatay\n#earthquaketurkey [link redacted]",
+    "observedAt": "2023-02-10T06:02:35Z",
+    "ts_offset_seconds": 68,
+    "sourceURL": "https://x.com/i/status/1623925375612116992",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 5358,
+      "originalTextSha256": "b654e6f64a0df9b88bbe416823b9c639aad6a5b3a6362ddbcf3b2ca174ab9d7e",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1623938372522897408",
+    "text": "Chinese and Turkish rescue teams worked together to rescue a pregnant woman in Antakya, Türkiye. … [link redacted]",
+    "observedAt": "2023-02-10T06:54:13Z",
+    "ts_offset_seconds": 72,
+    "sourceURL": "https://x.com/i/status/1623938372522897408",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 2475,
+      "originalTextSha256": "82c5cdcb58236b03fa79237acacd75c406555aeb47a10f7b89ec54881d0a1202",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624002165118275585",
+    "text": "#antakya ancient antioch #TurkeyEarthquake there's no culture without human beings Death destroyed lives families c… [link redacted]",
+    "observedAt": "2023-02-10T11:07:43Z",
+    "ts_offset_seconds": 76,
+    "sourceURL": "https://x.com/i/status/1624002165118275585",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 1931,
+      "originalTextSha256": "40ce337ee0a9ee7b934883aac88ea6271e069a7a347769b9c85ec345f0a58be3",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624025710003376128",
+    "text": "🇹🇷 🇸🇾 #earthquakeinturkey #Syria 💝\nAn aerial view of the utter destruction in Antakya, Turkey. r #earthquake… [link redacted]",
+    "observedAt": "2023-02-10T12:41:16Z",
+    "ts_offset_seconds": 80,
+    "sourceURL": "https://x.com/i/status/1624025710003376128",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 9989,
+      "originalTextSha256": "d9a085e96ccbd7936027156bdc989561cf27b59cd9eee650c1bdc900e4634679",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624040640227991553",
+    "text": "Smiling child in the Turkish ruins of Antakya ... moment of hope\n#TurkeyEarthquake [link redacted]",
+    "observedAt": "2023-02-10T13:40:36Z",
+    "ts_offset_seconds": 84,
+    "sourceURL": "https://x.com/i/status/1624040640227991553",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 1544,
+      "originalTextSha256": "bd9a477d1926e9564a44d68e756848155cfc5a7a6599cc0580ef7574b477d86e",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624040651858796544",
+    "text": "The damage earthquake caused in old and new #Antakya is clearly visible from the Antakya Castle.\n\n#Hatay #Turkey… [link redacted]",
+    "observedAt": "2023-02-10T13:40:39Z",
+    "ts_offset_seconds": 88,
+    "sourceURL": "https://x.com/i/status/1624040651858796544",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 1543,
+      "originalTextSha256": "5200bf82abe71d39431479a9bebbfab93721302e52d7526ad025297e8a151093",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624042493120487424",
+    "text": "Rescuers needed in Antakya [phone redacted]. \n#تركيا #سوريا #زلزال_ترکیا_وسوريا #TurkeyEarthquake #turkey [link redacted]",
+    "observedAt": "2023-02-10T13:47:58Z",
+    "ts_offset_seconds": 92,
+    "sourceURL": "https://x.com/i/status/1624042493120487424",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 1522,
+      "originalTextSha256": "f6dbd75bcecaade3d7f83e65524dd476d561a709fa97a83ba69850c2e211a0fe",
+      "redactions": [
+        "phone",
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624047057752186882",
+    "text": "Chinese and Turkish rescue teams save 3 women in earthquake-hit Turkeys' Antakya | Indiablooms - First Portal on Di… [link redacted]",
+    "observedAt": "2023-02-10T14:06:06Z",
+    "ts_offset_seconds": 96,
+    "sourceURL": "https://x.com/i/status/1624047057752186882",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 1479,
+      "originalTextSha256": "5614168eb1578aa003f1ddbfe643a2cb8a3fb17111baf7ff1827fd358d828d45",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624062285747462145",
+    "text": "🔴Family alive under debris since the first day of the #earthquake\nContact [phone redacted]\n📍Antakya, Orhan opposite Özh… [link redacted]",
+    "observedAt": "2023-02-10T15:06:37Z",
+    "ts_offset_seconds": 100,
+    "sourceURL": "https://x.com/i/status/1624062285747462145",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 11849,
+      "originalTextSha256": "bbb964ca06b8e534c6647cc5609ada0527aa4be4f261521f8b76c2afc402b43f",
+      "redactions": [
+        "phone",
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624078901881233410",
+    "text": "#AlMayadeen reporter, Omar Kayed, touring inside the ancient city of #Antakya, highlighting the extent of the damag… [link redacted]",
+    "observedAt": "2023-02-10T16:12:38Z",
+    "ts_offset_seconds": 104,
+    "sourceURL": "https://x.com/i/status/1624078901881233410",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 1272,
+      "originalTextSha256": "a339503bb4e442b248a117a830fd802327ca299dd32cac7843676eed3a2087e1",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624090470220722176",
+    "text": "18-month-old baby among several children pulled out from debris after 4 days in Antakya\n#TurkeySyriaEarthquake… [link redacted]",
+    "observedAt": "2023-02-10T16:58:36Z",
+    "ts_offset_seconds": 108,
+    "sourceURL": "https://x.com/i/status/1624090470220722176",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 11705,
+      "originalTextSha256": "f3fcce8c6d3a74beb124d5ba9899df80e60b9d664286554371e74c474000a39b",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624091076419104773",
+    "text": "Antakya is surreal.\nHere we saw 8 bodies lie in the street in front of exhausted relatives who pulled them out of t… [link redacted]",
+    "observedAt": "2023-02-10T17:01:01Z",
+    "ts_offset_seconds": 112,
+    "sourceURL": "https://x.com/i/status/1624091076419104773",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 11700,
+      "originalTextSha256": "4661cd70eee1716a82379bc460dc31c63381765add1c0ea21ab7b230aa9efa5b",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624097760042516480",
+    "text": "Mother, even during death, affectionate!\n\nA Syrian woman sleeps next to the body of her son in the city of Antakya… [link redacted]",
+    "observedAt": "2023-02-10T17:27:34Z",
+    "ts_offset_seconds": 116,
+    "sourceURL": "https://x.com/i/status/1624097760042516480",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 5141,
+      "originalTextSha256": "c09d4e6d3ec8c8cdfaeae7e9286024b6d54a52e14229b8db8cff50b1e04f2911",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624100311437541376",
+    "text": "Fundraising for Turkey   💔🙏\nOzlem Warren, whose family home is in earthquake devastated Antakya Turkey, wants along… [link redacted]",
+    "observedAt": "2023-02-10T17:37:43Z",
+    "ts_offset_seconds": 120,
+    "sourceURL": "https://x.com/i/status/1624100311437541376",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 1184,
+      "originalTextSha256": "50a9709660a3f43cfdda86ccbc7cab565075d74332b18a5e3cad61f10714bff6",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624106686435958784",
+    "text": "Do watch my Exclusive ground report from Antakya city of Türkiye. \n\n#Turkiye #TurkeyQuake #TurkeyEarthquake… [link redacted]",
+    "observedAt": "2023-02-10T18:03:03Z",
+    "ts_offset_seconds": 124,
+    "sourceURL": "https://x.com/i/status/1624106686435958784",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 12982,
+      "originalTextSha256": "70262bd230e590bd79b0a05f47197de0b6d6e2a2e3bff5184a268153b314e7f6",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624112136770449408",
+    "text": "🇹🇷 🇸🇾 #earthquakeinturkey #Syria 💝\naerial view of Antakya, Turkey:\n\n#depremden #depremsondakika  #Rescue #Turquia… [link redacted]",
+    "observedAt": "2023-02-10T18:24:42Z",
+    "ts_offset_seconds": 128,
+    "sourceURL": "https://x.com/i/status/1624112136770449408",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 12959,
+      "originalTextSha256": "8c1907f61d98e1f9357332e5fb5fd329c17e48f6e5461673e2e49088cf2b2288",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624112398461173767",
+    "text": "Greek couple found dead under building debris in Antakya\n\n#TurkeyEarthquake \n\n[link redacted] [link redacted]",
+    "observedAt": "2023-02-10T18:25:44Z",
+    "ts_offset_seconds": 132,
+    "sourceURL": "https://x.com/i/status/1624112398461173767",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 7781,
+      "originalTextSha256": "742f7894a4037ebedb7957113d2994e9f4669101f0c5f1cde51fadbbc9eed773",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624115476035928092",
+    "text": "Today, TSF installed satellite equipment in #Antakya (#Hatay) to restore #connectivity in response to the… [link redacted]",
+    "observedAt": "2023-02-10T18:37:58Z",
+    "ts_offset_seconds": 136,
+    "sourceURL": "https://x.com/i/status/1624115476035928092",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 7755,
+      "originalTextSha256": "d425a2c82dbb44597d4fd1f85cfcba724dccea7acdd35ca092f645a738aabf6e",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624115848536260615",
+    "text": "This evening's [handle redacted] report from Antakya is heartbreaking. One man who has lost up to 78 friends &amp; family. Anoth… [link redacted]",
+    "observedAt": "2023-02-10T18:39:27Z",
+    "ts_offset_seconds": 140,
+    "sourceURL": "https://x.com/i/status/1624115848536260615",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 12937,
+      "originalTextSha256": "18f7c05f54bbfaa7ede79573639b71c05b2bd0de476790b797a6f6d8d0e4af42",
+      "redactions": [
+        "url",
+        "handle"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624121945514967074",
+    "text": "The leader of the Jewish Community of #Antakya , Shaul Cenudioglu, and his wife, Tuna Cenudioglu have passed away i… [link redacted]",
+    "observedAt": "2023-02-10T19:03:41Z",
+    "ts_offset_seconds": 144,
+    "sourceURL": "https://x.com/i/status/1624121945514967074",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 4838,
+      "originalTextSha256": "db501bc138f7f2f80b700b0b96560be35f53d649b458590857a5774165728ee2",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624131928549953536",
+    "text": "Missing family in #antakya #turkey \n#syria #TurkeyEarthquake [link redacted]",
+    "observedAt": "2023-02-10T19:43:21Z",
+    "ts_offset_seconds": 148,
+    "sourceURL": "https://x.com/i/status/1624131928549953536",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 7681,
+      "originalTextSha256": "be2ea731372eeff6b9476d371cffbd5cef4e81786af95fe85409a217046399ad",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624136496599994368",
+    "text": "In #Khatai/#Antakya, a man was caught who introduced himself as an employee of the Ministry of Emergency Situations… [link redacted]",
+    "observedAt": "2023-02-10T20:01:30Z",
+    "ts_offset_seconds": 152,
+    "sourceURL": "https://x.com/i/status/1624136496599994368",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 15782,
+      "originalTextSha256": "6ee083a5f59680b4ba91b06110c0fa55f2bbea656cb114b5847e651da86134da",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624138504836943881",
+    "text": "5 storeys building \n.\n.\n.\n.\n#turkey #earthquake #earthquaketurkey @ Antakya, Hatay [link redacted]",
+    "observedAt": "2023-02-10T20:09:29Z",
+    "ts_offset_seconds": 156,
+    "sourceURL": "https://x.com/i/status/1624138504836943881",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 4726,
+      "originalTextSha256": "6c4307f129fcd371f7446db8a6e1bcea22918165927dcc129300dd8221723657",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624154692170272768",
+    "text": "My friend Dila lost a lot of family in Antakya. The survivors have little left and need immediate relief. She's lea… [link redacted]",
+    "observedAt": "2023-02-10T21:13:48Z",
+    "ts_offset_seconds": 160,
+    "sourceURL": "https://x.com/i/status/1624154692170272768",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 15715,
+      "originalTextSha256": "5d43eb59c787a11df584007af8705f3f44660af5e298454dc66edc04c5fdc230",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624179314148384778",
+    "text": "British K9 Dog rescue working 24 hours a day in Antakya Turkey to rescue People out of the rubble #Turkiye… [link redacted]",
+    "observedAt": "2023-02-10T22:51:38Z",
+    "ts_offset_seconds": 164,
+    "sourceURL": "https://x.com/i/status/1624179314148384778",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 16042,
+      "originalTextSha256": "98170136475568efa46bff2dffee82c5c84e3b6f792e2b02040092ac52107cb3",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  },
+  {
+    "id": "1624181480648847361",
+    "text": "Emergency Aid reached #Samandag / #Antakya #Hatay today morning. #earthquaketurkey [link redacted]",
+    "observedAt": "2023-02-10T23:00:15Z",
+    "ts_offset_seconds": 168,
+    "sourceURL": "https://x.com/i/status/1624181480648847361",
+    "provenance": {
+      "kind": "historical-real-tweet",
+      "dataset": "gpreda/turkey-earthquake-tweets",
+      "version": 24,
+      "sourceRecord": 4566,
+      "originalTextSha256": "c1c6bcf05346cd0817b82cdb9ad707559af4c1cbc051d16c8d95e4ecdc160319",
+      "redactions": [
+        "url"
+      ],
+      "isRetweet": false,
+      "locationBasis": "Mentions Antakya in text; no verified incident coordinates",
+      "synthetic": false
+    }
+  }
+]

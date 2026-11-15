@@ -1,0 +1,33 @@
+{
+  "source": {
+    "dataset": "gpreda/turkey-earthquake-tweets",
+    "creator": "Gabriel Preda",
+    "version": 24,
+    "licenseDeclaredByArchive": "CC0: Public Domain",
+    "sourceURL": "https://www.kaggle.com/datasets/gpreda/turkey-earthquake-tweets",
+    "downloadURL": "https://www.kaggle.com/api/v1/datasets/download/gpreda/turkey-earthquake-tweets?datasetVersionNumber=24",
+    "metadataURL": "https://www.kaggle.com/api/v1/datasets/view/gpreda/turkey-earthquake-tweets",
+    "githubReference": "https://github.com/miraytopal/Turkey-Earthquake-Tweets-Sentiment-Analysis-NLP",
+    "csvSha256": "15f51764f2cada97e34c67c3c8544348f86187c37df5b113eb43f765be0f6fb4",
+    "startDate": "2023-02-06",
+    "endDate": "2023-02-10",
+    "geographicFilter": "Text explicitly mentions Antakya; no geocoded point inferred",
+    "reviewedAt": "2026-11-15",
+    "originalCollection": "Collector describes daily acquisition with Tweepy and the Twitter API"
+  },
+  "archiveRows": 28844,
+  "selected": 43,
+  "rejected": {
+    "invalidDate": 1,
+    "invalidIdOrTime": 0,
+    "privateAddressPattern": 0,
+    "duplicateId": 0
+  },
+  "file": "data/replays/antakya-real-tweets.json",
+  "sha256": "2e812360c550857cb8a0ca4a6ddcc3417b5008b282082b4978dd46f440057b34",
+  "firstObservedAt": "2023-02-07T11:28:42Z",
+  "lastObservedAt": "2023-02-10T23:00:15Z",
+  "playbackMeaning": "Four-second synthetic playback spacing only; observedAt preserves the real archived publication time.",
+  "limitations": "Historical social posts, not verified current incidents. Includes news, commentary and retweets; many should be skipped by extraction. Text mention is not a geolocation. No coordinates, translations, rescue counts or missing text are invented. Live X availability is not independently verified.",
+  "privacy": "Author profile columns excluded; phones, handles, URLs and emails redacted; explicit private-address patterns excluded. This is contact redaction, not a guarantee of complete person-name anonymization."
+}

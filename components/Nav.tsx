@@ -45,7 +45,7 @@ export function Nav({ account }: { account?: React.ReactNode }) {
         </svg>
         Disaster Desk
       </Link>
-      <span className={`hidden sm:inline ${nightPill} text-night-muted`}>Antakya exercise, synthetic data</span>
+      <span className={`hidden sm:inline ${nightPill} text-night-muted`}>Antakya historical exercise</span>
       <div className="order-last flex w-full min-w-0 items-center gap-1 overflow-x-auto whitespace-nowrap lg:order-none lg:w-auto lg:flex-1">
         {LINKS.map((l) => {
           const on = l.href === "/" ? path === "/" : path.startsWith(l.href);

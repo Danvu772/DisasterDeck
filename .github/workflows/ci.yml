@@ -31,6 +31,8 @@ jobs:
       - run: npm ci
       - name: Typecheck
         run: npx tsc --noEmit
+      - name: Historical replay integrity and worker tests
+        run: npm run check:replay
       - name: Lint
         run: npx eslint
       - name: Design tokens
