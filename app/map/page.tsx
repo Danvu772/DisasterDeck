@@ -8,7 +8,7 @@ import path from "node:path";
 import { makeBoard } from "@/fixtures/board";
 import { MapScreen } from "@/components/map/MapScreen";
 import type { GlQuake } from "@/components/map/gl/DeskGlMap";
-import { getBoard } from "@/lib/db";
+import { getBoard, listUsers } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,9 @@ export default async function MapPage({ searchParams }: { searchParams: Promise<
   try {
     // JSON round trip: the same shape the polls return (dates as ISO strings).
     const board = JSON.parse(JSON.stringify(await getBoard())) as ReturnType<typeof makeBoard>;
-    return <MapScreen initial={board} initialLive focus={f} quakes={q} />;
+    // Names for "Verified by …" in the site cards. A failure only costs the names, not the map.
+    const names = Object.fromEntries((await listUsers().catch(() => [])).map((u) => [u._id, u.name]));
+    return <MapScreen initial={board} initialLive focus={f} quakes={q} names={names} />;
   } catch (err) {
     console.error("map first paint: database not reachable, showing the fixture board:", err instanceof Error ? err.message : err);
     return <MapScreen initial={makeBoard(Date.now())} focus={f} quakes={q} />;

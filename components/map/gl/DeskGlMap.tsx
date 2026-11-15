@@ -9,7 +9,7 @@
 // Browser only: load with next/dynamic, ssr off.
 import "maplibre-gl/dist/maplibre-gl.css";
 import { AnimatePresence, motion } from "motion/react";
-import { Building2, Layers, Map as MapIcon, Satellite, Users, X } from "lucide-react";
+import { Building2, CircleCheck, Clock, Layers, Map as MapIcon, MoveRight, Satellite, TriangleAlert, Users, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import MapGL, {
   Layer, Marker, NavigationControl, Popup, ScaleControl, Source, type MapRef,
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { ageText, isStale, markerSize, tierText } from "../../encode";
 import { useIsDark } from "../../theme/theme";
 import type { MapItem } from "../mapItems";
+import type { WorkLine, WorkState } from "../siteWork";
 import { tokenColor } from "./tokens";
 import { KCollapse, KCone, KDanger, KFire, KQuake, KRoadblock, KTent } from "../../icons/koboyo";
 import { HAZARD_LEGEND, hazardType, INCIDENT_ICON } from "../../icons/things";
@@ -171,7 +172,11 @@ function RecordCard({ it, now, onClose }: { it: MapItem; now: number; onClose: (
       <>
         <Fact icon={<Users />}>{s.peopleTrapped > 0 ? `${s.peopleTrapped} ${s.peopleTrapped === 1 ? "person" : "people"} trapped` : "No one reported trapped"}</Fact>
         {s.hazard && (() => { const h = hazardType(s.hazard)!; return <Fact icon={<h.icon />}>{s.hazard}</Fact>; })()}
-        <Fact icon={<Building2 />}>{s.status === "team_on_site" ? "A team is on site" : s.status === "open" ? "Waiting for a team" : s.status === "closed" ? "Done" : "Withdrawn"}</Fact>
+        {it.work
+          ? <Fact icon={it.work.state === "stuck" ? <TriangleAlert className="text-warning" /> : <Building2 />}>
+              <span className={cn("font-medium", PHASE_TEXT[it.work.state])}>{it.work.phase}</span>
+            </Fact>
+          : <Fact icon={<Building2 />}>{s.status === "team_on_site" ? "A team is on site" : s.status === "open" ? "Waiting for a team" : s.status === "closed" ? "Done" : "Withdrawn"}</Fact>}
       </>
     );
   } else if (it.kind === "incident") {
@@ -208,7 +213,7 @@ function RecordCard({ it, now, onClose }: { it: MapItem; now: number; onClose: (
     <motion.div
       initial={{ opacity: 0, y: 6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 400, damping: 32 }}
-      className="w-64 rounded-xl border bg-popover p-3 text-popover-foreground shadow-lg"
+      className={cn("rounded-xl border bg-popover p-3 text-popover-foreground shadow-lg", it.work?.lines.length ? "w-[min(20rem,calc(100vw-2rem))]" : "w-64")}
     >
       <div className="mb-2 flex items-start gap-2">
         <div className="min-w-0 flex-1">
@@ -223,10 +228,56 @@ function RecordCard({ it, now, onClose }: { it: MapItem; now: number; onClose: (
         <span className={cn("mb-2 inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-medium", badge)}>{tier.word}</span>
       )}
       <div className="space-y-1.5">{body}</div>
+      {it.work && it.work.lines.length > 0 && <WorkList lines={it.work.lines} now={now} />}
       <p className="mt-2 border-t pt-2 text-[11px] text-muted-foreground">
         {[reporters, it.confidence === "confirmed" ? "Confirmed" : it.confidence === "corroborated" ? "Backed up" : "Not confirmed yet", ageText(it.at, now)].filter(Boolean).join(" · ")}
       </p>
     </motion.div>
+  );
+}
+
+// ---------- what the desk is doing about a site ----------
+
+/** Red stays for life-threatening: stuck work gets an amber icon. Text keeps the text colours,
+ *  since amber text is unreadable on the light theme. */
+const PHASE_TEXT: Record<WorkState, string> = {
+  stuck: "text-foreground", waiting: "text-foreground", moving: "text-foreground", done: "text-muted-foreground",
+};
+const STATE_ICON: Record<WorkState, { icon: ReactNode; tone: string; word: string }> = {
+  done: { icon: <CircleCheck />, tone: "text-success", word: "Done" },
+  moving: { icon: <MoveRight />, tone: "text-foreground", word: "Under way" },
+  waiting: { icon: <Clock />, tone: "text-muted-foreground", word: "Waiting" },
+  stuck: { icon: <TriangleAlert />, tone: "text-warning", word: "Stuck" },
+};
+
+/** The site's tickets as a short timeline: the call, the rescue, deliveries, problems. */
+function WorkList({ lines, now }: { lines: WorkLine[]; now: number }) {
+  return (
+    <div className="mt-2 border-t pt-2">
+      <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">What&apos;s happening</p>
+      <ol className="relative space-y-2 before:absolute before:top-2 before:bottom-2 before:left-[7px] before:w-px before:bg-border">
+        <AnimatePresence initial={false}>
+          {lines.slice(0, 5).map((l) => {
+            const st = STATE_ICON[l.state];
+            return (
+              <motion.li key={l.key} layout initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
+                transition={{ type: "spring", stiffness: 380, damping: 34 }} className="relative flex gap-2">
+                <span className={cn("relative z-10 mt-0.5 flex size-[15px] shrink-0 items-center justify-center rounded-full bg-popover [&_svg]:size-3.5", st.tone)}
+                  aria-label={st.word}>{st.icon}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className={cn("truncate text-xs font-medium", l.state === "done" && "text-muted-foreground")}>{l.label}</span>
+                    {l.at && <span className="shrink-0 text-[10px] text-muted-foreground">{ageText(l.at, now)}</span>}
+                  </span>
+                  <span className={cn("block text-[11px] leading-snug", l.state === "stuck" ? "text-foreground" : "text-muted-foreground")}>{l.detail}</span>
+                </span>
+              </motion.li>
+            );
+          })}
+        </AnimatePresence>
+      </ol>
+      {lines.length > 5 && <p className="mt-1 text-[11px] text-muted-foreground">and {lines.length - 5} more</p>}
+    </div>
   );
 }
 

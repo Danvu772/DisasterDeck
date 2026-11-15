@@ -3,6 +3,7 @@
 // is the one for GET /api/board) and the map, list and legend work unchanged.
 import type { Board, Confidence, Incident, LatLng, RecordType, Road, Shelter, Site, Source, Tier } from "@/lib/types";
 import { severityTier } from "../encode";
+import { siteWork, type Names, type SiteWork } from "./siteWork";
 
 export interface MapItem {
   key: string;                 // unique across kinds: "site:<id>", "incident:<id>"
@@ -23,6 +24,7 @@ export interface MapItem {
   sources?: number;
   linkTo?: LatLng;             // incident: the site its task was heading to
   record: Site | Incident | Shelter | Road;     // the raw record, so the list can open the normal card
+  work?: SiteWork;             // site: what the desk is doing about it (call, rescue, deliveries, problems)
 }
 
 export type MapSource = Pick<Board, "sites" | "incidents" | "tasks" | "needs" | "shelters" | "roads">;
@@ -42,7 +44,9 @@ export function siteOfTask(b: Pick<MapSource, "sites" | "tasks" | "needs">, task
   return undefined;
 }
 
-export function fromBoard(b: MapSource, opts: { showClosed?: boolean } = {}): MapItem[] {
+/** `names`: user id → name, so the work lines say who. `now`: for "about 12 min" on a promised time. */
+export function fromBoard(b: MapSource, opts: { showClosed?: boolean; names?: Names; now?: number } = {}): MapItem[] {
+  const now = opts.now ?? Date.now();
   const sites: MapItem[] = b.sites
     .filter((s) => opts.showClosed || !CLOSED_SITE.has(s.status))
     .map((s) => ({
@@ -51,6 +55,7 @@ export function fromBoard(b: MapSource, opts: { showClosed?: boolean } = {}): Ma
       confidence: s.confidence, priority: s.priority, support: Math.max(1, s.support),
       status: s.status, at: s.observedAt, staleType: "site",
       source: s.sources[0]?.source, sources: s.sources.length, record: s,
+      work: siteWork(s, b, opts.names, now),
     }));
 
   const incidents: MapItem[] = b.incidents

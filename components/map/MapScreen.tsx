@@ -11,6 +11,7 @@ import { hazardType, INCIDENT_ICON } from "../icons/things";
 import { cn } from "@/lib/utils";
 import { ageText, isStale } from "../encode";
 import { fromBoard, type MapItem, type MapSource } from "./mapItems";
+import type { Names, WorkState } from "./siteWork";
 import { usePolled } from "./usePolled";
 import { DeskMap } from "./DeskMap";
 import type { GlQuake } from "./gl/DeskGlMap";
@@ -67,15 +68,26 @@ function lineFor(it: MapItem): string {
   return it.placedAt ? `Near ${it.placedAt}` : "Problem in the field";
 }
 
+/** A site's one-line status: an amber dot when it is stuck (red stays for life-threatening).
+ *  The colour is on the dot, never the text: amber text is unreadable on the light theme. */
+const PHASE_DOT: Record<WorkState, string> = {
+  stuck: "bg-warning", waiting: "bg-muted-foreground/50", moving: "bg-foreground", done: "bg-muted-foreground/30",
+};
+const PHASE_TEXT: Record<WorkState, string> = {
+  stuck: "text-foreground", waiting: "text-muted-foreground", moving: "text-foreground", done: "text-muted-foreground",
+};
+
 function titleFor(it: MapItem): string {
   if (it.kind === "shelter") return (it.record as Shelter).name;
   return it.title;
 }
 
-export function MapScreen({ initial, initialLive = false, focus, quakes }: { initial: MapSource; initialLive?: boolean; focus?: string; quakes: GlQuake[] }) {
+export function MapScreen({ initial, initialLive = false, focus, quakes, names }: {
+  initial: MapSource; initialLive?: boolean; focus?: string; quakes: GlQuake[]; names?: Names;
+}) {
   const [mode, setMode] = useState<"live" | "imagery">("live");
   const { data, live, now } = usePolled<MapSource>("/api/board", initial, 1000, initialLive);
-  const items = useMemo(() => fromBoard(data), [data]);
+  const items = useMemo(() => fromBoard(data, { names }), [data, names]);
   const [selected, setSelected] = useState<string | null>(focus ?? null);
   const [flyKey, setFlyKey] = useState<string | undefined>(focus);
   const [filter, setFilter] = useState<Filter>("all");
@@ -154,7 +166,14 @@ export function MapScreen({ initial, initialLive = false, focus, quakes }: { ini
                   <KindIcon it={it} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium first-letter:uppercase">{titleFor(it)}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{lineFor(it)}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {lineFor(it)}
+                      {it.work && (
+                        <span className={cn("font-medium", PHASE_TEXT[it.work.state])}>
+                          {" · "}<span aria-hidden className={cn("mr-1 inline-block size-1.5 rounded-full align-middle", PHASE_DOT[it.work.state])} />{it.work.phase}
+                        </span>
+                      )}
+                    </span>
                   </span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">{ageText(it.at, now)}</span>
                 </button>
