@@ -9,6 +9,7 @@ import { ChatLine } from "@/components/ChatLine";
 import { HealthPill } from "@/components/StatusPill";
 import { chip, pill, statusTag, tierBadge, tierText } from "@/components/encode";
 import type { Tier } from "@/lib/types";
+import { MetricChartsDemo } from "@/components/metrics/charts/MetricChartsDemo";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,10 @@ export default function Lab() {
             ))}
           </div>
         </Section>
+
+        <div className="md:col-span-3">
+          <Section title="Metric charts"><MetricChartsDemo /></Section>
+        </div>
 
         <Section title="Health">
           <HealthLine {...b.health} />
