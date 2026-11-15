@@ -52,10 +52,12 @@ export const capacityPayload = z.object({
 export const answerPayload = z.object({
   taskId: id, result: z.enum(["accepted", "declined", "done"]),
   note: text.optional(), etaMinutes: z.number().min(0).max(7 * 24 * 60).optional(),
-}) satisfies z.ZodType<AnswerPayload>;
+  progress: z.enum(["en_route", "arrived"]).optional(),
+}).refine((p) => p.progress === undefined || p.result === "accepted",
+  "progress is only for an answer with result accepted") satisfies z.ZodType<AnswerPayload>;
 
 export const approvalPayload = z.object({
-  taskId: id, approved: z.boolean(),
+  taskId: id, approved: z.boolean(), assignee: id.optional(),
 }) satisfies z.ZodType<ApprovalPayload>;
 
 export const alertPayload = z.object({
