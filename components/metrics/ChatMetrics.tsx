@@ -8,13 +8,14 @@ import { MetricCard } from "./charts/MetricCard";
 import type { MetricId, MetricResult } from "./types";
 import { useMetrics } from "./useMetrics";
 
-interface Shown { results: MetricResult[]; live: boolean }
+// `at` is the real time of the board poll the results came from (the /agent space shows its age).
+export interface Shown { results: MetricResult[]; live: boolean; at: number }
 
-function Poller({ ids, events, user, onResults }: {
+export function Poller({ ids, events, user, onResults }: {
   ids: MetricId[]; events?: Event[]; user?: string; onResults: (s: Shown) => void;
 }) {
-  const { results, live, checked } = useMetrics(ids, { events, user });
-  useEffect(() => { if (checked) onResults({ results, live }); }, [checked, results, live, onResults]);
+  const { results, live, checked, at } = useMetrics(ids, { events, user });
+  useEffect(() => { if (checked) onResults({ results, live, at }); }, [checked, results, live, at, onResults]);
   return null;
 }
 

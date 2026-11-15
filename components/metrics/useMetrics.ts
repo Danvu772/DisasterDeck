@@ -53,5 +53,5 @@ export function useMetrics(ids: MetricId[], o: { events?: Event[]; user?: string
     return ids.map((id) => metric(id, input));
   }, [ids, board.data, live, board.now, events, userList]);
 
-  return { results, live, checked: board.checked };
+  return { results, live, checked: board.checked, at: board.now };
 }

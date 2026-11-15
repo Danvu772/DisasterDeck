@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Event, Message, User } from "@/lib/types";
 import type { makeBoard } from "@/fixtures/board";
@@ -8,9 +8,8 @@ import { EventReport } from "./event/EventReport";
 import { TaskCard } from "./TaskCard";
 import { getCoords, sendTaskEvent, taskEventBody, type ProblemKind, type TaskAction } from "./taskEvents";
 import { ChatLine } from "./ChatLine";
-import { ChatMetrics } from "./metrics/ChatMetrics";
 import { pickMetrics } from "./metrics/useMetrics";
-import type { MetricId } from "./metrics/types";
+import { VizSpace, type Ask } from "./agent/VizSpace";
 import { stubReply } from "./stubAgent";
 import { chatErrorText } from "./chatError";
 import { cursorOf, feedUrl, mergeServer, shownEvents } from "./agentFeed";
@@ -43,8 +42,10 @@ export function AgentDesk(props: {
   const [messages, setMessages] = useState(props.messages);
   const [text, setText] = useState("");
   const [stub, setStub] = useState(false);
-  // Metric cards per agent message id. Only the newest answer's cards stay live.
-  const [charts, setCharts] = useState<Record<string, MetricId[]>>({});
+  // One entry per prompt for the chart space (t42). It opens on every send, the reply stays in the chat.
+  const [asks, setAsks] = useState<Ask[]>([]);
+  const [vizOpen, setVizOpen] = useState(false);
+  const closeViz = useCallback(() => setVizOpen(false), []);
   const chatSeq = useRef(0);
   // Per task id: what the card shows until the board catches up, and the words under the buttons.
   const [local, setLocal] = useState<Record<string, LocalTask>>({});
@@ -96,6 +97,9 @@ export function AgentDesk(props: {
     if (!said) return;
     setText("");
     setMessages((m) => [...m, { _id: `u${m.length}`, userId: user._id, from: "user", text: said, ts: new Date() }]);
+    const id = `a-${chatSeq.current++}`;
+    setAsks((xs) => [...xs, { id, question: said, at: Date.now(), ids: null }]);
+    setVizOpen(true);
     let reply: string;
     let body: unknown = null;
     try {
@@ -111,8 +115,8 @@ export function AgentDesk(props: {
       reply = stubReply(user, top?.task, said);
       setStub(true);
     }
-    const id = `a-${chatSeq.current++}`;
-    setCharts((c) => ({ ...c, [id]: pickMetrics(said, body) }));
+    const ids = pickMetrics(said, body);
+    setAsks((xs) => xs.map((a) => (a.id === id ? { ...a, ids } : a)));
     setMessages((m) => [...m, { _id: id, userId: user._id, from: "agent", text: reply, ts: new Date() }]);
   }
 
@@ -148,13 +152,13 @@ export function AgentDesk(props: {
     note(id, result);
   }
 
-  const newestAnswer = messages.findLast((m) => m.from === "agent")?._id;
   const card = "rounded-card border border-line bg-card";
   return (
     <div className="flex flex-col gap-5">
       {!live && <p className="text-sm text-muted">Demo data, the board API is not answering.</p>}
       {server === null && <p className="text-sm text-muted">Demo data, the events API is not answering.</p>}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <div className={`grid gap-5 lg:transition-[grid-template-columns] lg:duration-250 lg:ease-out motion-reduce:transition-none ${
+        vizOpen ? "lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]" : "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"}`}>
         <section aria-label="Your tasks" className="flex min-w-0 flex-col gap-4">
           <details className={`${card} p-3 text-sm`}>
             <summary className="cursor-pointer">
@@ -201,26 +205,23 @@ export function AgentDesk(props: {
           </div>
         </section>
 
-        <section aria-label="Your agent" className={`${card} flex min-w-0 flex-col overflow-hidden`}>
-          <h2 className="border-b border-line px-4 py-3 text-xl font-bold">Your agent</h2>
-          <div className="flex min-h-80 flex-1 flex-col gap-3 overflow-y-auto bg-paper p-4 lg:max-h-[32rem]">
-            {messages.length === 0 && <p className="text-sm text-muted">Talk to your agent.</p>}
-            {messages.map((m) => (
-              <Fragment key={m._id}>
-                <ChatLine m={m} name={user.name} />
-                {charts[m._id] && <ChatMetrics ids={charts[m._id]} active={m._id === newestAnswer}
-                  events={server ? events : undefined} user={user._id} />}
-              </Fragment>
-            ))}
-          </div>
-          <form className="flex gap-2 border-t border-line p-3" onSubmit={(e) => { e.preventDefault(); send(); }}>
-            <label htmlFor="agent-msg" className="sr-only">Message your agent</label>
-            <input id="agent-msg" value={text} onChange={(e) => setText(e.target.value)} placeholder="Tell your agent"
-              className="min-w-0 flex-1 rounded-button border border-muted px-3 py-2 text-sm" />
-            <button className={button.primary}>Send</button>
-          </form>
-          {stub && <p className="px-4 pb-3 text-xs text-muted">{chatErrorText(0, null)} This is a stub reply.</p>}
-        </section>
+        <div className="flex min-w-0">
+          <section aria-label="Your agent" className={`${card} flex min-w-0 flex-1 flex-col overflow-hidden`}>
+            <h2 className="border-b border-line px-4 py-3 text-xl font-bold">Your agent</h2>
+            <div className="flex min-h-80 flex-1 flex-col gap-3 overflow-y-auto bg-paper p-4 lg:max-h-[32rem]">
+              {messages.length === 0 && <p className="text-sm text-muted">Talk to your agent.</p>}
+              {messages.map((m) => <ChatLine key={m._id} m={m} name={user.name} />)}
+            </div>
+            <form className="flex gap-2 border-t border-line p-3" onSubmit={(e) => { e.preventDefault(); send(); }}>
+              <label htmlFor="agent-msg" className="sr-only">Message your agent</label>
+              <input id="agent-msg" value={text} onChange={(e) => setText(e.target.value)} placeholder="Tell your agent"
+                className="min-w-0 flex-1 rounded-button border border-muted px-3 py-2 text-sm" />
+              <button className={button.primary}>Send</button>
+            </form>
+            {stub && <p className="px-4 pb-3 text-xs text-muted">{chatErrorText(0, null)} This is a stub reply.</p>}
+          </section>
+          <VizSpace asks={asks} open={vizOpen} onClose={closeViz} events={server ? events : undefined} user={user._id} />
+        </div>
       </div>
 
       <section ref={feedRef} className={`${card} max-h-[28rem] min-h-0 overflow-y-auto p-4`}>
