@@ -23,7 +23,7 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 
 - **Role 1 (Darshal):** `GET /api/board`, `GET /api/inbox`, `GET /api/health` are still "Not yet" in `lib/README.md`. Every screen falls back to fixtures until then. Also asked: `GET /api/users` (the coordinator's person picker), and a way to approve with a different person (Modify).
 - **Role 2 (Ömer):** `/api/chat` answers audio with "can't listen yet". Speech-to-text on the server, or text from the browser?
-- **Dan:** SSOJet credentials for t10. `ANTHROPIC_API_KEY` in `.env.local`, or `/api/chat` throws and Ask the desk, `/agent` and hold to talk get no answer. (`DEMO_MODE=1` is set, 21:30.)
+- **Dan, SSOJet dashboard (t10):** the app is rejected as `invalid_client`. Register the callback `http://localhost:3000/api/auth/callback/ssojet`, enable authorization code with PKCE, copy the client id and secret from the same environment, turn on one connection, set `SSO_USER_MAP` in `.env.local`. `ANTHROPIC_API_KEY` in `.env.local`, or `/api/chat` throws and Ask the desk, `/agent` and hold to talk get no answer. (`DEMO_MODE=1` is set, 21:30.)
 
 ## Done
 

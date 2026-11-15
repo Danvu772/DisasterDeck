@@ -2,6 +2,11 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 22:00 SSO: two of three bugs fixed (`84dda40`)
+1. `SSOJET_ISSUER_URL` was `https://api.ssojet.com/oidc`. That path has no discovery document (404), so Auth.js failed with "not a conform Authorization Server Metadata response". Fixed in `.env.local` to `https://api.ssojet.com/`, the issuer SSOJet's discovery declares.
+2. Auth.js sent no `state`, and SSOJet answered "invalid_request, required parameters missing". Fixed in `auth.ts` with `checks: ["pkce", "state"]`.
+3. Open: SSOJet now says `invalid_client`. The request is well formed, so SSOJet does not know this client id plus callback URL. Dan checks the SSOJet dashboard (steps in TASKS.md, t10).
+
 ### 21:45 t12, t14, t19, t20 merged, a mojibake fix
 - **t12** Ask the desk box above the board tabs, posts to `/api/chat`. On this laptop the route throws `ANTHROPIC_API_KEY is not set`, so it shows the error. Needs the key in `.env.local`.
 - **t14** site cards say where they are in the loop: "Step 1 of 5: reported." up to "Step 5 of 5: reported back." Text only, the visual language bans progress dots.
