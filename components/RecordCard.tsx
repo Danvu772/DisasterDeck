@@ -1,5 +1,6 @@
 import type { Confidence, HistoryEntry, RecordType, ScorePart, Source, Tier } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { thingIcon } from "./icons/things";
 import { KIND_ICON, statusWord, TIER_WORD, trustWord } from "./detail/fields";
 import { CaseNo, ScoreBreakdown } from "./ScoreBreakdown";
 import { History } from "./History";
@@ -21,8 +22,11 @@ export function TierBadge({ tier, actNow, className }: { tier: Tier; actNow?: bo
 }
 
 // A record kind's icon in a soft tile, tinted by how bad it is.
-export function KindIcon({ type, tier, actNow, className }: { type: RecordType | "task"; tier: Tier; actNow?: boolean; className?: string }) {
-  const Icon = KIND_ICON[type];
+export function KindIcon({ type, tier, actNow, className, record }: {
+  type: RecordType | "task"; tier: Tier; actNow?: boolean; className?: string;
+  record?: unknown;   // with it, the same icon the record's map marker shows (a fire, a closed road …)
+}) {
+  const Icon = thingIcon(type, record) ?? KIND_ICON[type];
   const red = actNow || tier === 0;
   return (
     <span aria-hidden className={cn(

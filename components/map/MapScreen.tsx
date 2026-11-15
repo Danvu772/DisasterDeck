@@ -3,9 +3,11 @@
 // "Imagery" switches to the NASA / Maxar before-after view (DeskMap, Leaflet, Role 4's atlas).
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "motion/react";
-import { BedDouble, Construction, Flame, Satellite, Map as MapIcon, TriangleAlert, Users } from "lucide-react";
+import { Satellite, Map as MapIcon, Users } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Site, Shelter, Road } from "@/lib/types";
+import type { Incident, Site, Shelter, Road } from "@/lib/types";
+import { KCone, KDanger, KRoadblock, KTent } from "../icons/koboyo";
+import { hazardType, INCIDENT_ICON } from "../icons/things";
 import { cn } from "@/lib/utils";
 import { ageText, isStale } from "../encode";
 import { fromBoard, type MapItem, type MapSource } from "./mapItems";
@@ -39,8 +41,11 @@ function KindIcon({ it }: { it: MapItem }) {
     : it.kind === "road" ? "bg-secondary text-foreground"
     : it.actNow || it.tier === 0 ? "bg-destructive text-destructive-foreground"
     : it.tier === 1 ? "bg-warning text-warning-foreground" : "bg-calm text-primary-foreground";
-  const hazard = it.kind === "site" && (it.record as Site).hazard;
-  const Icon = it.kind === "shelter" ? BedDouble : it.kind === "road" ? Construction : it.kind === "incident" ? TriangleAlert : hazard ? Flame : Users;
+  const hz = it.kind === "site" ? hazardType((it.record as Site).hazard) : null;
+  const Icon = it.kind === "shelter" ? KTent
+    : it.kind === "road" ? ((it.record as Road).state === "closed" ? KRoadblock : KCone)
+    : it.kind === "incident" ? (INCIDENT_ICON[(it.record as Incident).kind] ?? KDanger)
+    : hz ? hz.icon : Users;
   return (
     <span className={cn("flex size-8 shrink-0 items-center justify-center", it.kind === "incident" || it.kind === "shelter" ? "rounded-lg" : "rounded-full", tone)}>
       <Icon className="size-4" />

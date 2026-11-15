@@ -55,7 +55,16 @@ Canvas or MapLibre paint needs real colours: read the raw CSS var (`--destructiv
   `tierBadge(tier)`, `tierBar(tier)` — same shapes as shadcn, for existing code.
 - `components/motion/*` (adapted from Watermelon UI, tokenized): `ExpandablePersonCard`,
   `PinnedList`, `IntensitySlider`.
-- Icons: `lucide-react` only, `size-4` in text, `size-5` in big buttons. No emoji as icons, no react-icons.
+- Icons, two sets with one job each. No emoji as icons, no react-icons.
+  - **Things** (what is on the map: fire, gas, live wires, could-collapse, water, other danger, shelter,
+    closed or unsure road, field problems, need): Koboyo "Solid" icons from `components/icons/koboyo.tsx`
+    (`KFire`, `KGas`, `KTent`, `KRoadblock` …). Pick them through `components/icons/things.ts`
+    (`hazardType(text)`, `INCIDENT_ICON[kind]`) or `KIND_ICON` in `detail/fields.ts`, so the map, the map
+    list, the legend and the record cards always show the same icon. A Koboyo icon has no size of its
+    own: always give a size class. New ones: download the solid-style SVG from koboyo.com/icons (free,
+    no attribution) and add it to `koboyo.tsx`; skip busy ones that blur at 16px.
+  - **Interface** (buttons, close, send, arrows, menus, status): `lucide-react`, `size-4` in text,
+    `size-5` in big buttons.
 
 ## 5. Words
 
