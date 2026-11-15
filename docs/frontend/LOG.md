@@ -2,6 +2,11 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 23:45 Pulled Darshal's CP1 Brain (`76427c5`). The board is live, and nearly empty
+- `GET /api/board`, `GET /api/health`, `GET /api/events?since=` exist now. Every screen that polls `/api/board` switched from fixtures to Atlas on its own (that is what the adapters were for). Atlas holds 3 shelters, 0 sites, 0 tasks, so `/`, `/map`, `/coordinator` and `/field` now show live but almost empty data.
+- The Brain loop is not running on this laptop (`lastLoopAt` null, 1 event pending for 13 min, the health line turns red). Somebody runs `npm run brain` and replays the tweets before the demo.
+- The three proposal branches from the gap session (`p-001-read-routes`, `p-002-contract`, `p-003-keeper`) are **not merged**, by Dan's call. p-001 and p-003 conflict with Darshal's own routes, keeper and priority rules, and p-002 edits Role 1's contract. Darshal decides what he takes.
+
 ### 23:30 t23 and t24 merged (`fbf48d2`, `865301d`)
 - **t23** every desk feed entry on `/agent` opens its report in the feed column: who and when, the payload in plain labels, what the desk did, and links to the records it touched (`/?open=`). Checked in the browser: the Instagram shelter photo says "Observed 2 h before the desk got it." and links Shelter A. Needs Role 1's `GET /api/events` to show more than the props.
 - **t24** `/field` lists "Your other tasks (3)" under the current task, sorted by tier then priority, overdue in red. Tap one to make it current, `?task=` keeps it. Checked at 390 px.
