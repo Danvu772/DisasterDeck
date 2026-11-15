@@ -144,6 +144,9 @@ export type RecordType = "site" | "need" | "road" | "shelter" | "zone" | "incide
 /** v2.2: one part of a priority score, so the screen shows why (G-06). */
 export interface ScorePart { name: string; value: number; }
 
+/** v2.6: a coordinator moved a record to the top or the bottom of its tier, with the reason (§5, decision 12). */
+export interface Pin { dir: "top" | "down"; by: string; reason: string; ts: Date; }
+
 /** v2.2: one post behind a site, with the text masked (decision D3). Newest last, at most 5 kept. */
 export interface Post {
   eventId: string; source: Source; actor: string;
@@ -165,6 +168,7 @@ export interface Site {
   supporters?: string[];                 // v2.2: who has posted about it. support = its length
   scoreParts?: ScorePart[];              // v2.2 (G-06)
   caseNo?: number;                       // v2.2: "Site 57" (G-07)
+  pin?: Pin;                             // v2.6: coordinator override inside the tier
 }
 export interface Need {
   _id: string; item: string; quantity: number; region: string; siteIds: string[];
@@ -178,6 +182,7 @@ export interface Need {
   requestedBy: string[];                 // v2.1: user ids, one per different person who asked
   scoreParts?: ScorePart[];              // v2.2 (G-06)
   caseNo?: number;                       // v2.2 (G-07)
+  pin?: Pin;                             // v2.6: coordinator override inside the tier
 }
 export interface Road {
   _id: string; road: string; state: "open" | "closed" | "unconfirmed";
@@ -237,6 +242,8 @@ export interface Task {
   progress?: "en_route" | "arrived";     // v2.2: from the field phone (G-09)
   scoreParts?: ScorePart[];              // v2.2 (G-06)
   checkinAt?: Date;                      // v2.3: when the sweeper asked "still on your way?"
+  overdue?: boolean;                     // v2.6: an approval nobody answered in time, sent again (the board shows it red)
+  approvalRounds?: number;               // v2.6: how many times the approval was sent again
   history: HistoryEntry[];
   deskId: string;                        // v2
 }

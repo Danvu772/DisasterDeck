@@ -1127,6 +1127,25 @@ export async function refreshPriorities(now: Date, desk?: string): Promise<{ rec
   return out;
 }
 
+/** A proposed need opens when 3 different people ask (§5). Nobody else asked in this long: it is cancelled (§4 need lifecycle). */
+export const PROPOSED_QUIET_MS = 2 * 3600_000;
+
+/** Proposed needs whose last ask is older than PROPOSED_QUIET_MS go to cancelled. Returns them, for the dispatcher to tell the askers. */
+export async function expireProposed(now: Date, desk?: string): Promise<Need[]> {
+  const { needs } = await cols();
+  const out: Need[] = [];
+  for (const n of await needs.find({ ...(desk ? { deskId: desk } : {}), status: "proposed" }).toArray()) {
+    const last = Math.max(...n.history.map((h) => new Date(h.ts).getTime()), 0);
+    if (!last || now.getTime() - last < PROPOSED_QUIET_MS) continue;
+    const r = await needs.updateOne({ _id: n._id, status: "proposed" }, {
+      $set: { status: "cancelled" },
+      $push: { history: { ts: now, by: "sweeper", source: "system", reason: `nobody else asked in ${PROPOSED_QUIET_MS / 3600_000} hours, cancelled` } },
+    });
+    if (r.modifiedCount) out.push(n);
+  }
+  return out;
+}
+
 // ---------- who said it ----------
 
 const SYSTEM_SOURCES = new Set(["system", "nasa"]);
