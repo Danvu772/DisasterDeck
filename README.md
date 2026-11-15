@@ -4,13 +4,11 @@
 
 Current pilot: **Antakya, Türkiye, February 2023**. The deterministic rehearsal reports, users, shelters and logistics are synthetic. A separate real-data replay contains 43 archived social posts. Satellite imagery, NASA measurements and the separately credited HOT/OSM reference building database are historical real data.
 
-## Family voice demo
+## Field voice
 
-For the same English demo and seven fictional records on every workstation, follow the [team setup checklist](docs/family-voice-team-setup.md).
+The field phone (`/field`) takes voice reports through ElevenLabs. Hold to talk records a voice note, `/api/chat` turns it into text with ElevenLabs Scribe, the agent acts on it, and the answer comes back as ElevenLabs speech. **Start voice agent** turns on a hands-free mode: it listens, sends each sentence, reads the answer aloud and listens again, so a field team can answer tasks, report problems and file reports without touching the screen. It turns itself off after two minutes without speech.
 
-Anyone can search published family updates by name at `/family`, read them and speak to an ElevenLabs assistant backed by Claude. No login, reference code or PIN is required. Coordinators publish at `/coordinator/family`. See [setup and demo steps](docs/family-voice.md). This is a browser microphone demo; an incoming telephone number is not connected.
-
-The family UI, voice greeting and answers are in English. After pulling language changes, run `npm run voice:setup` to update your ElevenLabs agent, then restart the app and begin a new call.
+Set `ELEVENLABS_API_KEY` in `.env.local`. Without it the phone uses the browser's own speech recognition and voice, and voice agent mode is off. The microphone needs HTTPS or localhost.
 
 ## Replay real historical posts
 

@@ -33,8 +33,6 @@ jobs:
         run: npx tsc --noEmit
       - name: Historical replay integrity and worker tests
         run: npm run check:replay
-      - name: Family voice access and isolation tests
-        run: npm run check:voice
       - name: Lint
         run: npx eslint
       - name: Design tokens

@@ -98,7 +98,11 @@ async function main() {
   });
 
   // Config-only subsystems
-  rows.push({ subsystem: "voice (ElevenLabs)", status: set("ELEVENLABS_API_KEY") && set("ELEVENLABS_FAMILY_AGENT_ID") ? "ok" : "off", detail: `key ${set("ELEVENLABS_API_KEY") ? "set" : "missing"}, family agent ${set("ELEVENLABS_FAMILY_AGENT_ID") ? "set" : "missing"}` });
+  rows.push({
+    subsystem: "voice (ElevenLabs, field)",
+    status: set("ELEVENLABS_API_KEY") ? "ok" : "off",
+    detail: set("ELEVENLABS_API_KEY") ? "key set: voice notes and the voice agent on /field" : "no key: /field falls back to the phone's own speech",
+  });
   rows.push({ subsystem: "auth (SSOJet)", status: set("SSOJET_CLIENT_ID") && set("AUTH_SECRET") ? "ok" : "off", detail: `${process.env.DEMO_MODE === "true" ? "demo mode on" : "demo mode off"}, AUTH_SECRET ${set("AUTH_SECRET") ? "set" : "missing"}` });
   rows.push({ subsystem: "map tiles (Mapbox)", status: set("NEXT_PUBLIC_MAPBOX_TOKEN") ? "ok" : "off", detail: set("NEXT_PUBLIC_MAPBOX_TOKEN") ? "token set" : "token missing" });
 

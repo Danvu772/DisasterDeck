@@ -26,10 +26,10 @@ const demoTag = "rounded-tag border border-line px-1.5 text-xs font-normal text-
 
 // Left: everything entering the desk, from anyone. Right: this person and their own agent.
 export function AgentDesk(props: {
-  user: User; users: User[]; events: FeedEvent[]; messages: Message[]; initial: DeskBoard;
+  user: User; users: User[]; events: FeedEvent[]; messages: Message[]; initial: DeskBoard; initialLive?: boolean;
 }) {
   const { user } = props;
-  const { data: board, live, now } = usePolled<DeskBoard>("/api/board", props.initial);
+  const { data: board, live, now } = usePolled<DeskBoard>("/api/board", props.initial, 1000, props.initialLive);
   // Server events (null until the first answer), the lines the buttons add, and fixtures as the start.
   const [server, setServer] = useState<FeedEvent[] | null>(null);
   const [locals, setLocals] = useState<FeedEvent[]>([]);
@@ -159,8 +159,7 @@ export function AgentDesk(props: {
     <div className="flex flex-col gap-5">
       {!live && <p className="text-sm text-muted">Demo data, the board API is not answering.</p>}
       {server === null && <p className="text-sm text-muted">Demo data, the events API is not answering.</p>}
-      <div className={`grid gap-5 lg:transition-[grid-template-columns] lg:duration-250 lg:ease-out motion-reduce:transition-none ${
-        vizOpen ? "lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]" : "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"}`}>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <section aria-label="Your tasks" className="flex min-w-0 flex-col gap-4">
           <details className={`${card} p-3 text-sm`}>
             <summary className="cursor-pointer">
@@ -207,7 +206,7 @@ export function AgentDesk(props: {
           </div>
         </section>
 
-        <div className="flex min-w-0">
+        <div className="flex min-w-0 flex-col">
           <section aria-label="Your agent" className={`${card} flex min-w-0 flex-1 flex-col overflow-hidden`}>
             <h2 className="border-b border-line px-4 py-3 text-xl font-bold">Your agent</h2>
             <div className="flex min-h-80 flex-1 flex-col gap-3 overflow-y-auto bg-paper p-4 lg:max-h-[32rem]">
@@ -222,9 +221,10 @@ export function AgentDesk(props: {
             </form>
             {stub && <p className="px-4 pb-3 text-xs text-muted">{chatErrorText(0, null)} This is a stub reply.</p>}
           </section>
-          <VizSpace asks={asks} open={vizOpen} onClose={closeViz} events={server ? events : undefined} user={user._id} />
         </div>
       </div>
+      {/* Full page width under both columns, so the charts use the space the left column leaves. */}
+      <VizSpace asks={asks} open={vizOpen} onClose={closeViz} events={server ? events : undefined} user={user._id} />
 
       <section ref={feedRef} className={`${card} max-h-[28rem] min-h-0 overflow-y-auto p-4`}>
         {report ? <EventReport e={report} now={now} actorName={nameOf(report.actor)} onBack={closeReport}

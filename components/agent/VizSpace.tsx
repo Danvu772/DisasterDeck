@@ -1,9 +1,9 @@
 "use client";
-// The /agent chart space (t42). Opens on every prompt: beside the chat from lg up (it pushes the chat
-// narrower), a bottom sheet over the lower half below that. Charts and their labels only. The reply
+// The /agent chart space (t42). Opens on every prompt as a stage under the chat row, the full width
+// of the page, at every screen size (t51). Charts and their labels only. The reply
 // text and errors stay in the chat box. Only the newest charted prompt polls the board. Older ones
 // keep the values they had when a newer one replaced them, and say when that was.
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Event } from "@/lib/types";
 import { MetricCard } from "../metrics/charts/MetricCard";
 import { Poller, type Shown } from "../metrics/ChatMetrics";
@@ -112,6 +112,16 @@ export function VizSpace({ asks, open, onClose, events, user }: {
     return () => clearTimeout(t);
   }, [empty, onClose]);
 
+  // Opening scrolls just enough to show the stage, once it has grown.
+  const stageRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const t = setTimeout(() => stageRef.current?.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" }),
+      reduced ? 0 : 260);
+    return () => clearTimeout(t);
+  }, [open]);
+
   // The Live tag's age, once a second, only while it is on screen.
   useEffect(() => {
     if (!showLive) return;
@@ -145,14 +155,12 @@ export function VizSpace({ asks, open, onClose, events, user }: {
 
   const shownId = view?.kind === "charts" ? view.ask.id : null;
   return (
-    <aside aria-label="Charts" className={`fixed inset-x-0 bottom-0 z-[1100] h-[50vh] border-t border-line bg-card
-      transition-[translate,visibility] duration-250 ease-out motion-reduce:transition-none
-      lg:relative lg:inset-auto lg:z-auto lg:h-auto lg:shrink-0 lg:translate-y-0 lg:border-t-0 lg:bg-transparent
-      lg:transition-[width,visibility] ${open ? "visible translate-y-0 lg:w-[22rem] xl:w-[26rem]" : "invisible translate-y-full lg:w-0"}`}>
+    // The stage under the chat box (Dan, t51). It grows open downward: the row goes from 0fr to 1fr.
+    <aside ref={stageRef} aria-label="Charts" className={`grid transition-[grid-template-rows,visibility] duration-250 ease-out
+      motion-reduce:transition-none ${open ? "visible grid-rows-[1fr]" : "invisible grid-rows-[0fr]"}`}>
       {open && liveAsk?.ids && <Poller key={liveAsk.id} ids={liveAsk.ids} events={events} user={user} onResults={onResults} />}
-      {/* Pinned to the right edge at full width, so widening the aside slides it in from the right. */}
-      <div className="h-full lg:absolute lg:inset-y-0 lg:right-0 lg:w-[22rem] lg:pl-4 xl:w-[26rem]">
-        <div className="flex h-full flex-col gap-3 overflow-y-auto bg-card p-4 lg:rounded-card lg:border lg:border-line">
+      <div className="min-h-0 overflow-hidden">
+        <div className="flex max-h-[36rem] flex-col gap-3 overflow-y-auto rounded-card border border-line bg-card p-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-xl font-bold">Charts</h2>
             <button type="button" className={button.outline} onClick={onClose}>Close</button>

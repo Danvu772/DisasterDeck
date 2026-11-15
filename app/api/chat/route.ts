@@ -146,3 +146,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "the agent failed this turn, try again" }, { status: 502 });
   }
 }
+
+// GET /api/chat: whether this server has ElevenLabs voice. The field phone picks its microphone path
+// from it (voice notes through ElevenLabs, or the browser's own speech). Only a yes or no leaves.
+export async function GET() {
+  return NextResponse.json({ voice: voiceEnabled() }, { headers: { "cache-control": "no-store" } });
+}

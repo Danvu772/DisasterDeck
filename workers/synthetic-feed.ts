@@ -22,6 +22,9 @@ const TWEETS = "data/tweets_replay.json";
 const EVERY_MS = Number(process.env.SYNTH_EVERY_S ?? 30) * 1000;
 const deskId = process.env.DESK_ID ?? "malatya-2023";
 const once = process.argv.includes("--once");
+// Keys carry this run's id. The pass counter restarts at 0 on every start, and without the id a restart
+// reuses the keys of the last run: postEvent dedupes them to the old events and nothing new is written.
+const RUN = Date.now().toString(36);
 const log = (...m: unknown[]) => console.log(`[synthetic-feed ${new Date().toISOString().slice(11, 19)}]`, ...m);
 
 type Port = ReturnType<typeof desk>;
@@ -35,7 +38,7 @@ async function xPass(d: Port, cycle: number, tweets: ReturnType<typeof readRepla
   const t = tweets[cycle % tweets.length];
   const x = await extractTweet(t, { mock: true });
   const base = { deskId, source: "x" as const, actor: "synthetic-feed", observedAt: new Date().toISOString() };
-  const key = `${replayKey(t, deskId)}:synth:${cycle}`;
+  const key = `${replayKey(t, deskId)}:synth:${RUN}:${cycle}`;
   let n = 0;
   if (x.report) { await post(d, { ...base, type: "report", dedupeKey: key, payload: x.report }); n++; }
   for (const [i, nd] of x.needs.entries()) { await post(d, { ...base, type: "need", dedupeKey: `${key}:need:${i}`, payload: nd }); n++; }
@@ -54,7 +57,7 @@ async function sheetPass(d: Port, cycle: number): Promise<void> {
   const bedsUsed = Math.min(s.bedsTotal, Math.max(0, s.bedsUsed + step));
   await post(d, {
     deskId, source: "sheet", actor: "synthetic-sheet", type: "capacity", observedAt: new Date().toISOString(),
-    dedupeKey: `synth:sheet:${s._id}:${cycle}`,
+    dedupeKey: `synth:sheet:${RUN}:${s._id}:${cycle}`,
     payload: { shelter: s.name, bedsUsed, bedsTotal: s.bedsTotal, ...(s.coords ? { coords: s.coords } : {}), region: s.region },
   });
   log(`sheet  pass ${cycle}: ${s.name} ${s.bedsUsed} → ${bedsUsed} of ${s.bedsTotal}`);
@@ -68,7 +71,7 @@ async function newsPass(d: Port, cycle: number): Promise<void> {
   const state = r.state === "closed" ? "open" : "closed";
   await post(d, {
     deskId, source: "news", actor: "synthetic-news", type: "closure", observedAt: new Date().toISOString(),
-    dedupeKey: `synth:news:${r._id}:${cycle}`,
+    dedupeKey: `synth:news:${RUN}:${r._id}:${cycle}`,
     payload: { road: r.road, state, reason: `simulated news update, pass ${cycle}`, ...(r.coords ? { coords: r.coords } : {}) },
   });
   log(`news   pass ${cycle}: ${r.road} ${r.state} → ${state}`);

@@ -11,6 +11,24 @@ import { CaseNo } from "@/components/ScoreBreakdown";
 import { openTasksFor, type FieldBoard, type FieldTask } from "./pickTask";
 import { useOutbox, type FieldEvent } from "./useOutbox";
 import { useHoldToTalk } from "./useHoldToTalk";
+import { useVoiceAgent, type AgentState } from "./useVoiceAgent";
+import type { AgentAction } from "./voiceClient";
+
+// What the voice agent is doing, in words. "off" shows nothing.
+const AGENT_STATE: Record<AgentState, string> = {
+  off: "", starting: "Starting the microphone", listening: "Listening", hearing: "Hearing you",
+  thinking: "Your agent is working", speaking: "Your agent is speaking", waiting: "Waiting a minute",
+};
+
+// What the agent did with the last message: the tools it ran, done or not.
+function Actions({ list }: { list: AgentAction[] }) {
+  if (!list.length) return null;
+  return (
+    <ul className="space-y-1 text-base">
+      {list.map((a, i) => <li key={i}><span className="font-bold">{a.ok ? "Done" : "Not done"}:</span> {a.summary}</li>)}
+    </ul>
+  );
+}
 
 type Panel = "eta" | "done" | "problem" | null;
 
@@ -64,6 +82,7 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
   const { data, live, now } = usePolled<FieldBoard>("/api/board", initial, 1000, initialLive);
   const { send, waiting } = useOutbox(user);
   const talk = useHoldToTalk(user);
+  const agent = useVoiceAgent(user);
   const [panel, setPanel] = useState<Panel>(null);
   const [details, setDetails] = useState(false);
   const [note, setNote] = useState("");
@@ -252,9 +271,30 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
 
       <section className="space-y-2 border-t border-line pt-4">
         <h2 className="text-xl font-bold">Your agent</h2>
+        <p className="text-base text-muted">
+          {talk.engine === null ? "Checking the voice service."
+            : talk.engine === "elevenlabs" ? "Voice: ElevenLabs. Your voice note goes to the desk and the answer is read aloud."
+            : "Voice: this phone's own speech. Voice notes and the voice agent need ElevenLabs on the server."}
+        </p>
+
+        <button type="button" aria-pressed={agent.on} onClick={agent.toggle}
+          className={big(agent.on ? button.primary : button.outline)}
+          disabled={talk.engine !== "elevenlabs" || talk.state === "recording" || talk.state === "starting" || talk.state === "sending"}>
+          {agent.on ? "Voice agent on, tap to stop" : "Start voice agent (hands-free)"}
+        </button>
+        {agent.on && <p className="text-lg font-bold">{AGENT_STATE[agent.state]}</p>}
+        <p aria-live="polite" className="text-base">{agent.note}</p>
+        {agent.last && (
+          <div className="space-y-2">
+            {agent.last.said && <ChatLine m={{ from: "user", text: agent.last.said }} name="You" />}
+            <ChatLine m={{ from: "agent", text: agent.last.reply }} name="" />
+            <Actions list={agent.last.actions} />
+          </div>
+        )}
+
         <button
           className={`${big(talk.state === "recording" ? `${button.primary} bg-primary-dark!` : button.primary)} rounded-pill! min-h-24 touch-none select-none [-webkit-touch-callout:none]`}
-          disabled={talk.state === "unsupported" || talk.state === "sending"}
+          disabled={talk.engine === null || talk.state === "unsupported" || talk.state === "sending" || agent.on}
           onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); talk.start(); }}
           onPointerUp={talk.stop}
           onPointerCancel={talk.stop}
@@ -286,6 +326,7 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
           {talk.state === "sending" && <p className="text-base text-muted">Your agent is answering</p>}
           {talk.error && <p className="text-base">{talk.error}</p>}
           {talk.reply && <ChatLine m={{ from: "agent", text: talk.reply }} name="" />}
+          <Actions list={talk.actions} />
         </div>
         {talk.speaking && <button className={quiet} onClick={talk.hush}>Stop reading aloud</button>}
       </section>

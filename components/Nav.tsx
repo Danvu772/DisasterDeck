@@ -14,7 +14,6 @@ const LINKS = [
   { href: "/map", label: "Map" },
   { href: "/coordinator", label: "Coordinator" },
   { href: "/field", label: "Field" },
-  { href: "/family", label: "Family voice" },
 ];
 
 const nightPill = "whitespace-nowrap rounded-pill border border-night-muted px-2.5 py-1 text-xs";
@@ -64,9 +63,9 @@ export function Nav({ account }: { account?: React.ReactNode }) {
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-3 lg:ml-0">
         <Suspense fallback={null}><ActingAs /></Suspense>
-        {!path.startsWith("/family") && <InboxBadge />}
+        <InboxBadge />
         {account}
-        {!path.startsWith("/family") && <StatusPill />}
+        <StatusPill />
       </div>
     </nav>
   );

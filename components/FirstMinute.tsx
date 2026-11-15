@@ -8,7 +8,7 @@ import { button, link } from "./encode";
 export type Screen = "agent" | "coordinator" | "field";
 
 export const FIRST_MINUTE: Record<Screen, string> = {
-  agent: "You talk to your own agent. Ask it anything about the desk, or tell it what happened. Numbers come with a chart on the right.",
+  agent: "You talk to your own agent. Ask it anything about the desk, or tell it what happened. Numbers come with a chart under the chat.",
   coordinator: "Risky work waits here for you. Approve, send someone else, or reject. Everything you decide goes into the record.",
   field: "Your current task is on top. Press On our way, Arrived, Done. Red Problem if something goes wrong. Hold to talk.",
 };
