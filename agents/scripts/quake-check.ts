@@ -1,6 +1,6 @@
 // Quick check of the earthquake feed, no model call, no cost.
 //   npx tsx agents/scripts/quake-check.ts
-// Prints the live catalog size (AFAD + USGS, last 24 h) and what a person in Malatya would be warned
+// Prints the live catalog size (AFAD + USGS, last 24 h) and what a person in Antakya would be warned
 // about now; then what they would be warned about at 10:30 UTC on 6 Feb 2023 in the replay catalog.
 
 import { DESK_CENTER, distanceKm, liveCatalog, quakeLine, replayCatalog, worthWarning } from "../research/quakes";
@@ -15,7 +15,7 @@ async function main() {
   const warn = replayCatalog()
     .map((q) => ({ ...q, km: Math.round(distanceKm(DESK_CENTER, [q.lat, q.lon])), minutesAgo: Math.round((at - Date.parse(q.time)) / 60000) }))
     .filter((q) => q.minutesAgo >= 0 && q.minutesAgo <= 60 && worthWarning(q.mag, q.km));
-  console.log(`\nreplay at 2023-02-06 10:30 UTC, warnings for Malatya (last 60 min):`);
+  console.log(`\nreplay at 2023-02-06 10:30 UTC, warnings for Antakya (last 60 min):`);
   for (const q of warn) console.log(`  ${quakeLine(q)}`);
 }
 

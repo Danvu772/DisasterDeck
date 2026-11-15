@@ -16,6 +16,7 @@
 //   - What this worker wrote is remembered, so its own write is not read back as a person's edit.
 // Setup: agents/TODO.md, "Google Sheets".
 
+import { configuredDeskId } from "../lib/pilot";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { CapacityPayload, Shelter } from "@/lib/types";
@@ -26,7 +27,7 @@ const once = process.argv.includes("--once");
 const dry = process.argv.includes("--dry");
 const EVERY_MS = Number(process.env.SHEET_POLL_SECONDS ?? 30) * 1000;
 const HUMAN_GRACE_MS = 5 * 60_000;
-const deskId = process.env.DESK_ID ?? "antakya-2023";
+const deskId = configuredDeskId();
 const log = (...m: unknown[]) => console.error(`[sheet-sync ${new Date().toISOString().slice(11, 19)}]`, ...m);
 
 // What we know about each row between passes, kept on disk so a restart does not re-post everything.

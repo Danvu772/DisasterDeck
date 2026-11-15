@@ -3,6 +3,7 @@
 // Schemas are strict: every key required, null for "not said".
 // Inputs are checked again here (task ids, roles), because the model's output is untrusted.
 
+import { pilot } from "@/lib/pilot";
 import type Anthropic from "@anthropic-ai/sdk";
 import type {
   AnswerPayload, ApprovalPayload, CapacityPayload, ClaimPayload, ClosurePayload, CorrectionPayload,
@@ -189,7 +190,7 @@ export function toolsFor(ctx: UserContext): Anthropic.Beta.BetaToolUnion[] {
   // Billed per search, so it is offered only then, and capped at 2 searches per turn.
   if ((ctx.user.role === "supplier" || ctx.user.role === "field") && ctx.myIncidents.length > 0) {
     tools.push({ type: "web_search_20260209", name: "web_search", max_uses: 2,
-      user_location: { type: "approximate", city: "Malatya", country: "TR" } });
+      user_location: { type: "approximate", city: pilot.name, country: "TR" } });
   }
   return tools;
 }

@@ -1,8 +1,9 @@
 // Fake people, their context files, and the desk's event stream.
 // Swap for the real API once Role 1 ships a feed endpoint. Every name and number is made up.
+import { pilot } from "@/lib/pilot";
 import type { Event, Message, User } from "@/lib/types";
 
-const DESK = "antakya-2023";
+const DESK = pilot.id;
 
 export const users: User[] = [
   {

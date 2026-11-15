@@ -22,7 +22,7 @@ export const CHANNELS: Record<Channel, { domains?: string[]; brief: string }> = 
     brief: "Search news sites.",
   },
   official: {
-    domains: ["afad.gov.tr", "kgm.gov.tr", "malatya.gov.tr", "malatya.bel.tr", "kizilay.org.tr", "icisleri.gov.tr",
+    domains: ["afad.gov.tr", "kgm.gov.tr", "hatay.gov.tr", "hatay.bel.tr", "antakya.bel.tr", "kizilay.org.tr", "icisleri.gov.tr",
       "aa.com.tr", "trthaber.com"],
     brief: "Search official Turkish sources only: AFAD (disaster agency), Karayolları (highways, road status), the governor's office, the municipality, the Interior Ministry, Kızılay (Red Crescent), and the state news agencies Anadolu Ajansı and TRT Haber, which carry their announcements. Prefer what an official body announced. Official announcements of road closures and assembly or tent areas are the most useful. Pages are often in Turkish: search in Turkish too (\"yol kapalı\", \"ulaşıma kapandı\", \"çadır kent\", \"toplanma alanı\", \"kapasite\").",
   },

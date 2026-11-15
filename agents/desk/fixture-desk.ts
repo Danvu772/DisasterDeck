@@ -3,23 +3,24 @@
 // memory, printed to the server log, and shown back to the agent so it does not file twice.
 // Every name, address and number here is made up.
 
+import { pilot } from "@/lib/pilot";
 import seed from "@/data/seed.json";
 import { makeBoard } from "@/fixtures/board";
 import { makeEvents, makeMessages, users as fixtureUsers } from "@/fixtures/desk";
 import type { Event, InboxItem, Message, Shelter, User } from "@/lib/types";
 import { composeContext, type Board, type DeskPort, type NewEvent, type UserContext } from "./port";
 
-const DESK = "malatya-2023";
+const DESK = pilot.id;
 
 // Two people the fixtures do not have, so every role in §9 can be tried in chat.
 const EXTRA_USERS: User[] = [
   {
-    _id: "shelter-b-staff", name: "Elif (Shelter B)", role: "shelter", region: "Yeşilyurt", status: "available",
+    _id: "shelter-b-staff", name: "Elif (Shelter B)", role: "shelter", region: pilot.region, status: "available",
     deskId: DESK, trust: "official",
     profile: { notes: "Runs the mosque hall shelter. Sends photos of the whiteboard." },
   },
   {
-    _id: "citizen-1", name: "Hasan", role: "public", region: "Battalgazi", status: "available",
+    _id: "citizen-1", name: "Hasan", role: "public", region: pilot.region, status: "available",
     deskId: DESK, trust: "public",
     profile: { notes: "Family of six in a car park, one baby." },
   },

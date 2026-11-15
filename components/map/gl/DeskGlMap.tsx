@@ -7,6 +7,7 @@
 //   hazards              a site with a hazard (fire, gas, a wall falling) glows warm
 // Clicking a marker selects it and opens a small card in plain words. No ids, no coordinates.
 // Browser only: load with next/dynamic, ssr off.
+import { pilotCenter } from "@/lib/pilot";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { AnimatePresence, motion } from "motion/react";
 import { Building2, CircleCheck, Clock, Layers, Map as MapIcon, MoveRight, Satellite, TriangleAlert, Users, X } from "lucide-react";
@@ -47,7 +48,7 @@ const SATELLITE: StyleSpecification = {
   layers: [{ id: "esri", type: "raster", source: "esri" }],
 };
 
-const ANTAKYA = { longitude: 36.162, latitude: 36.205, zoom: 13 };
+const PILOT_VIEW = { longitude: pilotCenter[1], latitude: pilotCenter[0], zoom: 13 };
 const ll = (c: LatLng): [number, number] => [c[1], c[0]];
 
 const BUILDINGS_URL = "/data/antakya/buildings.geojson";
@@ -389,7 +390,7 @@ export default function DeskGlMap({
   const box = framed.length && !tooWide ? [Math.min(...lng), Math.min(...lat), Math.max(...lng), Math.max(...lat)].map((v) => v.toFixed(2)).join(",") : "";
   const lastBox = useRef(box);
   const [firstView] = useState(() => {
-    if (!box) return ANTAKYA;
+    if (!box) return PILOT_VIEW;
     const [w, s, e, n] = box.split(",").map(Number);
     if (w === e && s === n) return { longitude: w, latitude: s, zoom: 15 };
     return { bounds: [[w, s], [e, n]] as [[number, number], [number, number]], fitBoundsOptions: { padding: 70, maxZoom: 15.5 } };

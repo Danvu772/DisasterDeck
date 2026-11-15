@@ -313,7 +313,7 @@ This is the Lahaina dashboard with the 10 people taken out of the copying loop.
 ### Desk view (coordinator and volunteers)
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ Disaster desk · Malatya · night shift        AY  MK  ZD + agent │
+│ Disaster desk · Antakya · night shift        AY  MK  ZD + agent │
 ├──────────────────────┬──────────────────────────────────────────┤
 │ INCOMING             │ SHARED LIST                              │
 │                      │                                          │

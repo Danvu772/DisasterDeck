@@ -3,11 +3,10 @@
 // aftershocks up to the scenario time, on the desk's MapLibre basemap (same look as /map).
 // Hover a pin for its one-line label. Browser only: OpsRoom loads this with next/dynamic.
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useMemo, useRef, useState } from "react";
-import MapGL, { Layer, Marker, NavigationControl, Source, type MapRef } from "react-map-gl/maplibre";
-import type { LatLng } from "@/lib/types";
+import { useMemo } from "react";
+import MapGL, { Layer, Marker, NavigationControl, Source } from "react-map-gl/maplibre";
+import { pilotCenter } from "@/lib/pilot";
 import { cn } from "@/lib/utils";
-import { DISTRICTS } from "@/fixtures/opsPosts";
 import { markerSize } from "../encode";
 import { tokenColor } from "../map/gl/tokens";
 import { useIsDark } from "../theme/theme";
@@ -48,20 +47,10 @@ function Pin({ p, fresh }: { p: OpsPin; fresh: boolean }) {
 
 export default function OpsMap({ pins, quakes, freshKey }: { pins: OpsPin[]; quakes: Quake[]; freshKey?: string }) {
   const dark = useIsDark();
-  const map = useRef<MapRef>(null);
-  const [ready, setReady] = useState(false);
   const warn = useMemo(() => ({ line: tokenColor("warning"), fill: tokenColor("warning", 0.12), fg: tokenColor("foreground"), bg: tokenColor("background") }),
     // the colours depend on the theme
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [dark]);
-
-  // The whole province, once.
-  useEffect(() => {
-    if (!ready) return;
-    const pts = DISTRICTS.map((d) => d.at as LatLng);
-    const lng = pts.map((p) => p[1]), lat = pts.map((p) => p[0]);
-    map.current?.fitBounds([[Math.min(...lng), Math.min(...lat)], [Math.max(...lng), Math.max(...lat)]], { padding: 40, duration: 0 });
-  }, [ready]);
 
   const quakeFC = useMemo<GeoJSON.FeatureCollection>(() => ({
     type: "FeatureCollection",
@@ -70,8 +59,8 @@ export default function OpsMap({ pins, quakes, freshKey }: { pins: OpsPin[]; qua
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <MapGL ref={map} initialViewState={{ longitude: 38.2, latitude: 38.45, zoom: 8.5 }} mapStyle={dark ? CARTO.dark : CARTO.light}
-        onLoad={() => setReady(true)} attributionControl={{ compact: true }} style={{ width: "100%", height: "100%" }}>
+      <MapGL initialViewState={{ longitude: pilotCenter[1], latitude: pilotCenter[0], zoom: 12 }} mapStyle={dark ? CARTO.dark : CARTO.light}
+        attributionControl={{ compact: true }} style={{ width: "100%", height: "100%" }}>
         <NavigationControl position="bottom-right" showCompass={false} />
         {quakes.length > 0 && (
           <Source id="ops-quakes" type="geojson" data={quakeFC}>
@@ -96,7 +85,7 @@ export default function OpsMap({ pins, quakes, freshKey }: { pins: OpsPin[]; qua
         <p className="flex items-center gap-2"><KPackage className="size-3 text-foreground" />Need</p>
         <p className="flex items-center gap-2"><KTent className="size-3 text-foreground" />Shelter</p>
         <p className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-calm" />Rescued</p>
-        <p className="flex items-center gap-2"><span className="size-2.5 rounded-full border-2 border-warning" />Aftershock</p>
+        {quakes.length > 0 && <p className="flex items-center gap-2"><span className="size-2.5 rounded-full border-2 border-warning" />USGS earthquake</p>}
       </div>
     </div>
   );

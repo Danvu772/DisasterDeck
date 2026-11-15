@@ -110,7 +110,7 @@ function print(desk: string, p: Plan, dry: boolean): void {
 async function main(): Promise<void> {
   const desk = process.env.DESK_ID;
   if (!desk) {
-    console.error("DESK_ID is not set. Set it to the desk to backfill, for example DESK_ID=malatya-2023.");
+    console.error("DESK_ID is not set. Set it to the desk to backfill, for example DESK_ID=antakya-2023.");
     process.exit(1);
   }
   const dry = process.argv.includes("--dry-run");

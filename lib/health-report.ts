@@ -1,6 +1,7 @@
 // Health of every subsystem we run: npm run health
 // Reads the database, the process table, the config keys and the dev server. Writes nothing.
 // status: ok, warn, down, idle (running, nothing recent), off (not configured).
+import { configuredDeskId } from "./pilot";
 import { execSync } from "node:child_process";
 import { closeDb, cols } from "./db";
 
@@ -19,7 +20,7 @@ const set = (k: string) => Boolean(process.env[k]?.trim());
 async function main() {
   const rows: Row[] = [];
   const c = await cols();
-  const desk = process.env.DESK_ID ?? "malatya-2023";
+  const desk = configuredDeskId();
 
   // Database
   try {

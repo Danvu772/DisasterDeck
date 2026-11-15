@@ -5,6 +5,7 @@
 // - postEvent() is the only way anything enters memory. Nothing here writes records:
 //   the memory keeper does, later, inside the Brain loop.
 // - Relative imports only, so the Node workers (run with tsx) can load this file too.
+import { configuredDeskId as deskId } from "./pilot";
 import { MongoClient, MongoServerError, ObjectId, type Db, type Document } from "mongodb";
 import type {
   Board, Event, Health, InboxItem, Incident, Message, Need, NewEvent, RecordType, Road,
@@ -14,11 +15,7 @@ import type {
 // ---------- connection ----------
 
 const DEFAULT_DB = "disaster_desk";
-const DEFAULT_DESK = "antakya-2023";
-
-export function deskId(): string {
-  return process.env.DESK_ID || DEFAULT_DESK;
-}
+export { deskId };
 
 // Cached on globalThis so `next dev` hot reloads reuse one pool instead of opening a new one.
 const g = globalThis as typeof globalThis & {

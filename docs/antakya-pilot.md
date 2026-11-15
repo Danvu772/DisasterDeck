@@ -63,3 +63,14 @@ Previous demonstration recordings are archived evidence for the Malatya iteratio
 ## License
 
 Maxar imagery: CC BY-NC 4.0. Building database: ODbL-1.0, with OpenStreetMap/HOT attribution and applicable share-alike terms. These datasets are separately licensed from application code. See [the distributed attribution file](../public/data/antakya/ATTRIBUTION.md).
+
+## Operational alignment, 15 November 2026
+
+The project owner confirmed Antakya as the operational base. Shared defaults read `data/pilot.json` through `lib/pilot.ts`. This covers database reads, workers, health checks, personal-agent location context and map centres. Explicit `DESK_ID` settings still select a configured desk.
+
+The operations-room exercise uses approximate Antakya neighbourhood pins, seed shelter locations and the board road locations. Its live view uses event observation times for hourly charts and labels its configured desk. Historical USGS overlays appear during the historical exercise. Authentic source coordinates and dates remain authoritative for historical records.
+
+- [x] Align runtime defaults, fixture users, map centres and assistant search location.
+- [x] Align current handoff and team-contract geography. Mark the earlier Malatya-only planning task superseded.
+- [ ] Verify every shared deployment has `DESK_ID=antakya-2023` and restart its app and workers.
+- [ ] Rehearse the live shared database pipeline and capture current Antakya submission footage.

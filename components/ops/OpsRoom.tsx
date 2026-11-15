@@ -4,6 +4,7 @@
 // Right, the numbers. Live from GET /api/events when the desk has posts, else the exercise replay.
 // New posts join the top of the list one at a time and push the rest down. A number panel with
 // nothing in it yet (no shelters reported, say) shows the exercise's numbers, marked "Sample".
+import { pilot } from "@/lib/pilot";
 import dynamic from "next/dynamic";
 import { useMemo, useState, type ComponentType } from "react";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
@@ -120,11 +121,11 @@ function PostLine({ p, fresh }: { p: OpsPost; fresh: boolean }) {
   );
 }
 
-function PerHour({ rows }: { rows: OpsSummary["perHour"] }) {
+function PerHour({ rows, replay }: { rows: OpsSummary["perHour"]; replay: boolean }) {
   const max = Math.max(1, ...rows.map((r) => r.posts));
   return (
     <div>
-      <p className="sr-only">{rows.map((r) => `${r.label}:00, ${r.posts} posts, ${r.quakes} aftershocks of M5 or more`).join(". ")}</p>
+      <p className="sr-only">{rows.map((r) => `${r.label}:00, ${r.posts} posts${replay ? `, ${r.quakes} earthquakes of M5 or more` : ""}`).join(". ")}</p>
       <div aria-hidden className="flex h-28 items-end gap-1">
         {rows.map((r, i) => (
           <div key={r.label} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
@@ -153,7 +154,7 @@ function PerHour({ rows }: { rows: OpsSummary["perHour"] }) {
       </div>
       <p aria-hidden className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-foreground/25" />Posts, local hour</span>
-        <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-warning" />M5+ aftershocks</span>
+        {replay && <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-warning" />M5+ earthquakes</span>}
       </p>
     </div>
   );
@@ -180,13 +181,13 @@ function Panel({ title, aside, sample, children }: {
 const orSample = (own: MetricPoint[], sample: MetricPoint[]) =>
   own.some((p) => p.value > 0) ? { points: own, sample: false } : { points: sample, sample: true };
 
-export function OpsRoom() {
+export function OpsRoom({ deskId }: { deskId: string }) {
   const feed = useOpsFeed();
   const [filter, setFilter] = useState<Filter>("all");
   const posts = feed.posts;
   const last = posts[posts.length - 1];
   const lastMs = last ? Date.parse(last.at) : 0;
-  const quakes = useMemo(() => QUAKES.filter((q) => Date.parse(q.time) <= lastMs), [lastMs]);
+  const quakes = useMemo(() => feed.isLive ? [] : QUAKES.filter((q) => Date.parse(q.time) <= lastMs), [feed.isLive, lastMs]);
   const s = useMemo(() => summarize(posts, quakes, { live: feed.isLive }), [posts, quakes, feed.isLive]);
   // The whole exercise, summed once: what an empty panel shows instead of "None yet".
   const sample = useMemo(() => summarize(makeOpsPosts(), QUAKES), []);
@@ -198,7 +199,7 @@ export function OpsRoom() {
   const listed = posts.filter(keep).slice(-80).reverse();
   const minute = last ? minutesAfterQuake(last.at) : 0;
   const freshKey = last ? (last.outcome.kind === "site" || last.outcome.kind === "copy" || last.outcome.kind === "rescued" ? last.outcome.site : last.id) : undefined;
-  const secondShock = minute >= SECOND_QUAKE_MIN && minute < SECOND_QUAKE_MIN + 45;
+  const secondShock = !feed.isLive && minute >= SECOND_QUAKE_MIN && minute < SECOND_QUAKE_MIN + 45;
   const progress = feed.total ? posts.length / feed.total : 0;
 
   return (
@@ -221,7 +222,7 @@ export function OpsRoom() {
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              Malatya, 6 Feb 2023{feed.isLive ? "" : " · synthetic posts, real USGS aftershocks"}
+              {feed.isLive && deskId !== pilot.id ? deskId : pilot.name}{feed.isLive ? " · live desk events" : " · 6 Feb 2023 · synthetic posts, real USGS earthquakes"}
             </p>
           </div>
 
@@ -323,12 +324,12 @@ export function OpsRoom() {
 
           <section aria-label="Numbers" className="relative space-y-4 lg:col-span-2 xl:col-span-1 xl:h-full xl:min-h-0 xl:overflow-y-auto">
             <Panel title="Posts per hour">
-              <PerHour rows={s.perHour} />
+              <PerHour rows={s.perHour} replay={!feed.isLive} />
             </Panel>
             <Panel title="What the posts became" aside={<><span className="font-mono">{s.read}</span> posts</>}>
               <Bars points={s.byOutcome} />
             </Panel>
-            <Panel title="Still trapped, by district" aside="Open sites" sample={districts.sample}>
+            <Panel title="Still trapped, by area" aside="Open sites" sample={districts.sample}>
               <Bars points={districts.points} unit="people" />
             </Panel>
             <Panel title="Needs asked for" aside="Total quantity" sample={needs.sample}>

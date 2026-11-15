@@ -3,6 +3,7 @@
 // right, one marker per event sized by how many people reported it, the selected one
 // highlighted in both places, a legend on the map, "only list what is in the map area".
 // Colours are ours (encode.ts): tier is the fill, confidence is the outline, stale fades.
+import { pilotCenter } from "@/lib/pilot";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef, useState } from "react";
@@ -295,7 +296,7 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
       </aside>
 
       <div className="relative order-1 h-[55vh] md:order-2 md:h-auto md:flex-1">
-        <MapContainer center={[36.194, 36.157]} zoom={13} className="h-full w-full" zoomControl>
+        <MapContainer center={pilotCenter} zoom={13} className="h-full w-full" zoomControl>
           <BasemapTiles extra={`${zones?.metadata?.attribution ? `. Zones: ${zones.metadata.attribution}` : ""}${atlas ? ". Atlas: NASA GIBS, MODIS, GPM IMERG, NASA/USGS/ESA HLS, NASA EONET" : ""}`} />
           <KeepSized />
           {atlas && <NasaAtlasOverlay atlas={atlas} selection={atlasSelection} />}

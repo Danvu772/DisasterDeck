@@ -23,7 +23,7 @@ const inbox: InboxItem[] = Array.from({ length: 40 }, (_, i) => ({
   _id: `ib-${i}`, userId: "coord-1", message: `msg ${i}`, status: "unread", ts: now,
   kind: i % 2 ? "task" : "approval", priority: 1,
 }));
-const user = { _id: "coord-1", name: "Coord", role: "coordinator", trust: "verified", region: "Battalgazi", deskId: "d" } as unknown as User;
+const user = { _id: "coord-1", name: "Coord", role: "coordinator", trust: "verified", region: "antakya-merkez", deskId: "d" } as unknown as User;
 const ctx: UserContext = {
   user, now, inbox, tasks, approvals: tasks.slice(0, 50), stuck: tasks.slice(50, 70), myNeeds: [], myIncidents: [], openIncidents: incidents,
   records: { sites: [], needs: [], roads: [], shelters: [] }, messages: [], postedThisSession: [],

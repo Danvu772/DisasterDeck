@@ -1,9 +1,10 @@
 // Fake board for building screens before /api/board exists. Times are relative to `now`
 // so ages and stale flags look real. Holds the ugly cases on purpose.
 // Every name, address and number here is made up.
+import { pilot } from "@/lib/pilot";
 import type { Incident, Need, Road, Shelter, Site, Task } from "@/lib/types";
 
-const DESK = "antakya-2023";
+const DESK = pilot.id;
 
 export function makeBoard(now: number) {
   const ago = (min: number) => new Date(now - min * 60000);

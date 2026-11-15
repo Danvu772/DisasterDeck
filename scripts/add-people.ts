@@ -1,9 +1,10 @@
 // More people on a desk, so the coordinator's "Send someone else" has a real choice: three more
 // field teams, four more volunteers, one more supplier. npm run db:people [-- --dry-run]
 // They are placed around the people already on DESK_ID (the middle of their positions), so the
-// same list works on the Malatya and the Antakya desk. Only people who are not there yet are
+// same list works on any seeded desk. Only people who are not there yet are
 // written: an existing person, their position and their lastSeen are never touched. Never seen,
 // so the dispatcher does not pick them by itself (R1-1). A coordinator can still send them.
+import { configuredDeskId } from "../lib/pilot";
 import { pathToFileURL } from "node:url";
 import { bumpDeskVersion, closeDb, cols } from "../lib/db";
 import type { LatLng, User } from "../lib/types";
@@ -67,7 +68,7 @@ export async function addPeople(deskId: string, dryRun = false): Promise<{ added
 }
 
 async function main() {
-  const deskId = process.env.DESK_ID ?? "malatya-2023";
+  const deskId = configuredDeskId();
   const dryRun = process.argv.includes("--dry-run");
   const r = await addPeople(deskId, dryRun);
   console.log(`${dryRun ? "Would add" : "Added"} ${r.added.length} on ${deskId}: ${r.added.join(", ") || "nobody"}`);

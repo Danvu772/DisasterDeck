@@ -111,7 +111,7 @@ export type EventType = "report" | "need" | "closure" | "capacity"
 
 export interface Event<P = unknown> {
   _id?: string;
-  deskId: string;         // v2: which disaster, "malatya-2023" or "lahaina-2023"
+  deskId: string;         // v2: which disaster, "antakya-2023" or "lahaina-2023"
   ts: Date;               // when the desk received it
   observedAt?: Date;      // v2: when it was true (tweet time, photo time). Default: ts
   type: EventType;
@@ -336,7 +336,7 @@ Keys go in `.env.local` only. **Never commit a key.** `.env.local` is in `.gitig
 | SSOJet keys | Role 3 | ssojet.com free plan |
 | `AGENT_KEY` | Role 1, 2, 4 | **v2.** Any random string. Role 1 picks it and shares it privately |
 | `DEMO_MODE` | Everyone | **v2.** `1` on our laptops |
-| `DESK_ID` | Everyone | **v2.** `malatya-2023` |
+| `DESK_ID` | Everyone | **v2.** `antakya-2023` |
 
 ---
 

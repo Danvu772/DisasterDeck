@@ -16,6 +16,7 @@
 //   npx tsx --env-file=.env.local workers/synthetic-feed.ts                 every 30 s, all channels
 //   npx tsx --env-file=.env.local workers/synthetic-feed.ts --once          one pass, then exit
 //   SYNTH_EVERY_S=10 npx tsx --env-file=.env.local workers/synthetic-feed.ts
+import { configuredDeskId } from "../lib/pilot";
 import { desk, type NewEvent } from "../agents/desk";
 import { extractTweet } from "../agents/research/x-extract";
 import { readReplay, replayKey } from "../agents/research/replay-input";
@@ -25,7 +26,7 @@ import type { LatLng } from "../lib/types";
 
 const TWEETS = "data/tweets_replay.json";
 const EVERY_MS = Number(process.env.SYNTH_EVERY_S ?? 30) * 1000;
-const deskId = process.env.DESK_ID ?? "malatya-2023";
+const deskId = configuredDeskId();
 const once = process.argv.includes("--once");
 // Keys carry this run's id. The pass counter restarts at 0 on every start, and without the id a restart
 // reuses the keys of the last run: postEvent dedupes them to the old events and nothing new is written.

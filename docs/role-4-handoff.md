@@ -24,18 +24,18 @@ The validator checks stable string IDs, replay timing, the repeated case and sep
 | `data/tweets_replay.json` | Role 2 X worker | Ordered array of `{ id, text, ts_offset_seconds, coords, region }` |
 | `data/seed.json` | Role 1 database setup | `{ deskId, regions, users, shelters }` with `User` and serialized `Shelter` fields from `lib/types.ts` |
 
-All reports, people, contacts, site labels, stock and occupancy are synthetic. Coordinates are approximate Malatya scenario pins in `[latitude, longitude]` order. The public Hugging Face table exposes tweet IDs, labels and entity offsets. Original tweet text needs an additional source before expanding the real-data replay. [Dataset viewer](https://huggingface.co/datasets/ctoraman/deprem-tweet-dataset)
+All reports, people, contacts, site labels, stock and occupancy are synthetic. Coordinates are approximate Antakya scenario pins in `[latitude, longitude]` order. The public Hugging Face table exposes tweet IDs, labels and entity offsets. Original tweet text needs an additional source before expanding the real-data replay. [Dataset viewer](https://huggingface.co/datasets/ctoraman/deprem-tweet-dataset)
 
 The proposed story uses Ayşe as the person reported trapped and Zeynep as the callback volunteer. The callback numbers `000 000 00 42` and `000 000 00 73` are exercise placeholders. Role-play the call and show `••42` or `••73` on the board.
 
 ## Role 2 replay handoff
 
-Read offsets as seconds from playback start. The schedule is 0, 4, 8, 12 and 16 seconds. Use `x:<id>` for `dedupeKey`. Keep IDs unchanged on retries. Set the event `deskId` to `malatya-2023`, copy the fixture coordinates and region into the report payload, and preserve the Turkish text with its English translation.
+Read offsets as seconds from playback start. The schedule is 0, 4, 8, 12 and 16 seconds. Use `x:<id>` for `dedupeKey`. Keep IDs unchanged on retries. Set the event `deskId` to `antakya-2023`, copy the fixture coordinates and region into the report payload, and preserve the Turkish text with its English translation.
 
 | Message IDs | Expected extraction | Expected grouping |
 |---|---|---|
-| `demo-malatya-001` through `004` | `kind: trapped`, address `Turuncu Avlu`, Ayşe, `peopleCount: 1`, coordinates `[38.35, 38.31]` | One site with four source posts |
-| `demo-malatya-005` | `kind: trapped`, address `Mor Avlu`, `peopleCount: 2`, coordinates `[38.36, 38.33]` | A separate site, over 100 m from the first |
+| `demo-antakya-001` through `004` | `kind: trapped`, address `Turuncu Avlu`, Ayşe, `peopleCount: 1`, coordinates `[36.194, 36.157]` | One site with four source posts |
+| `demo-antakya-005` | `kind: trapped`, address `Mor Avlu`, `peopleCount: 2`, coordinates `[36.204, 36.177]` | A separate site, over 100 m from the first |
 
 The first four posts repeat one simulated original call. Keep that provenance when interpreting support or satellite call counts. Record a curated sample count for NASA comparisons. The separate control is another help call so the grouping check exercises two valid sites.
 
@@ -43,9 +43,9 @@ The replay clock starts at zero. The historical reference scene is 11 February 2
 
 ## Role 1 seed handoff
 
-Upsert users and shelters by `_id`. Parse `shelters[].observedAt`, `shelters[].updated` and `shelters[].history[].ts` into `Date` values before insertion. `regions` is lookup metadata. It reserves `malatya-turuncu` and `malatya-mor` for the NASA handoff. Zone measurements still need to be produced.
+Upsert users and shelters by `_id`. Parse `shelters[].observedAt`, `shelters[].updated` and `shelters[].history[].ts` into `Date` values before insertion. `regions` is lookup metadata. It reserves `antakya-turuncu` and `antakya-mor` for the NASA handoff. Zone measurements still need to be produced.
 
-The shared region key is `malatya-merkez`. Use the same key when matching users, shelters and reports. Refresh `lastSeen` via login or heartbeat during rehearsal. The user IDs below are proposed application IDs. Role 3 must map actual SSOJet identities to them.
+The shared region key is `antakya-merkez`. Use the same key when matching users, shelters and reports. Refresh `lastSeen` via login or heartbeat during rehearsal. The user IDs below are proposed application IDs. Role 3 must map actual SSOJet identities to them.
 
 | User ID | Demo function |
 |---|---|
@@ -65,7 +65,7 @@ Use a 20-blanket need at Turuncu Avlu for CP3. Both suppliers have sufficient st
 - [ ] Role 1 loads the seed and Role 2 reads the replay through the real X worker.
 - [ ] After five posts, the board shows one Turuncu Avlu site with four source posts and one Mor Avlu site.
 - [ ] Reported people stay at one for Turuncu Avlu and two for Mor Avlu.
-- [ ] Replay ID `demo-malatya-001` unchanged and confirm the event ID, site count, source/support counts and task count stay stable.
+- [ ] Replay ID `demo-antakya-001` unchanged and confirm the event ID, site count, source/support counts and task count stay stable.
 - [ ] Zeynep receives the callback task. Confirm the full placeholder appears in the permitted task detail and the board shows its masked form.
 - [ ] Save the screenshot and Git commit used for the run.
 

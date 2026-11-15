@@ -3,7 +3,11 @@ id: t60-malatya-sweep
 effort: medium
 files: README.md, docs/devpost.md, docs/demo.md (and any other doc that names Antakya as the pilot city)
 ---
-# One city: Malatya (#32)
+# Archived city decision (#32)
+
+> Superseded on 15 November 2026 by the project owner. Antakya is the operational base. Use `data/pilot.json`, `DESK_ID=antakya-2023` and the Antakya imagery and scenario. The instructions below record the earlier decision and must not be used to change the current pilot. See [the current pilot runbook](../../antakya-pilot.md).
+
+## Previous request
 
 Dan decided (#32): the story is **Malatya**. Commit `28ae61c` moved README.md, docs/devpost.md and docs/demo.md to an Antakya pilot. The app (header pill "Malatya exercise", fixtures, seed, live desk `malatya-2023`) says Malatya, and the recorded video uses Malatya.
 

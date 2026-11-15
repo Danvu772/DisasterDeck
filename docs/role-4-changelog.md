@@ -2,6 +2,16 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## Antakya operational alignment - 2026-11-15 07:56 EST
+
+- [x] Centralized pilot and desk defaults in `lib/pilot.ts`, backed by `data/pilot.json`. Aligned map centres, operations replay, extra fixture roles, personal-agent prompts/searches, official news domains, worker defaults and health checks.
+- [x] Replaced synthetic Malatya locations with approximate Antakya exercise pins. Seed shelters retain fixed positions across replay posts.
+- [x] Updated current handoff and contracts. Marked the previous Malatya-only task superseded by the owner's Antakya decision.
+- [x] Integrated team changes through `beeefd4`, including the latest operations layout, animated feed and labeled sample charts.
+- [x] Production build, TypeScript and scoped ESLint pass. All 29 pilot/replay/scenario tests pass. Portable-data integrity verifies 3,060 local tiles, 743 reference buildings and 92 valid radiance pairs.
+- Known pre-existing integration issue found during review: `agents/scripts/contract-check.ts` accepts 15 of 16 events. The quake watcher sends `kind: quake`, while the alert schema accepts `silent_zone` and `cold`. Resolving earthquake-event handling needs a separate backend change. The production build also reports the existing unused `MAX_TRIES` warning in `lib/sweeper-check.ts`.
+- Shared deployment acceptance remains open. Set `DESK_ID=antakya-2023` in each deployed app and worker, restart them and rehearse the real MongoDB pipeline.
+
 ## Shared workstation handoff - 2026-11-15 04:27 EST
 
 - Confirmed the full English voice implementation is on team main; integrated teammates' updates through `cb5e54d` without overwriting them.
@@ -146,3 +156,5 @@ All timestamps use America/New_York, EST (UTC−05:00).
 - Published five synthetic Turkish replay messages, nine demo users, three shelters and `scripts/validate-demo-data.mjs` to main in commit `6361419`.
 - Selected Ayşe as the person reported trapped and Zeynep as the callback volunteer. Prepared primary/backup suppliers and a volunteer with a van and mechanic skill.
 - Validated the files and confirmed rejection of six malformed variants. SSOJet identity mapping and CP1 acceptance remain pending.
+
+- [x] Edge browser verification passed on the merged production build. Both /ops and /map use Antakya, with zero page errors. Preview available at http://127.0.0.1:3676/ops. The preview uses fixture fallback and does not validate shared MongoDB connectivity.

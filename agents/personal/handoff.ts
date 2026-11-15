@@ -3,11 +3,12 @@
 // Written as the questions an incoming coordinator asks (LLM situation-report study, Sci Rep 2026),
 // plus a public notice draft from confirmed facts only (DisasTeller); nothing is published from here.
 
+import { pilot } from "@/lib/pilot";
 import { desk } from "../desk";
 import { askDesk } from "../desk/view";
 import { modelFor, send } from "../shared/llm";
 
-const SYSTEM = `You write the shift handoff note for the incoming coordinator of a disaster coordination desk (Malatya, February 2023 earthquake replay; synthetic data).
+const SYSTEM = `You write the shift handoff note for the incoming coordinator of a disaster coordination desk (${pilot.name}, February 2023 earthquake replay; synthetic data).
 Use only the desk state you are given. Never invent a number, a name, an id or an outcome.
 
 Write it as the questions an incoming coordinator asks first, each answered from the data. Plain text, at most 250 words for the questions, in this order:

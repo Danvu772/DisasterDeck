@@ -2,13 +2,14 @@
 // to say: users with positions (coverage), timed tier-0 approvals (sla_t0), a delivered need
 // (logistics), a far site nobody can reach (coverage), and a closure report behind one road
 // (lifelines). Times are relative to `now`. Every name, address and number is made up.
+import { pilot } from "@/lib/pilot";
 import type { Event, Need, Site, Task, User } from "@/lib/types";
 import type { MetricInput } from "@/components/metrics/registry";
 import { makeBoard } from "./board";
 import { makeCoordinatorTasks } from "./coordinator";
 import { makeEvents, users as deskUsers } from "./desk";
 
-const DESK = "antakya-2023";
+const DESK = pilot.id;
 
 // Positions for the desk's people, and one more free field team.
 const COORDS: Record<string, [number, number]> = {
@@ -32,7 +33,7 @@ export function makeMetricInput(now: number): MetricInput {
   ];
 
   const far: Site = {
-    _id: "site-66", address: "Fırat St. 8, Battalgazi", region: "battalgazi", coords: [36.264, 36.212],
+    _id: "site-66", address: "Fırat St. 8, Antakya", region: pilot.region, coords: [36.264, 36.212],
     peopleTrapped: 2, callStatus: "called", status: "open",
     sources: [{ source: "news", eventId: "ev-40" }, { source: "x", eventId: "ev-41" }],
     history: [{ ts: ago(30), by: "news-agent", source: "news", reason: "Local news: two people under a collapsed house" }],

@@ -4,9 +4,10 @@
 //   insulin, diesel for base-station generators), shelters filling up, closed roads, "rescued,
 //   stop sharing", reposts of closed addresses, posts with no place, and criticism.
 //   The second main shock (M7.5 Elbistan, 13:24 local) brings a new wave of collapse reports.
-// Every person, building, phone and handle is invented. Districts are real Malatya districts,
-// places are generic landmarks. Phones are masked the way encode.ts masks them.
+// Every person, building, phone and handle is invented. Locations are approximate exercise pins in Antakya. Phones are masked the way encode.ts masks them.
 // Deterministic: the same posts every run (seeded random).
+import seed from "@/data/seed.json";
+import { pilot, pilotCenter } from "@/lib/pilot";
 import type { LatLng } from "@/lib/types";
 
 export const QUAKE_AT = "2023-02-06T01:17:34Z";   // USGS us6000jllz, M7.8 Pazarcık
@@ -43,21 +44,14 @@ export interface OpsPost {
 
 export interface District { name: string; at: LatLng; weight: number; spread: number }
 
-// Real district seats, approximate. Weight roughly follows population.
-export const DISTRICTS: District[] = [
-  { name: "Battalgazi", at: [38.36, 38.33], weight: 30, spread: 0.022 },
-  { name: "Yeşilyurt", at: [38.3, 38.25], weight: 28, spread: 0.022 },
-  { name: "Doğanşehir", at: [38.093, 37.879], weight: 12, spread: 0.012 },
-  { name: "Akçadağ", at: [38.339, 37.968], weight: 6, spread: 0.01 },
-  { name: "Darende", at: [38.546, 37.505], weight: 5, spread: 0.01 },
-  { name: "Yazıhan", at: [38.596, 38.177], weight: 3, spread: 0.008 },
-  { name: "Hekimhan", at: [38.816, 37.928], weight: 3, spread: 0.008 },
-  { name: "Pütürge", at: [38.196, 38.873], weight: 3, spread: 0.008 },
-  { name: "Kale", at: [38.4, 38.76], weight: 2, spread: 0.006 },
-  { name: "Arapgir", at: [39.041, 38.495], weight: 2, spread: 0.006 },
-  { name: "Arguvan", at: [38.778, 38.264], weight: 1.5, spread: 0.006 },
-  { name: "Kuluncak", at: [38.88, 37.663], weight: 1.5, spread: 0.006 },
-  { name: "Doğanyol", at: [38.307, 39.034], weight: 1, spread: 0.005 },
+// Approximate exercise locations. Weights and offsets control the replay, not population estimates.
+const DISTRICTS: District[] = [
+  { name: "Antakya Merkez", at: pilotCenter, weight: 30, spread: 0.003 },
+  { name: "Saray", at: [36.196, 36.165], weight: 18, spread: 0.002 },
+  { name: "Haraparası", at: [36.211, 36.167], weight: 16, spread: 0.003 },
+  { name: "Kışlasaray", at: [36.191, 36.161], weight: 14, spread: 0.002 },
+  { name: "Cebrail", at: [36.202, 36.153], weight: 12, spread: 0.002 },
+  { name: "Akevler", at: [36.207, 36.142], weight: 10, spread: 0.003 },
 ];
 
 const BUILDINGS = [
@@ -71,17 +65,12 @@ const PLACES: [string, string][] = [
   ["eski hastane yolu", "on the old hospital road"], ["park karşısı", "across from the park"],
   ["fırının üstü", "above the bakery"], ["köprü başı", "at the bridge"],
 ];
-const SHELTERS: { name: string; total: number }[] = [
-  { name: "Demo Barınak A", total: 50 }, { name: "Demo Barınak B", total: 40 },
-  { name: "Demo Barınak C", total: 30 }, { name: "Kayısı Spor Salonu (demo)", total: 120 },
-];
+const SHELTERS = seed.shelters.map((s) => ({
+  name: s.name, total: s.bedsTotal, coords: [s.coords[0], s.coords[1]] as LatLng,
+}));
 const ROADS: { road: string; at: LatLng }[] = [
-  { road: "Malatya Doğanşehir yolu 12. km", at: [38.2, 38.06] },
-  { road: "Akçadağ çevre yolu", at: [38.34, 37.99] },
-  { road: "Pütürge yolu Kale ayrımı", at: [38.37, 38.72] },
-  { road: "Çevre yolu 3. çıkış", at: [38.33, 38.29] },
-  { road: "Darende yolu tünel girişi", at: [38.5, 37.62] },
-  { road: "Yeşilyurt hastane yolu", at: [38.31, 38.27] },
+  { road: "İnönü Ave, north", at: [36.226, 36.159] },
+  { road: "Ring road exit 3", at: [36.202, 36.185] },
 ];
 
 // Posts per hour after 04:17 local, hours 0 to 11. Hour 9 holds the second main shock.
@@ -131,7 +120,7 @@ const SITE_TEXT: { tr: (b: string, p: string, d: string, n: number, ph: string) 
     en: (b, p, d, n, ph) => `${d}, ${b} (${p}): ${ppl(n)} under the rubble, voices heard. Please send a team. Contact ${ph}` },
   { tr: (b, p, d, n) => `ACİL. ${b}, ${p}, ${d}. Annem ve babam enkaz altında, toplam ${n} kişi. Vinç lazım.`,
     en: (b, p, d, n) => `URGENT. ${b}, ${p}, ${d}. My mother and father are under the rubble, ${ppl(n)} in total. A crane is needed.` },
-  { tr: (b, p, d, n) => `${d} ${p} ${b} yıkıldı, ${n} kişiden haber alamıyoruz. #deprem #Malatya`,
+  { tr: (b, p, d, n) => `${d} ${p} ${b} yıkıldı, ${n} kişiden haber alamıyoruz. #deprem #Antakya`,
     en: (b, p, d, n) => `${b} ${p}, ${d} collapsed. No news from ${ppl(n)}.` },
   { tr: (b, p, d, n, ph) => `Kardeşim ${b} enkazında, telefonla ulaştık, sesi geliyor. Yer: ${p}, ${d}. Toplam ${n} kişi. ${ph}`,
     en: (b, p, d, n, ph) => `My brother is in the rubble of ${b}, we reached him by phone, he answers. Location: ${p}, ${d}. ${ppl(n)} in total. ${ph}` },
@@ -140,13 +129,13 @@ const SITE_TEXT: { tr: (b: string, p: string, d: string, n: number, ph: string) 
 ];
 
 const UNCLEAR: [string, string][] = [
-  ["Malatya'da enkaz altında kuzenim var lütfen yardım edin", "My cousin is under the rubble in Malatya, please help"],
-  ["Annemden haber alamıyorum, Malatya merkezdeydi, ne yapmalıyım?", "I can't reach my mother, she was in central Malatya. What should I do?"],
+  ["Antakya'da enkaz altında kuzenim var lütfen yardım edin", "My cousin is under the rubble in Antakya, please help"],
+  ["Annemden haber alamıyorum, Antakya merkezdeydi, ne yapmalıyım?", "I can't reach my mother, she was in central Antakya. What should I do?"],
   ["Bizim sokakta çok kişi enkaz altında, yardım edin", "Many people under the rubble on our street, help"],
 ];
 const NONE: [string, string, string][] = [
   ["Saatlerdir kimse gelmedi, ekipler nerede?", "Nobody has come for hours. Where are the teams?", "criticism, not a request"],
-  ["Allah yardımcımız olsun, Malatya çok kötü durumda.", "God help us, Malatya is in a very bad state.", "not a request"],
+  ["Allah yardımcımız olsun, Antakya çok kötü durumda.", "God help us, Antakya is in a very bad state.", "not a request"],
   ["Deprem 7.8 imiş, merkez Pazarcık.", "The quake was 7.8, centered in Pazarcık.", "news, not a request"],
   ["Herkes iyi mi? Ailemden haber bekliyorum.", "Is everyone OK? Waiting for news from my family.", "not a request"],
   ["Bağış için resmi hesapları kullanın, sahte linklere dikkat.", "Use official accounts for donations, beware of fake links.", "advice, not a request"],
@@ -255,7 +244,7 @@ export function makeOpsPosts(seed = 2023): OpsPost[] {
         post = { id: "", at: atMin(m), author: handle(), accountAgeDays: int(200, 4000),
           text: full ? `${s.name} doldu, ${used}/${s.total}. Yeni gelenleri başka barınağa yönlendirin.` : `${s.name} şu an ${used}/${s.total} dolu, ${s.total - used} yer var.`,
           textEn: full ? `${s.name} is full, ${used} of ${s.total}. Send new arrivals to another shelter.` : `${s.name} is at ${used} of ${s.total}, ${s.total - used} beds free.`,
-          district: "Battalgazi", coords: [38.352 + r() * 0.01, 38.313 + r() * 0.02], outcome: { kind: "shelter", name: s.name, used, total: s.total } };
+          district: pilot.name, coords: s.coords, outcome: { kind: "shelter", name: s.name, used, total: s.total } };
       } else if (kind === "road") {
         const rd = pick(ROADS), roll = r();
         const [tr, en, state] = roll < 0.4
@@ -264,15 +253,15 @@ export function makeOpsPosts(seed = 2023): OpsPost[] {
             ? [`${rd.road} enkaz yüzünden kapandı, ambulans geçemiyor.`, `${rd.road} is blocked by debris, ambulances cannot pass.`, "closed" as const]
             : [`${rd.road} kapalıymış duydum, teyit eden var mı?`, `I heard ${rd.road} is closed. Can anyone confirm?`, "unconfirmed" as const];
         post = { id: "", at: atMin(m), author: handle(), accountAgeDays: int(200, 4000), text: tr, textEn: en,
-          district: "Malatya", coords: rd.at, outcome: { kind: "road", road: rd.road, state } };
+          district: pilot.name, coords: rd.at, outcome: { kind: "road", road: rd.road, state } };
       } else if (kind === "unclear") {
         const [tr, en] = pick(UNCLEAR);
         post = { id: "", at: atMin(m), author: handle(), accountAgeDays: int(100, 4000), text: tr, textEn: en,
-          district: "Malatya", outcome: { kind: "unclear", why: "no place given, a volunteer asks where and who" } };
+          district: pilot.name, outcome: { kind: "unclear", why: "no place given, a volunteer asks where and who" } };
       } else if (kind === "none") {
         const [tr, en, why] = pick(NONE);
         post = { id: "", at: atMin(m), author: handle(), accountAgeDays: int(100, 4000), text: tr, textEn: en,
-          district: "Malatya", outcome: { kind: "none", why } };
+          district: pilot.name, outcome: { kind: "none", why } };
       } else {
         post = newSite(m);
       }

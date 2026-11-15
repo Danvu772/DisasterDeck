@@ -1,9 +1,10 @@
 // Extra tasks for the coordinator screen, kept out of fixtures/board.ts on purpose.
 // One escalated task (nobody fits) and one approval that is still inside its deadline,
 // so the screen shows both the red and the calm state. Every name and number is made up.
+import { pilot } from "@/lib/pilot";
 import type { Task } from "@/lib/types";
 
-const DESK = "antakya-2023";
+const DESK = pilot.id;
 
 export function makeCoordinatorTasks(now: number): Task[] {
   const ago = (min: number) => new Date(now - min * 60000);

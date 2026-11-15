@@ -10,6 +10,7 @@
 // Env:   ANTHROPIC_API_KEY, ANTHROPIC_MODEL_EXTRACT, DESK_API_URL (unset = fake desk, events printed),
 //        AGENT_KEY, DESK_ID, REPLAY_SPEED, AGENT_BUDGET_USD
 
+import { configuredDeskId } from "../lib/pilot";
 import { existsSync } from "node:fs";
 import { desk, type NewEvent } from "../agents/desk";
 import { extractTweet } from "../agents/research/x-extract";
@@ -26,7 +27,7 @@ const dryRun = process.argv.includes("--dry-run");
 const requireLive = process.argv.includes("--require-live");
 const speed = Number(arg("speed") ?? process.env.REPLAY_SPEED ?? 10);
 const limit = Number(arg("limit") ?? Infinity);
-const deskId = process.env.DESK_ID ?? "antakya-2023";
+const deskId = configuredDeskId();
 const file = arg("file")
   ?? (existsSync("data/replays/antakya-real-tweets.json") ? "data/replays/antakya-real-tweets.json"
     : existsSync("data/tweets_replay.json") ? "data/tweets_replay.json" : "agents/fixtures/tweets_sample.json");

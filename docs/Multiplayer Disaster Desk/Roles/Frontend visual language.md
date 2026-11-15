@@ -12,7 +12,7 @@ Dan compared v1 with Ömer's `redesign/v2` and kept v1's workflows with v2's lay
 
 - **Faces.** Public Sans for all text, headings included. Roboto Mono (`font-mono`) is back, but only for ids, times, scores, counts in pills and machine output, the way USWDS itself uses it. Never for labels, headings or prose. `check:tokens` still bans `font-serif`.
 - **Grey page.** `paper` is now `base-lightest` (`#f0f0f0`), so white cards sit on a light grey page like v2.
-- **Dark header.** `night` (`base-darkest`) bar on every page: logo, "Disaster Desk", the "Malatya exercise, synthetic data" pill, role tabs (current tab is a white pill with ink text), who is acting, and the queue status pill. Links on the bar are white and underlined, because `primary` blue does not pass contrast on `night`.
+- **Dark header.** `night` (`base-darkest`) bar on every page: logo, "Disaster Desk", the "Antakya exercise, synthetic data" pill, role tabs (current tab is a white pill with ink text), who is acting, and the queue status pill. Links on the bar are white and underlined, because `primary` blue does not pass contrast on `night`.
 - **One green.** `ok` (`success-dark`) and `ok-soft` (`success-lighter`) exist for the healthy queue pill and nothing else. "Brain running, queue 0" is green. "Brain not running, queue 1, oldest 96 min" and "The desk is not answering" are act red, because somebody has to go fix it.
 - **Pills and chips.** New `pill` radius (USWDS `pill`, `99rem`). `encode.ts` adds `chip(active)` for filter chips, `pill` for neutral labels, and `tierText(tier)` for v2's "T0 Danger to life" badge text (code in mono, word in sans).
 - **No shadows.** USWDS cards are flat with a border. The shadow scale is unset in `globals.css`.

@@ -4,7 +4,7 @@
 //
 //   npx tsx --env-file=.env.local workers/news-agent.ts                      both channels
 //   npx tsx --env-file=.env.local workers/news-agent.ts --channel official   AFAD, Karayolları, AA, TRT
-//   npx tsx --env-file=.env.local workers/news-agent.ts --region "Battalgazi, Antakya"
+//   npx tsx --env-file=.env.local workers/news-agent.ts --region "Antakya, Hatay"
 //
 // Channels and their event source / actor:
 //   news      source "news"    actor "news-agent"
@@ -12,6 +12,7 @@
 // Reddit is not a channel: it blocks Claude's web search, and its API is closed to new apps.
 // About $0.05–0.15 per channel run (3 searches at most).
 
+import { configuredDeskId } from "../lib/pilot";
 import { createHash } from "node:crypto";
 import { desk } from "../agents/desk";
 import { CHANNELS, searchNews, type Channel } from "../agents/research/news-search";
@@ -25,7 +26,7 @@ const region = arg("region", "Antakya, Türkiye");
 const when = arg("when", "6–12 February 2023, after the Kahramanmaraş earthquakes");
 const pick = arg("channel", "all");
 const channels: Channel[] = pick === "all" ? (Object.keys(CHANNELS) as Channel[]) : [pick as Channel];
-const deskId = process.env.DESK_ID ?? "antakya-2023";
+const deskId = configuredDeskId();
 const log = (...m: unknown[]) => console.error(`[news-agent ${new Date().toISOString().slice(11, 19)}]`, ...m);
 
 const WHO: Record<Channel, { source: "news"; actor: string }> = {

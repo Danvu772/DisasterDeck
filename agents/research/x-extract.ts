@@ -50,12 +50,12 @@ Rules:
 - Some inputs are explicitly synthetic drills; others are historical real posts. Words like "Tatbikat" (drill), "Demo" or "tatbikat irtibatı" mark drill material. Leave those markers out of address and region. Never assume historical news is a current rescue request. A reported rescue, commentary, or regional news story must be interpreted in its stated context; never invent people still trapped or a precise address.
 
 Example
-Tweet: "ACİL! Annem ve kardeşim enkaz altında. Yeşilyurt, Çilesiz Mah. 12. Sokak No:4 Ak Apt. Sesleri geliyor. Tel •••••••••41 #deprem"
-Output: {"isHelpCall":true,"kind":"trapped","needs":[],"closures":[],"shelters":[],"hazard":null,"unclear":null,"textEn":"URGENT! My mother and my sibling are under the rubble. Yeşilyurt, Çilesiz Neighbourhood, 12th Street No:4, Ak Apartment. Their voices can be heard. Phone •••••••••41 #earthquake","address":"Çilesiz Mah. 12. Sokak No:4 Ak Apt.","region":"Yeşilyurt","peopleCount":2,"phoneMasked":"•••••••••41"}
+Tweet: "ACİL! Annem ve kardeşim enkaz altında. Antakya, Saray Mah. 12. Sokak No:4 Ak Apt. Sesleri geliyor. Tel •••••••••41 #deprem"
+Output: {"isHelpCall":true,"kind":"trapped","needs":[],"closures":[],"shelters":[],"hazard":null,"unclear":null,"textEn":"URGENT! My mother and my sibling are under the rubble. Antakya, Saray Neighbourhood, 12th Street No:4, Ak Apartment. Their voices can be heard. Phone •••••••••41 #earthquake","address":"Saray Mah. 12. Sokak No:4 Ak Apt.","region":"Antakya","peopleCount":2,"phoneMasked":"•••••••••41"}
 
 Example
-Tweet: "Battalgazi stadyumunda 200 kişi açıkta, çadır ve battaniye lazım, bebekler var"
-Output: {"isHelpCall":false,"kind":null,"needs":[{"item":"tents","quantity":null,"lifeThreatening":true},{"item":"blankets","quantity":null,"lifeThreatening":true}],"closures":[],"shelters":[],"hazard":null,"unclear":null,"textEn":"200 people outside at Battalgazi stadium, tents and blankets needed, there are babies","address":"Battalgazi stadyumu","region":"Battalgazi","peopleCount":null,"phoneMasked":null}
+Tweet: "Antakya stadyumunda 200 kişi açıkta, çadır ve battaniye lazım, bebekler var"
+Output: {"isHelpCall":false,"kind":null,"needs":[{"item":"tents","quantity":null,"lifeThreatening":true},{"item":"blankets","quantity":null,"lifeThreatening":true}],"closures":[],"shelters":[],"hazard":null,"unclear":null,"textEn":"200 people outside at Antakya stadium, tents and blankets needed, there are babies","address":"Antakya stadyumu","region":"Antakya","peopleCount":null,"phoneMasked":null}
 
 Example
 Tweet: "Arkadaşımın teyzesi hâlâ enkaz altındaymış, yardım edin lütfen RT"

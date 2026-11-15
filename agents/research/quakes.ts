@@ -10,6 +10,7 @@
 // Checked 15 Nov 2026: USGS returns the 6 Feb 2023 sequence; AFAD's API returns this week's quakes
 // but nothing for 2023, so replay uses USGS.
 
+import { pilotCenter } from "@/lib/pilot";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { LatLng } from "@/lib/types";
@@ -25,8 +26,8 @@ export interface Quake {
   catalog: "USGS" | "AFAD";
 }
 
-/** Malatya city centre: the desk's default point when a person has no position. */
-export const DESK_CENTER: LatLng = [38.355, 38.309];
+/** The operational base used when a person has no reported position. */
+export const DESK_CENTER: LatLng = pilotCenter;
 
 // ---------- the scenario clock ----------
 

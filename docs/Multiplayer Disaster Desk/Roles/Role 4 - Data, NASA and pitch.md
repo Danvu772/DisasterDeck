@@ -51,11 +51,11 @@ flowchart LR
 
 ### 1. Replay file + seed (18:30 → 20:30): Role 2 and Role 1 wait on this
 - [ ] Download `ctoraman/deprem-tweet-dataset`. Keep only calls for help.
-- [ ] Pick **one city** (e.g. Malatya or Hatay) and ~50–80 tweets with an address. Keep a few duplicates on purpose: the merge is part of the demo.
+- [ ] Pick **one city** (Antakya, Hatay) and ~50–80 tweets with an address. Keep a few duplicates on purpose: the merge is part of the demo.
 - [ ] **Replace every phone number with a made-up one**, and keep a masked form (last two digits) for the board. The volunteer has to see a number to "call", so it must not be a real one. Drop full names if they are not needed.
 - [ ] Geocode addresses offline (Nominatim, 1 per second) → `coords`. Hand-fix the ones that fail.
 - [x] Write `data/tweets_replay.json`: `{ id, text, ts_offset_seconds, coords?, region }`. Five synthetic messages were delivered in `6361419` on 14 Nov at 19:44 EST. Actual worker retry acceptance is pending.
-- [ ] Write `data/seed.json`: demo users (one per role, matching SSOJet accounts), regions, 3 shelters, **2 suppliers with blanket stock** (the second one is the rescue in the truck scene). Every user gets `deskId: "malatya-2023"`, a `trust` level, `coords`, and a `profile` (`vehicle`, `skills`, `stock`). Add **one volunteer with a van and the `mechanic` skill**, and **two coordinators**.
+- [ ] Write `data/seed.json`: demo users (one per role, matching SSOJet accounts), regions, 3 shelters, **2 suppliers with blanket stock** (the second one is the rescue in the truck scene). Every user gets `deskId: "antakya-2023"`, a `trust` level, `coords`, and a `profile` (`vehicle`, `skills`, `stock`). Add **one volunteer with a van and the `mechanic` skill**, and **two coordinators**.
 
 **Done when:** Role 2's X agent can read the file, Role 1 can seed the database.
 
