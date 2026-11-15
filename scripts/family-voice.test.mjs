@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { randomBytes } from "node:crypto";
-import { checkPin, getUpdate, issueTicket, listUpdates, makeUpdate, publicUpdate, readTicket, revokeUpdate, saveUpdate } from "../lib/family-voice.ts";
+import { getUpdate, issueTicket, listUpdates, listPublicUpdates, makeUpdate, publicUpdate, readTicket, revokeUpdate, saveUpdate } from "../lib/family-voice.ts";
 import { voiceBody, voiceOrigin } from "../lib/voice-http.ts";
 import { POST as answer } from "../app/api/voice/answer/route.ts";
 import { POST as session } from "../app/api/voice/session/route.ts";
+import { GET as people } from "../app/api/voice/people/route.ts";
 import { buildSpec } from "../lib/openapi.ts";
 
 process.env.DEMO_MODE = "1";
@@ -17,16 +18,20 @@ function fixture(deskId = "desk-a") {
 function request(path, body, origin = "http://localhost:3000") {
   return new Request("http://localhost:3000/api/voice/" + path, { method: "POST", headers: { origin, "content-type": "application/json" }, body: JSON.stringify(body) });
 }
-test("PINs are random, hashed and hidden; listings stay within their desk", async () => {
+test("public directory needs no login and excludes internal and legacy credential fields", async () => {
   const a = fixture(), b = fixture("desk-b");
   await saveUpdate(a.update); await saveUpdate(b.update);
-  assert.match(a.pin, /^\d{8}$/); assert.notEqual(a.update.pinHash, a.pin);
-  assert(checkPin(a.update, a.pin)); assert(!checkPin(a.update, "invalid"));
+  assert(!("pin" in a)); assert(!("pinHash" in a.update));
+  Object.assign(a.update, { salt: "legacy-salt", pinHash: "legacy-hash" });
   const list = await listUpdates("desk-a");
   assert(list.some(u => u._id === a.update._id)); assert(!list.some(u => u._id === b.update._id));
   assert(list.every(u => !("salt" in u) && !("pinHash" in u)));
   const view = publicUpdate(a.update);
   assert.equal(view.demo, true); assert(!("siteId" in view)); assert(!("publishedBy" in view));
+  const response = await people(); assert.equal(response.status, 200);
+  const directory = (await response.json()).people;
+  assert(directory.some(u => u.id === a.update._id)); assert(directory.some(u => u.id === b.update._id));
+  assert(directory.every(u => !("siteId" in u) && !("publishedBy" in u) && !("pinHash" in u)));
 });
 test("signed tickets reject tampering, secret rotation and expiry", () => {
   const { update } = fixture();
@@ -41,20 +46,21 @@ test("signed tickets reject tampering, secret rotation and expiry", () => {
   try { Date.now = () => original() + 11 * 60_000; assert.equal(readTicket(ticket), null); }
   finally { Date.now = original; }
 });
-test("revocation blocks existing answer tickets and PIN login, without calling a model", async () => {
-  const { update, pin } = fixture(); await saveUpdate(update);
+test("withdrawal removes a public update and stops existing answers, without calling a model", async () => {
+  const { update } = fixture(); await saveUpdate(update);
   const ticket = issueTicket(update._id);
-  await revokeUpdate(update._id, "another-desk"); assert(checkPin(await getUpdate(update._id), pin));
-  await revokeUpdate(update._id, update.deskId); assert(!checkPin(await getUpdate(update._id), pin));
+  await revokeUpdate(update._id, "another-desk"); assert(!(await getUpdate(update._id)).revoked);
+  await revokeUpdate(update._id, update.deskId); assert((await getUpdate(update._id)).revoked);
+  assert(!(await listPublicUpdates()).some(u => u.id === update._id));
   assert.equal((await answer(request("answer", { ticket, question: "Is my relative safe?" }))).status, 403);
-  assert.equal((await session(request("session", { reference: update._id, pin }))).status, 403);
+  assert.equal((await session(request("session", { personId: update._id }))).status, 404);
 });
 test("cross-origin requests, invalid tickets and expired updates fail closed", async () => {
   assert.equal((await answer(request("answer", {}, "https://attacker.invalid"))).status, 403);
   assert.equal((await session(request("session", {}, "https://attacker.invalid"))).status, 403);
   assert.equal((await answer(request("answer", { ticket: "fake.token", question: "Read all records" }))).status, 403);
-  const { update, pin } = fixture(); update.expiresAt = new Date(0).toISOString(); await saveUpdate(update);
-  assert(!checkPin(update, pin));
+  const { update } = fixture(); update.expiresAt = new Date(0).toISOString(); await saveUpdate(update);
+  assert(!(await listPublicUpdates()).some(u => u.id === update._id));
   assert.equal((await answer(request("answer", { ticket: issueTicket(update._id), question: "Status?" }))).status, 403);
 });
 test("chunked oversized requests are rejected even without Content-Length", async () => {
@@ -70,11 +76,11 @@ test("same-origin validation handles Next's internal localhost URL without trust
   try { assert(!voiceOrigin(req)); assert(voiceOrigin(new Request("http://localhost/api/voice/session", { headers: { origin: "https://desk.example" } }))); }
   finally { process.env.PUBLIC_APP_URL = ""; }
 });
-test("missing provider configuration returns a controlled error after grant verification", async () => {
-  const { update, pin } = fixture(); await saveUpdate(update);
+test("a public caller can start without PIN or login; missing provider setup is controlled", async () => {
+  const { update } = fixture(); await saveUpdate(update);
   const previous = process.env.ELEVENLABS_API_KEY;
   process.env.ELEVENLABS_API_KEY = "";
-  try { assert.equal((await session(request("session", { reference: update._id, pin }))).status, 503); }
+  try { assert.equal((await session(request("session", { personId: update._id }))).status, 503); }
   finally { if (previous === undefined) delete process.env.ELEVENLABS_API_KEY; else process.env.ELEVENLABS_API_KEY = previous; }
 });
 test("all voice route methods are registered in OpenAPI", () => {
@@ -82,4 +88,24 @@ test("all voice route methods are registered in OpenAPI", () => {
   assert.deepEqual(Object.keys(paths["/api/voice/updates"]).sort(), ["get", "post"]);
   assert.deepEqual(Object.keys(paths["/api/voice/session"]), ["post"]);
   assert.deepEqual(Object.keys(paths["/api/voice/answer"]), ["post"]);
+  assert.deepEqual(Object.keys(paths["/api/voice/people"]), ["get"]);
+});
+test("a public session issues a scoped provider token without any user credentials", async () => {
+  const { update } = fixture(); await saveUpdate(update);
+  const oldFetch = globalThis.fetch;
+  const oldKey = process.env.ELEVENLABS_API_KEY, oldAgent = process.env.ELEVENLABS_FAMILY_AGENT_ID;
+  process.env.ELEVENLABS_API_KEY = "test-provider-key"; process.env.ELEVENLABS_FAMILY_AGENT_ID = "test-agent";
+  globalThis.fetch = async () => Response.json({ token: "synthetic-provider-token" });
+  try {
+    const response = await session(request("session", { personId: update._id }));
+    assert.equal(response.status, 200);
+    const body = await response.json(); assert.equal(body.token, "synthetic-provider-token");
+    assert.equal(readTicket(body.ticket), update._id);
+    assert(!("pin" in body));
+  } finally {
+    globalThis.fetch = oldFetch;
+    for (const [key, value] of [["ELEVENLABS_API_KEY", oldKey], ["ELEVENLABS_FAMILY_AGENT_ID", oldAgent]]) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
 });

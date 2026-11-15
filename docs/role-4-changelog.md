@@ -2,6 +2,13 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## Public family information - 2026-11-15 03:51 EST
+
+- Removed visitor reference/PIN entry and backend PIN verification/generation at the user's request. Added an anonymous published-name directory, immediate readable updates and PIN-free voice sessions. Public record IDs are selected automatically by the UI.
+- Kept coordinator authentication for publishing/withdrawal, timestamp/expiry handling and automatic provider usage controls. Existing stored PIN fields are ignored and never returned; no migration is required.
+- Updated the English runbook, API registry and smoke test. Nine voice tests, TypeScript, full ESLint and an isolated production build pass. Headless Edge verified anonymous search, unknown-name handling, actual ElevenLabs WebRTC, a live Claude answer, mute and end with a synthetic microphone and no page errors.
+- No normal telephone number or shared Atlas acceptance is claimed. The previous code/PIN delivery below is historical and superseded by this public visitor flow.
+
 ## Family voice demo - 2026-11-15 03:34 EST
 
 - Added coordinator-approved family snapshots with case/desk scoping, source timestamps, hashed PINs, short-lived tickets, expiry and revocation. No full-board or dispatch access is exposed to callers.
