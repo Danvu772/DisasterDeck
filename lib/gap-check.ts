@@ -24,6 +24,7 @@ export const U = {
   c1: "check-gap-coord-1", c2: "check-gap-coord-2",
   pub1: "check-gap-public-1", pub2: "check-gap-public-2", pub3: "check-gap-public-3",
   supTruck: "check-gap-sup-truck", supFoot: "check-gap-sup-on-foot",
+  vHand: "check-gap-vol-shift-ends",
 };
 const ids = Object.values(U);
 
@@ -44,6 +45,7 @@ function people(now: Date): User[] {
     mk(U.pub1, "public"), mk(U.pub2, "public"), mk(U.pub3, "public"),
     mk(U.supTruck, "supplier", { coords: [38.5, 38.4], profile: { vehicle: "truck", stock: { blankets: 100, "hot meals": 100 } } }),
     mk(U.supFoot, "supplier", { coords: [38.4, 38.4], profile: { vehicle: "none", stock: { blankets: 100, "hot meals": 100 } } }),
+    mk(U.vHand, "volunteer", { coords: [38.7, 38.7] }),
   ];
 }
 
@@ -241,12 +243,87 @@ async function pins() {
   ok("T19 a merged report keeps the silent-zone term (it used to drop it)");
 }
 
+async function lifecycles() {
+  const c = await cols();
+  const now = new Date();
+
+  // T12: a supplier without a vehicle is never picked for a delivery, even with the stock and closer.
+  const need: Need = {
+    _id: "g-blankets", item: "blankets", quantity: 20, region: R, siteIds: [], status: "open", history: [{ ts: now, by: U.field, source: "person", reason: "asked" }],
+    deskId: DESK, confidence: "confirmed", lifeThreatening: false, lines: [{ quantity: 20 }], tier: 1, support: 1, requestedBy: [U.field],
+    ...scored({ support: 1, waitingSince: now }, now),
+  };
+  await c.needs.insertOne(need);
+  await tick(new Date(), { deskId: DESK });
+  const deliver = (await c.tasks.findOne({ recordId: "g-blankets", type: "deliver", open: true }))!;
+  assert.equal(deliver.assignee, U.supTruck, "the far supplier with a truck, not the near one on foot");
+  ok("T12 a delivery needs stock and a vehicle");
+
+  // T9: the truck reports a blocked road and cannot go on. Nobody else can take it (escalated). It clears: the truck carries on.
+  await say(U.supTruck, "answer", { taskId: deliver._id, result: "accepted", etaMinutes: 40 });
+  await say(U.supTruck, "incident", { kind: "road_blocked", text: "yol kapalı", textEn: "the road is closed", taskId: deliver._id, canContinue: false });
+  let orig = (await c.tasks.findOne({ _id: deliver._id }))!;
+  assert.equal(orig.status, "blocked");
+  const rep = (await c.tasks.findOne({ replaces: deliver._id }))!;
+  assert.equal(rep.status, "escalated", "no other supplier has a vehicle");
+  const inc = (await c.incidents.findOne({ taskId: deliver._id }))!;
+  await say(U.supTruck, "incident", { incidentId: inc._id, kind: "road_blocked", text: "açıldı", textEn: "cleared, moving again", canContinue: true, resolved: true });
+  orig = (await c.tasks.findOne({ _id: deliver._id }))!;
+  assert.equal(orig.status, "accepted"); assert.equal(orig.open, true); assert.equal(orig.assignee, U.supTruck);
+  assert.equal((await c.tasks.findOne({ _id: rep._id }))!.status, "cancelled", "the replacement nobody took is closed");
+  assert.equal((await c.needs.findOne({ _id: "g-blankets" }))!.status, "on_the_way");
+  assert((await unread(U.supTruck)).some((i) => /^Carry on/.test(i.message)));
+  ok("T9 blocked → accepted: the problem is over and nobody took over, the same person carries on, the need is on the way again");
+
+  // T11 + T9: a shift ends. Every open task of the person goes on, with the note. When it is over the originals close.
+  await c.sites.insertMany([site("g-hand-1", { coords: [38.7, 38.7] }), site("g-hand-2", { coords: [38.7, 38.71] })]);
+  const h1 = task("g-hand-1", { assignee: U.vHand, status: "accepted" });
+  const h2 = task("g-hand-2", { assignee: U.vHand, status: "assigned", deadline: min(now, 30) });
+  await c.tasks.insertMany([h1, h2]);
+  await say(U.vHand, "incident", { kind: "handover", text: "vardiyam bitti", textEn: "my shift ends, the family at g-hand-1 speaks Kurdish", taskId: h1._id, canContinue: false });
+  for (const h of [h1, h2]) {
+    assert.equal((await c.tasks.findOne({ _id: h._id }))!.status, "blocked", `${h.recordId} blocked`);
+    const next = (await c.tasks.findOne({ replaces: h._id }))!;
+    assert(next && next.assignee && next.assignee !== U.vHand, `${h.recordId} went to someone else`);
+    assert.match(next.detail, /Handover note from check-gap-vol-shift-ends: my shift ends, the family at g-hand-1 speaks Kurdish/);
+  }
+  ok("T11 handover: every open task of the person goes to the next person, with the note");
+  const hinc = (await c.incidents.findOne({ taskId: h1._id }))!;
+  await say(U.vHand, "incident", { incidentId: hinc._id, kind: "handover", text: "tamam", textEn: "done for today", canContinue: true, resolved: true });
+  for (const h of [h1, h2]) assert.equal((await c.tasks.findOne({ _id: h._id }))!.status, "cancelled", "a replacement took over");
+  ok("T9 blocked → cancelled: a replacement took over");
+
+  // T10: an escalated task, a coordinator names who takes it.
+  await c.sites.insertOne(site("g-esc", { coords: [38.2, 38.2], callStatus: "not_called" }));
+  const esc = task("g-esc", { status: "escalated", tried: [U.vOff], history: [] });
+  delete esc.assignee;
+  await c.tasks.insertOne(esc);
+  let ev = await say(U.c1, "approval", { taskId: esc._id, approved: true });
+  assert.equal(ev.status, "rejected"); assert.match(ev.result!.reason, /name the person/);
+  ev = await say(U.c1, "approval", { taskId: esc._id, approved: true, assignee: U.vOn2 });
+  const picked = (await c.tasks.findOne({ _id: esc._id }))!;
+  assert.equal(picked.status, "assigned"); assert.equal(picked.assignee, U.vOn2);
+  assert((await unread(U.vOn2, { taskId: esc._id, kind: "task" })).length === 1);
+  ok("T10 escalated → assigned: a coordinator picks someone, an approval without a name is refused");
+
+  // T8: a new report changes a site someone is already working: they hear it, the reporter does not.
+  await c.sites.insertOne(site("g-work", { address: "Is Sokak 9", coords: [38.3, 38.3], peopleTrapped: 1 }));
+  const work = task("g-work", { type: "rescue", assignee: U.field, status: "accepted" });
+  await c.tasks.insertOne(work);
+  await say(U.vOn2, "report", { kind: "trapped", text: "Is Sokak 9, üç kişi", textEn: "Is Sokak 9, three people", address: "Is Sokak 9", coords: [38.3, 38.3], region: R, peopleCount: 3 });
+  const told = await unread(U.field, { key: { $regex: "^site:g-work:" } });
+  assert.equal(told.length, 1); assert.match(told[0].message, /Update on .*: 3 trapped now/);
+  assert.equal((await unread(U.vOn2, { key: { $regex: "^site:g-work:" } })).length, 0);
+  ok("T8 a site update reaches the people working it");
+}
+
 async function main() {
   await cleanup();
   const c = await cols();
   await c.users.insertMany(people(new Date()));
   await sweeperRows();
   await pins();
+  await lifecycles();
   console.log(`\nAll ${passed} checks passed.`);
 }
 

@@ -23,7 +23,7 @@ import { haversineMeters } from "../lib/geo";
 import { distanceText, pickPerson, SEEN_WITHIN_MS, stockOf, type Pick, type Place } from "../lib/rules/assign";
 import { PLAYBOOK } from "../lib/rules/incidents";
 import type { HistoryEntry, Incident, InboxItem, LatLng, Need, Road, Role, ScorePart, Shelter, Site, Task, User } from "../lib/types";
-import { confirmedSince, noteIncidentStep, noteNeedAssigned, restNeedId, setIncidentStatus, type Change, type TaskAction } from "./memory-keeper";
+import { confirmedSince, noteIncidentStep, noteNeedAssigned, noteNeedResumed, restNeedId, setIncidentStatus, type Change, type TaskAction } from "./memory-keeper";
 
 /** How long a person has to answer (N in §5, 2 in the demo). The board turns it red after. ANSWER_MINUTES=10 for unattended runs (R1-2). */
 export const ANSWER_MINUTES = Number(process.env.ANSWER_MINUTES) > 0 ? Number(process.env.ANSWER_MINUTES) : 2;
@@ -46,7 +46,7 @@ export async function react(changes: Change[], actions: TaskAction[] = []): Prom
   for (const ch of changes) if (ch.recordType === "need" && ch.toStatus === "open") await tellAskers(ch.recordId, "open", ch.eventId);
   for (const a of actions) await act(a);
   for (const ch of changes) {
-    if (ch.recordType === "site") await siteChanged(ch.recordId);
+    if (ch.recordType === "site") { await siteChanged(ch.recordId); await tellSiteWorkers(ch); }
     else if (ch.recordType === "need") await needChanged(ch);
     else if (ch.recordType === "incident" && ch.op === "created") await incidentOpened(ch.recordId);
     else if (ch.recordType === "incident" && ch.flags?.includes("resolved")) await incidentResolved(ch.recordId);
@@ -325,6 +325,9 @@ async function whyNot(u: User, task: Task): Promise<string | null> {
   return null;
 }
 
+/** A coordinator decides these: a high-risk task waiting for approval, or one nobody could take (§4 escalated → assigned). */
+const DECIDES = { $in: ["waiting_approval", "escalated"] as Task["status"][] };
+
 /** The coordinator said yes: the person they named, or the proposed team, or the nearest free one now. */
 async function approved(task: Task, by: string, assignee?: string, eventId?: string): Promise<void> {
   const { tasks, users } = await cols();
@@ -342,7 +345,7 @@ async function approved(task: Task, by: string, assignee?: string, eventId?: str
     const problem = u ? await whyNot(u, task) : `${assignee} is not on the desk`;
     if (problem) {
       // Not sent: the task keeps waiting, and the coordinator is told why.
-      const r = await tasks.updateOne({ _id: task._id, status: "waiting_approval", ...(eventId ? { "history.eventId": { $ne: eventId } } : {}) },
+      const r = await tasks.updateOne({ _id: task._id, status: DECIDES, ...(eventId ? { "history.eventId": { $ne: eventId } } : {}) },
         { $push: { history: { ...entry(`approval by ${by} not carried out: ${problem}`, by), ...(eventId ? { eventId } : {}) } } });
       if (r.modifiedCount) {
         await inbox([{
@@ -358,8 +361,8 @@ async function approved(task: Task, by: string, assignee?: string, eventId?: str
     const u = proposed ? await users.findOne({ _id: proposed, deskId: task.deskId }) : null;
     pick = u ? { ok: true, user: u } : await pickFor(task, task.tried);
   }
-  const why = assignee ? `approved by ${by}, sent ${assignee} instead` : `approved by ${by}`;
-  const r = await tasks.updateOne({ _id: task._id, status: "waiting_approval" }, pick.ok
+  const why = task.status === "escalated" ? `${by} picked ${assignee}` : assignee ? `approved by ${by}, sent ${assignee} instead` : `approved by ${by}`;
+  const r = await tasks.updateOne({ _id: task._id, status: DECIDES }, pick.ok
     ? { $set: { status: "assigned", assignee: pick.user._id, deadline: deadline() }, $unset: { overdue: "" }, $push: { history: entry(`${why}, assigned to ${pick.user._id}${near(pick)}`, by) } }
     : { $set: { status: "escalated", deadline: deadline() }, $unset: { overdue: "" }, $push: { history: entry(`${why}, then escalated: ${pick.reason}`, by) } });
   if (!r.modifiedCount) return;
@@ -411,8 +414,9 @@ async function blocked(task: Task, by: string, incidentId: string, reason: strin
     const d = await replaceDelivery(from, inc);
     made = d.made; how = d.how; etaMeters = d.meters;
   } else {
-    made = await createTask(from, { replaces: task._id, why: `replaces task ${task._id}, blocked by incident ${incidentId}` });
-    how = "same task to the next person";
+    const note = inc?.kind === "handover" ? `${stripProposal(from.detail)} Handover note from ${task.assignee ?? by}: ${inc.textEn}`.trim() : undefined;
+    made = await createTask(from, { replaces: task._id, why: `replaces task ${task._id}, blocked by incident ${incidentId}`, ...(note ? { detail: note } : {}) });
+    how = inc?.kind === "handover" ? "handed over to the next person" : "same task to the next person";
   }
   const okMade = made?.status === "assigned" || made?.status === "waiting_approval";
   await noteIncidentStep(incidentId, !made ? `task ${task._id} blocked, a replacement could not be made`
@@ -564,9 +568,10 @@ async function tellReporter(inc: Incident, made: Task | null, how: string): Prom
   await inbox([{ userId: inc.reportedBy, kind: "notice", priority: 50, message: `The desk is on it: ${parts.join("; ")}.`, key: `incident:${inc._id}:reporter` }]);
 }
 
-/** The problem is over: the helper's task stops, the person is free (the keeper did that). */
+/** The problem is over: the helper's task stops, the person is free (the keeper did that), the blocked task ends one way or the other. */
 async function incidentResolved(incidentId: string): Promise<void> {
   const { tasks } = await cols();
+  for (const t of await tasks.find({ blockedBy: incidentId, status: "blocked" }).toArray()) await unblock(t, incidentId);
   for (const t of await tasks.find({ recordType: "incident", recordId: incidentId, open: true }).toArray()) {
     const r = await tasks.updateOne({ _id: t._id, open: true }, {
       $set: { status: "cancelled", open: false }, $push: { history: entry("cancelled, the problem is over") },
@@ -578,6 +583,45 @@ async function incidentResolved(incidentId: string): Promise<void> {
       await inbox([{ userId: t.assignee, taskId: t._id, kind: "notice", priority: 20, key: `incident:${incidentId}:over:${t._id}`, message: `Stop: ${t.title}. The problem is over.` }]);
     }
   }
+}
+
+/**
+ * §4: blocked → cancelled when a replacement took over, blocked → accepted when the problem is
+ * solved and the same person continues. A replacement that is moving (assigned, accepted, waiting
+ * for a coordinator, done) wins. One that nobody took (escalated) is cancelled instead and the
+ * original person carries on. If another open task of the same kind got there first, the original
+ * closes (the one_open_task index decides).
+ */
+async function unblock(t: Task, incidentId: string): Promise<void> {
+  const { tasks } = await cols();
+  const rep = await tasks.findOne({ replaces: t._id, status: { $nin: ["cancelled"] } }, { sort: { _id: -1 } });
+  const moving = rep && ["assigned", "accepted", "waiting_approval", "done"].includes(rep.status);
+  const close = async (why: string) => {
+    const r = await tasks.updateOne({ _id: t._id, status: "blocked" }, { $set: { status: "cancelled" }, $push: { history: entry(why) } });
+    if (r.modifiedCount) await noteIncidentStep(incidentId, `task ${t._id} closed: ${why}`, t._id);
+  };
+  if (moving) return close(`a replacement took over (task ${rep._id}, ${rep.assignee ?? rep.status})`);
+  if (!t.assignee) return close("the problem is over, nobody to continue");
+  if (rep) {
+    await tasks.updateOne({ _id: rep._id, status: "escalated" }, {
+      $set: { status: "cancelled", open: false }, $push: { history: entry(`cancelled: ${t.assignee} carries on with task ${t._id}`) },
+    });
+    await closeApprovals(rep._id);
+  }
+  try {
+    const r = await tasks.updateOne({ _id: t._id, status: "blocked" }, {
+      $set: { status: "accepted", open: true, tried: t.tried.filter((u) => u !== t.assignee) },
+      $unset: { blockedBy: "", checkinAt: "" },
+      $push: { history: entry(`the problem is over, ${t.assignee} carries on`) },
+    });
+    if (!r.modifiedCount) return;
+  } catch (err) {
+    if (err instanceof MongoServerError && err.code === 11000) return close("the problem is over, but another task already does this work");
+    throw err;
+  }
+  await noteIncidentStep(incidentId, `task ${t._id} back with ${t.assignee}`, t._id);
+  if (t.type === "deliver" && t.recordType === "need") await noteNeedResumed(t.recordId, t._id);
+  await inbox([{ userId: t.assignee, taskId: t._id, kind: "notice", priority: t.priority, key: `incident:${incidentId}:resume:${t._id}`, message: `Carry on: ${t.title}. The problem is over.` }]);
 }
 
 /** "I am already doing this": the work becomes a task in that person's name, accepted. */
@@ -611,6 +655,38 @@ async function siteChanged(siteId: string): Promise<void> {
     const gate = await rescueGate(site);
     if (gate.go) await createFor("rescue", "site", site, gate.why);
   }
+}
+
+/** What a person on their way needs to hear when a site changes under them (§5: "notify each of them"). */
+const MATERIAL: Record<string, (s: Site) => string> = {
+  peopleTrapped: (s) => `${s.peopleTrapped} trapped now`,
+  hazard: (s) => `hazard: ${s.hazard}`,
+  address: (s) => `address is now ${s.address}`,
+  coords: () => "the position was corrected",
+};
+
+/**
+ * A report or a correction changed something material on a site: everyone with an open task on it
+ * (or on a need for it) hears what, once per event. Not the person who said it, and not for
+ * incident hazards (the playbook already warned them).
+ */
+async function tellSiteWorkers(ch: Change): Promise<void> {
+  const what = ch.fields.filter((f) => f in MATERIAL);
+  if (ch.op !== "updated" || !what.length || ch.eventId === "reconcile") return;
+  const { sites, tasks, needs, events } = await cols();
+  const ev = await events.findOne({ _id: ch.eventId }, { projection: { type: 1, actor: 1 } });
+  if (!ev || (ev.type !== "report" && ev.type !== "correction")) return;
+  const site = await sites.findOne({ _id: ch.recordId });
+  if (!site) return;
+  const needIds = (await needs.find({ siteIds: site._id }, { projection: { _id: 1 } }).toArray()).map((n) => n._id);
+  const open = await tasks.find({ deskId: site.deskId, open: true, assignee: { $exists: true, $ne: ev.actor }, recordId: { $in: [site._id, ...needIds] } }).toArray();
+  const who = new Map<string, Task>();
+  for (const t of open) if (!who.has(t.assignee!)) who.set(t.assignee!, t);
+  const label = site.caseNo ? `site ${site.caseNo}` : site.address;
+  await inbox([...who].map(([userId, t]) => ({
+    userId, taskId: t._id, kind: "notice" as const, priority: t.priority, key: `site:${site._id}:${ch.eventId}`,
+    message: `Update on ${label}: ${what.map((f) => MATERIAL[f](site)).join(", ")}.`,
+  })));
 }
 
 /**

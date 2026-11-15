@@ -342,6 +342,13 @@ async function applyApproval(event: Event): Promise<KeeperResult> {
   if (!task) return reject(`task ${p.taskId} not found`);
   const me = await users.findOne({ _id: event.actor }, { projection: { role: 1 } });
   if (me?.role !== "coordinator") return reject(`only a coordinator can approve, and ${event.actor} is not one`);
+  if (task.status === "escalated") {
+    // §4 escalated → assigned: nobody could take it, a coordinator picks someone.
+    if (!p.approved || !p.assignee) return reject(`task ${task._id} is escalated: name the person who takes it (approved: true, assignee)`);
+    if (!(await users.findOne({ _id: p.assignee, deskId: task.deskId }, { projection: { _id: 1 } }))) return reject(`${p.assignee} is not a person on this desk`);
+    return done([task._id], `escalated task ${task._id}: ${event.actor} picked ${p.assignee}`, [],
+      [{ kind: "approve", taskId: task._id, by: event.actor, assignee: p.assignee, eventId: event._id }]);
+  }
   if (task.status !== "waiting_approval") return reject(`task ${task._id} is ${task.status}, not waiting for approval`);
   if (!p.approved) {
     return done([task._id], `task ${task._id} rejected by ${event.actor}`, [], [{ kind: "reject", taskId: task._id, by: event.actor }]);
@@ -508,9 +515,17 @@ async function applyIncident(event: Event): Promise<KeeperResult> {
     }
     if (plan.closure) changes.push(...await closeRoad(event, id, p, textEn, step));
   }
-  return done([id, ...(task ? [task._id] : [])],
-    `incident ${id} opened (${p.kind})${block ? `, task ${task!._id} blocked` : ""}`, changes,
-    block ? [{ kind: "block", taskId: task!._id, by: event.actor, incidentId: id, reason: `${p.kind.replace(/_/g, " ")}: ${textEn}` }] : []);
+  const reason = `${p.kind.replace(/_/g, " ")}: ${textEn}`;
+  const actions: TaskAction[] = block ? [{ kind: "block", taskId: task!._id, by: event.actor, incidentId: id, reason }] : [];
+  // §6 handover: "the person's open tasks go to the next person", all of them, not only the one named.
+  if (p.kind === "handover" && !p.canContinue && fresh) {
+    for (const t of await c.tasks.find({ deskId: event.deskId, assignee: event.actor, open: true, status: { $in: ["assigned", "accepted"] } }).toArray()) {
+      if (!actions.some((a) => a.kind === "block" && a.taskId === t._id)) actions.push({ kind: "block", taskId: t._id, by: event.actor, incidentId: id, reason });
+    }
+  }
+  const blocked = actions.map((a) => (a as { taskId: string }).taskId);
+  return done([id, ...(task ? [task._id] : []), ...blocked.filter((t) => t !== task?._id)],
+    `incident ${id} opened (${p.kind})${blocked.length ? `, ${blocked.length === 1 ? `task ${blocked[0]}` : `${blocked.length} tasks`} blocked` : ""}`, changes, actions);
 }
 
 /**
@@ -1076,6 +1091,15 @@ async function applyCorrection(event: Event): Promise<KeeperResult> {
 }
 
 // ---------- follow-ups the dispatcher asks for (records stay the keeper's) ----------
+
+/** A blocked delivery carries on after the problem: what went back to open is on the way again. */
+export async function noteNeedResumed(needId: string, taskId: string): Promise<boolean> {
+  const { needs } = await cols();
+  const r = await needs.updateOne({ _id: needId, status: { $in: ["open", "assigned"] } }, {
+    $set: { status: "on_the_way" }, $push: { history: { ts: new Date(), by: "dispatcher", source: "system", reason: `on the way again: task ${taskId} carries on` } },
+  });
+  return r.modifiedCount > 0;
+}
 
 /** A deliver task went out with an owner: the need is assigned. */
 export async function noteNeedAssigned(needId: string, taskId: string, assignee: string): Promise<boolean> {
