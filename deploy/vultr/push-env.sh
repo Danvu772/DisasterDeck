@@ -17,9 +17,9 @@ SRC=${ENV_FILE:-.env.local}
 DRY=0; [ "${1:-}" = "--dry" ] && DRY=1
 
 # Production differs from a laptop here.
+# DESK_ID is NOT here: production reads the desk the team's .env.local names (the data lives there).
 OVERRIDES='AUTH_URL=https://disasterdeck.us
-DEMO_MODE=0
-DESK_ID=antakya-2023'
+DEMO_MODE=0'
 
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 umask 077

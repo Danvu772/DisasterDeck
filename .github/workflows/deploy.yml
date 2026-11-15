@@ -40,7 +40,6 @@ jobs:
           DEMO_MODE: "0"
           # Build-only placeholder so Auth.js can load, as in ci.yml. The VM has the real one.
           AUTH_SECRET: ci-build-placeholder-not-a-secret
-          DESK_ID: antakya-2023
           NEXT_PUBLIC_MAPBOX_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}
           NEXT_PUBLIC_MAPBOX_STYLE: ${{ secrets.NEXT_PUBLIC_MAPBOX_STYLE }}
       - name: Join the tailnet

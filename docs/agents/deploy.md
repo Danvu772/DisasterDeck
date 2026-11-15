@@ -33,7 +33,7 @@ The VM is **IPv6-only**. Vultr gave it `100.68.113.147/18` with no IPv4 default 
 
 | Path or unit | Role |
 |---|---|
-| `/etc/desk/env.local` | The production `.env.local`. Copied into each slot on release. Change it from a laptop with `npm run env:push` (`--dry` to preview): it merges that laptop's `.env.local` in, keeps keys only the VM has, never empties a value, puts `AUTH_URL`, `DEMO_MODE=0` and `DESK_ID=antakya-2023` on top, restarts, and restores the previous file if `/login` stops answering. It has `AUTH_URL=https://disasterdeck.us`: behind the tunnel Next sees `localhost:3000`, and without it Auth.js sends people to `https://localhost:3000`. |
+| `/etc/desk/env.local` | The production `.env.local`. Copied into each slot on release. Change it from a laptop with `npm run env:push` (`--dry` to preview): it merges that laptop's `.env.local` in, keeps keys only the VM has, never empties a value, puts `AUTH_URL` and `DEMO_MODE=0` on top. `DESK_ID` comes from the laptop's `.env.local`: it must name the desk the database has data for (check with the counts in Debugging), restarts, and restores the previous file if `/login` stops answering. It has `AUTH_URL=https://disasterdeck.us`: behind the tunnel Next sees `localhost:3000`, and without it Auth.js sends people to `https://localhost:3000`. |
 | `/opt/desk` | Symlink to the live slot. |
 | `/opt/desk-stage` | Where the workflow uploads (user `deployer`). |
 | `desk-web` | `next start` on `127.0.0.1:3000`, user `desk`. |
