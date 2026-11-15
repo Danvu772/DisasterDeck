@@ -34,6 +34,8 @@ export function getDb(): Promise<Db> {
         "MONGODB_URI is not set. Copy .env.example to .env.local (see lib/README.md).",
       );
     }
+    // Not `ignoreUndefined`: it also drops undefined keys from FILTERS, so a findOne({ _id: x })
+    // with x undefined would match an arbitrary document. postEvent() strips undefined instead.
     const client = new MongoClient(uri, { appName: "disaster-desk" });
     const db = client
       .connect()
@@ -119,6 +121,17 @@ export function newId(): string {
 
 // ---------- postEvent ----------
 
+/** A copy without undefined object fields, at any depth. Dates and arrays are kept as they are. */
+function withoutUndefined<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(withoutUndefined) as T;
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    return Object.fromEntries(
+      Object.entries(value).filter(([, v]) => v !== undefined).map(([k, v]) => [k, withoutUndefined(v)]),
+    ) as T;
+  }
+  return value;
+}
+
 /**
  * Put a fact into memory. The only way anything enters memory.
  * - lane 0 for people on the desk and the sweeper (source "person" or "system"), lane 1 otherwise.
@@ -137,7 +150,9 @@ export async function postEvent<P>(e: NewEvent<P>): Promise<string> {
     source: e.source,
     actor: e.actor,
     lane: e.source === "person" || e.source === "system" ? 0 : 1,
-    payload: e.payload,
+    // The driver stores an `undefined` field as null, and the schemas reject null for optional
+    // fields, so the Brain would reject the event. Drop undefined keys (as JSON over HTTP does).
+    payload: withoutUndefined(e.payload),
     status: "pending",
     attempts: 0,
     ...(e.dedupeKey ? { dedupeKey: e.dedupeKey } : {}),

@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 import { closeDb, cols, getBoard, getUserContext, postEvent, searchMemory } from "./db";
 
 const DESK = "check-db";
+// Dedupe keys are global across desks, so they carry the desk name: a key shared with another
+// desk (an older run on the real desk left "check:1") would silently return that other event.
 
 async function cleanup() {
   const c = await cols();
@@ -26,19 +28,19 @@ async function main() {
 
   // Dedupe: the same key twice gives one event and the same id, even when racing.
   const tweet = {
-    deskId: DESK, type: "report" as const, source: "x" as const, actor: "db-check", dedupeKey: "check:1",
+    deskId: DESK, type: "report" as const, source: "x" as const, actor: "db-check", dedupeKey: "check-db:1",
     payload: { kind: "trapped", text: "test", textEn: "test" },
   };
   const [a, b] = await Promise.all([postEvent(tweet), postEvent(tweet)]);
   const again = await postEvent(tweet);
   assert.equal(a, b, "racing duplicates return the same id");
   assert.equal(a, again, "a later duplicate returns the same id");
-  assert.equal(await c.events.countDocuments({ deskId: DESK, dedupeKey: "check:1" }), 1, "one event stored");
+  assert.equal(await c.events.countDocuments({ deskId: DESK, dedupeKey: "check-db:1" }), 1, "one event stored");
   console.log("ok  dedupe: one event,", a);
 
   // Lanes: people and the sweeper first, outside sources second.
   const personId = await postEvent({
-    deskId: DESK, type: "answer", source: "person", actor: "db-check", dedupeKey: "check:2",
+    deskId: DESK, type: "answer", source: "person", actor: "db-check", dedupeKey: "check-db:2",
     payload: { taskId: "none", result: "accepted" },
   });
   const person = await c.events.findOne({ _id: personId });
@@ -53,7 +55,10 @@ async function main() {
   const board = await getBoard(DESK);
   const ctx = await getUserContext("nobody");
   const hits = await searchMemory({ deskId: DESK, collection: "shelters", text: "a" });
-  assert(board.health.pending >= 2, "health counts the pending events");
+  // Not "pending >= 2": a Brain running against the same database may already have taken them.
+  const h = board.health;
+  assert(Number.isInteger(h.pending) && Number.isInteger(h.failed) && Number.isInteger(h.oldestPendingSeconds),
+    "health has its counts");
   assert.equal(ctx.user, null, "unknown user gives null");
   console.log("ok  reads:", {
     board: Object.fromEntries(

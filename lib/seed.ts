@@ -17,27 +17,38 @@ function withDates<T>(doc: Json, fields: string[]): T {
   return out as T;
 }
 
-async function main() {
-  const seed = JSON.parse(await readFile(new URL("../data/seed.json", import.meta.url), "utf8")) as {
+/** The ids are global, so a seed for any other desk gets its ids prefixed with the desk id. */
+export async function seed(desk?: string): Promise<{ deskId: string; users: number; shelters: number }> {
+  const file = JSON.parse(await readFile(new URL("../data/seed.json", import.meta.url), "utf8")) as {
     deskId: string; users: Json[]; shelters: Json[];
   };
+  const target = desk ?? file.deskId;
+  const id = (raw: unknown) => (target === file.deskId ? String(raw) : `${target}:${raw}`);
   const { users, shelters } = await cols();
 
-  for (const u of seed.users) {
-    const user = withDates<User>(u, ["lastSeen"]);
+  for (const u of file.users) {
+    const user = { ...withDates<User>(u, ["lastSeen"]), _id: id(u._id), deskId: target };
     await users.replaceOne({ _id: user._id }, user, { upsert: true });
   }
-  for (const s of seed.shelters) {
-    const shelter = withDates<Shelter>(s, ["observedAt", "updated"]);
+  for (const s of file.shelters) {
+    const shelter = { ...withDates<Shelter>(s, ["observedAt", "updated"]), _id: id(s._id), deskId: target };
     await shelters.replaceOne({ _id: shelter._id }, shelter, { upsert: true });
   }
-  await bumpDeskVersion(seed.deskId);
-  console.log(`Seeded desk ${seed.deskId}: ${seed.users.length} users, ${seed.shelters.length} shelters.`);
+  await bumpDeskVersion(target);
+  return { deskId: target, users: file.users.length, shelters: file.shelters.length };
 }
 
-main()
-  .catch((err) => {
-    console.error("Seed failed:", err instanceof Error ? err.message : err);
-    process.exitCode = 1;
-  })
-  .finally(closeDb);
+async function main() {
+  const r = await seed();
+  console.log(`Seeded desk ${r.deskId}: ${r.users} users, ${r.shelters} shelters.`);
+}
+
+// Only when run as a script (npm run db:seed), not when reset.ts imports seed().
+if (process.argv[1] && /[\\/]seed\.ts$/.test(process.argv[1])) {
+  main()
+    .catch((err) => {
+      console.error("Seed failed:", err instanceof Error ? err.message : err);
+      process.exitCode = 1;
+    })
+    .finally(closeDb);
+}

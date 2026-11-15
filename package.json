@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:check": "tsx --env-file=.env.local lib/db-check.ts",
+    "db:reset": "tsx --env-file=.env.local lib/reset.ts",
+    "load:check": "tsx --env-file=.env.local lib/load-check.ts",
     "db:seed": "tsx --env-file=.env.local lib/seed.ts",
     "api:check": "tsx --env-file=.env.local lib/api-check.ts",
     "handlers:check": "tsx --env-file=.env.local lib/handlers-check.ts",
