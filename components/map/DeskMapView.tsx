@@ -20,11 +20,23 @@ import { HatchDefs, useZones, ZoneLayer, type ZoneMeta } from "./ZoneLayer";
 const TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
 const TILES_ATTR = "Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors";
 
+// Road: a short bar at one point. Closed is a thick solid ink outline, unconfirmed is dashed.
+const ROAD_W = 24, ROAD_H = 10;
+const roadLine = (closed: boolean) => (closed ? "border-4 border-solid border-ink" : "border-2 border-dashed border-ink");
+
 function icon(it: MapItem, selected: boolean, now: number): L.DivIcon {
-  const s = markerSize(it.support);
   const fade = staleInk(isStale(it.staleType, it.at, now));
   const ring = selected ? "ring-4 ring-primary" : "";
-  const shape = it.kind === "incident" ? "rotate-45 rounded-tag" : "rounded-full";
+  if (it.kind === "road") {
+    return L.divIcon({
+      className: "",
+      iconSize: [ROAD_W, ROAD_H],
+      iconAnchor: [ROAD_W / 2, ROAD_H / 2],
+      html: `<span class="block bg-card ${roadLine(it.status === "closed")} ${ring} ${fade}" style="width:${ROAD_W}px;height:${ROAD_H}px"></span>`,
+    });
+  }
+  const s = markerSize(it.support);
+  const shape = it.kind === "incident" ? "rotate-45 rounded-tag" : it.kind === "shelter" ? "rounded-tag" : "rounded-full";
   return L.divIcon({
     className: "",
     iconSize: [s, s],
@@ -81,9 +93,13 @@ function Row({ it, selected, onPick, now }: {
           <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-tag font-bold ${tierBadge(it.tier, it.actNow)}`}>
             {it.priority}
           </span>
+        ) : it.kind === "road" ? (
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+            <span className={`block h-3 w-7 bg-card ${roadLine(it.status === "closed")}`} />
+          </span>
         ) : (
           <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-            <span className={`block h-6 w-6 rotate-45 rounded-tag ${tierBar(it.tier, it.actNow)}`} />
+            <span className={`block h-6 w-6 rounded-tag ${it.kind === "incident" ? "rotate-45" : ""} ${tierBar(it.tier, it.actNow)}`} />
           </span>
         )}
         <span className="min-w-0 flex-1">
@@ -91,6 +107,7 @@ function Row({ it, selected, onPick, now }: {
           <span className="block">
             <Stamp type={it.staleType} at={it.at} source={it.source} sources={it.sources} now={now} />
           </span>
+          {it.note && <span className="block text-xs text-muted">{it.note}</span>}
           {it.placedAt && <span className="block text-xs text-muted">No position of its own. Shown at {it.placedAt}</span>}
         </span>
         <span className="flex shrink-0 flex-col items-end gap-1">
@@ -98,11 +115,10 @@ function Row({ it, selected, onPick, now }: {
           {site && <span className="text-xs text-muted">{site.peopleTrapped} trapped</span>}
         </span>
       </button>
-      {selected && (
+      {selected && (it.kind === "site" || it.kind === "incident") && (
         <div className="px-3 pb-3">
-          {it.kind === "site"
-            ? <SiteCards items={[it.record as Site]} now={now} />
-            : <IncidentCards items={[it.record as Incident]} now={now} />}
+          {it.kind === "site" && <SiteCards items={[it.record as Site]} now={now} />}
+          {it.kind === "incident" && <IncidentCards items={[it.record as Incident]} now={now} />}
         </div>
       )}
     </li>
@@ -146,6 +162,10 @@ function Legend({ meta, zones }: { meta?: ZoneMeta; zones: boolean }) {
       <p><span className={`${dot} ${tierBar(1)}`} /> Urgent</p>
       <p><span className={`${dot} ${tierBar(2)}`} /> Comfort</p>
       <p className="mt-1"><span className={`inline-block h-3 w-3 rotate-45 rounded-tag align-middle ${tierBar(2)}`} /> Problem in the field</p>
+      <p className="mt-1"><span className={`inline-block h-3 w-3 rounded-tag align-middle ${tierBar(1)}`} /> Shelter, full or over 90% of beds</p>
+      <p><span className={`inline-block h-3 w-3 rounded-tag align-middle ${tierBar(2)}`} /> Shelter with room</p>
+      <p className="mt-1"><span className="inline-block h-2 w-5 border-4 border-solid border-ink bg-card align-middle" /> Road closed</p>
+      <p><span className="inline-block h-2 w-5 border-2 border-dashed border-ink bg-card align-middle" /> Road unconfirmed</p>
       <p className="mt-1">Bigger means more people reported it.</p>
       <p>Dashed outline: unconfirmed. Thick: confirmed.</p>
       <p>Faded: the number is stale.</p>
@@ -165,8 +185,11 @@ export default function DeskMapView({ items, now, live, zonesUrl }: {
 
   const placed = items.filter((i) => i.coords);
   const unplaced = items.filter((i) => !i.coords);
+  const isExtra = (i: MapItem) => i.kind === "shelter" || i.kind === "road";
   const points = placed.map((i) => i.coords!);
   const listed = onlyInView && bounds ? placed.filter((i) => bounds.contains(i.coords!)) : placed;
+  const listedMain = listed.filter((i) => !isExtra(i));
+  const listedExtra = listed.filter(isExtra);
 
   function pick(it: MapItem) {
     setSelected((cur) => (cur === it.key ? null : it.key));
@@ -188,9 +211,17 @@ export default function DeskMapView({ items, now, live, zonesUrl }: {
           </label>
         </header>
         <ul className="min-h-0 flex-1 overflow-y-auto">
-          {listed.map((it) => (
+          {listedMain.map((it) => (
             <Row key={it.key} it={it} selected={selected === it.key} onPick={() => pick(it)} now={now} />
           ))}
+          {listedExtra.length > 0 && (
+            <>
+              <li className="bg-paper px-3 pb-1 pt-4 text-sm font-bold">Shelters and roads ({listedExtra.length})</li>
+              {listedExtra.map((it) => (
+                <Row key={it.key} it={it} selected={selected === it.key} onPick={() => pick(it)} now={now} />
+              ))}
+            </>
+          )}
           {unplaced.length > 0 && (
             <>
               <li className="bg-paper px-3 pb-1 pt-4 text-sm font-bold">No location yet ({unplaced.length})</li>
@@ -216,7 +247,7 @@ export default function DeskMapView({ items, now, live, zonesUrl }: {
           ))}
           {placed.map((it) => (
             <Marker key={it.key} position={it.coords!} icon={icon(it, selected === it.key, now)}
-              zIndexOffset={selected === it.key ? 1000 : it.kind === "incident" ? 500 : 0}
+              zIndexOffset={selected === it.key ? 1000 : it.kind === "incident" ? 500 : isExtra(it) ? 250 : 0}
               title={it.title} eventHandlers={{ click: () => pick(it) }} />
           ))}
         </MapContainer>

@@ -74,16 +74,18 @@ export function makeBoard(now: number) {
   ];
 
   const shelters: Shelter[] = [
-    { _id: "sh-a", name: "Shelter A, school gym", region: "Battalgazi", bedsUsed: 58, bedsTotal: 60,
+    { _id: "sh-a", name: "Shelter A, school gym", region: "Battalgazi", coords: [38.371, 38.325], bedsUsed: 58, bedsTotal: 60,
       updated: ago(3), observedAt: ago(120), history: [], deskId: DESK },
-    { _id: "sh-b", name: "Shelter B, mosque hall", region: "Yeşilyurt", bedsUsed: 24, bedsTotal: 60,
+    { _id: "sh-b", name: "Shelter B, mosque hall", region: "Yeşilyurt", coords: [38.344, 38.301], bedsUsed: 24, bedsTotal: 60,
       updated: ago(5), observedAt: ago(5), history: [], deskId: DESK },
   ];
 
   const roads: Road[] = [
     { _id: "rd-1", road: "İnönü Ave, north", state: "closed", reason: "Collapsed building on the road",
+      coords: [38.382, 38.312],
       history: [], deskId: DESK, confidence: "confirmed", observedAt: ago(22) },
     { _id: "rd-2", road: "Ring road exit 3", state: "unconfirmed", reason: "One tweet says traffic is stuck",
+      coords: [38.358, 38.338],
       history: [], deskId: DESK, confidence: "unconfirmed", observedAt: ago(48) },
   ];
 
