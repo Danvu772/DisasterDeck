@@ -2,7 +2,7 @@
 // Run: npm run db:seed. Safe to run again: each document is replaced by its _id.
 // It does not touch events, tasks or any other record.
 import { readFile } from "node:fs/promises";
-import { closeDb, cols } from "./db";
+import { bumpDeskVersion, closeDb, cols } from "./db";
 import type { Shelter, User } from "./types";
 
 type Json = Record<string, unknown>;
@@ -31,6 +31,7 @@ async function main() {
     const shelter = withDates<Shelter>(s, ["observedAt", "updated"]);
     await shelters.replaceOne({ _id: shelter._id }, shelter, { upsert: true });
   }
+  await bumpDeskVersion(seed.deskId);
   console.log(`Seeded desk ${seed.deskId}: ${seed.users.length} users, ${seed.shelters.length} shelters.`);
 }
 

@@ -5,7 +5,7 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { desk, type UserContext } from "../desk";
-import { age, incidentLine, needLine, roadLine, shelterLine, siteLine, taskLine } from "../desk/view";
+import { age, countBy, incidentLine, needLine, roadLine, shelterLine, siteLine, taskLine } from "../desk/view";
 import { quakeLine, recentQuakesNear, type NearbyQuake } from "../research/quakes";
 import { BudgetError } from "../shared/cost";
 import { modelFor, send } from "../shared/llm";
@@ -41,12 +41,22 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
   const { model, effort } = modelFor("chat");
   let tools = toolsFor(ctx);
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
-    // Stable per role → cached after the first turn (tools + system are the prefix).
-    { type: "text", text: systemPrompt(ctx.user.role), cache_control: { type: "ephemeral" } },
+    // Stable per role and shared by everyone in that role (tools + system are the prefix).
+    // 1-hour cache: chats pause for more than 5 minutes, and the 5-minute cache then made
+    // 16 of 20 measured turns rewrite this ~3.5k-token prefix. A 1-hour write costs 2× once
+    // per role per hour; every turn after that reads it at 0.05×.
+    { type: "text", text: systemPrompt(ctx.user.role), cache_control: { type: "ephemeral", ttl: "1h" } },
   ];
   // Aftershocks near this person (scenario clock during a replay). Plain code, no model call.
   const quakes = await recentQuakesNear(ctx.user.coords, 60).catch(() => undefined);
-  const messages: Msg[] = [...history(ctx), { role: "user", content: userContent(ctx, said, input.image, quakes) }];
+  const past = history(ctx);
+  // Breakpoint at the end of the history: the next turn starts with the same lines plus two
+  // more, so within 5 minutes it reads them from the cache instead of writing them again.
+  const last = past[past.length - 1];
+  if (last && typeof last.content === "string") {
+    last.content = [{ type: "text", text: last.content, cache_control: { type: "ephemeral" } }];
+  }
+  const messages: Msg[] = [...past, { role: "user", content: userContent(ctx, said, input.image, quakes) }];
 
   const eventIds: string[] = [];
   const actions: TurnResult["actions"] = [];
@@ -155,34 +165,58 @@ export function contextBlock(ctx: UserContext, quakes?: Quakes): string {
       (p.stock ? ` · stock ${Object.entries(p.stock).map(([k, v]) => `${v} ${k}`).join(", ")}` : "") +
       (p.notes ? ` · notes: ${p.notes}` : ""),
   ];
-  const section = (title: string, xs: string[]) => {
+  // A crowded person (a coordinator with hundreds of tasks) must not blow up every prompt. Each
+  // section shows its top lines in full, then one line that counts the rest by kind, computed
+  // here in code (exact and free, no model summary). The agent pages through the rest with ask_desk.
+  const section = <T>(title: string, xs: T[], line: (x: T) => string, cap: number,
+    rest?: (more: T[]) => string, topic?: string) => {
     lines.push(`${title}:`);
-    lines.push(...(xs.length ? xs.map((x) => `  ${x}`) : ["  none"]));
+    if (!xs.length) { lines.push("  none"); return; }
+    lines.push(...xs.slice(0, cap).map((x) => `  ${line(x)}`));
+    if (xs.length > cap) {
+      const more = xs.slice(cap);
+      lines.push(`  ...and ${more.length} more not shown${rest ? ` (${rest(more)})` : ""}` +
+        (topic ? `; ask_desk topic "${topic}" lists them.` : "."));
+    }
   };
-  section("Their open tasks, top first", ctx.tasks.map((t) => taskLine(t, now, { showDetail: true })));
+  const overdue = (ts: { deadline?: Date | string }[]) => ts.filter((t) => t.deadline && +new Date(t.deadline) < +now).length;
+  const taskRest = (more: typeof ctx.tasks) => `${countBy(more, (t) => t.type)}; ${countBy(more, (t) => `tier ${t.tier}`)}` +
+    (overdue(more) ? `; ${overdue(more)} overdue` : "");
+
+  section("Their open tasks, top first", ctx.tasks, (t) => taskLine(t, now, { showDetail: true }), 8, taskRest, "mine");
   if (u.role === "coordinator") {
-    section("Open incidents, most severe first", ctx.openIncidents.map((i) => incidentLine(i, now)));
-    section("Waiting for their approval", ctx.approvals.map((t) => taskLine(t, now, { showDetail: true })));
+    section("Open incidents, most severe first", ctx.openIncidents, (i) => incidentLine(i, now), 10,
+      (more) => `${countBy(more, (i) => i.severity)}; ${countBy(more, (i) => i.kind)}`, "incidents");
+    section("Waiting for their approval", ctx.approvals, (t) => taskLine(t, now, { showDetail: true }), 8, taskRest, "summary");
   }
-  section("Needs they filed", ctx.myNeeds.map((n) => needLine(n, now)));
-  section("Their open problems", ctx.myIncidents.map((i) => incidentLine(i, now)));
+  section("Needs they filed", ctx.myNeeds, (n) => needLine(n, now), 6, (more) => countBy(more, (n) => n.item), "mine");
+  section("Their open problems", ctx.myIncidents, (i) => incidentLine(i, now), 6, (more) => countBy(more, (i) => i.status), "mine");
   if (u.role !== "public") {
-    section("Records their tasks touch", [
+    const touched: string[] = [
       ...ctx.records.sites.map((s) => siteLine(s, now, u.role)),
       ...ctx.records.needs.map((n) => needLine(n, now)),
-    ]);
+    ];
+    section("Records their tasks touch", touched, (x) => x, 8);
   }
-  section("Roads not open", ctx.records.roads.map((r) => roadLine(r, now)));
+  section("Roads not open", ctx.records.roads, (r) => roadLine(r, now), 8, (more) => countBy(more, (r) => r.state), "roads");
   if (u.role === "shelter" || u.role === "public") {
-    section("Shelters", ctx.records.shelters.map((s) => shelterLine(s, now)));
+    const free = (s: (typeof ctx.records.shelters)[number]) => s.bedsTotal - s.bedsUsed;
+    section("Shelters, most free beds first", [...ctx.records.shelters].sort((a, b) => free(b) - free(a)),
+      (s) => shelterLine(s, now), 8,
+      (more) => `${more.filter((s) => free(s) > 0).length} with free beds, ${more.reduce((n, s) => n + Math.max(0, free(s)), 0)} free beds in total`,
+      "shelters");
   }
   if (quakes) {
     lines.push(quakes.replay ? `Scenario time (replay): ${quakes.now.toISOString().slice(0, 16)} UTC` : "Earthquake feed: live (AFAD, USGS)");
-    section("Earthquakes worth a warning near this person, last 60 min, newest first", quakes.quakes.map(quakeLine));
+    section("Earthquakes worth a warning near this person, last 60 min, newest first", quakes.quakes, quakeLine, 5);
   }
-  section("Unread inbox", ctx.inbox.map((i) => `${i.kind} · ${i.message}${i.taskId ? ` (task ${i.taskId})` : ""} · ${age(i.ts, now)}`));
-  section("Already filed this session by this agent", ctx.postedThisSession.map((e) =>
-    `${e.type} ${e._id} · ${JSON.stringify(e.payload).slice(0, 140)} · ${age(e.ts, now)}`));
+  section("Unread inbox", ctx.inbox, (i) => `${i.kind} · ${i.message}${i.taskId ? ` (task ${i.taskId})` : ""} · ${age(i.ts, now)}`, 8,
+    (more) => countBy(more, (i) => i.kind));
+  section("Already filed this session by this agent", ctx.postedThisSession, (e) =>
+    `${e.type} ${e._id} · ${JSON.stringify(e.payload).slice(0, 140)} · ${age(e.ts, now)}`, 6);
+  if (ctx.chatSummary) {
+    lines.push(`Earlier in this chat, summarized (the lines after it are word for word): ${ctx.chatSummary}`);
+  }
   lines.push("</desk_context>");
   return lines.join("\n");
 }

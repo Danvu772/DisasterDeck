@@ -41,7 +41,8 @@ export interface UserContext {
   myIncidents: Incident[];            // open incidents this person reported
   openIncidents: Incident[];          // coordinators only: every open incident, most severe first
   records: { sites: Site[]; needs: Need[]; roads: Road[]; shelters: Shelter[] }; // touched by their tasks
-  messages: Message[];                // last 10 chat lines, oldest first
+  messages: Message[];                // recent chat lines word for word, oldest first
+  chatSummary?: string;               // older chat lines, summarized (MongoDB desk only)
   postedThisSession: Event[];         // events this person's agent already filed, newest first
 }
 

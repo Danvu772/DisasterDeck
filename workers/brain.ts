@@ -8,7 +8,7 @@
 import { hostname } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
-import { closeDb, cols, markLoop } from "../lib/db";
+import { bumpDeskVersion, closeDb, cols, markLoop } from "../lib/db";
 import type { Event } from "../lib/types";
 import * as dispatcher from "./dispatcher";
 import { apply, HANDLED } from "./memory-keeper";
@@ -68,6 +68,10 @@ export async function processEvent(event: Event): Promise<void> {
         : { $set: { status: "pending" }, $unset: { lockedAt: "" } },
     );
     log(`${event.type} ${event._id} ${giveUp ? "FAILED" : `error (attempt ${event.attempts}), will retry`}: ${reason}`);
+  } finally {
+    // Records may have changed (even a failed apply can write part of its work): tell the
+    // readers' board copies to refresh. Best effort; their copies also expire after 20 s.
+    await bumpDeskVersion(event.deskId).catch((e) => log(`version bump failed: ${e instanceof Error ? e.message : e}`));
   }
 }
 

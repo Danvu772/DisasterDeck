@@ -5,18 +5,20 @@
 //   chat     Claude Sonnet 5.5, effort low   personal agents: many turns, tool use, short replies
 //   extract  Claude Sonnet 5.5, effort low   tweet and news extraction: easy, high volume
 //   summary  Claude Opus 5.5, effort medium  shift handoff: rare, long input, quality matters
+//   digest   Claude Haiku 5.5, effort low    folding old chat lines into a short memo, after the turn
 // Override any of them with ANTHROPIC_MODEL_CHAT / _EXTRACT / _SUMMARY and ANTHROPIC_EFFORT_*.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { assertBudget, recordUsage } from "./cost";
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
-export type Purpose = "chat" | "extract" | "summary";
+export type Purpose = "chat" | "extract" | "summary" | "digest";
 
 const DEFAULTS: Record<Purpose, { model: string; effort: Effort }> = {
   chat: { model: "claude-sonnet-5-5", effort: "low" },
   extract: { model: "claude-sonnet-5-5", effort: "low" },
   summary: { model: "claude-opus-5-5", effort: "medium" },
+  digest: { model: "claude-haiku-5-5", effort: "low" },
 };
 
 export function modelFor(p: Purpose): { model: string; effort: Effort } {
@@ -59,7 +61,9 @@ export async function send(
   params: Omit<Anthropic.Beta.MessageCreateParamsNonStreaming, "betas" | "fallbacks">,
 ): Promise<Anthropic.Beta.BetaMessage> {
   assertBudget(label);
-  const res = await claude().beta.messages.create({ ...params, ...FALLBACK });
+  // Claude Haiku 5.5 has no server-side fallback: the docs say not to send `fallbacks` to it.
+  const fallback = String(params.model).startsWith("claude-haiku") ? {} : FALLBACK;
+  const res = await claude().beta.messages.create({ ...params, ...fallback });
   recordUsage(label, String(params.model), res.usage, res.model);
   if (res.stop_reason !== "refusal") return res;
 

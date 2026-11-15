@@ -74,7 +74,8 @@ export async function cols() {
     users: db.collection<User>("users"),
     messages: db.collection<Message>("messages"),
     // "brain": the loop's heartbeat. "brain-lease": which Brain process may run (only one).
-    meta: db.collection<{ _id: string; lastLoopAt?: Date; holder?: string; until?: Date }>("meta"),
+    // "version:<deskId>": a counter bumped after every record write (see bumpDeskVersion).
+    meta: db.collection<{ _id: string; lastLoopAt?: Date; holder?: string; until?: Date; version?: number }>("meta"),
   };
 }
 
@@ -105,6 +106,9 @@ export async function ensureIndexes(db: Db): Promise<void> {
     ),
     // GET /api/events?since=: the feed, newest events of one desk.
     db.collection("events").createIndex({ deskId: 1, ts: 1 }, { name: "feed" }),
+    // Personal agent, every message: what this person's agent already filed, and their chat lines.
+    db.collection("events").createIndex({ actor: 1, ts: -1 }, { name: "by_actor" }),
+    db.collection("messages").createIndex({ userId: 1, ts: -1 }, { name: "chat" }),
   ]);
 }
 
@@ -215,6 +219,25 @@ export async function getHealth(): Promise<Health> {
 export async function markLoop(): Promise<void> {
   const { meta } = await cols();
   await meta.updateOne({ _id: "brain" }, { $set: { lastLoopAt: new Date() } }, { upsert: true });
+}
+
+// ---------- desk version ----------
+
+/**
+ * A counter per desk, bumped after every record write. Readers (the personal agents) keep one
+ * copy of the board per desk and reread it only when this number changes, so a thousand chat
+ * messages cost one board read, and the copy is never older than the last write.
+ * Whoever writes records calls bumpDeskVersion() after the write: the Brain does it per event.
+ */
+export async function bumpDeskVersion(desk: string = deskId()): Promise<void> {
+  const { meta } = await cols();
+  await meta.updateOne({ _id: `version:${desk}` }, { $inc: { version: 1 } }, { upsert: true });
+}
+
+export async function getDeskVersion(desk: string = deskId()): Promise<number> {
+  const { meta } = await cols();
+  const doc = await meta.findOne({ _id: `version:${desk}` }, { projection: { version: 1 } });
+  return doc?.version ?? 0;
 }
 
 /** Everything the shared board shows, sorted by tier then priority. Same shape as fixtures/board.ts. */

@@ -7,14 +7,14 @@ import type { Event, HistoryEntry, Incident, Need, Road, Role, Shelter, Site, Ta
 import { maskPhones } from "../shared/privacy";
 import type { Board } from "./port";
 
-export type Topic = "summary" | "sites" | "needs" | "shelters" | "roads" | "incidents" | "tasks";
+export type Topic = "summary" | "mine" | "sites" | "needs" | "shelters" | "roads" | "incidents" | "tasks";
 
 const CAN_SEE: Record<Role, Topic[]> = {
-  coordinator: ["summary", "sites", "needs", "shelters", "roads", "incidents", "tasks"],
-  volunteer: ["summary", "sites", "needs", "shelters", "roads"],
-  field: ["summary", "sites", "needs", "shelters", "roads", "incidents"],
-  supplier: ["summary", "needs", "shelters", "roads", "incidents"],
-  shelter: ["summary", "needs", "shelters", "roads"],
+  coordinator: ["summary", "mine", "sites", "needs", "shelters", "roads", "incidents", "tasks"],
+  volunteer: ["summary", "mine", "sites", "needs", "shelters", "roads"],
+  field: ["summary", "mine", "sites", "needs", "shelters", "roads", "incidents"],
+  supplier: ["summary", "mine", "needs", "shelters", "roads", "incidents"],
+  shelter: ["summary", "mine", "needs", "shelters", "roads"],
   public: ["shelters", "roads"],
 };
 
@@ -83,21 +83,49 @@ export function taskLine(t: Task, now: Date, opts: { showDetail: boolean }): str
     (opts.showDetail ? ` · ${maskPhones(t.detail).text}` : "");
 }
 
+/** "40 deliver, 12 call, 3 more kinds": the biggest groups first. For lists too long to show. */
+export function countBy<T>(xs: T[], key: (x: T) => string, top = 5): string {
+  const counts = new Map<string, number>();
+  for (const x of xs) counts.set(key(x), (counts.get(key(x)) ?? 0) + 1);
+  const sorted = [...counts].sort((a, b) => b[1] - a[1]);
+  const shown = sorted.slice(0, top).map(([k, n]) => `${n} ${k}`);
+  return shown.join(", ") + (sorted.length > top ? `, ${sorted.length - top} more kinds` : "");
+}
+
+const PAGE = 12;
+
 /** Answer for the ask_desk tool. Returns lines the model must quote, never invent around. */
 export function askDesk(args: {
   board: Board; events: Event[]; role: Role; topic: Topic; region?: string; now: Date;
+  userId?: string; page?: number;
 }): string {
   const { board: b, role, topic, region, now } = args;
   if (!CAN_SEE[role].includes(topic)) {
     return `Not available to the ${role} role. The ${role} role can ask about: ${CAN_SEE[role].join(", ")}.`;
   }
-  const cap = (xs: string[], n = 12) =>
-    xs.length === 0 ? "The desk has nothing on that." :
-    xs.slice(0, n).join("\n") + (xs.length > n ? `\n(${xs.length - n} more not shown)` : "");
+  const page = Math.max(0, Math.floor(args.page ?? 0));
+  const cap = (xs: string[]) => {
+    if (xs.length === 0) return "The desk has nothing on that.";
+    const from = page * PAGE;
+    if (from >= xs.length) return `Only ${xs.length} line(s) on that; page ${page} is past the end.`;
+    const left = xs.length - from - PAGE;
+    return xs.slice(from, from + PAGE).join("\n") +
+      (left > 0 ? `\n(${left} more; ask again with page ${page + 1})` : "");
+  };
   const prio = <T extends { tier: number; priority: number }>(xs: T[]) =>
     [...xs].sort((a, c) => a.tier - c.tier || c.priority - a.priority);
 
   switch (topic) {
+    case "mine": {
+      // This person's own open work, for someone with more than the context block shows.
+      const me = args.userId;
+      return cap([
+        ...prio(b.tasks.filter((t) => t.open && t.assignee === me)).map((t) => taskLine(t, now, { showDetail: true })),
+        ...prio(b.needs.filter((n) => n.requestedBy?.includes(me ?? "") && n.status !== "cancelled" && n.status !== "delivered"))
+          .map((n) => needLine(n, now)),
+        ...b.incidents.filter((i) => i.reportedBy === me && i.status !== "resolved").map((i) => incidentLine(i, now)),
+      ].filter((l) => !region || l.toLocaleLowerCase("tr").includes(region.toLocaleLowerCase("tr"))));
+    }
     case "sites":
       return cap(prio(b.sites.filter((s) => s.status !== "retracted" && inRegion(region, s.region)))
         .map((s) => siteLine(s, now, role)));
@@ -123,18 +151,21 @@ const sev = (s: Incident["severity"]) => (s === "critical" ? 2 : s === "high" ? 
 
 function summary({ board: b, events, role, now }: { board: Board; events: Event[]; role: Role; now: Date }): string {
   const out: string[] = [];
+  // A crowded desk can have hundreds of stuck tasks: show the top of each group, count the rest.
+  const top = (xs: string[], n = 10) =>
+    [...xs.slice(0, n).map((x) => "  " + x), ...(xs.length > n ? [`  ...and ${xs.length - n} more (ask the topic itself, with page)`] : [])];
   const open = b.incidents.filter((i) => i.status !== "resolved");
   if (open.length && CAN_SEE[role].includes("incidents")) {
-    out.push(`OPEN INCIDENTS (${open.length}):`, ...open.map((i) => "  " + incidentLine(i, now)));
+    out.push(`OPEN INCIDENTS (${open.length}):`, ...top([...open].sort((x, y) => sev(y.severity) - sev(x.severity)).map((i) => incidentLine(i, now))));
   }
   if (role === "coordinator") {
     const stuck = b.tasks.filter((t) => t.status === "escalated" || t.status === "waiting_approval" ||
       (t.open && !t.assignee && t.tier === 0));
-    if (stuck.length) out.push(`NEEDS A DECISION (${stuck.length}):`, ...stuck.map((t) => "  " + taskLine(t, now, { showDetail: true })));
+    if (stuck.length) out.push(`NEEDS A DECISION (${stuck.length}):`, ...top(stuck.map((t) => taskLine(t, now, { showDetail: true }))));
   }
   const t0 = b.sites.filter((s) => s.tier === 0 && s.status === "open");
   if (t0.length && CAN_SEE[role].includes("sites")) {
-    out.push(`OPEN DANGER-TO-LIFE SITES (${t0.length}):`, ...t0.map((s) => "  " + siteLine(s, now, role)));
+    out.push(`OPEN DANGER-TO-LIFE SITES (${t0.length}):`, ...top(t0.map((s) => siteLine(s, now, role))));
   }
   const full = b.shelters.filter((s) => s.bedsUsed / s.bedsTotal >= 0.9);
   if (full.length) out.push(`SHELTERS 90% FULL OR MORE: ${full.map((s) => `${s.name} ${s.bedsUsed}/${s.bedsTotal} (${age(s.observedAt, now)})`).join("; ")}`);

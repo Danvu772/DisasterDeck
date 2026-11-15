@@ -9,15 +9,68 @@
 // still shows Role 3's fixture people (zeynep, team-4, …); they are found in the fixtures as a
 // fallback so the chat answers, but the real database has no tasks for them.
 
-import { closeDb, cols, getBoard, getUserContext, newId, postEvent } from "../../lib/db";
+import { closeDb, cols, getBoard, getDeskVersion, newId, postEvent } from "../../lib/db";
 import { payloadSchemas } from "../../lib/schemas";
 import type { Event, User } from "../../lib/types";
+import { loadChat } from "./chat-memory";
 import { fixtureDesk } from "./fixture-desk";
 import { composeContext, type Board, type DeskPort, type NewEvent } from "./port";
 
-async function findUser(id: string): Promise<User | undefined> {
+// ---------- one board copy per desk ----------
+// Every chat message needs the board (tasks, incidents, roads, shelters). Reading 8 collections
+// per message does not scale, so each process keeps one copy per desk and rereads it only when
+// the desk version changes (the Brain bumps it after every write; see lib/db.ts) or the copy is
+// older than BOARD_MAX_AGE_MS, for a writer that forgets to bump. Requests that arrive while a
+// read is running share that read. Cost per message: one findOne on `meta`.
+const BOARD_MAX_AGE_MS = 20_000;
+type BoardCopy = { version: number; at: number; board: Promise<Board> };
+const g = globalThis as typeof globalThis & { __deskBoards?: Map<string, BoardCopy> };
+const boards = (g.__deskBoards ??= new Map<string, BoardCopy>());
+
+async function readBoard(deskId: string): Promise<Board> {
+  const b = await getBoard(deskId);
+  return { sites: b.sites, needs: b.needs, roads: b.roads, shelters: b.shelters, zones: b.zones,
+    incidents: b.incidents, tasks: b.tasks } satisfies Board;
+}
+
+// The version itself is shared for VERSION_TTL_MS: under a burst, 50 messages ask the database
+// once, not 50 times. A Brain write is seen at most this much later.
+const VERSION_TTL_MS = 1_000;
+const versions = new Map<string, { at: number; v: Promise<number> }>();
+function deskVersion(deskId: string): Promise<number> {
+  const hit = versions.get(deskId);
+  if (hit && Date.now() - hit.at < VERSION_TTL_MS) return hit.v;
+  const v = getDeskVersion(deskId);
+  const entry = { at: Date.now(), v };
+  versions.set(deskId, entry);
+  v.catch(() => { if (versions.get(deskId) === entry) versions.delete(deskId); });
+  return v;
+}
+
+export async function cachedBoard(deskId: string): Promise<Board> {
+  const version = await deskVersion(deskId);
+  const copy = boards.get(deskId);
+  if (copy && copy.version >= version && Date.now() - copy.at < BOARD_MAX_AGE_MS) return copy.board;
+  const fresh: BoardCopy = { version, at: Date.now(), board: readBoard(deskId) };
+  boards.set(deskId, fresh);
+  fresh.board.catch(() => { if (boards.get(deskId) === fresh) boards.delete(deskId); }); // retry next time
+  return fresh.board;
+}
+
+// People change rarely (role, profile): keep each for USER_TTL_MS instead of a query per message.
+const USER_TTL_MS = 30_000;
+const people = new Map<string, { at: number; user: Promise<User | undefined> }>();
+async function readUser(id: string): Promise<User | undefined> {
   const { users } = await cols();
   return (await users.findOne({ _id: id })) ?? (await fixtureDesk.getUser(id));
+}
+function findUser(id: string): Promise<User | undefined> {
+  const hit = people.get(id);
+  if (hit && Date.now() - hit.at < USER_TTL_MS) return hit.user;
+  const entry = { at: Date.now(), user: readUser(id) };
+  people.set(id, entry);
+  entry.user.then((u) => { if (!u) people.delete(id); }, () => people.delete(id));
+  return entry.user;
 }
 
 export const libDesk: DeskPort = {
@@ -30,22 +83,21 @@ export const libDesk: DeskPort = {
     return users.find({}).toArray();
   },
 
-  async getBoard(deskId) {
-    const b = await getBoard(deskId);
-    return { sites: b.sites, needs: b.needs, roads: b.roads, shelters: b.shelters, zones: b.zones,
-      incidents: b.incidents, tasks: b.tasks } satisfies Board;
-  },
+  getBoard: cachedBoard,
 
   async getUserContext(userId) {
     const user = await findUser(userId);
     if (!user) throw new Error(`unknown user ${userId}`);
-    const { events } = await cols();
-    const [mine, board, posted] = await Promise.all([
-      getUserContext(userId),            // Role 1: inbox, open tasks, their needs, last 10 messages
-      this.getBoard(user.deskId),        // the rest of the desk: approvals, incidents, roads, shelters
+    const { events, inbox } = await cols();
+    // All side by side: the board copy (usually no read), and small indexed queries.
+    const [board, unread, chat, posted] = await Promise.all([
+      cachedBoard(user.deskId),
+      inbox.find({ userId, status: "unread" }).sort({ ts: -1 }).limit(50).toArray(),
+      loadChat(userId),
       events.find({ actor: userId }).sort({ ts: -1 }).limit(10).toArray(),
     ]);
-    return composeContext({ user, board, inbox: mine.inbox, messages: mine.messages, posted, now: new Date() });
+    const ctx = composeContext({ user, board, inbox: unread, messages: chat.lines, posted, now: new Date() });
+    return { ...ctx, messages: chat.lines, chatSummary: chat.summary };
   },
 
   async recentEvents(deskId, sinceMinutes) {

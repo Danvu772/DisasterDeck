@@ -9,7 +9,7 @@
 // workspace in the Anthropic Console (set it to about $18).
 //
 // Prices: Anthropic first-party list prices, USD per 1M tokens (Nov 2026). Cache writes are
-// 1.25× input (5-minute TTL). Web search is billed per search.
+// 1.25× input (5-minute TTL) or 2× (1-hour TTL). Web search is billed per search.
 
 import { appendFileSync, existsSync, mkdirSync, openSync, readSync, closeSync, statSync } from "node:fs";
 import path from "node:path";
@@ -87,6 +87,8 @@ interface TokenCounts {
   output_tokens: number;
   cache_creation_input_tokens?: number | null;
   cache_read_input_tokens?: number | null;
+  // Split of cache_creation_input_tokens by TTL: 5-minute writes cost 1.25× input, 1-hour writes 2×.
+  cache_creation?: { ephemeral_5m_input_tokens?: number | null; ephemeral_1h_input_tokens?: number | null } | null;
 }
 /** The fields of BetaUsage we price. */
 export interface UsageLike extends TokenCounts {
@@ -97,8 +99,10 @@ export interface UsageLike extends TokenCounts {
 function tokensUsd(model: string, u: TokenCounts): number {
   const p = PRICES[model] ?? MOST_EXPENSIVE;
   const m = 1 / 1_000_000;
+  const write1h = u.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+  const write5m = (u.cache_creation_input_tokens ?? 0) - write1h;
   return u.input_tokens * p.input * m +
-    (u.cache_creation_input_tokens ?? 0) * p.input * 1.25 * m +
+    write5m * p.input * 1.25 * m + write1h * p.input * 2 * m +
     (u.cache_read_input_tokens ?? 0) * p.cacheRead * m +
     u.output_tokens * p.output * m;
 }
@@ -121,7 +125,7 @@ export function recordUsage(label: string, requested: string, u: UsageLike, serv
   const row = JSON.stringify({
     ts: new Date().toISOString(), label, model: served,
     in: u.input_tokens, out: u.output_tokens,
-    cacheW: u.cache_creation_input_tokens ?? 0, cacheR: u.cache_read_input_tokens ?? 0,
+    cacheW: u.cache_creation_input_tokens ?? 0, cacheW1h: u.cache_creation?.ephemeral_1h_input_tokens ?? 0, cacheR: u.cache_read_input_tokens ?? 0,
     search: u.server_tool_use?.web_search_requests ?? 0,
     usd: Number(usd.toFixed(6)),
   }) + "\n";

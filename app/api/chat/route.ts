@@ -6,7 +6,8 @@
 // Voice: Claude has no speech-to-text. The browser turns speech into text (Web Speech API)
 // and sends it as `text`. A raw audioBase64 gets a polite reply, not an error.
 
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { refreshChatSummary } from "@/agents/personal/memory";
 import { runTurn, type TurnInput } from "@/agents/personal/turn";
 import { desk } from "@/agents/desk";
 import { sessionUserId } from "@/auth";
@@ -100,6 +101,8 @@ export async function POST(req: Request) {
 
   try {
     const result = await runTurn({ userId, text, image, coords });
+    // After the reply is sent: fold old chat lines into the summary (MongoDB desk only).
+    if (desk().name === "mongodb") after(() => refreshChatSummary(userId!));
     return NextResponse.json(result);
   } catch (e) {
     console.error("[api/chat]", e);

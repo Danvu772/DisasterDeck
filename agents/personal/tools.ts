@@ -29,10 +29,11 @@ const RECORD_TYPES: RecordType[] = ["site", "need", "road", "shelter", "zone", "
 const DEFS: Record<string, Tool> = {
   ask_desk: {
     name: "ask_desk",
-    description: "Read the shared desk. Use it for any question about the crisis: sites, needs, shelters with space, closed roads, incidents, tasks, or a summary of what happened and what is stuck. Read only: it files nothing. Every line it returns has its source and age; quote them.",
+    description: "Read the shared desk. Use it for any question about the crisis: sites, needs, shelters with space, closed roads, incidents, tasks, or a summary of what happened and what is stuck. Topic \"mine\" lists this person's own open tasks, needs and problems, for when <desk_context> says more are not shown. Read only: it files nothing. Every line it returns has its source and age; quote them. Answers come 12 lines at a time; ask again with the next page for more.",
     input_schema: obj({
-      topic: { type: "string", enum: ["summary", "sites", "needs", "shelters", "roads", "incidents", "tasks"] },
+      topic: { type: "string", enum: ["summary", "mine", "sites", "needs", "shelters", "roads", "incidents", "tasks"] },
       region: { ...nstr, description: "District or neighbourhood to filter by, or null for all." },
+      page: { ...nint, description: "0 for the first 12 lines, 1 for the next 12, and so on. null means 0." },
     }),
   },
   answer_task: {
@@ -194,7 +195,8 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       }
       const d = desk();
       const [board, events] = await Promise.all([d.getBoard(u.deskId), d.recentEvents(u.deskId, 60)]);
-      return { content: askDesk({ board, events, role: u.role, topic, region: s(i.region), now: ctx.now }) };
+      return { content: askDesk({ board, events, role: u.role, topic, region: s(i.region), now: ctx.now,
+        userId: u._id, page: n(i.page) }) };
     }
 
     case "answer_task": {
