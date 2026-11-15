@@ -277,6 +277,8 @@ async function lifecycles() {
 
   // T11 + T9: a shift ends. Every open task of the person goes on, with the note. When it is over the originals close.
   await c.sites.insertMany([site("g-hand-1", { coords: [38.7, 38.7] }), site("g-hand-2", { coords: [38.7, 38.71] })]);
+  // Earlier timers may have handed vHand someone else's task: start this scene with only these two.
+  await c.tasks.updateMany({ deskId: DESK, assignee: U.vHand, open: true }, { $set: { status: "cancelled", open: false } });
   const h1 = task("g-hand-1", { assignee: U.vHand, status: "accepted" });
   const h2 = task("g-hand-2", { assignee: U.vHand, status: "assigned", deadline: min(now, 30) });
   await c.tasks.insertMany([h1, h2]);
@@ -288,6 +290,12 @@ async function lifecycles() {
     assert.match(next.detail, /Handover note from check-gap-vol-shift-ends: my shift ends, the family at g-hand-1 speaks Kurdish/);
   }
   ok("T11 handover: every open task of the person goes to the next person, with the note");
+  const card = { kind: "incident" as const, incidentId: (await c.incidents.findOne({ taskId: h1._id }))!._id };
+  assert.equal((await c.incidents.findOne({ _id: card.incidentId }))!.status, "helping");
+  assert.equal((await c.inbox.countDocuments({ userId: U.c1, ...card })), 0, "solved and not critical: no card");
+  const roadInc = { kind: "incident" as const, incidentId: inc._id };
+  assert.equal((await c.inbox.countDocuments({ userId: U.c1, ...roadInc })), 1, "the road one could not be solved (nobody took over): a card");
+  ok("T13 a coordinator card only for critical or unsolved incidents");
   const hinc = (await c.incidents.findOne({ taskId: h1._id }))!;
   await say(U.vHand, "incident", { incidentId: hinc._id, kind: "handover", text: "tamam", textEn: "done for today", canContinue: true, resolved: true });
   for (const h of [h1, h2]) assert.equal((await c.tasks.findOne({ _id: h._id }))!.status, "cancelled", "a replacement took over");
@@ -317,6 +325,63 @@ async function lifecycles() {
   ok("T8 a site update reaches the people working it");
 }
 
+async function rules() {
+  const c = await cols();
+
+  // T14: comfort is tier 2, water stays tier 1, danger to life is tier 0.
+  const meals = await say(U.field, "need", { item: "hot meals", quantity: 30, lifeThreatening: false, region: "gap-tiers" });
+  const water = await say(U.field, "need", { item: "water", quantity: 30, lifeThreatening: false, region: "gap-tiers" });
+  assert.equal((await c.needs.findOne({ _id: meals.result!.recordIds[0] }))!.tier, 2);
+  assert.equal((await c.needs.findOne({ _id: water.result!.recordIds[0] }))!.tier, 1);
+  ok("T14 hot meals are tier 2 (comfort), water stays tier 1");
+
+  // T17: a citizen says danger to life. The delivery goes out at once and a volunteer gets a call to verify.
+  const life = await say(U.pub2, "need", { item: "insulin", quantity: 2, lifeThreatening: true, region: R });
+  const lifeId = life.result!.recordIds[0];
+  const lifeNeed = (await c.needs.findOne({ _id: lifeId }))!;
+  assert.equal(lifeNeed.status, "open", "danger to life never waits"); assert.equal(lifeNeed.confidence, "unconfirmed");
+  const verify = (await c.tasks.findOne({ recordId: lifeId, type: "call", open: true }))!;
+  assert(verify?.assignee, "a volunteer has the call");
+  assert.match(verify.title, /Call to verify/);
+  await say(verify.assignee!, "answer", { taskId: verify._id, result: "done", note: "spoke to the family" });
+  assert.equal((await c.needs.findOne({ _id: lifeId }))!.confidence, "confirmed");
+  ok("T17 danger to life from a citizen: open at once, a volunteer calls to verify, the call confirms it");
+
+  // T16: a citizen cannot retract a site or someone else's need, but can withdraw a need only they asked for.
+  await c.sites.insertOne(site("g-retract", { coords: [38.1, 38.1] }));
+  let ev = await say(U.pub3, "correction", { action: "retract", recordType: "site", recordId: "g-retract", reason: "I think it's fake" });
+  assert.equal(ev.status, "rejected"); assert.match(ev.result!.reason, /not vetted/);
+  assert.equal((await c.sites.findOne({ _id: "g-retract" }))!.status, "open");
+  ev = await say(U.pub3, "correction", { action: "retract", recordType: "need", recordId: lifeId, reason: "not needed" });
+  assert.equal(ev.status, "rejected");
+  ev = await say(U.pub2, "correction", { action: "retract", recordType: "need", recordId: lifeId, reason: "we got it from a neighbour" });
+  assert.equal(ev.status, "merged", ev.result?.reason);
+  assert.equal((await c.needs.findOne({ _id: lifeId }))!.status, "cancelled");
+  ev = await say(U.vOn, "correction", { action: "retract", recordType: "site", recordId: "g-retract", reason: "duplicate of g-work, checked by phone" });
+  assert.equal(ev.status, "merged", ev.result?.reason);
+  ok("T16 a citizen cannot retract a site or another person's need, can withdraw their own, a volunteer can retract");
+
+  // T15: three different public posts corroborate a closure. Two trusted sources disagreeing within 10 min: a field team is asked.
+  const closure = (state: string, text: string) => ({ road: "Gap ring road", state, reason: text, coords: [38.404, 38.4] });
+  await say("x-agent", "closure", closure("closed", "crash at the junction"), "x");
+  await say("x-agent", "closure", closure("closed", "two cars blocking the ring road"), "x");
+  let road = (await c.roads.findOne({ deskId: DESK, road: "Gap ring road" }))!;
+  assert.equal(road.confidence, "unconfirmed");
+  await say("x-agent", "closure", closure("closed", "ring road shut, police there"), "x");
+  road = (await c.roads.findOne({ _id: road._id }))!;
+  assert.equal(road.confidence, "corroborated");
+  ok("T15 three different public posts about a closed road make it corroborated");
+
+  await say(U.field2, "closure", closure("closed", "debris, confirmed on site"));
+  await say(U.vOn, "closure", closure("open", "just drove through, it is open"));
+  road = (await c.roads.findOne({ _id: road._id }))!;
+  assert(road.history.some((h) => /two trusted sources disagree/.test(h.reason)));
+  const asked = await c.inbox.find({ key: { $regex: `^road-clash:${road._id}:` } }).toArray();
+  assert.equal(asked.length, 1, "one person asked");
+  assert.match(asked[0].message, /Two trusted reports disagree about Gap ring road/);
+  ok("T15 two trusted sources disagree about a road within 10 min: the nearest free field team is asked to check");
+}
+
 async function main() {
   await cleanup();
   const c = await cols();
@@ -324,6 +389,7 @@ async function main() {
   await sweeperRows();
   await pins();
   await lifecycles();
+  await rules();
   console.log(`\nAll ${passed} checks passed.`);
 }
 

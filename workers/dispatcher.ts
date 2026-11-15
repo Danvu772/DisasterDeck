@@ -50,7 +50,10 @@ export async function react(changes: Change[], actions: TaskAction[] = []): Prom
     else if (ch.recordType === "need") await needChanged(ch);
     else if (ch.recordType === "incident" && ch.op === "created") await incidentOpened(ch.recordId);
     else if (ch.recordType === "incident" && ch.flags?.includes("resolved")) await incidentResolved(ch.recordId);
-    else if (ch.recordType === "road") { if (ch.flags?.includes("notify")) await roadChanged(ch); }
+    else if (ch.recordType === "road") {
+      if (ch.flags?.includes("notify")) await roadChanged(ch);
+      if (ch.flags?.includes("confirm")) await roadClash(ch);
+    }
     else if (ch.recordType === "shelter") await shelterChanged(ch);
     else if (ch.recordType === "zone" && ch.flags?.includes("silent")) await silentZone(ch.recordId);
     if ((ch.recordType === "site" || ch.recordType === "need") && ch.flags?.includes("rescored")) {
@@ -718,6 +721,10 @@ async function needChanged(ch: Change): Promise<void> {
   const { needs } = await cols();
   const need = await needs.findOne({ _id: ch.recordId });
   if (need?.status === "open") await createFor("deliver", "need", need);
+  // §5: danger to life from someone nobody vetted never waits (the delivery goes out) and a volunteer calls to verify it right away.
+  if (need?.lifeThreatening && need.confidence === "unconfirmed" && need.status !== "delivered" && need.status !== "cancelled") {
+    await createFor("call", "need", need);
+  }
   if (ch.toStatus === "on_the_way" || ch.toStatus === "delivered") await tellAskers(ch.recordId, ch.toStatus, ch.eventId);
 }
 
@@ -868,6 +875,9 @@ async function incidentOpened(incidentId: string): Promise<void> {
     inc = (await incidents.findOne({ _id: incidentId })) ?? inc;
   }
 
+  // §6: a card for everything critical and everything the rules could not solve. "unreachable" is
+  // always told (the playbook row). The rest is solved and stays on the board without a card.
+  if (inc.severity !== "critical" && inc.status !== "escalated" && inc.kind !== "unreachable") return;
   const didList = inc.actions.slice(1).map((a) => a.what);
   const coordinators = await peopleOn(inc.deskId, ["coordinator"]);
   await inbox(coordinators.map((u) => ({
@@ -981,6 +991,19 @@ async function roadChanged(ch: Change): Promise<void> {
   const message = `${road.road} is ${said} (${road.confidence}, ${road.source ?? "unknown source"}, ${minutesAgo(road.observedAt)})`;
   await inbox([...who].map(([userId, t]) => ({
     userId, taskId: t._id, kind: "notice" as const, priority: 10, message, key: `road:${road._id}:${ch.eventId}`,
+  })));
+}
+
+/** Two trusted sources disagree about a road within 10 minutes: the nearest free field team is asked to look (§5). */
+async function roadClash(ch: Change): Promise<void> {
+  const { roads } = await cols();
+  const road = await roads.findOne({ _id: ch.recordId });
+  if (!road) return;
+  const pick = await pickWith(road.deskId, ["field"], { ...(road.coords ? { coords: road.coords } : {}), region: road.region ?? "unknown" }, []);
+  const message = `Two trusted reports disagree about ${road.road}: ${ch.note ?? "open or closed"}. Can you check it and tell your agent?`;
+  if (pick.ok) await inbox([{ userId: pick.user._id, kind: "notice", priority: 15, key: `road-clash:${road._id}:${ch.eventId}`, message }]);
+  else await inbox((await peopleOn(road.deskId, ["coordinator"])).map((u) => ({
+    userId: u._id, kind: "notice" as const, priority: 15, key: `road-clash:${road._id}:${ch.eventId}`, message: `${message} No field team is free: ${pick.reason}.`,
   })));
 }
 
@@ -1178,6 +1201,7 @@ async function inboxCoordinators(task: Task, kind: "approval" | "notice", messag
 const where = (rec: Site | Need) => ("address" in rec ? rec.address : rec.region);
 
 function titleFor(type: Task["type"], rec: Site | Need): string {
+  if ("item" in rec && type === "call") return `Call to verify: ${rec.quantity} ${rec.item} for ${rec.region}, danger to life`;
   if ("item" in rec) return `Bring ${rec.quantity} ${rec.item} to ${rec.region}`;
   const n = rec.caseNo ? `site ${rec.caseNo}` : where(rec);
   switch (type) {
@@ -1188,6 +1212,9 @@ function titleFor(type: Task["type"], rec: Site | Need): string {
 }
 
 function detailFor(type: Task["type"], rec: Site | Need): string {
+  if ("item" in rec && type === "call") {
+    return `A citizen reported danger to life (${rec.quantity} ${rec.item}). The delivery is already going out. Call to check the place, who is there and what they need.`;
+  }
   if ("item" in rec) {
     const lines = rec.lines.length > 1 ? ` In ${rec.lines.length} lines: ${rec.lines.map((l) => `${l.quantity} for ${l.siteId ?? rec.region}`).join(", ")}.` : "";
     return `${rec.requestedBy.length} ${rec.requestedBy.length === 1 ? "person asked" : "people asked"}${rec.lifeThreatening ? ", danger to life" : ""}.${lines}`;
@@ -1199,6 +1226,7 @@ function detailFor(type: Task["type"], rec: Site | Need): string {
 }
 
 function whyFor(type: Task["type"], rec: Site | Need): string {
+  if (type === "call" && "item" in rec) return "danger to life from an unvetted voice: verify by phone, the delivery does not wait";
   if (type === "call") return "nobody has called about this site yet";
   if (type === "rescue") return `verified, ${(rec as Site).peopleTrapped} still trapped`;
   if ((rec as Need).quantity >= BIG_SUPPLY_MOVE) return `big supply move, ${(rec as Need).quantity} ${(rec as Need).item}, ${(rec as Need).support} asked`;

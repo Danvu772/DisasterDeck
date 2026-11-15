@@ -16,7 +16,7 @@ import { haversineMeters, normalizeAddress, normalizeText, pointInPolygon } from
 import { conflictNote, resolveConflict, trustedClash, trustRank, type Stamp } from "../lib/rules/conflict";
 import { blocks, PLAYBOOK, severity } from "../lib/rules/incidents";
 import { decideReport, type SiteLite } from "../lib/rules/merge";
-import { isTrusted, matchNeed, mergeLines, needStatus } from "../lib/rules/needs";
+import { isTrusted, matchNeed, mergeLines, needStatus, needTier } from "../lib/rules/needs";
 import { confidence, kept, scored, siteTier, support, type Voice } from "../lib/rules/priority";
 import {
   alertPayload, answerPayload, approvalPayload, capacityPayload, claimPayload, closurePayload, correctionPayload,
@@ -327,6 +327,13 @@ async function applyAnswer(event: Event): Promise<KeeperResult> {
   }
   if (onNeed && task.type === "deliver") {
     changes.push(...await moveNeed(event, task.recordId, ["open", "assigned", "on_the_way"], { status: "delivered" }, `delivered by ${who}`));
+  }
+  if (onNeed && task.type === "call") {
+    // A volunteer checked a danger-to-life need from a citizen by phone (§5): the need is confirmed.
+    const { needs } = await cols();
+    const r = await needs.updateOne({ _id: task.recordId, confidence: { $ne: "confirmed" } },
+      { $set: { confidence: "confirmed" }, $push: { history: historyOf(event, `verified by ${who}'s call${note ? `: ${note}` : ""}`) } });
+    if (r.modifiedCount) changes.push({ recordType: "need", recordId: task.recordId, op: "updated", eventId: event._id!, fields: ["confidence", "history"] });
   }
   return done([task._id, task.recordId], `task ${task._id} done by ${who}`, changes, [{ kind: "done", taskId: task._id, by: who, note }]);
 }
@@ -649,7 +656,7 @@ async function applyNeed(event: Event): Promise<KeeperResult> {
         confidence: trusted ? "confirmed" : "unconfirmed",
         lifeThreatening: p.lifeThreatening,
         lines: [{ ...(p.siteId ? { siteId: p.siteId } : {}), quantity: p.quantity }],
-        tier: p.lifeThreatening ? 0 : 1,
+        tier: needTier(item, p.lifeThreatening),
         ...scored({ support: 1, waitingSince: observedAt }, now),
         support: 1,
         requestedBy: [event.actor],
@@ -672,7 +679,7 @@ async function applyNeed(event: Event): Promise<KeeperResult> {
     siteIds: p.siteId && !same.siteIds.includes(p.siteId) ? [...same.siteIds, p.siteId] : same.siteIds,
     status: needStatus(same.status, sup, trusted, life),
     confidence: trusted ? "confirmed" : same.confidence === "unconfirmed" && sup >= 3 ? "corroborated" : same.confidence,
-    tier: life ? 0 : same.tier,
+    tier: life ? 0 : needTier(same.item, false),
     ...scored({ support: sup, waitingSince: same.history[0]?.ts ?? observedAt, ...kept(same) }, now),
   };
   await c.needs.updateOne({ _id: same._id }, { $set: set, $push: { history: historyOf(event, `asked again for ${p.quantity} ${item}`) } });
@@ -746,6 +753,20 @@ async function regionFor(event: Event, coords?: LatLng): Promise<string | undefi
 const roadKey = (name: string) => normalizeAddress(name) ?? normalizeText(name);
 const closedLike = (state: Road["state"]) => state !== "open";
 
+/** Different public voices behind a road's closure events that agree with `closed` (this event included). */
+async function publicVoicesOn(road: Road, eventId: string, closed: boolean): Promise<number> {
+  const { events } = await cols();
+  const ids = [...new Set([...road.history.map((h) => h.eventId).filter((x): x is string => Boolean(x)), eventId])];
+  const evs = await events.find({ _id: { $in: ids }, type: "closure" }, { projection: { _id: 1, source: 1, actor: 1, result: 1, payload: 1 } }).toArray();
+  const keys = new Set<string>();
+  for (const e of evs) {
+    if (closedLike((e.payload as { state: Road["state"] }).state) !== closed) continue;
+    const v = await voiceOf(e, e.result?.textKey);
+    if (v.trust === "public") keys.add(v.key);
+  }
+  return keys.size;
+}
+
 async function applyClosure(event: Event): Promise<KeeperResult> {
   const parsed = closurePayload.safeParse(event.payload);
   if (!parsed.success) return reject(`payload is not a valid closure: ${firstIssue(parsed.error)}`);
@@ -785,6 +806,9 @@ async function applyClosure(event: Event): Promise<KeeperResult> {
   if (closedLike(same.state) !== closedLike(p.state)) {
     const verdict = resolveConflict(stored, stamp);
     note = conflictNote(verdict, stored, same.state, stamp, p.state);
+    // §5: two trusted sources disagree within 10 minutes → someone on the ground confirms.
+    const clash = trustedClash(stored, stamp);
+    if (clash) note += "; two trusted sources disagree within 10 min, a field team is asked to check";
     if (verdict.winner === "incoming") {
       set = {
         state: p.state, reason: reason || same.reason, observedAt: stamp.observedAt, source: event.source, trust,
@@ -792,6 +816,7 @@ async function applyClosure(event: Event): Promise<KeeperResult> {
       };
       flags = ["notify"];
     } else set = {};
+    if (clash) flags = [...flags, "confirm"];
   } else if (trustRank(trust) >= trustRank(stored.trust)) {
     // Same story from someone at least as trusted: the record is refreshed and may firm up.
     note = `${p.state} again from ${stamp.who} (${trust})`;
@@ -806,6 +831,12 @@ async function applyClosure(event: Event): Promise<KeeperResult> {
   if (!same.region && !set.region) {
     const region = await regionFor(event, same.coords ?? p.coords);
     if (region) set.region = region;
+  }
+  // §5: 3 or more different public voices saying the same thing make it corroborated, as for sites.
+  const state = set.state ?? same.state;
+  if ((set.confidence ?? same.confidence) === "unconfirmed" && await publicVoicesOn(same, eventId, closedLike(state)) >= 3) {
+    set.confidence = "corroborated";
+    note += ", 3 different public sources say so: corroborated";
   }
   await c.roads.updateOne({ _id: same._id, "history.eventId": { $ne: eventId } }, {
     ...(Object.keys(set).length ? { $set: set } : {}), $push: { history: withEvent(event, note) },
@@ -1017,6 +1048,11 @@ async function applyCorrection(event: Event): Promise<KeeperResult> {
   if (!rec) return reject(`${p.recordType} ${p.recordId} not found on this desk`);
   if (hasEvent(rec.history, eventId)) return done([rec._id], "already applied", [], [], "merged");
   const why = mask(p.reason);
+  // §5: a public voice alone never closes or cancels anything. A citizen may withdraw a need only they asked for.
+  if (!isTrusted(await trustOf(event.actor))) {
+    const own = p.recordType === "need" && p.action === "retract" && (rec as Need).requestedBy?.every((u) => u === event.actor);
+    if (!own) return reject(`${event.actor} is not vetted: a ${p.action} of a ${p.recordType} needs a volunteer, a field team or a coordinator to check it first`);
+  }
   const change = (fields: string[]): Change =>
     ({ recordType: p.recordType as "site" | "need", recordId: rec._id, op: "updated", eventId, fields: [...fields, "history"] });
 
