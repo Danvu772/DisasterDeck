@@ -1,0 +1,98 @@
+---
+tags: [hackathon, roles, data, pitch]
+owner: ""
+---
+# Role 4: Data, NASA and pitch
+
+**Owner:** _write your name here_
+
+Read first: [[Team contracts]] · Design: [[Final system design]] · Data background: [[Data sources]] · What changed in version 2: [[Design review 2026-11-14]]
+
+> [!abstract] Your mission
+> Make the demo **real and repeatable**: the tweet replay file, the seed data, the NASA silent-zone layer, and a scripted scenario that plays the field, supplier and shelter side. Then own the **story**: Devpost, pitch, demo video, rehearsal.
+
+---
+
+## Your slice of the system
+
+```mermaid
+flowchart LR
+    HF["2023 tweet dataset<br/>Hugging Face"] --> PREP["Prep script<br/>YOU"]
+    PREP --> REP["data/tweets_replay.json"]
+    REP --> R2["X agent<br/>Role 2"]
+    SEED["data/seed.json<br/>users, regions, shelters,<br/>suppliers, stock<br/>YOU"] --> R1["Backend<br/>Role 1"]
+    NASA["NASA ARIA damage<br/>+ Black Marble"] --> GRID["Zone grid script<br/>YOU"]
+    GRID --> ZG["public/data/zones.geojson"]
+    ZG --> R3["Map<br/>Role 3"]
+    ZG --> SW["Satellite watcher<br/>YOU"]
+    SW -- "alert events" --> R1
+    SCN["Scenario player<br/>YOU"] -- "scripted events" --> R1
+    style PREP fill:#E6F1FB,stroke:#185FA5,color:#0C447C
+    style SEED fill:#E6F1FB,stroke:#185FA5,color:#0C447C
+    style GRID fill:#E6F1FB,stroke:#185FA5,color:#0C447C
+    style SW fill:#E6F1FB,stroke:#185FA5,color:#0C447C
+    style SCN fill:#E6F1FB,stroke:#185FA5,color:#0C447C
+```
+
+## You own
+`data/` · `scripts/` · `public/data/` · `workers/satellite-watcher.ts` · `workers/scenario-player.ts` · `docs/` (pitch, Devpost text)
+
+## What you need
+- **Python** for the offline prep scripts: `datasets` (Hugging Face), `pandas`, `geopy` (Nominatim, max 1 request per second), and for the NASA layer either `rasterio` (if the ARIA files are GeoTIFF) or plain HTTP to the ARIA map service.
+- **NASA API key** (api.nasa.gov, free). The three layers we use need no key: copy-paste requests are in [[Data sources#Checked on 14 Nov|Data sources, "Checked on 14 Nov"]].
+- Links: [[Data sources]].
+- **Devpost** account, everyone added to the project.
+
+---
+
+## Tasks, in order
+
+### 1. Replay file + seed (18:30 → 20:30): Role 2 and Role 1 wait on this
+- [ ] Download `ctoraman/deprem-tweet-dataset`. Keep only calls for help.
+- [ ] Pick **one city** (e.g. Malatya or Hatay) and ~50–80 tweets with an address. Keep a few duplicates on purpose: the merge is part of the demo.
+- [ ] **Replace every phone number with a made-up one**, and keep a masked form (last two digits) for the board. The volunteer has to see a number to "call", so it must not be a real one. Drop full names if they are not needed.
+- [ ] Geocode addresses offline (Nominatim, 1 per second) → `coords`. Hand-fix the ones that fail.
+- [ ] Write `data/tweets_replay.json`: `{ id, text, ts_offset_seconds, coords?, region }`. `id` becomes the `dedupeKey`, so keep it stable between runs.
+- [ ] Write `data/seed.json`: demo users (one per role, matching SSOJet accounts), regions, 3 shelters, **2 suppliers with blanket stock** (the second one is the rescue in the truck scene). Every user gets `deskId: "malatya-2023"`, a `trust` level, `coords`, and a `profile` (`vehicle`, `skills`, `stock`). Add **one volunteer with a van and the `mechanic` skill**, and **two coordinators**.
+
+**Done when:** Role 2's X agent can read the file, Role 1 can seed the database.
+
+### 2. NASA silent zones (20:30 → 23:00)
+- [ ] **The old ARIA links are dead. Use the new service address in [[Data sources#Checked on 14 Nov|Data sources]].** It was tested on 14 Nov and covers Malatya. It returns a coloured picture, so "damage in a zone" is the share of flagged pixels.
+- [ ] Grid the chosen city into zones (~500 m cells or neighborhoods). Per zone: mean damage (ARIA), dark or not after the quake (Black Marble), count of tweets.
+- [ ] Night lights: the gap-filled Black Marble layer through GIBS, 3 Jan and 8 Feb 2023. "Dark" = the zone is much less bright on 8 Feb than on 3 Jan.
+- [ ] **Cold flag (30 minutes, NASA POWER, no key):** one request per zone centre for 6–10 Feb 2023. Minimum below 0 °C → `cold: true`, `minTempC`. Malatya on 9 Feb: −14.4 °C. This feeds the priority of blankets and tents.
+- [ ] Write `public/data/zones.geojson` with `damage`, `dark`, `calls`, `silentZone`, `cold`, `minTempC`.
+- [ ] `workers/satellite-watcher.ts`: rule "heavy damage AND dark AND few calls" → `alert` event of kind `silent_zone`. Cold zone → `alert` of kind `cold`. **Plain code, no LLM.**
+- [ ] **One check against something known** (the NASA track asks for it): pick a district the news reported as destroyed, and show that it is red on the damage map and dark on 8 Feb.
+- [ ] Fallback if the NASA data fights you: hand-draw 2–3 zones from the NASA images, and say so in the pitch.
+
+### 3. Devpost draft (23:00 → 00:00): due at midnight
+- [ ] Name, one-line pitch, problem, how it works, tracks entered (Future of Intelligence, Beyond the Horizon, SSOJet, MongoDB Atlas), AI tools used, every teammate added.
+- [ ] The draft also goes **in the event app**. Help session: Sat 9:00–9:30 PM, Student Center 310AB.
+- [ ] The NASA credit line is on the page: "Supported by the Michigan Space Grant Consortium, NASA grant 80NSSC20M0124." Full list: [[Hackathon info#NASA checklist (Role 4 owns it)|NASA checklist]].
+
+### 4. Scenario player (00:00 → 04:00): CP3
+- [ ] `workers/scenario-player.ts` plays scripted events on a timer for the roles nobody is acting live: a second field team, a shelter filling up, a road closing. It sends `x-agent-key`, and gives each scripted event a `dedupeKey` so a second run does not double them.
+- [ ] **The truck scene (CP4, 06:00):** a script line that posts an `incident` of kind `vehicle_breakdown` for the supplier's open delivery, in case nobody is free to press Problem live. Then a line that resolves it.
+- [ ] Decide with the team: **is Ayşe the trapped person or the volunteer?** The design and the whiteboard say trapped; the story in the main note says volunteer. Pick one before you write the demo script.
+- [ ] A **demo script** in `docs/demo.md`: who clicks what on which laptop, minute by minute, for the 2-minute table demo.
+
+### 5. Pitch, video, rehearsal (07:00 → 11:00)
+- [ ] Pitch: Türkiye 2023 story → the gap (groups do not talk) → the desk → live demo → **the truck breaks down and the desk re-plans** → NASA silent zones and the −14 °C night → what's next (Lahaina, evacuation, real platforms).
+- [ ] **Demo video under 3 minutes** (MLH requires it). Record it at 08:00 when everything works, not at 11:30.
+- [ ] Rehearse the 2-minute table demo at least 3 times with all four people.
+- [ ] Final Devpost: video link, public repo link (**ask Darshal to make the repo public before 12:00**), screenshots.
+
+---
+
+## Rules you enforce
+- **No real personal data on screen:** masked phones, no full names unless needed.
+- **Every NASA number shows its source, its date and its pixel size.** Satellite data only raises priority.
+- Everything synthetic is labeled synthetic in the pitch.
+
+## Your part in the demo
+You open and close the pitch, explain the silent zones, and run the scenario player.
+
+## Track
+**Beyond the Horizon (NASA):** you own it. A judge who knows the science will check: say what ARIA and Black Marble measure, how old the data is, how big one pixel is, and where it is weak (vegetation, mountains). The guide's own words: "NASA data is at the center of the project, not decoration on top of it." Our answer: the satellite finds the people who cannot post, and the temperature decides how urgent a blanket is.
