@@ -1,5 +1,7 @@
 # Team notes
 
+The [family voice runbook](family-voice.md) covers the coordinator-approved ElevenLabs/Claude browser demo, local setup, privacy boundaries, verification and remaining telephone work.
+
 The [live pipeline completion plan](completion-plan.md) reviews main at `f235d43` and gives the implementation order, owners, recovery requirements and live acceptance checks for the remaining work.
 
 Start with [Multiplayer Disaster Desk](Multiplayer%20Disaster%20Desk/Multiplayer%20Disaster%20Desk.md). It explains the whole idea, the main flow and the demo plan.

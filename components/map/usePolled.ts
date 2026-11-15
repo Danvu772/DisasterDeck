@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import { observeBoard } from "../clock";
 
-// Poll any JSON endpoint. Until it answers, show `initial` (fixtures) and say so.
+// Poll any JSON endpoint. Until it answers, show `initial` and say whether it is live.
+// `initialLive` is true when the server rendered `initial` from the database, so the first
+// paint is the real desk and no "Demo data" line flashes before the first poll.
 // A failing endpoint is asked every 10 s instead of every second, so a missing route
 // does not flood the server log.
-export function usePolled<T>(url: string, initial: T, everyMs = 1000) {
+export function usePolled<T>(url: string, initial: T, everyMs = 1000, initialLive = false) {
   const [data, setData] = useState<T>(initial);
-  const [live, setLive] = useState(false);
+  const [live, setLive] = useState(initialLive);
   const [checked, setChecked] = useState(false); // false until the first answer or failure
   const [now, setNow] = useState(() => Date.now());
 

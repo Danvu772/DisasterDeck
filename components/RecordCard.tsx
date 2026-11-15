@@ -1,6 +1,7 @@
-import type { Confidence, HistoryEntry, RecordType, Source, Tier } from "@/lib/types";
+import type { Confidence, HistoryEntry, RecordType, ScorePart, Source, Tier } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { KIND_ICON, statusWord, TIER_WORD, trustWord } from "./detail/fields";
+import { CaseNo, ScoreBreakdown } from "./ScoreBreakdown";
 import { History } from "./History";
 import { Stamp } from "./Stamp";
 
@@ -42,6 +43,8 @@ export function RecordCard(props: {
   detail?: string;
   tier: Tier;
   priority?: number;
+  scoreParts?: ScorePart[];
+  caseNo?: number;
   confidence: Confidence;
   status: string;
   at: Date | string;
@@ -61,10 +64,16 @@ export function RecordCard(props: {
       <header className="flex items-start gap-3">
         <KindIcon type={props.type} tier={props.tier} actNow={props.actNow} />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold first-letter:uppercase">{props.title}</h3>
+          <h3 className="truncate text-sm font-semibold">
+            {props.caseNo !== undefined && <span className="mr-1.5 font-normal text-muted-foreground"><CaseNo kind={props.type} no={props.caseNo} /></span>}
+            <span className="first-letter:uppercase">{props.title}</span>
+          </h3>
           <Stamp type={props.type} at={props.at} source={props.source} sources={props.sources} now={props.now} />
         </div>
-        <TierBadge tier={props.tier} actNow={props.actNow} />
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <TierBadge tier={props.tier} actNow={props.actNow} />
+          {props.priority !== undefined && <ScoreBreakdown priority={props.priority} parts={props.scoreParts} />}
+        </div>
       </header>
       {props.detail && <p className="mt-3 text-sm text-foreground/90">{props.detail}</p>}
       {props.children}

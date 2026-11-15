@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { statusWord, TIER_WORD } from "@/components/detail/fields";
 import { tierBadge, tierBar } from "@/components/encode";
 import { cn } from "@/lib/utils";
+import { CaseNo } from "@/components/ScoreBreakdown";
+import { Input } from "@/components/ui/input";
 import { openTasksFor, type FieldBoard, type FieldTask } from "./pickTask";
 import { useOutbox, type FieldEvent } from "./useOutbox";
 import { useHoldToTalk } from "./useHoldToTalk";
@@ -87,8 +89,10 @@ function OtherRow({ o, now, onPick }: { o: FieldTask; now: number; onPick: (id: 
   );
 }
 
-export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: string; initial: FieldBoard }) {
-  const { data, live, now } = usePolled<FieldBoard>("/api/board", initial);
+export function FieldPhone({ user, wanted, initial, initialLive = false }: {
+  user: string; wanted?: string; initial: FieldBoard; initialLive?: boolean;
+}) {
+  const { data, live, now } = usePolled<FieldBoard>("/api/board", initial, 1000, initialLive);
   const { send, waiting } = useOutbox(user);
   const talk = useHoldToTalk(user);
   const [panel, setPanel] = useState<Panel>(null);
@@ -96,6 +100,7 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
+  const [typed, setTyped] = useState("");
   // What this phone already sent, so the next button lights up before the board catches up.
   const [local, setLocal] = useState<{ id: string; step: number } | null>(null);
 
@@ -107,6 +112,9 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
   const closed = !!chosen && !picked;
   const others = open.filter((o) => o !== current);
   const task = current?.task;
+  const aboutRecord = task && (task.recordType === "site" ? data.sites.find((x) => x._id === task.recordId)
+    : task.recordType === "need" ? data.needs.find((x) => x._id === task.recordId) : undefined);
+  const caseNo = aboutRecord?.caseNo;
   const step = task
     ? Math.max(task.status === "accepted" ? 1 : 0, local?.id === task._id ? local.step : 0)
     : 0;
@@ -219,7 +227,10 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
                 <Users className="size-4" />{current.people}
               </p>
             </div>
-            <p className="break-words text-base">{task.title}</p>
+            <p className="break-words text-base">
+              {caseNo !== undefined && <span className="mr-2 text-muted-foreground"><CaseNo kind={task.recordType} no={caseNo} /></span>}
+              {task.title}
+            </p>
 
             <button type="button" aria-expanded={details} onClick={() => setDetails(!details)}
               className="-mx-1 flex min-h-11 items-center gap-1 rounded-md px-1 text-sm font-medium text-muted-foreground hover:text-foreground">
@@ -326,14 +337,32 @@ export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: s
             : "Hold to talk"}
         </Button>
         {talk.state === "unsupported" && (
-          <p className="text-sm text-muted-foreground">The microphone needs an HTTPS page.</p>
+          <p className="text-sm text-muted-foreground">The microphone needs an HTTPS page. Type to your agent instead.</p>
         )}
-        {talk.error && <p className="text-sm">{talk.error}</p>}
-        {talk.reply && (
-          <p className="whitespace-pre-line rounded-2xl rounded-bl-md bg-info-soft px-4 py-3 text-base">
-            <span className="sr-only">Agent:</span> {talk.reply}
-          </p>
-        )}
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); talk.sendText(typed); setTyped(""); }}>
+          <label htmlFor="agent-text" className="sr-only">Tell your agent</label>
+          <Input id="agent-text" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Or type to your agent"
+            className="h-12 min-w-0 flex-1 text-base" />
+          <Button type="submit" variant="outline" className="h-12 px-4"
+            disabled={!typed.trim() || talk.state === "sending" || talk.state === "recording"}>
+            Send
+          </Button>
+        </form>
+        <div aria-live="polite" className="space-y-2">
+          {talk.said && (
+            <p className="ml-auto w-fit max-w-[85%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-4 py-3 text-base text-primary-foreground">
+              <span className="sr-only">You:</span> {talk.said}
+            </p>
+          )}
+          {talk.state === "sending" && <p className="text-sm text-muted-foreground">Your agent is answering…</p>}
+          {talk.error && <p className="text-sm">{talk.error}</p>}
+          {talk.reply && (
+            <p className="whitespace-pre-line rounded-2xl rounded-bl-md bg-info-soft px-4 py-3 text-base">
+              <span className="sr-only">Agent:</span> {talk.reply}
+            </p>
+          )}
+        </div>
+        {talk.speaking && <Button variant="ghost" className="h-11" onClick={talk.hush}>Stop reading aloud</Button>}
       </section>
     </main>
   );

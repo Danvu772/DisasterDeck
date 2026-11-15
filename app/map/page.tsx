@@ -1,11 +1,14 @@
 // /map: every place the desk knows about on the MapLibre map, plus the NASA imagery view.
-// Polls GET /api/board; until it answers it shows the fixtures. /map?focus=site:site-57 opens on that record.
+// The server reads the board from the database, so the first paint is the real desk. Only when the
+// database cannot be reached does it start from the fixture board. Polls GET /api/board after.
+// /map?focus=site:site-57 opens on that record.
 // Quakes: the USGS Kahramanmaraş 2023 sequence (M4+), cached in agents/fixtures for offline demos.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { makeBoard } from "@/fixtures/board";
 import { MapScreen } from "@/components/map/MapScreen";
 import type { GlQuake } from "@/components/map/gl/DeskGlMap";
+import { getBoard } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -20,5 +23,14 @@ async function quakes(): Promise<GlQuake[]> {
 
 export default async function MapPage({ searchParams }: { searchParams: Promise<{ focus?: string | string[] }> }) {
   const { focus } = await searchParams;
-  return <MapScreen initial={makeBoard(Date.now())} focus={typeof focus === "string" ? focus : undefined} quakes={await quakes()} />;
+  const f = typeof focus === "string" ? focus : undefined;
+  const q = await quakes();
+  try {
+    // JSON round trip: the same shape the polls return (dates as ISO strings).
+    const board = JSON.parse(JSON.stringify(await getBoard())) as ReturnType<typeof makeBoard>;
+    return <MapScreen initial={board} initialLive focus={f} quakes={q} />;
+  } catch (err) {
+    console.error("map first paint: database not reachable, showing the fixture board:", err instanceof Error ? err.message : err);
+    return <MapScreen initial={makeBoard(Date.now())} focus={f} quakes={q} />;
+  }
 }

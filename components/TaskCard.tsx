@@ -33,6 +33,7 @@ export function TaskCard({ task, now, onAction, assigneeName, notice, busy, repo
       detail={task.detail}
       tier={task.tier}
       priority={task.priority}
+      scoreParts={task.scoreParts}
       confidence="confirmed"
       status={reported ? "problem_reported" : task.status}
       at={task.history[0]?.ts ?? new Date(now)}

@@ -2,6 +2,21 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## Public family information - 2026-11-15 03:51 EST
+
+- Removed visitor reference/PIN entry and backend PIN verification/generation at the user's request. Added an anonymous published-name directory, immediate readable updates and PIN-free voice sessions. Public record IDs are selected automatically by the UI.
+- Kept coordinator authentication for publishing/withdrawal, timestamp/expiry handling and automatic provider usage controls. Existing stored PIN fields are ignored and never returned; no migration is required.
+- Updated the English runbook, API registry and smoke test. Nine voice tests, TypeScript, full ESLint and an isolated production build pass. Headless Edge verified anonymous search, unknown-name handling, actual ElevenLabs WebRTC, a live Claude answer, mute and end with a synthetic microphone and no page errors.
+- No normal telephone number or shared Atlas acceptance is claimed. The previous code/PIN delivery below is historical and superseded by this public visitor flow.
+
+## Family voice demo - 2026-11-15 03:34 EST
+
+- Added coordinator-approved family snapshots with case/desk scoping, source timestamps, hashed PINs, short-lived tickets, expiry and revocation. No full-board or dispatch access is exposed to callers.
+- Added `/coordinator/family`, `/family`, private ElevenLabs WebRTC, a Claude-backed client tool, optional typed questions, mute/end controls, provider-retention disclosure and explicit synthetic labels.
+- Added server-only environment placeholders, repeatable private agent setup, English [runbook](family-voice.md), OpenAPI entries and CI tests. Credentials and provider IDs remain in ignored local configuration.
+- Verified eight access tests, seven replay tests, TypeScript, full ESLint, design tokens and production build after integrating upstream through `f12bd23`. Live synthetic provider and headless Edge checks cover token creation, Claude answers, hostile questions, revocation, actual WebRTC, mute and end with no page errors.
+- Not claimed: a human microphone acceptance call, shared Atlas acceptance, verified real victim identities or an inbound telephone number. The current demo uses temporary memory when MongoDB is absent; native telephone calls need a provider number/SIP plus a server-side tool and identity verification.
+
 ## v1.1 Real historical tweet replay - 2026-11-15 02:31 EST
 
 - Confirmed both pre-existing tweet files were synthetic and the planned ctoraman/avaapm research dataset contains 1,000 IDs/labels without text.

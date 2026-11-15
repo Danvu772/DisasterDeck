@@ -4,6 +4,10 @@
 
 Current pilot: **Antakya, Türkiye, February 2023**. The deterministic rehearsal reports, users, shelters and logistics are synthetic. A separate real-data replay contains 43 archived social posts. Satellite imagery, NASA measurements and the separately credited HOT/OSM reference building database are historical real data.
 
+## Family voice demo
+
+Anyone can search published family updates by name at `/family`, read them and speak to an ElevenLabs assistant backed by Claude. No login, reference code or PIN is required. Coordinators publish at `/coordinator/family`. See [setup and demo steps](docs/family-voice.md). This is a browser microphone demo; an incoming telephone number is not connected.
+
 ## Replay real historical posts
 
 ```sh

@@ -14,7 +14,7 @@ import { SECOND_QUAKE_MIN, type OpsPost } from "@/fixtures/opsPosts";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui";
 import { Bars } from "../metrics/charts/Bars";
 import { Count, useStagger } from "../metrics/charts/motion";
 import { chip, tierBar } from "../encode";

@@ -8,7 +8,6 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { makeBoard } from "@/fixtures/board";
 import { MousePointerClick } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { AskDesk } from "./AskDesk";
 import { BoardList, FilterChips } from "./board/BoardList";
 import { DeskFeed, type FeedEvent } from "./board/DeskFeed";
@@ -18,10 +17,11 @@ import { DetailPanel } from "./detail/DetailPanel";
 import { findRecord, locate, parseKey } from "./detail/locate";
 import { fromBoard } from "./map/mapItems";
 import { usePolled } from "./map/usePolled";
+import { Loading } from "@/components/ui";
 
 const BoardMap = dynamic(() => import("./board/BoardMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full rounded-none" />,
+  loading: () => <Loading label="Loading the map" />,
 });
 
 // The API board has every field of the fixture board (plus zones and fuller health), so one type fits both.
@@ -30,8 +30,10 @@ type DeskBoard = ReturnType<typeof makeBoard>;
 const wide = () => window.matchMedia("(min-width: 1280px)").matches;
 const phone = () => !window.matchMedia("(min-width: 768px)").matches;
 
-export function LiveBoard({ initial, initialFeed }: { initial: DeskBoard; initialFeed: FeedEvent[] }) {
-  const { data: b, live, now } = usePolled<DeskBoard>("/api/board", initial);
+export function LiveBoard({ initial, initialFeed, initialLive = false }: {
+  initial: DeskBoard; initialFeed: FeedEvent[]; initialLive?: boolean;
+}) {
+  const { data: b, live, now } = usePolled<DeskBoard>("/api/board", initial, 1000, initialLive);
 
   // ?open=<kind>:<id> is the selection (t21), so a link opens the same record.
   // With nothing open, the detail column shows the first act-now record. That pick does not
@@ -105,7 +107,7 @@ export function LiveBoard({ initial, initialFeed }: { initial: DeskBoard; initia
       </div>
 
       <div className="flex h-80 min-h-0 flex-col md:col-span-2 md:row-start-3 xl:col-span-1 xl:col-start-2 xl:row-start-2 xl:h-auto">
-        <DeskFeed board={b} now={now} onOpen={open} initial={initialFeed} />
+        <DeskFeed board={b} now={now} onOpen={open} initial={initialFeed} initialLive={initialLive} />
       </div>
 
       <aside ref={sheet} tabIndex={-1} aria-label="Selected record"

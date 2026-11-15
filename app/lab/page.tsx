@@ -10,6 +10,7 @@ import { HealthPill } from "@/components/StatusPill";
 import { chip, pill, statusTag, tierBadge, tierText } from "@/components/encode";
 import type { Tier } from "@/lib/types";
 import { MetricChartsDemo } from "@/components/metrics/charts/MetricChartsDemo";
+import { Loading } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default function Lab() {
         <Section title="Roads"><RoadCards items={b.roads} now={now} /></Section>
         <Section title="Incidents"><IncidentCards items={b.incidents} now={now} /></Section>
         <Section title="Tasks"><TaskCards items={b.tasks} now={now} /></Section>
+        <Section title="Loading"><div className="h-24"><Loading label="Loading" /></div></Section>
 
         <Section title="Chat">
           <div className="space-y-1 rounded-xl border bg-card p-3 shadow-xs">

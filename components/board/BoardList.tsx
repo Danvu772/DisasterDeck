@@ -9,6 +9,7 @@ import { Stamp } from "../Stamp";
 import { chip, minutesSince } from "../encode";
 import { LOOP_LABELS, loopStep } from "../loopStep";
 import { CALL_WORD, plural, statusWord } from "../detail/fields";
+import { CaseNo } from "../ScoreBreakdown";
 import { summary } from "../detail/locate";
 import { counts, FILTERS, type Filter, listRows, type Row } from "./rows";
 
@@ -103,7 +104,10 @@ function ListRow({ r, board, now, selected, onOpen }: {
         <KindIcon type={r.kind} tier={s.tier} actNow={s.actNow} />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="flex items-baseline gap-2">
-            <span className="truncate text-sm font-semibold first-letter:uppercase">{s.title}</span>
+            <span className="truncate text-sm font-semibold">
+              {s.caseNo !== undefined && <span className="mr-1.5 font-normal text-muted-foreground"><CaseNo kind={r.kind} no={s.caseNo} /></span>}
+              <span className="first-letter:uppercase">{s.title}</span>
+            </span>
             <span className="ml-auto shrink-0">{when(r, now)}</span>
           </span>
           <span className="line-clamp-1 text-xs text-muted-foreground">{lineOf(r, board, now)}</span>

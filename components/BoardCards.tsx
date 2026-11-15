@@ -31,7 +31,7 @@ export function SiteCards({ items, now, tasks }: { items: Site[]; now: number; t
   return items.map((s) => (
     <RecordCard key={s._id} type="site" title={s.address}
       detail={`${s.peopleTrapped > 0 ? `${plural(s.peopleTrapped, "person", "people")} trapped` : "Nobody reported trapped"} · ${CALL_WORD[s.callStatus] ?? cap(s.callStatus)}`}
-      tier={s.tier} priority={s.priority} confidence={s.confidence} status={s.status}
+      tier={s.tier} priority={s.priority} scoreParts={s.scoreParts} caseNo={s.caseNo} confidence={s.confidence} status={s.status}
       at={s.observedAt} source={s.sources[0]?.source} sources={s.support}
       history={s.history} now={now}>
       <div className="mt-2"><LoopDots site={s} tasks={tasks} /></div>
@@ -47,7 +47,7 @@ export function NeedCards({ items, now }: { items: Need[]; now: number }) {
   return items.map((n) => (
     <RecordCard key={n._id} type="need" title={`${n.quantity} ${n.item}`}
       detail={n.status === "proposed" ? `${n.support} of 3 requests so far` : undefined}
-      tier={n.tier} priority={n.priority} confidence={n.confidence} status={n.status}
+      tier={n.tier} priority={n.priority} scoreParts={n.scoreParts} caseNo={n.caseNo} confidence={n.confidence} status={n.status}
       at={n.history[0]?.ts ?? new Date(now)} sources={n.support} now={now} />
   ));
 }
@@ -77,7 +77,7 @@ export function RoadCards({ items, now }: { items: Road[]; now: number }) {
 export function IncidentCards({ items, now }: { items: Incident[]; now: number }) {
   return items.map((i) => (
     <RecordCard key={i._id} type="incident" title={INCIDENT_WORD[i.kind] ?? i.kind.replaceAll("_", " ")} detail={i.textEn}
-      tier={0} actNow={i.severity === "critical"} confidence="confirmed" status={i.status}
+      tier={0} actNow={i.severity === "critical"} caseNo={i.caseNo} confidence="confirmed" status={i.status}
       at={i.actions[0]?.ts ?? new Date(now)} source="person" now={now}>
       {i.actions.length > 0 && (
         <ul className="mt-3 space-y-1 text-xs text-muted-foreground">

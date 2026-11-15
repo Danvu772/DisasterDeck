@@ -67,9 +67,9 @@ function titleFor(it: MapItem): string {
   return it.title;
 }
 
-export function MapScreen({ initial, focus, quakes }: { initial: MapSource; focus?: string; quakes: GlQuake[] }) {
+export function MapScreen({ initial, initialLive = false, focus, quakes }: { initial: MapSource; initialLive?: boolean; focus?: string; quakes: GlQuake[] }) {
   const [mode, setMode] = useState<"live" | "imagery">("live");
-  const { data, live, now } = usePolled<MapSource>("/api/board", initial);
+  const { data, live, now } = usePolled<MapSource>("/api/board", initial, 1000, initialLive);
   const items = useMemo(() => fromBoard(data), [data]);
   const [selected, setSelected] = useState<string | null>(focus ?? null);
   const [flyKey, setFlyKey] = useState<string | undefined>(focus);
@@ -167,7 +167,7 @@ export function MapScreen({ initial, focus, quakes }: { initial: MapSource; focu
       <div className="relative order-1 h-[55vh] md:order-2 md:h-auto md:flex-1">
         {mode === "live"
           ? <DeskGlMap items={items} now={now} selected={selected} onPick={pick} flyKey={flyKey} quakes={quakes} ringKeys={ringKeys} />
-          : <DeskMap initial={initial} focus={selected ?? undefined} />}
+          : <DeskMap initial={initial} initialLive={initialLive} focus={selected ?? undefined} />}
       </div>
     </div>
   );

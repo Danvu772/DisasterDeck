@@ -12,6 +12,7 @@ import { History } from "../History";
 import { KindIcon, TierBadge } from "../RecordCard";
 import { SOURCE_LABEL } from "../Stamp";
 import { ageText } from "../encode";
+import { CaseNo, ScoreBreakdown } from "../ScoreBreakdown";
 import { actorLabel, CALL_WORD, KIND_WORD, statusWord, trustWord, when } from "./fields";
 import { type AnyRecord, type DetailKind, findRecord, links, locate, parseKey, summary } from "./locate";
 
@@ -195,7 +196,10 @@ export function DetailPanel({ board, now, live, openKey, onOpen, onClose }: {
               <span className="text-xs text-muted-foreground">{KIND_WORD[kind]}</span>
               <TierBadge tier={head.tier} actNow={head.actNow} className="ml-auto" />
             </div>
-            <h2 className="mt-3 text-lg font-semibold leading-snug tracking-tight first-letter:uppercase">{head.title}</h2>
+            <h2 className="mt-3 text-lg font-semibold leading-snug tracking-tight">
+              {head.caseNo !== undefined && <span className="mr-2 text-sm font-normal text-muted-foreground"><CaseNo kind={kind} no={head.caseNo} /></span>}
+              <span className="first-letter:uppercase">{head.title}</span>
+            </h2>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               {loc?.via && <span className="inline-flex items-center gap-1"><MapPin className="size-3.5" aria-hidden />{loc.via.label}</span>}
               {seen && <span className="inline-flex items-center gap-1" suppressHydrationWarning><Clock className="size-3.5" aria-hidden />{ageText(seen, now)}</span>}
@@ -203,6 +207,7 @@ export function DetailPanel({ board, now, live, openKey, onOpen, onClose }: {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {kind !== "shelter" && <span className="inline-flex h-6 items-center rounded-full border px-2.5 text-xs font-medium">{statusWord(head.status)}</span>}
               <span className="text-xs text-muted-foreground">{trust}</span>
+              {head.priority !== undefined && <ScoreBreakdown priority={head.priority} parts={head.scoreParts} className="ml-auto" />}
             </div>
           </header>
 
