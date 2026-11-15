@@ -18,7 +18,7 @@ import { isTrusted, matchNeed, mergeLines, needStatus } from "../lib/rules/needs
 import { confidence, scored, siteTier, support, type Voice } from "../lib/rules/priority";
 import { answerPayload, approvalPayload, claimPayload, incidentPayload, needPayload, reportPayload } from "../lib/schemas";
 import type {
-  ClaimPayload, Event, EventType, HistoryEntry, Incident, Need, Post, RecordType, ReportPayload, Site,
+  ClaimPayload, Event, EventType, HistoryEntry, Incident, Need, Post, RecordType, ReportPayload, ScorePart, Site,
   Trust,
 } from "../lib/types";
 
@@ -352,8 +352,9 @@ async function applyIncident(event: Event): Promise<KeeperResult> {
   const task = p.taskId ? await c.tasks.findOne({ _id: p.taskId, deskId: event.deskId }) : null;
   const need = task?.recordType === "need" ? await c.needs.findOne({ _id: task.recordId }) : null;
   const me = await c.users.findOne({ _id: event.actor }, { projection: { role: 1 } });
-  // Only the person on the task, or a coordinator, can stop it.
-  const mayBlock = Boolean(task?.open && task.status !== "escalated" && (task.assignee === event.actor || me?.role === "coordinator"));
+  // Only the person on the task, a coordinator, or the sweeper (nobody answers) can stop it.
+  const mayBlock = Boolean(task?.open && task.status !== "escalated" && (task.assignee === event.actor || me?.role === "coordinator"
+    || (event.actor === "sweeper" && event.source === "system")));
   const block = mayBlock && !p.canContinue;
 
   const id = `inc-${eventId}`;
@@ -495,6 +496,33 @@ export async function noteIncidentOutcome(incidentId: string, status: "helping" 
     $set: { status },
     $push: { actions: { ts: new Date(), what, ...(taskId ? { taskId } : {}) } },
   });
+}
+
+/**
+ * Time passes: the "minutes waiting" part of the score grows. Recompute priority and scoreParts
+ * of the open sites and needs (the satellite terms already on a record are kept) and write only
+ * the records whose value changed. Returns them, for the dispatcher to copy onto their tasks.
+ */
+export async function refreshPriorities(now: Date, desk?: string): Promise<{ recordType: "site" | "need"; recordId: string; deskId: string; priority: number; scoreParts: ScorePart[] }[]> {
+  const { sites, needs } = await cols();
+  const out: { recordType: "site" | "need"; recordId: string; deskId: string; priority: number; scoreParts: ScorePart[] }[] = [];
+  const keep = (parts?: ScorePart[]) => ({
+    silentZone: parts?.some((p) => p.name === "silent zone") ?? false,
+    warmthInCold: parts?.some((p) => p.name === "cold night") ?? false,
+  });
+  const scope = desk ? { deskId: desk } : {};
+  const live = [
+    ...(await sites.find({ ...scope, status: { $in: ["open", "team_on_site"] } }).toArray()).map((r) => ({ type: "site" as const, r, since: r.observedAt })),
+    ...(await needs.find({ ...scope, status: { $nin: ["delivered", "cancelled"] } }).toArray()).map((r) => ({ type: "need" as const, r, since: r.history[0]?.ts ?? now })),
+  ];
+  for (const { type, r, since } of live) {
+    const next = scored({ support: r.support, waitingSince: new Date(since), ...keep(r.scoreParts) }, now);
+    if (next.priority === r.priority && JSON.stringify(next.scoreParts) === JSON.stringify(r.scoreParts)) continue;
+    const coll = type === "site" ? sites : needs;
+    const res = await (coll as typeof sites).updateOne({ _id: r._id, priority: r.priority }, { $set: next });
+    if (res.modifiedCount) out.push({ recordType: type, recordId: r._id, deskId: r.deskId, ...next });
+  }
+  return out;
 }
 
 // ---------- who said it ----------

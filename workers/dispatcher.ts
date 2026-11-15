@@ -12,10 +12,10 @@
 // Nobody fits: the task is escalated with the reason. Every task that gets a person writes one
 // inbox item for them. Every approval writes one per coordinator. The one_open_task index keeps
 // one open task per record and type, so a second run of the same event makes nothing new.
-import { MongoServerError } from "mongodb";
+import { MongoServerError, type Filter } from "mongodb";
 import { cols, newId } from "../lib/db";
 import { distanceText, pickPerson, stockOf, type Pick, type Place } from "../lib/rules/assign";
-import type { HistoryEntry, InboxItem, Need, Role, Site, Task, User } from "../lib/types";
+import type { HistoryEntry, InboxItem, Need, Role, ScorePart, Site, Task, User } from "../lib/types";
 import { noteIncidentOutcome, noteNeedAssigned, type Change, type TaskAction } from "./memory-keeper";
 
 /** How long a person has to answer (N in §5, 2 in the demo). The board turns it red after. */
@@ -30,7 +30,7 @@ const ROLE_FOR: Record<Task["type"], Role[]> = {
 const log = (...m: unknown[]) => console.log(`[dispatcher ${new Date().toISOString().slice(11, 19)}]`, ...m);
 const entry = (reason: string, by = "dispatcher"): HistoryEntry =>
   ({ ts: new Date(), by, source: by === "dispatcher" ? "system" : "person", reason });
-const deadline = () => new Date(Date.now() + ANSWER_MINUTES * 60_000);
+const deadline = (from: Date = new Date()) => new Date(from.getTime() + ANSWER_MINUTES * 60_000);
 
 export async function react(changes: Change[], actions: TaskAction[] = []): Promise<void> {
   for (const a of actions) await act(a);
@@ -55,6 +55,8 @@ async function act(a: TaskAction): Promise<void> {
       const step = a.progress === "arrived" ? "arrived" : a.progress === "en_route" ? "on the way" : "";
       await tasks.updateOne({ _id: task._id, status: { $in: ["assigned", "accepted"] } }, {
         $set: { status: "accepted", ...(eta ? { eta } : {}), ...(a.progress ? { progress: a.progress } : {}) },
+        // A new promised time is a new answer: the sweeper may check in again after it.
+        ...(a.etaMinutes !== undefined ? { $unset: { checkinAt: "" } } : {}),
         $push: { history: entry(["accepted", step, a.etaMinutes !== undefined ? `about ${a.etaMinutes} min` : "", a.note ?? ""].filter(Boolean).join(", "), a.by) },
       });
       return;
@@ -82,26 +84,72 @@ async function act(a: TaskAction): Promise<void> {
 
 /** Same task, next person. Never the same person twice, a coordinator after three. */
 async function declined(task: Task, by: string, note?: string): Promise<void> {
+  const said = entry(note ? `declined: ${note}` : "declined", by);
+  await handOver(task, by, said, new Date(), { status: { $in: ["assigned", "accepted"] } });
+}
+
+/**
+ * The sweeper's "no answer": the deadline passed on an assigned task. The person goes into
+ * `tried` and the task moves on exactly like a decline. A conditional update, so a second tick
+ * (or a second Brain) handles each task once. `now` also starts the next person's clock.
+ */
+export async function timedOut(task: Task, now: Date = new Date()): Promise<void> {
+  if (!task.assignee) return;
+  const said = entry(`timed out, no answer from ${task.assignee} in ${ANSWER_MINUTES} min`);
+  await handOver(task, task.assignee, said, now, { status: "assigned", deadline: { $lt: now } });
+}
+
+async function handOver(task: Task, by: string, said: HistoryEntry, now: Date, guard: Filter<Task>): Promise<void> {
   const { tasks } = await cols();
   const tried = task.tried.includes(by) ? task.tried : [...task.tried, by];
-  const said = entry(note ? `declined: ${note}` : "declined", by);
   const pick: Pick = tried.length >= MAX_TRIES
-    ? { ok: false, reason: `${tried.length} people said no` }
-    : await pickFor(task, tried);
-  const r = await tasks.updateOne({ _id: task._id, assignee: by, status: { $in: ["assigned", "accepted"] } }, pick.ok
+    ? { ok: false, reason: `${tried.length} people said no or did not answer` }
+    : await pickFor(task, tried, now);
+  const r = await tasks.updateOne({ _id: task._id, assignee: by, ...guard }, pick.ok
     ? {
-        $set: { status: "assigned", assignee: pick.user._id, tried, deadline: deadline() },
-        $unset: { eta: "", progress: "" },
+        $set: { status: "assigned", assignee: pick.user._id, tried, deadline: deadline(now) },
+        $unset: { eta: "", progress: "", checkinAt: "" },
         $push: { history: { $each: [said, entry(`reassigned to ${pick.user._id}${near(pick)}`)] } },
       }
     : {
-        $set: { status: "escalated", tried, deadline: deadline() },
-        $unset: { assignee: "", eta: "", progress: "" },
+        $set: { status: "escalated", tried, deadline: deadline(now) },
+        $unset: { assignee: "", eta: "", progress: "", checkinAt: "" },
         $push: { history: { $each: [said, entry(`escalated, ${pick.reason}`)] } },
       });
   if (!r.modifiedCount) return;
   if (pick.ok) await inboxTask({ ...task, assignee: pick.user._id });
   else await inboxCoordinators(task, "notice", `Nobody took this task: ${task.title}. ${cap(pick.reason)}.`);
+}
+
+/**
+ * The promised time passed on an accepted task: one check-in to the assignee, once. The
+ * `checkinAt` field is the record of it (and the sweeper's clock for "unreachable").
+ */
+export async function checkIn(task: Task, now: Date = new Date()): Promise<boolean> {
+  if (!task.assignee) return false;
+  const { tasks } = await cols();
+  const r = await tasks.updateOne(
+    { _id: task._id, assignee: task.assignee, status: "accepted", eta: { $lt: now }, checkinAt: { $exists: false } },
+    { $set: { checkinAt: now }, $push: { history: entry(`check-in sent to ${task.assignee}, the promised time passed`) } },
+  );
+  if (!r.modifiedCount) return false;
+  await inbox([{
+    userId: task.assignee, taskId: task._id, kind: "checkin", priority: task.priority,
+    message: `Still on your way? ${task.title}. Please answer so the desk knows.`,
+  }]);
+  return true;
+}
+
+/** Time moved on: copy the records' new priority onto their open tasks. Only what differs. */
+export async function syncPriority(changes: { recordId: string; priority: number; scoreParts: ScorePart[] }[]): Promise<number> {
+  const { tasks } = await cols();
+  let n = 0;
+  for (const c of changes) {
+    const r = await tasks.updateMany({ recordId: c.recordId, open: true, priority: { $ne: c.priority } },
+      { $set: { priority: c.priority, scoreParts: c.scoreParts } });
+    n += r.modifiedCount;
+  }
+  return n;
 }
 
 /** The coordinator said yes: the person they named, or the proposed team, or the nearest free one now. */
@@ -271,7 +319,7 @@ async function peopleOn(desk: string, roles: Role[]): Promise<User[]> {
   return users.find({ deskId: desk, role: { $in: roles } }).toArray();
 }
 
-async function pickFor(task: Task, tried: string[]): Promise<Pick> {
+async function pickFor(task: Task, tried: string[], now: Date = new Date()): Promise<Pick> {
   const { tasks } = await cols();
   const roles = ROLE_FOR[task.type];
   const users = await peopleOn(task.deskId, roles);
@@ -285,7 +333,7 @@ async function pickFor(task: Task, tried: string[]): Promise<Pick> {
   return pickPerson(users, new Map(counts.map((c) => [c._id, c.n])), place, {
     roles, exclude: tried,
     ...(task.type === "deliver" && item ? { has: (u: User) => stockOf(u, item) > 0, what: `${item} in stock` } : {}),
-  });
+  }, now);
 }
 
 async function recordOf(type: "site" | "need", id: string): Promise<Site | Need | null> {

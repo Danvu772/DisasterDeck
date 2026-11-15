@@ -181,3 +181,4 @@ running). See `app/api/README.md` for how to use it and how to add a route.
 | 2.1 | `Need.requestedBy: string[]`. `getUserContext()` also returns `needs`. Helper types `NewEvent`, `Board`, `Health`, `UserContext`, `SearchQuery`, `SearchHit` |
 | 2.1 + `schemas.ts` | Runtime checks for every payload. No type changed |
 | 2.2 | `Event.result.textKey?` (optional): the normalized report text, so the keeper can spot copies |
+| 2.3 | `Task.checkinAt?` (optional): when the sweeper sent the check-in for a task past its ETA |

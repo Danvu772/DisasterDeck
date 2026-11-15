@@ -114,6 +114,9 @@ async function main() {
       lastSweep = now;
       const s = await sweeper.tick();
       if (s.requeued || s.failed) log(`sweeper: ${s.requeued} stuck event(s) back to pending, ${s.failed} failed`);
+      if (s.timedOut || s.checkins || s.unreachable || s.reprioritized) {
+        log(`sweeper: ${s.timedOut} no answer, ${s.checkins} check-in(s), ${s.unreachable} unreachable, ${s.reprioritized} priority update(s)`);
+      }
     }
     if (now - lastBeat >= 1000) { lastBeat = now; await markLoop(); }
     if (!event) await sleep(300);

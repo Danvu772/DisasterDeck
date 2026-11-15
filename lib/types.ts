@@ -227,6 +227,7 @@ export interface Task {
   replaces?: string;                     // v2: the task this one took over from
   progress?: "en_route" | "arrived";     // v2.2: from the field phone (G-09)
   scoreParts?: ScorePart[];              // v2.2 (G-06)
+  checkinAt?: Date;                      // v2.3: when the sweeper asked "still on your way?"
   history: HistoryEntry[];
   deskId: string;                        // v2
 }

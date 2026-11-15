@@ -11,6 +11,7 @@
     "db:seed": "tsx --env-file=.env.local lib/seed.ts",
     "api:check": "tsx --env-file=.env.local lib/api-check.ts",
     "keeper:check": "tsx --env-file=.env.local lib/keeper-check.ts",
+    "sweeper:check": "tsx --env-file=.env.local lib/sweeper-check.ts",
     "security:check": "tsx --env-file=.env.local lib/security-check.ts",
     "brain": "tsx --env-file=.env.local workers/brain.ts",
     "check:contract": "node docs/frontend/contract-check.mjs",
