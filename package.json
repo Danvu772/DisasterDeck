@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:up": "docker compose up -d --wait mongo",
     "db:check": "tsx --env-file=.env.local lib/db-check.ts",
     "db:seed": "tsx --env-file=.env.local lib/seed.ts",
     "api:check": "tsx --env-file=.env.local lib/api-check.ts",

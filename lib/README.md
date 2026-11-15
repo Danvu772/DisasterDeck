@@ -36,48 +36,41 @@ it, the dispatcher reacts (CP2), and the sweeper puts stuck events back in the q
 
 ## 1. Set up (5 minutes)
 
-You need Docker and Node 22.
+The whole team shares **one MongoDB Atlas cluster**. You need Node 22 and two values that Role 1
+sends you privately (never in a channel, never in git): `MONGODB_URI` and `AGENT_KEY`.
 
 ```bash
 npm install
-cp .env.example .env.local     # never commit .env.local
-npm run db:up                  # local MongoDB 8 in Docker, waits until it is healthy
-npm run db:seed                # the demo users and shelters from data/seed.json
-npm run db:check               # should end with "All checks passed."
-npm run api:check              # needs AGENT_KEY set and DEMO_MODE=1 in .env.local
-npm run keeper:check           # the memory keeper (CP1), on a throwaway desk
-npm run brain                  # the Brain loop; leave it running
+cp .env.example .env.local     # paste MONGODB_URI and AGENT_KEY; never commit .env.local
+npm run db:check               # connects, makes sure the indexes exist; ends "All checks passed."
 ```
 
-`npm run db:up` runs `docker compose up -d --wait mongo` (see `docker-compose.yml`). The database
-is a single-node replica set on `127.0.0.1:27017`, so it behaves like Atlas. The data survives
-restarts.
+That's all a teammate needs. The other commands:
 
-| Command | Does |
-|---|---|
-| `npm run db:up` | Start MongoDB (or do nothing if it is already running) |
-| `docker compose stop` | Stop it, keep the data |
-| `docker compose down -v` | Stop it and **wipe** the data |
-| `docker compose exec mongo mongosh disaster_desk` | Open a shell on the database |
+| Command | Who runs it | Does |
+|---|---|---|
+| `npm run db:seed` | **Role 1 only** | Loads the demo users and shelters from `data/seed.json`. It's one shared database, so once is enough |
+| `npm run api:check` | Anyone | Checks `POST /api/events` and that `/api/docs` lists every route. Needs `AGENT_KEY` and `DEMO_MODE=1` |
+| `npm run keeper:check` | Anyone | Checks the memory keeper (CP1) |
+| `npm run brain` | **One person** | The Brain loop. Only one runs per database: a second one waits (see below) |
 
-You can also browse it with MongoDB Compass at `mongodb://127.0.0.1:27017/?directConnection=true`.
+`api:check` and `keeper:check` write only to throwaway desks (`check-api`, `check-cp1`) and
+delete everything they made, so they never show up on the shared board.
+
+To look at the data, open the cluster in the Atlas web UI and use **Browse Collections**
+(database `disaster_desk`), or paste the same `MONGODB_URI` into MongoDB Compass.
 
 ### Environment (`.env.local`)
 
-| Variable | Local value | Notes |
+| Variable | Value | Notes |
 |---|---|---|
-| `MONGODB_URI` | `mongodb://127.0.0.1:27017/?directConnection=true` | For Atlas, Role 1 shares a `mongodb+srv://…` URI privately |
+| `MONGODB_URI` | from Role 1 | The Atlas `mongodb+srv://…` URI. Empty: the agents fall back to fake data |
 | `MONGODB_DB` | `disaster_desk` | Database name |
 | `DESK_ID` | `malatya-2023` | Default `deskId` for events and the board |
-| `AGENT_KEY` | ask Role 1 | Workers send it as `x-agent-key` |
+| `AGENT_KEY` | from Role 1 | Workers send it as `x-agent-key` |
 | `DEMO_MODE` | `1` | Allows `?user=ID` on the API |
 
 Next.js loads `.env.local` by itself. Workers run with `tsx --env-file=.env.local workers/<name>.ts`.
-
-### Moving to Atlas
-
-Put the Atlas URI in `MONGODB_URI` and run `npm run db:check`. The indexes are created on the
-first connection, so nothing else changes.
 
 ---
 
