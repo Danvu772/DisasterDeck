@@ -76,6 +76,33 @@ export async function send(
   return retry;
 }
 
+/**
+ * send(), streamed: `onText` gets each piece of the answer's text as the model writes it, so /talk
+ * can show and speak the first sentence while the rest is still coming. Same budget, cost record
+ * and refusal handling. A refusal retry is not streamed (the refused attempt wrote no text).
+ */
+export async function sendStream(
+  label: string,
+  params: Omit<Anthropic.Beta.MessageCreateParamsNonStreaming, "betas" | "fallbacks">,
+  onText: (delta: string) => void,
+): Promise<Anthropic.Beta.BetaMessage> {
+  assertBudget(label);
+  const fallback = String(params.model).startsWith("claude-haiku") ? {} : FALLBACK;
+  const stream = claude().beta.messages.stream({ ...params, ...fallback });
+  stream.on("text", (d) => onText(d));
+  const res = await stream.finalMessage();
+  recordUsage(label, String(params.model), res.usage, res.model);
+  if (res.stop_reason !== "refusal") return res;
+
+  const category = res.stop_details?.category ?? null;
+  const fallbackRan = (res.usage.iterations ?? []).some((it) => it.type === "fallback_message");
+  if (fallbackRan || params.model === RETRY_MODEL || (category && NOT_RETRYABLE.has(category))) return res;
+  assertBudget(`${label}:retry`);
+  const retry = await claude().beta.messages.create({ ...params, model: RETRY_MODEL, ...FALLBACK });
+  recordUsage(`${label}:retry`, RETRY_MODEL, retry.usage, retry.model);
+  return retry;
+}
+
 export interface StructuredRequest {
   name: string;                       // label for errors and the spend log
   schema: Record<string, unknown>;    // JSON schema: additionalProperties false, every key required, nullable for optional

@@ -97,12 +97,9 @@ async function fetchAfad(since: Date): Promise<Quake[]> {
   }));
 }
 
-const g = globalThis as unknown as { __quakeLive?: { at: number; quakes: Quake[] } };
+const g = globalThis as unknown as { __quakeLive?: { at: number; quakes: Quake[] }; __quakeFetch?: Promise<Quake[]> };
 
-/** Live quakes of the last 24 h, from AFAD and USGS, fetched at most once a minute. */
-export async function liveCatalog(): Promise<Quake[]> {
-  const hit = g.__quakeLive;
-  if (hit && Date.now() - hit.at < 60_000) return hit.quakes;
+async function fetchLive(): Promise<Quake[]> {
   const since = new Date(Date.now() - 24 * 3600_000);
   const [afad, usgs] = await Promise.allSettled([fetchAfad(since), fetchUsgs(since)]);
   const quakes = [
@@ -111,6 +108,20 @@ export async function liveCatalog(): Promise<Quake[]> {
   ].sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
   g.__quakeLive = { at: Date.now(), quakes };
   return quakes;
+}
+
+/**
+ * Live quakes of the last 24 h, from AFAD and USGS, fetched at most once a minute. A list up to
+ * 10 minutes old is answered at once while a fresh one loads in the background: AFAD alone takes
+ * ~0.7 s, and a /talk turn should not wait for it.
+ */
+export async function liveCatalog(): Promise<Quake[]> {
+  const hit = g.__quakeLive;
+  const age = hit ? Date.now() - hit.at : Infinity;
+  if (hit && age < 60_000) return hit.quakes;
+  const load = (g.__quakeFetch ??= fetchLive().finally(() => { g.__quakeFetch = undefined; }));
+  if (hit && age < 10 * 60_000) { load.catch(() => {}); return hit.quakes; }
+  return load;
 }
 
 // ---------- what matters to a person ----------

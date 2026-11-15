@@ -10,7 +10,7 @@ import {
 } from "../desk/view";
 import { quakeLine, recentQuakesNear, type NearbyQuake } from "../research/quakes";
 import { BudgetError } from "../shared/cost";
-import { modelFor, send } from "../shared/llm";
+import { modelFor, send, sendStream } from "../shared/llm";
 import { maskPhones } from "../shared/privacy";
 import { stashPending, takePending, type PendingCall } from "./pending";
 import { systemPrompt } from "./prompts";
@@ -23,6 +23,9 @@ export interface TurnInput {
   coords?: [number, number];
   /** Hold what the agent would file until the person says yes (the /talk screen). Without it, tools file at once. */
   confirm?: boolean;
+  /** Streamed answer (/talk): each piece of text as the model writes it. With it, the reply is the
+   *  text of every round joined, exactly what was shown and spoken, not only the last round's. */
+  onText?: (delta: string) => void;
 }
 export interface TurnResult {
   reply: string;
@@ -78,15 +81,24 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
 
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      const res = await send(`chat:${ctx.user.role}`, {
+      const params = {
         model, max_tokens: 8000, system, tools, messages, output_config: { effort },
         // Later rounds of the same turn re-send everything: cache the growing tail too.
         cache_control: { type: "ephemeral" },
-      });
+      } as const;
+      let startedRound = false;
+      const res = input.onText
+        ? await sendStream(`chat:${ctx.user.role}`, params, (d) => {
+          if (!startedRound && reply) input.onText!(" ");   // a new round after earlier text
+          startedRound = true;
+          input.onText!(d);
+        })
+        : await send(`chat:${ctx.user.role}`, params);
       servedBy = res.model;
       searches += res.usage.server_tool_use?.web_search_requests ?? 0;
       const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
-      reply = text || reply;   // never let an empty last round wipe an earlier answer
+      // never let an empty last round wipe an earlier answer
+      reply = input.onText ? [reply, text].filter(Boolean).join(" ") : text || reply;
 
       if (res.stop_reason === "refusal") {
         reply = "I can't help with that one here. If someone is in danger, call 112.";

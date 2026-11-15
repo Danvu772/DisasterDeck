@@ -64,6 +64,7 @@ interface Body {
   speak?: unknown;
   speechSpeed?: unknown;         // 0.7–1.2, the /talk voice-speed slider
   confirm?: unknown;             // true: hold the filing until the person says yes
+  stream?: unknown;              // true: answer as NDJSON lines while the agent writes (/talk)
   approve?: unknown;             // the pending id of an earlier confirm turn
   send?: unknown;                // with approve: true sends it, anything else drops it
 }
@@ -145,6 +146,13 @@ export async function POST(req: Request) {
   const coords = Array.isArray(c) && c.length === 2 && c.every((x) => typeof x === "number" && Number.isFinite(x))
     ? (c as [number, number]) : undefined;
 
+  if (body.stream === true) {
+    return streamTurn({ userId, text, image, coords, confirm: body.confirm === true }, {
+      heard, speak: body.speak === true && voiceEnabled(),
+      speed: typeof body.speechSpeed === "number" ? body.speechSpeed : undefined,
+    });
+  }
+
   try {
     const result = await runTurn({ userId, text, image, coords, confirm: body.confirm === true });
     // After the reply is sent: fold old chat lines into the summary (MongoDB desk only).
@@ -166,4 +174,74 @@ export async function POST(req: Request) {
 // from it (voice notes through ElevenLabs, or the browser's own speech). Only a yes or no leaves.
 export async function GET() {
   return NextResponse.json({ voice: voiceEnabled() }, { headers: { "cache-control": "no-store" } });
+}
+
+// stream: true. One JSON object per line, as soon as each exists:
+//   { type: "heard", text }            what the voice note said (only for audioBase64)
+//   { type: "text", delta }            the next piece of the agent's answer
+//   { type: "audio", seq, audio }      one sentence of it as speech (base64 mp3), in order
+//   { type: "done", ...TurnResult }    the whole turn, as the plain JSON answer gives it
+//   { type: "end" }                    no more audio
+//   { type: "error", error }
+// Each finished sentence goes to text-to-speech while the model keeps writing, so the voice starts
+// after the first sentence instead of after the whole answer.
+const SENTENCE = /^([\s\S]*?[.!?…]+["'”’)\]]*)\s+/;
+
+function streamTurn(input: TurnInput, o: { heard?: string; speak: boolean; speed?: number }): Response {
+  const enc = new TextEncoder();
+  // start() must return at once: the response (headers included) only leaves once it has, so
+  // awaiting the whole turn in it held every line back until the end. The work runs detached.
+  const body = new ReadableStream<Uint8Array>({
+    start(ctrl) { void run(ctrl); },
+  });
+  async function run(ctrl: ReadableStreamDefaultController<Uint8Array>) {
+      const write = (x: object) => { try { ctrl.enqueue(enc.encode(`${JSON.stringify(x)}\n`)); } catch { /* client left */ } };
+      if (o.heard !== undefined) write({ type: "heard", text: o.heard });
+      let seq = 0;
+      let chain: Promise<void> = Promise.resolve();
+      let pendingText = "";
+      let streamed = "";
+      // Start the speech for a sentence at once; write the audio lines in order.
+      const say = (s: string) => {
+        const t = s.trim();
+        if (!o.speak || !/[\p{L}\p{N}]/u.test(t)) return;
+        const n = seq++;
+        const audio = speak(t, { speed: o.speed }).then((b) => b.toString("base64"))
+          .catch((e) => { console.error("[api/chat] text-to-speech", e); return null; });
+        chain = chain.then(async () => { const a = await audio; if (a) write({ type: "audio", seq: n, audio: a }); });
+      };
+      const flush = (all: boolean) => {
+        for (let m = SENTENCE.exec(pendingText); m; m = SENTENCE.exec(pendingText)) {
+          say(m[1]);
+          pendingText = pendingText.slice(m[0].length);
+        }
+        if (all && pendingText.trim()) { say(pendingText); pendingText = ""; }
+      };
+      try {
+        const result = await runTurn({ ...input, onText: (d) => {
+          streamed += d;
+          pendingText += d;
+          write({ type: "text", delta: d });
+          flush(false);
+        } });
+        flush(true);
+        // The reply was replaced after streaming (budget pause, refusal, nothing written): speak it whole.
+        if (!streamed.trim() && result.reply) say(result.reply);
+        if (desk().name === "mongodb") {
+          try { after(() => refreshChatSummary(input.userId)); } catch { void refreshChatSummary(input.userId).catch(() => {}); }
+        }
+        write({ type: "done", ...result, ...(o.heard !== undefined ? { heard: o.heard } : {}) });
+        await chain;
+        write({ type: "end" });
+      } catch (e) {
+        console.error("[api/chat] stream", e);
+        write({ type: "error", error: "the agent failed this turn, try again" });
+      }
+      try { ctrl.close(); } catch { /* already closed */ }
+  }
+  return new Response(body, {
+    headers: { "content-type": "application/x-ndjson; charset=utf-8", "x-accel-buffering": "no",
+      // no-transform: neither Next's gzip nor Cloudflare compresses it, since both would hold lines back.
+      "cache-control": "no-store, no-transform" },
+  });
 }

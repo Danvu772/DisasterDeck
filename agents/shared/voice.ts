@@ -52,3 +52,20 @@ export async function speak(text: string, opts: { languageCode?: string; speed?:
   if (!res.ok) throw new Error(`ElevenLabs text-to-speech ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return Buffer.from(await res.arrayBuffer());
 }
+
+/** The live speech-to-text model for /talk (the browser streams the microphone to it). */
+export const LIVE_STT_MODEL = process.env.ELEVENLABS_STT_LIVE_MODEL ?? "scribe_v3_live";
+
+/**
+ * A single-use token for Scribe realtime: the browser opens the WebSocket with it, so the API key
+ * never leaves the server. It expires after 15 minutes and works once.
+ */
+export async function realtimeToken(): Promise<string> {
+  const res = await fetch(`${API}/single-use-token/realtime_scribe`, {
+    method: "POST", headers: { "xi-api-key": key() }, signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`ElevenLabs single-use token ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const j = (await res.json()) as { token?: string };
+  if (!j.token) throw new Error("ElevenLabs single-use token: no token in the answer");
+  return j.token;
+}
