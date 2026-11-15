@@ -150,6 +150,7 @@ To re-run locally: `docker start gapdesk-mongo`, then `npm run gap:check` (and t
 ## How to merge
 
 1. Finish the merge already open in `~/Desktop/HACKTHENEST` (the AgentDesk and Nav conflicts).
+   Heads up: while I worked, someone (or another agent session) edited `workers/dispatcher.ts` and `workers/synthetic-feed.ts` in that checkout, uncommitted, at 06:38 and 06:41. I did not touch them. A three-way dry merge of `dispatcher.ts` gives exactly one conflict: both sides made the same R1-2 fix (`ANSWER_MINUTES` from env). Keep either, they differ only in how they treat a negative value. Their `redelegate()` change merges cleanly with this branch and does not fight T4 (theirs re-offers a timed-out task once the person is seen again, mine moves it off them when they go quiet). This branch does not touch `synthetic-feed.ts`.
 2. `git merge gap/final-design`. A dry run with `git merge-tree` against both local main and `origin/main` shows no conflicts in any file this branch touches.
 3. Delete `review/` before or after, it is only for this review.
 4. Before rehearsal: restart the Brain (it is one process holding a lease, so stop the old one first), then open every role screen, because of D1.
