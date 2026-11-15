@@ -35,7 +35,7 @@ export async function transcribe(audio: Buffer, mimeType = "audio/webm"): Promis
 }
 
 /** Text → MP3. Short replies only: the agent's answers are one to three sentences. */
-export async function speak(text: string, opts: { languageCode?: string } = {}): Promise<Buffer> {
+export async function speak(text: string, opts: { languageCode?: string; speed?: number } = {}): Promise<Buffer> {
   const voice = process.env.ELEVENLABS_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
   const res = await fetch(`${API}/text-to-speech/${voice}?output_format=mp3_44100_64`, {
     method: "POST",
@@ -44,6 +44,8 @@ export async function speak(text: string, opts: { languageCode?: string } = {}):
       text: text.slice(0, 2000),
       model_id: process.env.ELEVENLABS_TTS_MODEL ?? "eleven_v4_turbo",
       ...(opts.languageCode ? { language_code: opts.languageCode } : {}),
+      // ElevenLabs accepts 0.7 (slow) to 1.2 (fast); the /talk slider stays inside that.
+      ...(opts.speed ? { voice_settings: { speed: Math.min(1.2, Math.max(0.7, opts.speed)) } } : {}),
     }),
     signal: AbortSignal.timeout(30_000),
   });

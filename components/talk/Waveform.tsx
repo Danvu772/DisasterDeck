@@ -1,8 +1,10 @@
 "use client";
 // A live sound wave: mirrored bars drawn from an AnalyserNode, about 60 times a second.
 // Idle (no analyser) it rests as a row of small dots. Colours come from the design tokens
-// (--color-primary for the person, --color-ink for the agent), read at runtime.
+// (--primary for the person, --info for the agent), read at runtime and again when the theme flips.
 import { useEffect, useRef } from "react";
+import { tokenColor } from "../map/gl/tokens";
+import { useIsDark } from "../theme/theme";
 
 const BARS = 48;
 
@@ -13,13 +15,14 @@ export function Waveform({ analyser, tone, label }: {
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const levels = useRef<number[]>(Array(BARS).fill(0));
+  const dark = useIsDark();
 
   useEffect(() => {
     const c = canvas.current;
     if (!c) return;
     const ctx = c.getContext("2d");
     if (!ctx) return;
-    const color = getComputedStyle(c).getPropertyValue(tone === "person" ? "--color-primary" : "--color-ink").trim();
+    const color = tokenColor(tone === "person" ? "primary" : "info");
     const data = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
     let frame = 0;
 
@@ -61,7 +64,7 @@ export function Waveform({ analyser, tone, label }: {
     };
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
-  }, [analyser, tone]);
+  }, [analyser, tone, dark]);
 
-  return <canvas ref={canvas} role="img" aria-label={label} className="h-16 w-full" />;
+  return <canvas ref={canvas} role="img" aria-label={label} className="h-20 w-full" />;
 }

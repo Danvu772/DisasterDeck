@@ -25,7 +25,7 @@ export function compute({ board, now }: MetricInput): MetricResult {
   const asked = board.needs.filter((n) => n.status !== "proposed" && n.status !== "cancelled");
   if (!asked.length) {
     return unknown("logistics", TITLE, SOURCE,
-      "No need on the board has been opened yet. Needs come from the memory keeper and the dispatcher, Role 1.",
+      "No need has been opened yet.",
       `${plural(board.needs.length, "need")}, none past proposed`, now);
   }
 

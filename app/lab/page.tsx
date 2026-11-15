@@ -16,8 +16,8 @@ export const dynamic = "force-dynamic";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section>
-      <h2 className="mb-2 text-lg font-bold">{title}</h2>
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold">{title}</h2>
       <div className="space-y-3">{children}</div>
     </section>
   );
@@ -28,11 +28,13 @@ export default function Lab() {
   const b = makeBoard(now);
 
   return (
-    <main className="mx-auto max-w-6xl p-6">
-      <h1 className="text-2xl font-bold">Lab</h1>
-      <p className="text-sm text-muted">Fixtures only. Tier is the bar colour, confidence is the border, the bold name says who acted.</p>
+    <main className="mx-auto max-w-6xl p-4 md:p-6">
+      <header className="flex items-center gap-2">
+        <h1 className="text-xl font-semibold tracking-tight">Lab</h1>
+        <span className={pill}>Fixtures</span>
+      </header>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-3">
+      <div className="mt-6 grid gap-8 md:grid-cols-3">
         <Section title="Sites"><SiteCards items={b.sites} now={now} /></Section>
         <Section title="Needs"><NeedCards items={b.needs} now={now} /></Section>
         <Section title="Shelters"><ShelterCards items={b.shelters} now={now} /></Section>
@@ -42,7 +44,7 @@ export default function Lab() {
         <Section title="Loading"><div className="h-24"><Loading label="Loading" /></div></Section>
 
         <Section title="Chat">
-          <div className="space-y-1 rounded-card border border-line bg-card p-3">
+          <div className="space-y-1 rounded-xl border bg-card p-3 shadow-xs">
             <ChatLine name="Zeynep" m={{ from: "user", text: "called, voices heard" }} />
             <ChatLine name="Zeynep" m={{ from: "agent", text: "Marked Örnek St. 12 as verified. Asking the coordinator to send Saha Ekibi A." }} />
           </div>
@@ -65,15 +67,15 @@ export default function Lab() {
           <div className="flex flex-wrap gap-2">
             <span className={pill}>Demo data</span>
             <span className={pill}><span className="font-mono">4</span> of <span className="font-mono">9</span> on the map</span>
-            <span className={statusTag}>verified</span>
+            <span className={statusTag}>Verified</span>
           </div>
         </Section>
 
         <Section title="Tier badges">
           <div className="flex flex-wrap gap-2">
             {([0, 1, 2] as Tier[]).map((t) => (
-              <span key={t} className={`rounded-tag px-1.5 text-xs font-bold ${tierBadge(t)}`}>
-                <span className="font-mono">{tierText(t).code}</span> {tierText(t).word}
+              <span key={t} className={`inline-flex h-5 items-center rounded-full px-2 text-xs font-medium ${tierBadge(t)}`}>
+                {tierText(t).word}
               </span>
             ))}
           </div>

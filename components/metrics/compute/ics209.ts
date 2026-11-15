@@ -17,7 +17,7 @@ export function compute({ board, now }: MetricInput): MetricResult {
   const { sites, tasks, shelters, roads } = board;
   const incidents = board.incidents.filter((i) => i.status !== "resolved");
   if (!sites.length && !board.incidents.length && !tasks.length && !shelters.length && !roads.length && !board.needs.length) {
-    return unknown("ics209", TITLE, SOURCE, "The board is empty. Records come from the memory keeper, Role 1.", "an empty board", now);
+    return unknown("ics209", TITLE, SOURCE, "The board is empty.", "an empty board", now);
   }
 
   const oldestText = (times: number[]) => {

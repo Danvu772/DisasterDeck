@@ -1,5 +1,4 @@
-// The queue health pill, for screens that already have the board's health in hand.
-// Same words and colours as the header's StatusPill, so both say the same thing.
+// The header's health pill, for screens that already hold the board's health.
 // Without lastLoopAt (fixtures) it says nothing about the Brain and goes red when the oldest job is over 30 s.
 import { HealthPill } from "./StatusPill";
 

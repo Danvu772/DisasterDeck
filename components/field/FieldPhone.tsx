@@ -2,12 +2,20 @@
 // The field team's phone. One task, big buttons, works with one thumb and a bad network.
 // Polls GET /api/board, falls back to the demo board and says so.
 import { useMemo, useRef, useState } from "react";
-import type { IncidentKind, LatLng } from "@/lib/types";
+import {
+  Ambulance, Car, ChevronDown, ChevronRight, CircleCheck, CircleAlert, Clock, CloudOff, HandHelping, LifeBuoy,
+  MapPin, MapPinOff, Megaphone, Mic, Navigation, Phone, Sparkles, TriangleAlert, Truck, Users, type LucideIcon,
+} from "lucide-react";
+import type { IncidentKind, LatLng, Task } from "@/lib/types";
 import { usePolled } from "@/components/map/usePolled";
 import { History } from "@/components/History";
-import { ChatLine } from "@/components/ChatLine";
-import { button, confidenceBorder, statusTag, statusText, tierBadge, tierBar, tierText } from "@/components/encode";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { statusWord, TIER_WORD } from "@/components/detail/fields";
+import { tierBadge, tierBar } from "@/components/encode";
+import { cn } from "@/lib/utils";
 import { CaseNo } from "@/components/ScoreBreakdown";
+import { Input } from "@/components/ui/input";
 import { openTasksFor, type FieldBoard, type FieldTask } from "./pickTask";
 import { useOutbox, type FieldEvent } from "./useOutbox";
 import { useDictation } from "./useDictation";
@@ -16,19 +24,50 @@ import { VizSpace, type Ask } from "@/components/agent/VizSpace";
 import { chatErrorText } from "@/components/chatError";
 import { fromBoard, type MapSource } from "@/components/map/mapItems";
 
+// The person's words on the right, the agent's answer on the left (same bubbles as /agent and /talk).
+function Said({ text }: { text: string }) {
+  return (
+    <p className="ml-auto w-fit max-w-[85%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-4 py-3 text-base text-primary-foreground">
+      <span className="sr-only">You:</span> {text}
+    </p>
+  );
+}
+function Reply({ text }: { text: string }) {
+  return (
+    <p className="whitespace-pre-line rounded-2xl rounded-bl-md bg-info-soft px-4 py-3 text-base">
+      <span className="sr-only">Agent:</span> {text}
+    </p>
+  );
+}
+
 type Panel = "eta" | "done" | "problem" | null;
 
 const ETAS = [10, 20, 30, 60];
-const PROBLEMS: { kind: IncidentKind; label: string; text: string }[] = [
-  { kind: "vehicle_breakdown", label: "Vehicle", text: "Our vehicle broke down, we cannot continue." },
-  { kind: "road_blocked", label: "Road blocked", text: "The road is blocked, we cannot get through." },
-  { kind: "cannot_find", label: "Can't find it", text: "We cannot find the address." },
-  { kind: "other", label: "Other", text: "We have a problem and cannot continue." },
+const PROBLEMS: { kind: IncidentKind; label: string; text: string; icon: LucideIcon }[] = [
+  { kind: "vehicle_breakdown", label: "Vehicle", text: "Our vehicle broke down, we cannot continue.", icon: Car },
+  { kind: "road_blocked", label: "Road blocked", text: "The road is blocked, we cannot get through.", icon: TriangleAlert },
+  { kind: "cannot_find", label: "Can't find it", text: "We cannot find the address.", icon: MapPinOff },
+  { kind: "other", label: "Other", text: "We have a problem and cannot continue.", icon: CircleAlert },
 ];
 
-// Big versions of the USWDS buttons from encode.ts. The ! wins over the small default size.
-const big = (cls: string) => `${cls} block w-full px-4! py-4! text-xl! disabled:opacity-50`;
-const quiet = "w-full py-3 text-lg text-primary underline hover:text-primary-dark";
+const KIND: Record<Task["type"], { word: string; icon: LucideIcon }> = {
+  rescue: { word: "Rescue", icon: LifeBuoy },
+  deliver: { word: "Delivery", icon: Truck },
+  call: { word: "Call", icon: Phone },
+  notify: { word: "Notify", icon: Megaphone },
+  assist: { word: "Assist", icon: HandHelping },
+  evacuate: { word: "Evacuate", icon: Ambulance },
+};
+
+// The three steps of a task, in order. The current one is the one big primary button.
+const STEPS = [
+  { label: "On our way", icon: Navigation },
+  { label: "Arrived", icon: MapPin },
+  { label: "Done", icon: CircleCheck },
+] as const;
+
+const big = "h-14 w-full rounded-xl text-lg [&_svg:not([class*='size-'])]:size-5";
+const mid = "h-12 w-full rounded-xl text-base [&_svg:not([class*='size-'])]:size-5";
 
 // Where the phone is, if it answers within `ms`. Problems go out without it otherwise.
 function position(ms: number): Promise<LatLng | undefined> {
@@ -43,21 +82,29 @@ function position(ms: number): Promise<LatLng | undefined> {
   });
 }
 
+function timeLeft(min: number): string {
+  return min < 0 ? `${-min} min late` : `${min} min left`;
+}
+
 function OtherRow({ o, now, onPick }: { o: FieldTask; now: number; onPick: (id: string) => void }) {
   const t = o.task;
   const min = Math.round((new Date(t.deadline).getTime() - now) / 60000);
   const late = min < 0;
+  const Icon = KIND[t.type]?.icon ?? LifeBuoy;
   return (
     <button onClick={() => onPick(t._id)}
-      className="flex min-h-14 w-full overflow-hidden rounded-card border border-line bg-card text-left hover:border-primary">
-      <span className={`w-3 shrink-0 ${tierBar(t.tier, late)}`} />
-      <span className="min-w-0 flex-1 p-3">
-        <span className="block break-words text-lg font-bold leading-tight">{t.title}</span>
-        <span className="block break-words text-base">{o.place}</span>
-        <span className={`block text-base ${late ? "font-bold text-act" : "text-muted"}`}>
-          {late ? `Overdue by ${-min} min` : `Answer in ${min} min`}
+      className="flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-xl border bg-card pr-3 text-left shadow-xs transition-colors hover:bg-accent">
+      <span className={`w-1.5 self-stretch ${tierBar(t.tier, late)}`} />
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
+        <Icon className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1 py-3">
+        <span className="block break-words text-base font-medium leading-tight">{t.title}</span>
+        <span className={cn("mt-1 flex items-center gap-1 text-sm", late ? "font-medium text-destructive" : "text-muted-foreground")}>
+          <Clock className="size-3.5" />{timeLeft(min)}
         </span>
       </span>
+      <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
     </button>
   );
 }
@@ -155,136 +202,172 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
     }, `Problem, ${p.label.toLowerCase()}`);
   }
 
-  const primaryIf = (s: number) => big(step === s ? button.primary : button.outline);
+  // The three step buttons: done steps quiet with a check, the current one big and primary.
+  function stepButton(i: number, t: Task) {
+    const s = STEPS[i];
+    const current = step === i;
+    const onClick = i === 0 ? () => setPanel("eta")
+      : i === 1 ? () => report({ type: "answer", payload: { taskId: t._id, result: "accepted", etaMinutes: 0, progress: "arrived" } }, "Arrived", 2)
+      : () => setPanel("done");
+    const Icon = step > i ? CircleCheck : s.icon;
+    return (
+      <Button key={s.label} variant={current ? "default" : step > i ? "secondary" : "outline"} disabled={busy}
+        className={cn(current ? big : mid, step > i && "text-muted-foreground")} onClick={onClick}>
+        <Icon />{s.label}
+      </Button>
+    );
+  }
+
+  const Kind = task ? KIND[task.type] ?? KIND.rescue : KIND.rescue;
+  const failed = said?.startsWith("Not sent");
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
-      <p className="text-sm text-muted">
-        {live ? "Live from the desk" : "Demo data, the board API is not answering"}. Acting as {user} (demo).
-      </p>
+    <main className="mx-auto flex max-w-md flex-col gap-4 p-4 pb-10">
+      <header className="flex items-center justify-between gap-3 pt-1">
+        <h1 className="text-xl font-semibold tracking-tight">{task ? "Your next task" : "No task right now"}</h1>
+        {live
+          ? <Badge variant="outline"><span className="size-1.5 rounded-full bg-success" />Live</Badge>
+          : <Badge variant="outline" title="The desk is not answering, so this shows demo data">Demo data</Badge>}
+      </header>
 
       {waiting > 0 && (
-        <p className="rounded-card border-2 border-ink p-3 text-lg font-bold">
-          {waiting} {waiting === 1 ? "report" : "reports"} waiting to send. Trying again every 10 seconds.
+        <div className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-xs">
+          <CloudOff className="size-5 shrink-0 text-muted-foreground" />
+          <p className="text-base font-medium">
+            {waiting} {waiting === 1 ? "report" : "reports"} waiting to send
+            <span className="block text-sm font-normal text-muted-foreground">Retrying every 10 s</span>
+          </p>
+        </div>
+      )}
+      {said && (
+        <p role="status" className="flex items-start gap-2 rounded-xl border bg-card p-3 text-base shadow-xs">
+          {failed ? <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
+            : <CircleCheck className="mt-0.5 size-5 shrink-0" />}
+          {said}
         </p>
       )}
-      {said && <p className="text-lg" role="status">{said}</p>}
-      {closed && <p className="text-base text-muted">That task is closed, showing your next one.</p>}
+      {closed && <p className="text-sm text-muted-foreground">That task is closed. Showing your next one.</p>}
 
       {!current || !task ? (
-        <section className="rounded-card border border-line p-4">
-          <h1 className="text-3xl font-bold leading-tight">No task right now</h1>
-          <p className="mt-2 text-lg">The desk sends your next task here. Hold to talk if you need something.</p>
+        <section className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-8 text-center">
+          <CircleCheck className="size-8 text-muted-foreground" />
+          <p className="text-base text-muted-foreground">The desk sends your next task here.</p>
         </section>
       ) : (
-        <>
-          <h1 className="text-2xl font-bold leading-tight">Your next task</h1>
-          <section className={`flex flex-col gap-3 rounded-card bg-card p-4 ${confidenceBorder("confirmed")}`}>
-            <p className="flex flex-wrap items-center gap-2 text-sm">
-              <span className={`rounded-pill px-2 py-0.5 text-xs font-bold ${tierBadge(task.tier, overdue)}`}>
-                <span className="font-mono">{tierText(task.tier).code}</span> {tierText(task.tier).word}
+        <section className="overflow-hidden rounded-xl border bg-card shadow-xs">
+          <div className={`h-1.5 ${tierBar(task.tier, overdue)}`} />
+          <div className="flex flex-col gap-4 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium ${tierBadge(task.tier, overdue)}`}>
+                {TIER_WORD[task.tier]}
               </span>
-              <span className="text-muted">{task.type}, case <span className="font-mono">{current.caseId}</span></span>
-              {overdue && <span className="font-bold text-act">Overdue</span>}
-            </p>
-            <div>
-              <h2 className="break-words text-3xl font-bold leading-tight">{current.place}</h2>
-              <p className="mt-1 text-lg">{current.people}</p>
+              <Badge variant="outline" className="h-6"><Kind.icon />{Kind.word}</Badge>
+              <span className={cn("ml-auto flex items-center gap-1 text-sm font-medium",
+                overdue ? "text-destructive" : "text-muted-foreground")}>
+                <Clock className="size-4" /><span className="font-mono">{timeLeft(minutesLeft)}</span>
+              </span>
             </div>
-            <p className="break-words text-base text-muted">
-              {caseNo !== undefined && <span className="mr-2"><CaseNo kind={task.recordType} no={caseNo} /></span>}
+
+            <div>
+              <h2 className="break-words text-2xl font-semibold leading-tight tracking-tight">{current.place}</h2>
+              <p className="mt-1.5 flex items-center gap-1.5 text-base text-muted-foreground">
+                <Users className="size-4" />{current.people}
+              </p>
+            </div>
+            <p className="break-words text-base">
+              {caseNo !== undefined && <span className="mr-2 text-muted-foreground"><CaseNo kind={task.recordType} no={caseNo} /></span>}
               {task.title}
             </p>
-            <button className={`${big(button.outline)} py-2! text-lg!`} aria-expanded={details}
-              onClick={() => setDetails(!details)}>
+
+            <button type="button" aria-expanded={details} onClick={() => setDetails(!details)}
+              className="-mx-1 flex min-h-11 items-center gap-1 rounded-md px-1 text-sm font-medium text-muted-foreground hover:text-foreground">
+              <ChevronDown className={cn("size-4 transition-transform", details && "rotate-180")} />
               {details ? "Hide details" : "Details"}
             </button>
             {details && (
-              <div className="space-y-2 text-base">
+              <div className="-mt-2 space-y-3 rounded-lg bg-secondary p-3 text-base">
                 {task.detail && <p>{task.detail}</p>}
-                <p className="flex flex-wrap items-center gap-2">
-                  <span className={statusTag}>{statusText(task.status)}</span>
-                  <span className="text-muted">
-                    Priority <span className="font-mono">{task.priority}</span>, {task.risk} risk,{" "}
-                    {minutesLeft >= 0 ? `answer within ${minutesLeft} min` : `deadline passed ${-minutesLeft} min ago`}
-                  </span>
+                <p className="flex flex-wrap items-center gap-2 text-sm">
+                  <Badge variant="outline" className="bg-background">{statusWord(task.status)}</Badge>
+                  <span className="text-muted-foreground">{task.risk === "high" ? "High risk" : "Low risk"}</span>
                 </p>
-                <p className="text-muted">Task <span className="font-mono">{task._id}</span>, {task.type}</p>
                 {task.history.length > 0 && <History entries={task.history} now={now} />}
               </div>
             )}
 
-          {panel === "eta" && (
-            <section className="space-y-3">
-              <h2 className="text-xl font-bold">How long until you get there?</h2>
-              <div className="grid grid-cols-2 gap-3">
-                {ETAS.map((m) => (
-                  <button key={m} className={big(button.outline)} disabled={busy}
-                    onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "accepted", etaMinutes: m, progress: "en_route" } },
-                      `On our way, ${m} min`, 1)}>
-                    {m} min
-                  </button>
-                ))}
-              </div>
-              <button className={quiet} onClick={() => setPanel(null)}>Cancel</button>
-            </section>
-          )}
+            {panel === "eta" && (
+              <section className="space-y-3 border-t pt-4">
+                <h2 className="text-lg font-semibold">How long until you get there?</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {ETAS.map((m) => (
+                    <Button key={m} variant="outline" className={big} disabled={busy}
+                      onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "accepted", etaMinutes: m, progress: "en_route" } },
+                        `On our way, ${m} min`, 1)}>
+                      <span className="font-mono">{m}</span> min
+                    </Button>
+                  ))}
+                </div>
+                <Button variant="ghost" className={mid} onClick={() => setPanel(null)}>Cancel</Button>
+              </section>
+            )}
 
-          {panel === "done" && (
-            <section className="space-y-3">
-              <label className="block text-xl font-bold" htmlFor="done-note">What happened? (optional)</label>
-              <textarea id="done-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
-                className="w-full rounded-button border-2 border-ink p-3 text-lg" />
-              <button className={big(button.primary)} disabled={busy}
-                onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "done", note: note.trim() || "Done" } },
-                  "Done", 3)}>
-                Send done
-              </button>
-              <button className={quiet} onClick={() => setPanel(null)}>Cancel</button>
-            </section>
-          )}
+            {panel === "done" && (
+              <section className="space-y-3 border-t pt-4">
+                <label className="block text-lg font-semibold" htmlFor="done-note">What happened? <span className="text-sm font-normal text-muted-foreground">Optional</span></label>
+                <textarea id="done-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
+                  className="w-full rounded-xl border border-input bg-background p-3 text-lg outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
+                <Button className={big} disabled={busy}
+                  onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "done", note: note.trim() || "Done" } },
+                    "Done", 3)}>
+                  <CircleCheck />Send done
+                </Button>
+                <Button variant="ghost" className={mid} onClick={() => setPanel(null)}>Cancel</Button>
+              </section>
+            )}
 
-          {panel === "problem" && (
-            <section className="space-y-3">
-              <h2 className="text-xl font-bold">What is the problem?</h2>
-              {PROBLEMS.map((p) => (
-                <button key={p.kind} className={big(button.outline)} disabled={busy} onClick={() => problem(p)}>
-                  {p.label}
-                </button>
-              ))}
-              <button className={quiet} onClick={() => setPanel(null)}>Cancel</button>
-            </section>
-          )}
+            {panel === "problem" && (
+              <section className="space-y-3 border-t pt-4">
+                <h2 className="text-lg font-semibold">What is the problem?</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {PROBLEMS.map((p) => (
+                    <Button key={p.kind} variant="outline" disabled={busy} onClick={() => problem(p)}
+                      className="h-20 flex-col gap-1.5 rounded-xl text-base [&_svg:not([class*='size-'])]:size-5">
+                      <p.icon />{p.label}
+                    </Button>
+                  ))}
+                </div>
+                <Button variant="ghost" className={mid} onClick={() => setPanel(null)}>Cancel</Button>
+              </section>
+            )}
 
-          {panel === null && (
-            <section className="space-y-3">
-              <button className={primaryIf(0)} disabled={busy} onClick={() => setPanel("eta")}>On our way</button>
-              <button className={primaryIf(1)} disabled={busy}
-                onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "accepted", etaMinutes: 0, progress: "arrived" } },
-                  "Arrived", 2)}>
-                Arrived
-              </button>
-              <button className={primaryIf(2)} disabled={busy} onClick={() => setPanel("done")}>Done</button>
-              <button className={`${big(button.act)} mt-3`} disabled={busy} onClick={() => setPanel("problem")}>
-                Problem
-              </button>
-            </section>
-          )}
-          </section>
-        </>
+            {panel === null && (
+              <section className="flex flex-col gap-2 border-t pt-4">
+                {STEPS.map((_, i) => stepButton(i, task))}
+                <Button variant="destructive" className={cn(mid, "mt-2")} disabled={busy} onClick={() => setPanel("problem")}>
+                  <TriangleAlert />Problem
+                </Button>
+              </section>
+            )}
+          </div>
+        </section>
       )}
 
       {others.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-xl font-bold">Your other tasks ({others.length})</h2>
+        <section className="space-y-2 pt-2">
+          <h2 className="text-sm font-semibold">Your other tasks ({others.length})</h2>
           {others.map((o) => <OtherRow key={o.task._id} o={o} now={now} onPick={choose} />)}
         </section>
       )}
 
-      <section className="space-y-2 border-t border-line pt-4">
-        <h2 className="text-xl font-bold">Your agent</h2>
-        <button
-          className={`${big(dictation.state === "recording" ? `${button.primary} bg-primary-dark!` : button.primary)} rounded-pill! min-h-24 touch-none select-none [-webkit-touch-callout:none]`}
+      <section className="space-y-3 pt-2">
+        <h2 className="flex items-center gap-2 text-sm font-semibold">
+          <span className="flex size-6 items-center justify-center rounded-full bg-info text-info-foreground"><Sparkles className="size-3.5" /></span>
+          Your agent
+        </h2>
+
+        <Button
+          className={cn("h-20 w-full touch-none select-none rounded-2xl text-lg [-webkit-touch-callout:none] [&_svg:not([class*='size-'])]:size-6",
+            dictation.state === "recording" && "animate-pulse ring-4 ring-ring/50")}
           disabled={dictation.state === "unsupported"}
           onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); dictation.start(); }}
           onPointerUp={dictation.stop}
@@ -295,24 +378,25 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
           onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") dictation.stop(); }}
           onContextMenu={(e) => e.preventDefault()}
         >
+          <Mic />
           {dictation.state === "recording" ? "Listening, let go to stop" : "Hold to talk"}
-        </button>
+        </Button>
         {dictation.state === "unsupported" && (
-          <p className="text-base text-muted">Talking needs the phone&apos;s speech recognition on an HTTPS page. Type to your agent instead.</p>
+          <p className="text-sm text-muted-foreground">Talking needs the phone&apos;s speech recognition on an HTTPS page. Type to your agent instead.</p>
         )}
-        {dictation.error && <p className="text-base">{dictation.error}</p>}
+        {dictation.error && <p className="text-sm">{dictation.error}</p>}
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void ask(); }}>
           <label htmlFor="agent-text" className="sr-only">Tell your agent</label>
-          <input id="agent-text" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Hold to talk, or type to your agent"
-            className="min-w-0 flex-1 rounded-button border-2 border-ink p-3 text-lg" />
-          <button type="submit" className={`${button.outline} px-4! text-lg!`}
+          <Input id="agent-text" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Hold to talk, or type to your agent"
+            className="h-12 min-w-0 flex-1 text-base" />
+          <Button type="submit" variant="outline" className="h-12 px-4"
             disabled={!typed.trim() || asking || dictation.state === "recording"}>
             Send
-          </button>
+          </Button>
         </form>
         <div aria-live="polite" className="space-y-2">
-          {chat.map((m) => <ChatLine key={m.id} m={{ from: m.from, text: m.text }} name={m.from === "user" ? "You" : ""} />)}
-          {asking && <p className="text-base text-muted">Your agent is answering</p>}
+          {chat.map((m) => (m.from === "user" ? <Said key={m.id} text={m.text} /> : <Reply key={m.id} text={m.text} />))}
+          {asking && <p className="text-sm text-muted-foreground">Your agent is answering…</p>}
         </div>
       </section>
 

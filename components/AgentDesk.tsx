@@ -1,31 +1,123 @@
 "use client";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import {
+  Activity, ArrowUp, Car, ClipboardList, Inbox, Package, ShieldCheck, Sparkles, Truck, type LucideIcon,
+} from "lucide-react";
 import type { Event, Message, User } from "@/lib/types";
 import type { makeBoard } from "@/fixtures/board";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { EventRow } from "./EventRow";
 import { EventReport } from "./event/EventReport";
 import { TaskCard } from "./TaskCard";
 import { getCoords, sendTaskEvent, taskEventBody, type ProblemKind, type TaskAction } from "./taskEvents";
-import { ChatLine } from "./ChatLine";
 import { askDesk } from "./agent/askDesk";
 import { VizSpace, type Ask } from "./agent/VizSpace";
 import { stubReply } from "./stubAgent";
-import { chatErrorText } from "./chatError";
 import { cursorOf, feedUrl, mergeServer, shownEvents } from "./agentFeed";
 import { YourNeeds } from "./YourNeeds";
+import { ExpandablePersonCard } from "./motion/ExpandablePersonCard";
 import { usePolled } from "./map/usePolled";
 import { fromBoard } from "./map/mapItems";
 import { isRealTask, needsFor, nextLocalStatus, viewTask, type LocalTask } from "./taskState";
+import { statusWord } from "./detail/fields";
 import { rankOpen } from "@/lib/rules/top";
-import { button, statusTag, statusText } from "./encode";
 
 type FeedEvent = Event & { _id: string };
 type DeskBoard = ReturnType<typeof makeBoard>;
 
-const demoTag = "rounded-tag border border-line px-1.5 text-xs font-normal text-muted";
+const ROLE: Record<User["role"], string> = {
+  volunteer: "Volunteer", field: "Field team", supplier: "Supplier", shelter: "Shelter",
+  coordinator: "Coordinator", public: "Citizen",
+};
+const TRUST: Record<User["trust"], string> = { official: "Official", vetted: "Vetted", public: "Public" };
+const SUGGESTIONS = ["What should I do next?", "Any shelters with free beds?", "Which roads are closed?"];
 
-// Left: everything entering the desk, from anyone. Right: this person and their own agent.
+// "antakya-merkez" → "Antakya Merkez", "first_aid" → "first aid".
+const words = (s: string) => s.replace(/[-_]+/g, " ").trim();
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const place = (s: string) => words(s).split(" ").map(cap).join(" ");
+
+function SectionTitle({ icon: Icon, title, extra }: { icon: LucideIcon; title: string; extra?: ReactNode }) {
+  return (
+    <h2 className="flex items-center gap-2 text-sm font-semibold">
+      <Icon className="size-4 text-muted-foreground" />
+      {title}
+      {extra}
+    </h2>
+  );
+}
+
+function AgentAvatar({ size = "sm" }: { size?: "sm" | "md" }) {
+  return (
+    <span className={cn("flex shrink-0 items-center justify-center rounded-full bg-info text-info-foreground",
+      size === "md" ? "size-9" : "size-7")}>
+      <Sparkles className={size === "md" ? "size-4" : "size-3.5"} />
+    </span>
+  );
+}
+
+// One chat line. The agent speaks in the info colour on the left, the person in primary on the right.
+// The hidden "Agent:" keeps the line readable to screen readers (and to the e2e count).
+function Bubble({ m }: { m: Pick<Message, "from" | "text"> }) {
+  if (m.from === "agent") {
+    return (
+      <div className="flex max-w-[88%] items-end gap-2 self-start">
+        <AgentAvatar />
+        <p className="whitespace-pre-line rounded-2xl rounded-bl-md bg-info-soft px-3.5 py-2 text-sm text-foreground">
+          <span className="sr-only">Agent:</span> {m.text}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <p className="max-w-[80%] self-end whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm text-primary-foreground">
+      <span className="sr-only">You:</span> {m.text}
+    </p>
+  );
+}
+
+function Typing() {
+  return (
+    <div role="status" className="flex items-end gap-2 self-start">
+      <AgentAvatar />
+      <span className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-info-soft px-3.5 py-3">
+        <span className="sr-only">Your agent is reading the desk</span>
+        {[0, 1, 2].map((i) => (
+          <motion.span key={i} className="size-1.5 rounded-full bg-info"
+            animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15 }} />
+        ))}
+      </span>
+    </div>
+  );
+}
+
+function Context({ user }: { user: User }) {
+  const p = user.profile ?? {};
+  const rows: [string, ReactNode][] = [];
+  if (p.skills?.length) rows.push(["Skills", (
+    <span key="s" className="flex flex-wrap gap-1">{p.skills.map((s) => <Badge key={s} variant="secondary">{cap(words(s))}</Badge>)}</span>
+  )]);
+  if (p.vehicle && p.vehicle !== "none") {
+    const V = p.vehicle === "car" ? Car : Truck;
+    rows.push(["Vehicle", <span key="v" className="inline-flex items-center gap-1.5"><V className="size-4 text-muted-foreground" />{cap(p.vehicle)}</span>]);
+  }
+  if (p.stock && Object.keys(p.stock).length) {
+    rows.push(["Stock", Object.entries(p.stock).map(([k, v]) => `${v} ${words(k)}`).join(", ")]);
+  }
+  if (p.notes) rows.push(["Notes", p.notes]);
+  if (!rows.length) return <p className="text-muted-foreground">Nothing on file yet.</p>;
+  return (
+    <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-3">
+      {rows.map(([k, v]) => <div key={k} className="contents"><dt className="text-xs text-muted-foreground">{k}</dt><dd>{v}</dd></div>)}
+    </dl>
+  );
+}
+
+// Left: this person's own task and needs. Right: their agent. Below: everything entering the desk.
 export function AgentDesk(props: {
   user: User; users: User[]; events: FeedEvent[]; messages: Message[]; initial: DeskBoard; initialLive?: boolean;
 }) {
@@ -65,9 +157,12 @@ export function AgentDesk(props: {
   const closed = Object.entries(local).filter(([, l]) => l.status === "done" || l.status === "declined");
   const feedRef = useRef<HTMLElement>(null);
   const feedScroll = useRef(0);
+  const chatRef = useRef<HTMLDivElement>(null);
   const eventId = useSearchParams().get("event");
   const report = eventId ? events.find((e) => e._id === eventId) : undefined;
   const nameOf = (id: string) => props.users.find((u) => u._id === id)?.name ?? id;
+  const thinking = asks.at(-1)?.ids === null;
+  const offline = !live || server === null;
 
   // ?event= is the one source of truth. replaceState keeps ?user= and the history stack, like the board's ?open=.
   const setEventParam = useCallback((id: string | null) => {
@@ -89,6 +184,12 @@ export function AgentDesk(props: {
     if (feedRef.current) feedRef.current.scrollTop = report ? 0 : feedScroll.current;
   }, [report]);
 
+  // The newest line stays in view.
+  useEffect(() => {
+    const el = chatRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages.length, thinking]);
+
   function localEvent(e: Omit<FeedEvent, "_id" | "ts" | "deskId" | "lane" | "status" | "actor">, demo: boolean) {
     const id = `local-${lineSeq.current++}`;
     setLocals((xs) => [{ ...e, _id: id, ts: new Date(), deskId: user.deskId,
@@ -97,10 +198,10 @@ export function AgentDesk(props: {
     return id;
   }
 
-  async function send() {
-    const said = text.trim();
+  async function send(question?: string) {
+    const said = (question ?? text).trim();
     if (!said) return;
-    setText("");
+    if (question === undefined) setText("");
     setMessages((m) => [...m, { _id: `u${m.length}`, userId: user._id, from: "user", text: said, ts: new Date() }]);
     const id = `a-${chatSeq.current++}`;
     setAsks((xs) => [...xs, { id, question: said, at: Date.now(), ids: null }]);
@@ -144,72 +245,95 @@ export function AgentDesk(props: {
     note(id, result);
   }
 
-  const card = "rounded-card border border-line bg-card";
+  const card = "rounded-xl border bg-card shadow-xs";
   return (
+    <MotionConfig reducedMotion="user">
     <div className="flex flex-col gap-5">
-      {!live && <p className="text-sm text-muted">Demo data, the board API is not answering.</p>}
-      {server === null && <p className="text-sm text-muted">Demo data, the events API is not answering.</p>}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <section aria-label="Your tasks" className="flex min-w-0 flex-col gap-4">
-          <details className={`${card} p-3 text-sm`}>
-            <summary className="cursor-pointer">
-              <span className="font-bold">{user.name}</span>
-              <span className="text-muted">, {user.role}, {user.trust}, {user.region}</span>
-              <span className="ml-2 text-primary underline">Context file</span>
-            </summary>
-            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-              {user.profile?.skills && <><dt className="text-muted">skills</dt><dd>{user.profile.skills.join(", ")}</dd></>}
-              {user.profile?.vehicle && <><dt className="text-muted">vehicle</dt><dd>{user.profile.vehicle}</dd></>}
-              {user.profile?.stock && <><dt className="text-muted">stock</dt>
-                <dd>{Object.entries(user.profile.stock).map(([k, v]) => `${v} ${k}`).join(", ")}</dd></>}
-              {user.profile?.notes && <><dt className="text-muted">notes</dt><dd>{user.profile.notes}</dd></>}
-            </dl>
-          </details>
+        <section aria-label="Your tasks" className="flex min-w-0 flex-col gap-5">
+          <ExpandablePersonCard id={user._id} name={user.name} subtitle={`${ROLE[user.role]} · ${place(user.region)}`}
+            badge={<Badge variant="secondary"><ShieldCheck />{TRUST[user.trust]}</Badge>}>
+            <Context user={user} />
+          </ExpandablePersonCard>
 
-          <div>
-            <h2 className="mb-2 text-xl font-bold">
-              Your top task {open.length > 1 && <span className="text-sm font-normal text-muted">({open.length - 1} more)</span>}
-            </h2>
+          <div className="flex flex-col gap-2">
+            <SectionTitle icon={ClipboardList} title="Next task"
+              extra={open.length > 1 && <Badge variant="secondary" className="font-mono">+{open.length - 1}</Badge>} />
             {top ? <TaskCard task={top.task} now={now} onAction={onAction} notice={notes[top.raw._id]}
               busy={local[top.raw._id]?.pending} reported={top.reported} demo={local[top.raw._id]?.demo}
               assigneeName={props.users.find((u) => u._id === top.task.assignee)?.name} />
-                 : <p className="text-sm text-muted">Nothing assigned to you.</p>}
+                 : (
+                   <div className="flex items-center gap-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                     <Inbox className="size-5" />Nothing assigned to you.
+                   </div>
+                 )}
             {closed.length > 0 && (
-              <ul className="mt-2 space-y-1 text-sm">
+              <ul className="flex flex-col gap-1.5 text-sm">
                 {closed.map(([id, l]) => (
-                  <li key={id} className="flex flex-wrap items-center gap-2">
-                    <span className={statusTag}>{statusText(l.status)}</span>
-                    <span>{l.title}</span>
-                    {l.demo && <span className={demoTag}>Demo</span>}
-                    {notes[id] && <span className="text-muted">{notes[id]}</span>}
+                  <li key={id} className="flex flex-wrap items-center gap-2 rounded-lg bg-secondary px-3 py-2">
+                    <Badge variant="outline">{statusWord(l.status)}</Badge>
+                    <span className="min-w-0 flex-1 truncate">{l.title}</span>
+                    {l.demo && <Badge variant="outline">Demo</Badge>}
+                    {notes[id] && <span className="text-xs text-muted-foreground">{notes[id]}</span>}
                   </li>
                 ))}
               </ul>
             )}
           </div>
 
-          <div>
-            <h2 className="mb-2 text-xl font-bold">
-              Your needs {needs.length > 0 && <span className="text-sm font-normal text-muted">({needs.length})</span>}
-            </h2>
+          <div className="flex flex-col gap-2">
+            <SectionTitle icon={Package} title="Your needs"
+              extra={needs.length > 0 && <Badge variant="secondary" className="font-mono">{needs.length}</Badge>} />
             <YourNeeds needs={needs} now={now} />
           </div>
         </section>
 
         <div className="flex min-w-0 flex-col">
-          <section aria-label="Your agent" className={`${card} flex min-w-0 flex-1 flex-col overflow-hidden`}>
-            <h2 className="border-b border-line px-4 py-3 text-xl font-bold">Your agent</h2>
-            <div className="flex min-h-80 flex-1 flex-col gap-3 overflow-y-auto bg-paper p-4 lg:max-h-[32rem]">
-              {messages.length === 0 && <p className="text-sm text-muted">Talk to your agent.</p>}
-              {messages.map((m) => <ChatLine key={m._id} m={m} name={user.name} />)}
+          <section aria-label="Your agent" className={cn(card, "flex h-[32rem] min-w-0 flex-1 flex-col overflow-hidden lg:h-[38rem]")}>
+            <header className="flex items-center gap-3 border-b px-4 py-3">
+              <AgentAvatar size="md" />
+              <h2 className="min-w-0 flex-1 text-sm font-semibold">Your agent</h2>
+              {offline
+                ? <Badge variant="outline" title="The desk is not answering, so this shows demo data">Demo data</Badge>
+                : <Badge variant="outline"><span className="size-1.5 rounded-full bg-success" />Live</Badge>}
+            </header>
+            <div ref={chatRef} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
+              {messages.length === 0 && !thinking && (
+                <div className="m-auto flex flex-col items-center gap-2 py-6 text-center">
+                  <AgentAvatar size="md" />
+                  <p className="text-sm font-medium">Ask about your task or the desk</p>
+                </div>
+              )}
+              <AnimatePresence initial={false}>
+                {messages.map((m) => (
+                  <motion.div key={m._id} className="flex flex-col"
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 380, damping: 32 }}>
+                    <Bubble m={m} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              {thinking && <Typing />}
             </div>
-            <form className="flex gap-2 border-t border-line p-3" onSubmit={(e) => { e.preventDefault(); send(); }}>
-              <label htmlFor="agent-msg" className="sr-only">Message your agent</label>
-              <input id="agent-msg" value={text} onChange={(e) => setText(e.target.value)} placeholder="Tell your agent"
-                className="min-w-0 flex-1 rounded-button border border-muted px-3 py-2 text-sm" />
-              <button className={button.primary}>Send</button>
+            <form className="flex flex-col gap-2 border-t p-3" onSubmit={(e) => { e.preventDefault(); send(); }}>
+              {asks.length === 0 && (
+                <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                  {SUGGESTIONS.map((s) => (
+                    <button key={s} type="button" onClick={() => send(s)}
+                      className="h-7 shrink-0 rounded-full border bg-background px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2 rounded-xl border bg-background py-1.5 pr-1.5 pl-3 transition-shadow focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+                <label htmlFor="agent-msg" className="sr-only">Message your agent</label>
+                <input id="agent-msg" value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask your agent"
+                  autoComplete="off" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+                <Button type="submit" size="sm">Send<ArrowUp /></Button>
+              </div>
+              {stub && <p className="px-1 text-xs text-muted-foreground">Agent offline, this is a stub reply.</p>}
             </form>
-            {stub && <p className="px-4 pb-3 text-xs text-muted">{chatErrorText(0, null)} This is a stub reply.</p>}
           </section>
         </div>
       </div>
@@ -217,14 +341,23 @@ export function AgentDesk(props: {
       <VizSpace asks={asks} open={vizOpen} onClose={closeViz} events={server ? events : undefined} user={user._id}
         mapItems={mapItems} now={now} />
 
-      <section ref={feedRef} className={`${card} max-h-[28rem] min-h-0 overflow-y-auto p-4`}>
-        {report ? <EventReport e={report} now={now} actorName={nameOf(report.actor)} onBack={closeReport}
-          demo={demoLines.has(report._id)} /> : <>
-          <h2 className="text-xl font-bold">Desk feed</h2>
-          <ul>{events.map((e) => <EventRow key={e._id} e={e} now={now} actorName={nameOf(e.actor)}
-            demo={demoLines.has(e._id)} onOpen={() => openReport(e._id)} />)}</ul>
-        </>}
+      <section ref={feedRef} className={cn(card, "max-h-[28rem] min-h-0 overflow-y-auto")}>
+        {report ? (
+          <div className="p-4">
+            <EventReport e={report} now={now} actorName={nameOf(report.actor)} onBack={closeReport}
+              demo={demoLines.has(report._id)} />
+          </div>
+        ) : (
+          <div className="px-4 pt-3 pb-1">
+            <h2 className="flex items-center gap-2 pb-2 text-sm font-semibold">
+              <Activity className="size-4 text-muted-foreground" />Desk feed
+            </h2>
+            <ul>{events.map((e) => <EventRow key={e._id} e={e} now={now} actorName={nameOf(e.actor)}
+              demo={demoLines.has(e._id)} onOpen={() => openReport(e._id)} />)}</ul>
+          </div>
+        )}
       </section>
     </div>
+    </MotionConfig>
   );
 }

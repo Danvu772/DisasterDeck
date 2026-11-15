@@ -1,10 +1,12 @@
 "use client";
+import { ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { MetricResult } from "../types";
-import { link, statusTag } from "../../encode";
 import { Bars } from "./Bars";
 import { Gauge } from "./Gauge";
 import { Matrix } from "./Matrix";
 import { Snapshot } from "./Snapshot";
+import { STATUS } from "./tone";
 
 function Chart({ chart }: { chart: MetricResult["chart"] }) {
   switch (chart.kind) {
@@ -18,20 +20,30 @@ function Chart({ chart }: { chart: MetricResult["chart"] }) {
 
 export function MetricCard({ result: r }: { result: MetricResult }) {
   const unknown = r.status === "unknown";
+  const st = STATUS[r.status];
   return (
-    <article className="rounded-card border border-line bg-card p-4" aria-label={r.title}>
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="font-bold">{r.title}</h3>
-        <span className={statusTag}>{r.status}</span>
-      </div>
-      <p className="mt-1">{r.headline}</p>
+    <article className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-xs" aria-label={r.title}>
+      <header className="flex items-start justify-between gap-3">
+        <h3 className="text-sm font-semibold leading-snug">{r.title}</h3>
+        <Badge variant="outline" className="shrink-0 font-normal">
+          <span aria-hidden className={`size-1.5 rounded-full ${st.dot}`} />
+          {st.word}
+        </Badge>
+      </header>
       {unknown
-        ? <p className="mt-3 text-sm text-muted">{r.unknownReason}</p>
-        : <div className="mt-3"><Chart chart={r.chart} /></div>}
-      <p className="mt-3 text-xs text-muted">{r.basis}</p>
-      <p className="text-xs text-muted">
-        Source: <a href={r.source.url} target="_blank" rel="noreferrer" className={link}>{r.source.name}</a>
-      </p>
+        ? <p className="rounded-lg bg-secondary px-3 py-2 text-sm text-muted-foreground">{r.unknownReason ?? r.headline}</p>
+        : <>
+            <p className="text-sm text-muted-foreground">{r.headline}</p>
+            <Chart chart={r.chart} />
+          </>}
+      <footer className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t pt-3 text-xs text-muted-foreground">
+        <span className="min-w-0">{r.basis}</span>
+        <a href={r.source.url} target="_blank" rel="noreferrer"
+          className="inline-flex items-center gap-1 font-medium text-foreground underline-offset-4 hover:underline">
+          {r.source.name}
+          <ExternalLink aria-hidden className="size-3" />
+        </a>
+      </footer>
     </article>
   );
 }

@@ -1,14 +1,14 @@
 // Who is signed in, and a way out. Server component: reads the session itself.
-// Lives on the dark header, so it uses the night tokens. Links stay underlined white there.
+import { LogIn, LogOut } from "lucide-react";
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 
-const nightLink = "text-night-ink underline hover:no-underline";
+const ghost = "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground";
 
 export async function Account() {
   const session = await auth();
   if (!session?.user) {
-    return <Link href="/login" className={`whitespace-nowrap ${nightLink}`}>Sign in</Link>;
+    return <Link href="/login" className={ghost}><LogIn className="size-3.5" aria-hidden />Sign in</Link>;
   }
 
   async function signOutAction() {
@@ -16,12 +16,16 @@ export async function Account() {
     await signOut({ redirectTo: "/login" });
   }
 
+  const name = session.user.name ?? session.user.email ?? "";
   return (
-    <form action={signOutAction} className="flex items-center gap-2">
-      <span className="hidden whitespace-nowrap rounded-pill border border-night-muted px-2.5 py-1 text-xs text-night-ink sm:inline">
-        {session.user.name ?? session.user.email}
+    <form action={signOutAction} className="flex items-center gap-1">
+      <span className="hidden items-center gap-1.5 whitespace-nowrap text-xs font-medium sm:inline-flex">
+        <span aria-hidden className="grid size-6 place-items-center rounded-full bg-secondary text-[10px] font-semibold text-secondary-foreground">
+          {name.charAt(0).toUpperCase()}
+        </span>
+        {name}
       </span>
-      <button type="submit" className={`whitespace-nowrap ${nightLink}`}>Sign out</button>
+      <button type="submit" className={ghost} aria-label="Sign out"><LogOut className="size-3.5" aria-hidden /><span className="sr-only sm:not-sr-only">Sign out</span></button>
     </form>
   );
 }

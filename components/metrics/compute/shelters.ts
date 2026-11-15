@@ -16,7 +16,7 @@ type Status = "open" | "full" | "closed";
 export function compute({ board, now }: MetricInput): MetricResult {
   if (!board.shelters.length) {
     return unknown("shelters", TITLE, SOURCE,
-      "There are no shelters on the board. Shelters come from the seed data and capacity reports, Role 1.",
+      "No shelters on the board yet.",
       "no shelter records", now);
   }
 
