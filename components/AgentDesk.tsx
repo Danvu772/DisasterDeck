@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Event, Message, Task, User } from "@/lib/types";
 import { EventRow } from "./EventRow";
+import { EventReport } from "./event/EventReport";
 import { TaskCard } from "./TaskCard";
 import { getCoords, sendTaskEvent, taskEventBody, type ProblemKind, type TaskAction } from "./taskEvents";
 import { ChatLine } from "./ChatLine";
@@ -23,7 +25,31 @@ export function AgentDesk(props: {
   const [stub, setStub] = useState(false);
   const [notice, setNotice] = useState("");
   const top = props.tasks[0];
+  const feedRef = useRef<HTMLElement>(null);
+  const feedScroll = useRef(0);
+  const eventId = useSearchParams().get("event");
+  const report = eventId ? events.find((e) => e._id === eventId) : undefined;
   const nameOf = (id: string) => props.users.find((u) => u._id === id)?.name ?? id;
+
+  // ?event= is the one source of truth. replaceState keeps ?user= and the history stack, like the board's ?open=.
+  const setEventParam = useCallback((id: string | null) => {
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("event", id); else url.searchParams.delete("event");
+    window.history.replaceState(null, "", url);
+  }, []);
+  const openReport = (id: string) => { feedScroll.current = feedRef.current?.scrollTop ?? 0; setEventParam(id); };
+  const closeReport = useCallback(() => setEventParam(null), [setEventParam]);
+
+  useEffect(() => {
+    if (!report) return;
+    const onKey = (ev: KeyboardEvent) => { if (ev.key === "Escape") closeReport(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [report, closeReport]);
+
+  useLayoutEffect(() => {
+    if (feedRef.current) feedRef.current.scrollTop = report ? 0 : feedScroll.current;
+  }, [report]);
 
   function localEvent(e: Omit<FeedEvent, "_id" | "ts" | "deskId" | "lane" | "status" | "actor">) {
     setEvents((xs) => [{ ...e, _id: `local-${xs.length}`, ts: new Date(), deskId: user.deskId,
@@ -62,9 +88,11 @@ export function AgentDesk(props: {
 
   return (
     <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-[5fr_7fr]">
-      <section className="order-2 min-h-0 overflow-y-auto md:order-1">
-        <h2 className="text-lg font-bold">Desk feed</h2>
-        <ul>{events.map((e) => <EventRow key={e._id} e={e} now={now} actorName={nameOf(e.actor)} />)}</ul>
+      <section ref={feedRef} className="order-2 min-h-0 overflow-y-auto md:order-1">
+        {report ? <EventReport e={report} now={now} actorName={nameOf(report.actor)} onBack={closeReport} /> : <>
+          <h2 className="text-lg font-bold">Desk feed</h2>
+          <ul>{events.map((e) => <EventRow key={e._id} e={e} now={now} actorName={nameOf(e.actor)} onOpen={() => openReport(e._id)} />)}</ul>
+        </>}
       </section>
 
       <section className="order-1 flex min-h-0 flex-col gap-4 md:order-2">

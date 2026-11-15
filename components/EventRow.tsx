@@ -5,7 +5,7 @@ import type {
 import { ageText } from "./encode";
 
 // One entry per event, whatever the type. Who sent it, what came in, then what the desk did with it.
-function summary(e: Event): { said: string; original?: string } {
+export function summary(e: Event): { said: string; original?: string } {
   switch (e.type) {
     case "report": { const p = e.payload as ReportPayload; return { said: p.textEn, original: p.text }; }
     case "incident": { const p = e.payload as IncidentPayload; return { said: p.textEn, original: p.text }; }
@@ -19,20 +19,23 @@ function summary(e: Event): { said: string; original?: string } {
   }
 }
 
-export function EventRow({ e, now, actorName }: { e: Event; now: number; actorName: string }) {
+export function EventRow({ e, now, actorName, onOpen }: { e: Event; now: number; actorName: string; onOpen: () => void }) {
   const s = summary(e);
   const waiting = e.status === "pending" || e.status === "working";
   return (
-    <li className={`border-b border-line py-2 ${waiting ? "opacity-60" : ""}`}>
-      <p className="text-xs text-muted">
-        <span className="font-bold text-ink">{actorName}</span>, {e.type} from {e.source}, {ageText(e.ts, now)}
-      </p>
-      <p className="mt-0.5 text-sm">{s.said}</p>
-      {s.original && <p className="text-xs text-muted">{s.original}</p>}
-      <p className="mt-0.5 text-xs">
-        {waiting ? <span className="text-muted">Status: {e.status}</span>
-                 : <><span className="font-bold">Result:</span> {e.result?.reason ?? e.status}</>}
-      </p>
+    <li className="border-b border-line">
+      <button type="button" onClick={onOpen}
+        className={`block w-full cursor-pointer px-1 py-2 text-left hover:ring-2 hover:ring-primary ${waiting ? "opacity-60" : ""}`}>
+        <span className="block text-xs text-muted">
+          <span className="font-bold text-ink">{actorName}</span>, {e.type} from {e.source}, {ageText(e.ts, now)}
+        </span>
+        <span className="mt-0.5 block text-sm">{s.said}</span>
+        {s.original && <span className="block text-xs text-muted">{s.original}</span>}
+        <span className="mt-0.5 block text-xs">
+          {waiting ? <span className="text-muted">Status: {e.status}</span>
+                   : <><span className="font-bold">Result:</span> {e.result?.reason ?? e.status}</>}
+        </span>
+      </button>
     </li>
   );
 }
