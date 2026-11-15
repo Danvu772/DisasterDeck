@@ -6,6 +6,18 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 
 | Task | Effort | What |
 |---|---|---|
+| [t25-v4-foundation](tasks/t25-v4-foundation.md) | high | visual language v4: USWDS values, Public Sans + Roboto Mono, dark header with the queue pill |
+
+## Redesign, after t25 ([decisions](DECISIONS.md))
+
+| Task | Effort | What |
+|---|---|---|
+| [t26-board-v4](tasks/t26-board-v4.md) | high | board as list, map and detail side by side, v1 tabs as chips |
+| [t27-coordinator-v4](tasks/t27-coordinator-v4.md) | medium | v2 coordinator layout, v1 functions, no handoff |
+| [t28-field-v4](tasks/t28-field-v4.md) | medium | v2 field phone layout, v1 functions |
+| [t29-agent-v4](tasks/t29-agent-v4.md) | medium | v2 volunteer layout for `/agent` |
+| [t30-restyle-rest](tasks/t30-restyle-rest.md) | medium | map, compare, login, lab in v4 styling |
+| [t31-scenario-clock](tasks/t31-scenario-clock.md) | medium | ages from the scenario clock, not "1373 days ago" |
 
 ## Next (queued)
 
