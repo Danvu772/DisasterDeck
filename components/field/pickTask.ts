@@ -11,12 +11,19 @@ export interface FieldTask {
   caseId: string;         // the record the task is about
 }
 
-export function pickTask(board: FieldBoard, user: string): FieldTask | null {
-  const task = board.tasks
-    .filter((t) => t.open && t.assignee === user)
-    .sort((a, b) => a.tier - b.tier || b.priority - a.priority)[0];
-  if (!task) return null;
+// Every open task assigned to this user, best first (tier, then priority).
+export function openTasksFor(board: FieldBoard, userId: string): FieldTask[] {
+  return board.tasks
+    .filter((t) => t.open && t.assignee === userId)
+    .sort((a, b) => a.tier - b.tier || b.priority - a.priority)
+    .map((t) => describe(board, t));
+}
 
+export function pickTask(board: FieldBoard, user: string): FieldTask | null {
+  return openTasksFor(board, user)[0] ?? null;
+}
+
+function describe(board: FieldBoard, task: Task): FieldTask {
   const site = (id?: string) => board.sites.find((s) => s._id === id);
   let place = "Address not known yet";
   let people = "Number of people not known";

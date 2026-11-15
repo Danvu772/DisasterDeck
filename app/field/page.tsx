@@ -5,8 +5,8 @@ import { FieldPhone } from "@/components/field/FieldPhone";
 
 export const dynamic = "force-dynamic";
 
-export default async function FieldPage({ searchParams }: { searchParams: Promise<{ user?: string }> }) {
-  const { user } = await searchParams;
+export default async function FieldPage({ searchParams }: { searchParams: Promise<{ user?: string, task?: string }> }) {
+  const { user, task } = await searchParams;
   const id = user || "field-alpha";
-  return <FieldPhone key={id} user={id} initial={makeFieldBoard(Date.now())} />;
+  return <FieldPhone key={id} user={id} wanted={task} initial={makeFieldBoard(Date.now())} />;
 }

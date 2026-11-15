@@ -7,7 +7,7 @@ import { usePolled } from "@/components/map/usePolled";
 import { History } from "@/components/History";
 import { ChatLine } from "@/components/ChatLine";
 import { button, confidenceBorder, statusTag, statusText, tierBar } from "@/components/encode";
-import { pickTask, type FieldBoard } from "./pickTask";
+import { openTasksFor, type FieldBoard, type FieldTask } from "./pickTask";
 import { useOutbox, type FieldEvent } from "./useOutbox";
 import { useHoldToTalk } from "./useHoldToTalk";
 
@@ -38,7 +38,26 @@ function position(ms: number): Promise<LatLng | undefined> {
   });
 }
 
-export function FieldPhone({ user, initial }: { user: string; initial: FieldBoard }) {
+function OtherRow({ o, now, onPick }: { o: FieldTask; now: number; onPick: (id: string) => void }) {
+  const t = o.task;
+  const min = Math.round((new Date(t.deadline).getTime() - now) / 60000);
+  const late = min < 0;
+  return (
+    <button onClick={() => onPick(t._id)}
+      className="flex min-h-14 w-full overflow-hidden rounded-card border border-line bg-card text-left hover:border-primary">
+      <span className={`w-3 shrink-0 ${tierBar(t.tier, late)}`} />
+      <span className="min-w-0 flex-1 p-3">
+        <span className="block break-words text-lg font-bold leading-tight">{t.title}</span>
+        <span className="block break-words text-base">{o.place}</span>
+        <span className={`block text-base ${late ? "font-bold text-act" : "text-muted"}`}>
+          {late ? `Overdue by ${-min} min` : `Answer in ${min} min`}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+export function FieldPhone({ user, wanted, initial }: { user: string; wanted?: string; initial: FieldBoard }) {
   const { data, live, now } = usePolled<FieldBoard>("/api/board", initial);
   const { send, waiting } = useOutbox(user);
   const talk = useHoldToTalk(user);
@@ -50,13 +69,31 @@ export function FieldPhone({ user, initial }: { user: string; initial: FieldBoar
   // What this phone already sent, so the next button lights up before the board catches up.
   const [local, setLocal] = useState<{ id: string; step: number } | null>(null);
 
-  const current = pickTask(data, user);
+  // Which task the team chose. Kept in the URL as ?task= so a reload or a link shows the same one.
+  const [chosen, setChosen] = useState(wanted);
+  const open = openTasksFor(data, user);
+  const picked = open.find((o) => o.task._id === chosen);
+  const current = picked ?? open[0] ?? null;
+  const closed = !!chosen && !picked;
+  const others = open.filter((o) => o !== current);
   const task = current?.task;
   const step = task
     ? Math.max(task.status === "accepted" ? 1 : 0, local?.id === task._id ? local.step : 0)
     : 0;
   const overdue = !!task && new Date(task.deadline).getTime() < now;
   const minutesLeft = task ? Math.round((new Date(task.deadline).getTime() - now) / 60000) : 0;
+
+  function choose(id: string) {
+    setChosen(id);
+    setPanel(null);
+    setDetails(false);
+    setNote("");
+    setSaid(null);
+    const url = new URL(window.location.href);
+    url.searchParams.set("task", id);
+    window.history.replaceState(null, "", url);
+    window.scrollTo({ top: 0 });
+  }
 
   async function report(e: FieldEvent, what: string, nextStep?: number) {
     setBusy(true);
@@ -94,6 +131,7 @@ export function FieldPhone({ user, initial }: { user: string; initial: FieldBoar
         </p>
       )}
       {said && <p className="text-lg" role="status">{said}</p>}
+      {closed && <p className="text-base text-muted">That task is closed, showing your next one.</p>}
 
       {!current || !task ? (
         <section className="rounded-card border border-line p-4">
@@ -187,6 +225,13 @@ export function FieldPhone({ user, initial }: { user: string; initial: FieldBoar
             </section>
           )}
         </>
+      )}
+
+      {others.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-xl font-bold">Your other tasks ({others.length})</h2>
+          {others.map((o) => <OtherRow key={o.task._id} o={o} now={now} onPick={choose} />)}
+        </section>
       )}
 
       <section className="space-y-2 border-t border-line pt-4">
