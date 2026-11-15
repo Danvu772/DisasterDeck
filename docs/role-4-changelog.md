@@ -2,6 +2,12 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## English family examples - 2026-11-15 04:02 EST
+
+- Added six clearly fictional English family-information examples covering shelter registration, an unverified inquiry, pending transport, a family check-in, an old observation and an equipment request.
+- Published them to the running local memory demo and committed the reusable JSON plus `npm run voice:examples` loader. The loader refuses shared databases/non-loopback targets and skips active matching names.
+- Verified all six public entries exactly once, a second load adding zero records, script lint and diff formatting. No model/audio calls or shared-database writes were performed. The runbook now explains manual creation and reusable examples.
+
 ## Public family information - 2026-11-15 03:51 EST
 
 - Removed visitor reference/PIN entry and backend PIN verification/generation at the user's request. Added an anonymous published-name directory, immediate readable updates and PIN-free voice sessions. Public record IDs are selected automatically by the UI.

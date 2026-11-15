@@ -14,6 +14,22 @@ Browser microphones require localhost or HTTPS. Without `MONGODB_URI`, demo publ
 
 With MongoDB, updates persist in `family_voice` in `MONGODB_DB`. Real coordinator authentication is required to publish outside the loopback demo; query-string users cannot bypass network authentication. Sites must belong to that coordinator's desk. Set `DEMO_MODE=0` for real operation and `PUBLIC_APP_URL` to the exact external HTTPS origin behind a proxy.
 
+## Add more examples
+
+Use [coordinator updates](http://127.0.0.1:3675/coordinator/family?user=coordinator-duty): select an existing case, enter the searchable display name and the exact facts to share, set when those facts were observed, then press **Publish approved update**. Refresh `/family` and search the name. Use **Withdraw publication** to remove an outdated example.
+
+Six fictional English examples are included in `data/family-voice-examples.json`: Emma Wilson (shelter registration), Daniel Brooks (unverified missing-person inquiry), Olivia Bennett (pending transport), Noah Carter (family check-in), Sophia Reed (old observation) and James Parker (pending equipment request). With the local demo running, load them using:
+
+```sh
+npm run voice:examples
+# Another local port:
+npm run voice:examples -- --url http://127.0.0.1:3672
+```
+
+The loader uses temporary memory only, skips already active matching names, and makes no paid model/audio calls. Run it again after a server restart. To add reusable examples, append entries to the JSON using the existing format (`alias`, `siteIndex`, `observedMinutesAgo`, `summary`); keep the `FICTIONAL DEMO:` label. Observation times are calculated when loading. For a configured MongoDB backend, add records through the coordinator screen instead.
+
+Try asking in English: "Where was Emma Wilson last registered?", "Has Olivia's transport been confirmed?", "How recent is Sophia Reed's information?", or "Do you have any verified information about Daniel Brooks?" The voice assistant follows the language of the question, while the interface remains Turkish.
+
 ## Public information flow
 
 The anonymous directory exposes active published names, summaries, source/publication/expiry timestamps and demo labels. It excludes operational notes, source phone numbers, provider credentials and legacy PIN hashes. Everyone can read published updates; coordinators control publication. Previously published updates also become public in this version. No database migration is needed: old PIN fields are ignored and excluded from responses.
