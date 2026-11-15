@@ -6,8 +6,9 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import type { Incident, LatLng, Site } from "@/lib/types";
+import validation from "../../data/nasa/validation.json";
 import { IncidentCards, SiteCards } from "../BoardCards";
 import { Stamp } from "../Stamp";
 import {
@@ -44,6 +45,16 @@ function icon(it: MapItem, selected: boolean, now: number): L.DivIcon {
     html: `<span class="block ${shape} ${tierBar(it.tier, it.actNow)} ${confidenceBorder(it.confidence)} ${ring} ${fade}" style="width:${s}px;height:${s}px"></span>`,
   });
 }
+
+// The NASA check: one ink ring on the Yeni Cami landmark. JSON stores [lng, lat].
+const CHECK_AT: LatLng = [validation.landmark.coordsLngLat[1], validation.landmark.coordsLngLat[0]];
+const CHECK_PCT = Math.round(validation.landmark500mEvidence.damage.flaggedOverlayFraction * 100);
+const checkRing = () => L.divIcon({
+  className: "",
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+  html: `<span class="block h-full w-full rounded-full border-2 border-solid border-ink"></span>`,
+});
 
 function FitOnce({ points }: { points: LatLng[] }) {
   const map = useMap();
@@ -166,6 +177,7 @@ function Legend({ meta, zones }: { meta?: ZoneMeta; zones: boolean }) {
       <p><span className={`inline-block h-3 w-3 rounded-tag align-middle ${tierBar(2)}`} /> Shelter with room</p>
       <p className="mt-1"><span className="inline-block h-2 w-5 border-4 border-solid border-ink bg-card align-middle" /> Road closed</p>
       <p><span className="inline-block h-2 w-5 border-2 border-dashed border-ink bg-card align-middle" /> Road unconfirmed</p>
+      <p className="mt-1"><span className="inline-block h-3 w-3 rounded-full border-2 border-solid border-ink align-middle" /> Independent check, {validation.landmark.name} (DHA)</p>
       <p className="mt-1">Bigger means more people reported it.</p>
       <p>Dashed outline: unconfirmed. Thick: confirmed.</p>
       <p>Faded: the number is stale.</p>
@@ -245,6 +257,12 @@ export default function DeskMapView({ items, now, live, zonesUrl }: {
             <Polyline key={`link:${i.key}`} positions={[i.coords!, i.linkTo!]}
               pathOptions={{ className: "stroke-muted", dashArray: "4 6", weight: 2 }} />
           ))}
+          <Marker position={CHECK_AT} icon={checkRing()} interactive>
+            <Tooltip>
+              Independent check: {validation.landmark.name} collapsed, {day(validation.independentReport.publishedAt.slice(0, 10))} (DHA).
+              ARIA overlay covers {CHECK_PCT}% of its 500 m cell.
+            </Tooltip>
+          </Marker>
           {placed.map((it) => (
             <Marker key={it.key} position={it.coords!} icon={icon(it, selected === it.key, now)}
               zIndexOffset={selected === it.key ? 1000 : it.kind === "incident" ? 500 : isExtra(it) ? 250 : 0}
