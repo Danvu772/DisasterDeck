@@ -85,7 +85,7 @@ export function FieldPhone({ user, initial }: { user: string; initial: FieldBoar
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
       <p className="text-sm text-muted">
-        {live ? "Live from the desk" : "Demo data, the board API is not answering"}. Signed in as {user}.
+        {live ? "Live from the desk" : "Demo data, the board API is not answering"}. Acting as {user} (demo).
       </p>
 
       {waiting > 0 && (

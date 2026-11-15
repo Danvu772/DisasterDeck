@@ -12,7 +12,7 @@ import validation from "../../data/nasa/validation.json";
 import { IncidentCards, SiteCards } from "../BoardCards";
 import { Stamp } from "../Stamp";
 import {
-  confidenceBorder, isStale, markerSize, staleInk, statusTag, statusText, tierBadge, tierBar,
+  button, confidenceBorder, isStale, markerSize, staleInk, statusTag, statusText, tierBadge, tierBar,
 } from "../encode";
 import type { MapItem } from "./mapItems";
 import { HatchDefs, useZones, ZoneLayer, type ZoneMeta } from "./ZoneLayer";
@@ -166,9 +166,21 @@ function NasaLegend({ meta }: { meta?: ZoneMeta }) {
 
 function Legend({ meta, zones }: { meta?: ZoneMeta; zones: boolean }) {
   const dot = "inline-block h-3.5 w-3.5 rounded-full align-middle";
+  // Below md the legend sits behind a button. At md and up it is always open.
+  const [open, setOpen] = useState(false);
   return (
-    <div className="pointer-events-auto absolute bottom-6 left-3 z-[1000] rounded-card border border-line bg-card p-3 text-xs">
-      <p className="mb-1 font-bold">Legend</p>
+    <>
+      {!open && (
+        <button type="button" onClick={() => setOpen(true)} aria-expanded={false}
+          className={`${button.outline} pointer-events-auto absolute bottom-6 left-3 z-[1000] bg-card md:hidden`}>
+          Legend
+        </button>
+      )}
+    <div className={`pointer-events-auto absolute bottom-6 left-3 z-[1000] max-h-[calc(100%-3rem)] overflow-y-auto rounded-card border border-line bg-card p-3 text-xs md:block ${open ? "block" : "hidden"}`}>
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <p className="font-bold">Legend</p>
+        <button type="button" onClick={() => setOpen(false)} className={`${button.outline} md:hidden`}>Close</button>
+      </div>
       <p><span className={`${dot} ${tierBar(0)}`} /> Danger to life</p>
       <p><span className={`${dot} ${tierBar(1)}`} /> Urgent</p>
       <p><span className={`${dot} ${tierBar(2)}`} /> Comfort</p>
@@ -183,6 +195,7 @@ function Legend({ meta, zones }: { meta?: ZoneMeta; zones: boolean }) {
       <p>Faded: the number is stale.</p>
       {zones && <NasaLegend meta={meta} />}
     </div>
+    </>
   );
 }
 
