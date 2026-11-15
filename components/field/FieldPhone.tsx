@@ -12,7 +12,7 @@ import { usePolled } from "@/components/map/usePolled";
 import { History } from "@/components/History";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { statusWord, TIER_WORD } from "@/components/detail/fields";
+import { plainDetail, statusWord, taskTitle, TIER_WORD } from "@/components/detail/fields";
 import { tierBadge, tierBar } from "@/components/encode";
 import { cn } from "@/lib/utils";
 import { CaseNo } from "@/components/ScoreBreakdown";
@@ -85,6 +85,7 @@ function position(ms: number): Promise<LatLng | undefined> {
 }
 
 function timeLeft(min: number): string {
+  if (min === 0) return "Due now";
   return min < 0 ? `${-min} min late` : `${min} min left`;
 }
 
@@ -101,7 +102,7 @@ function OtherRow({ o, now, onPick }: { o: FieldTask; now: number; onPick: (id: 
         <Icon className="size-4" />
       </span>
       <span className="min-w-0 flex-1 py-3">
-        <span className="block break-words text-base font-medium leading-tight">{t.title}</span>
+        <span className="block break-words text-base font-medium leading-tight">{taskTitle(t.title)}</span>
         <span className={cn("mt-1 flex items-center gap-1 text-sm", late ? "font-medium text-destructive" : "text-muted-foreground")}>
           <Clock className="size-3.5" />{timeLeft(min)}
         </span>
@@ -164,6 +165,9 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
   const aboutRecord = task && (task.recordType === "site" ? data.sites.find((x) => x._id === task.recordId)
     : task.recordType === "need" ? data.needs.find((x) => x._id === task.recordId) : undefined);
   const caseNo = aboutRecord?.caseNo;
+  const site = aboutRecord && "address" in aboutRecord ? aboutRecord : undefined;
+  const address = site?.address && !/^(address unknown|unknown|bilinmiyor)$/i.test(site.address.trim()) ? site.address : undefined;
+  const mapsQuery = site?.coords ? `${site.coords[0]},${site.coords[1]}` : address;
   const step = task
     ? Math.max(task.status === "accepted" ? 1 : 0, local?.id === task._id ? local.step : 0)
     : 0;
@@ -275,10 +279,22 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
               <p className="mt-1.5 flex items-center gap-1.5 text-base text-muted-foreground">
                 <Users className="size-4" />{current.people}
               </p>
+              {address && (
+                <p className="mt-1.5 flex items-start gap-1.5 text-base text-muted-foreground">
+                  <MapPin className="mt-1 size-4 shrink-0" /><span className="break-words">{address}</span>
+                </p>
+              )}
             </div>
+            {mapsQuery && (
+              <Button asChild variant="outline" size="lg" className="w-full">
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`} target="_blank" rel="noreferrer">
+                  <Navigation />Directions
+                </a>
+              </Button>
+            )}
             <p className="break-words text-base">
               {caseNo !== undefined && <span className="mr-2 text-muted-foreground"><CaseNo kind={task.recordType} no={caseNo} /></span>}
-              {task.title}
+              {taskTitle(task.title)}
             </p>
 
             <button type="button" aria-expanded={details} onClick={() => setDetails(!details)}
@@ -288,7 +304,7 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
             </button>
             {details && (
               <div className="-mt-2 space-y-3 rounded-lg bg-secondary p-3 text-base">
-                {task.detail && <p>{task.detail}</p>}
+                {task.detail && <p>{plainDetail(task.detail)}</p>}
                 <p className="flex flex-wrap items-center gap-2 text-sm">
                   <Badge variant="outline" className="bg-background">{statusWord(task.status)}</Badge>
                   <span className="text-muted-foreground">{task.risk === "high" ? "High risk" : "Low risk"}</span>

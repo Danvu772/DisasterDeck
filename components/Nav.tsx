@@ -51,7 +51,7 @@ export function Nav({ account }: { account?: React.ReactNode }) {
         Disaster Desk
       </Link>
       <span className="hidden rounded-full border px-2 py-0.5 text-[11px] font-medium text-muted-foreground xl:inline">Exercise · 6 Feb 2023 earthquake</span>
-      <div className="no-scrollbar order-last flex w-full min-w-0 items-center gap-0.5 overflow-x-auto whitespace-nowrap lg:order-none lg:w-auto lg:flex-1">
+      <div className={cn("no-scrollbar order-last flex w-full min-w-0 items-center gap-0.5 overflow-x-auto whitespace-nowrap xl:order-none xl:w-auto xl:flex-1", path.startsWith("/field") && "max-sm:hidden")}>
         {LINKS.map((l) => {
           const on = l.href === "/" ? path === "/" : path.startsWith(l.href);
           return (
@@ -63,7 +63,7 @@ export function Nav({ account }: { account?: React.ReactNode }) {
           );
         })}
       </div>
-      <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
+      <div className="ml-auto flex shrink-0 items-center gap-2 xl:ml-0">
         <Suspense fallback={null}><ActingAs /></Suspense>
         <InboxBadge />
         {account}

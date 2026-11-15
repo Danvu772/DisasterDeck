@@ -251,7 +251,7 @@ function mockExtract(text: string, phones: string[]): Raw {
     closures: road,
     shelters,
     hazard,
-    textEn: `[mock, not translated] ${text}`,
+    textEn: "Social post (English text not available in this run)",
     address,
     peopleCount: people ? Number(people) : undefined,
     phoneMasked: phones[0],

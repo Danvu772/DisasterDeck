@@ -53,18 +53,23 @@ export function TaskCard({ task, now, onAction, assigneeName, notice, busy, repo
         {overdue && <span className="font-medium text-destructive">Overdue</span>}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button size="sm" variant={v("accepted")} disabled={locked || task.status === "accepted"} onClick={() => onAction?.("accepted")}>
-          <Check aria-hidden />Accept
-        </Button>
-        <Button size="sm" variant={v("declined")} disabled={locked} onClick={() => onAction?.("declined")}>
-          <X aria-hidden />Decline
-        </Button>
-        <Button size="sm" variant={v("done")} disabled={locked} onClick={() => onAction?.("done")}>
-          <CheckCheck aria-hidden />Done
-        </Button>
-        <Button size="sm" variant="destructive" disabled={locked} aria-expanded={picking} onClick={() => setPicking((p) => !p)}>
+        {task.status !== "accepted" ? (
+          <>
+            <Button size="sm" variant={v("accepted")} disabled={locked} onClick={() => onAction?.("accepted")}>
+              <Check aria-hidden />Accept
+            </Button>
+            <Button size="sm" variant={v("declined")} disabled={locked} onClick={() => onAction?.("declined")}>
+              <X aria-hidden />Decline
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" variant={v("done")} disabled={locked} onClick={() => onAction?.("done")}>
+            <CheckCheck aria-hidden />Done
+          </Button>
+        )}
+        {task.status === "accepted" && <Button size="sm" variant="destructive" disabled={locked} aria-expanded={picking} onClick={() => setPicking((p) => !p)}>
           <TriangleAlert aria-hidden />Problem
-        </Button>
+        </Button>}
       </div>
       <AnimatePresence initial={false}>
         {picking && !locked && (

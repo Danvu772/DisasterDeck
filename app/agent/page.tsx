@@ -37,15 +37,15 @@ export default async function AgentPage({ searchParams }: { searchParams: Promis
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold tracking-tight">My desk</h1>
         <nav aria-label="Switch person (demo)"
-          className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border bg-card p-1 shadow-xs">
+          className="flex max-w-full flex-wrap items-center gap-0.5 rounded-2xl border bg-card p-1 shadow-xs">
           <span className="shrink-0 px-2 text-xs text-muted-foreground">View as</span>
           {users.map((u) => {
             const active = u._id === user._id;
             return (
               <Link key={u._id} href={`/agent?user=${u._id}`} aria-current={active ? "true" : undefined}
-                className={cn("inline-flex h-7 max-w-44 shrink-0 items-center truncate rounded-full px-3 text-xs font-medium transition-colors",
+                className={cn("inline-flex h-7 shrink-0 items-center rounded-full px-3 text-xs font-medium transition-colors",
                   active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
-                <span className="truncate">{u.name}</span>
+                <span>{u.name}</span>
               </Link>
             );
           })}

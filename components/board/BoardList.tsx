@@ -1,14 +1,15 @@
 "use client";
 // The board list: filter chips over one list. Each row says what, how bad, the one line that matters, and how long ago.
 import { AnimatePresence, motion } from "motion/react";
+import { cn } from "@/lib/utils";
 import type { Incident, Need, Road, Shelter, Site, Task } from "@/lib/types";
 import { users } from "@/fixtures/desk";
 import type { Board } from "../BoardCards";
 import { KindIcon, TierBadge } from "../RecordCard";
 import { Stamp } from "../Stamp";
-import { chip, minutesSince } from "../encode";
+import { ageText, chip } from "../encode";
 import { LOOP_LABELS, loopStep } from "../loopStep";
-import { CALL_WORD, plural, statusWord } from "../detail/fields";
+import { CALL_WORD, plural, statusWord, taskTitle } from "../detail/fields";
 import { CaseNo } from "../ScoreBreakdown";
 import { summary } from "../detail/locate";
 import { counts, FILTERS, type Filter, listRows, type Row } from "./rows";
@@ -70,7 +71,7 @@ function lineOf(r: Row, board: Board, now: number): React.ReactNode {
     case "task": {
       const t = r.record as Task;
       const who = t.assignee ? nameOf(t.assignee) ?? "Assigned" : "Unassigned";
-      return `${who} · waiting ${minutesSince(t.history[0]?.ts ?? t.deadline, now)} min`;
+      return `${who} · waiting ${ageText(t.history[0]?.ts ?? t.deadline, now).replace(" ago", "")}`;
     }
   }
 }
@@ -92,11 +93,12 @@ function ListRow({ r, board, now, selected, onOpen }: {
 }) {
   const s = summary(r.kind, r.record, now);
   const overdue = r.kind === "task" && s.actNow;
+  const finished = r.kind === "task" && !(r.record as Task).open;
   // A site's stage is already in its line, so its badge only shows when it left the board's normal flow.
   const status = r.kind === "shelter" || (r.kind === "site" && s.status !== "retracted") ? null : statusWord(s.status);
   return (
     <motion.li layout="position" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ type: "spring", stiffness: 380, damping: 36 }} className={r.indent ? "relative pl-6" : ""}>
+      transition={{ type: "spring", stiffness: 380, damping: 36 }} className={cn(r.indent ? "relative pl-6" : "", finished && "opacity-60")}>
       {r.indent && <span aria-hidden className="absolute bottom-3 left-[25px] top-0 w-px bg-border" />}
       <button type="button" data-card={r.key} aria-pressed={selected} onClick={() => onOpen(r.key)}
         className={`flex w-full gap-3 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
@@ -106,13 +108,13 @@ function ListRow({ r, board, now, selected, onOpen }: {
           <span className="flex items-baseline gap-2">
             <span className="truncate text-sm font-semibold">
               {s.caseNo !== undefined && <span className="mr-1.5 font-normal text-muted-foreground"><CaseNo kind={r.kind} no={s.caseNo} /></span>}
-              <span className="first-letter:uppercase">{s.title}</span>
+              <span className="first-letter:uppercase">{taskTitle(s.title)}</span>
             </span>
             <span className="ml-auto shrink-0">{when(r, now)}</span>
           </span>
-          <span className="line-clamp-1 text-xs text-muted-foreground">{lineOf(r, board, now)}</span>
+          <span className="line-clamp-1 text-xs text-muted-foreground" suppressHydrationWarning>{lineOf(r, board, now)}</span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
-            {(s.tier < 2 || s.actNow) && <TierBadge tier={s.tier} actNow={s.actNow} />}
+            {!finished && (r.indent ? s.actNow : s.tier < 2 || s.actNow) && <TierBadge tier={s.tier} actNow={s.actNow} />}
             {status && <span className="inline-flex h-5 items-center rounded-full border px-2 text-xs text-muted-foreground">{status}</span>}
             {overdue && <span className="text-xs font-medium text-destructive">Overdue</span>}
           </span>

@@ -7,6 +7,7 @@ import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import { ChevronsUpDown, Pin, type LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { taskTitle } from "@/components/detail/fields";
 
 export interface PinnedItem {
   id: string;
@@ -68,7 +69,7 @@ export function PinnedList({ items: start, title = "Your list", empty = "Nothing
                   transition={{ duration: 0.5, type: "spring", bounce: 0 }}
                   className="min-w-0 flex-1"
                 >
-                  <span className="block truncate text-sm font-semibold text-foreground">{current.title}</span>
+                  <span className="line-clamp-2 text-sm font-semibold text-foreground">{taskTitle(current.title)}</span>
                   {current.note && <span className="block truncate text-xs text-muted-foreground">{current.note}</span>}
                 </motion.span>
               </AnimatePresence>
@@ -91,7 +92,7 @@ export function PinnedList({ items: start, title = "Your list", empty = "Nothing
                   <i.icon className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-foreground">{i.title}</span>
+                  <span className="line-clamp-2 text-sm font-medium text-foreground">{taskTitle(i.title)}</span>
                   {i.note && <span className="block truncate text-xs text-muted-foreground">{i.note}</span>}
                 </span>
                 <button

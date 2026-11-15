@@ -1255,10 +1255,11 @@ function titleFor(type: Task["type"], rec: Site | Need): string {
   if ("item" in rec && type === "call") return `Call to verify: ${rec.quantity} ${rec.item} for ${rec.region}, danger to life`;
   if ("item" in rec) return `Bring ${rec.quantity} ${rec.item} to ${rec.region}`;
   const n = rec.caseNo ? `site ${rec.caseNo}` : where(rec);
+  const at = rec.caseNo ? `, ${rec.address}` : "";
   switch (type) {
-    case "call": return `Call about ${n}, ${rec.address}`;
-    case "rescue": return `Rescue at ${n}, ${rec.address}`;
-    default: return `${cap(type)} at ${n}, ${rec.address}`;
+    case "call": return `Call about ${n}${at}`;
+    case "rescue": return `Rescue at ${n}${at}`;
+    default: return `${cap(type)} at ${n}${at}`;
   }
 }
 

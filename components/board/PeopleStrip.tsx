@@ -14,7 +14,7 @@ export function PeopleStrip({ board }: { board: Board }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <h2 className="text-xs text-muted-foreground">On the desk</h2>
-      <div className="flex items-center -space-x-1.5">
+      <div className="flex items-center gap-1.5">
         {users.map((u) => {
           const tasks = board.tasks.filter((t) => t.open && t.assignee === u._id).length;
           const away = u.status === "offline";

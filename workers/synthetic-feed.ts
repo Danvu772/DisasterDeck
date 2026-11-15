@@ -85,7 +85,7 @@ async function newsPass(d: Port, cycle: number): Promise<void> {
   await post(d, {
     deskId, source: "news", actor: "synthetic-news", type: "closure", observedAt: new Date().toISOString(),
     dedupeKey: `synth:news:${RUN}:${r._id}:${cycle}`,
-    payload: { road: r.road, state, reason: `simulated news update, pass ${cycle}`, ...(r.coords ? { coords: r.coords } : {}) },
+    payload: { road: r.road, state, reason: state === "closed" ? "Closed after a news report" : "Reopened after a news report", ...(r.coords ? { coords: r.coords } : {}) },
   });
   log(`news   pass ${cycle}: ${r.road} ${r.state} → ${state}`);
 }
