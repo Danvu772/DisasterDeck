@@ -1,0 +1,10 @@
+[Unit]
+Description=Check origin/main for a new deploy every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=60s
+Unit=desk-deploy.service
+
+[Install]
+WantedBy=timers.target
