@@ -15,6 +15,7 @@ import { button, statusTag, statusText, tierBadge, tierBar } from "../encode";
 import type { MapItem } from "./mapItems";
 import { icon, roadLine, TILES, TILES_ATTR } from "./markers";
 import { HatchDefs, useZones, ZoneLayer, type ZoneMeta } from "./ZoneLayer";
+import { NasaEvidence } from "./NasaEvidence";
 
 // The NASA check: one ink ring on the Yeni Cami landmark. JSON stores [lng, lat].
 const CHECK_AT: LatLng = [validation.landmark.coordsLngLat[1], validation.landmark.coordsLngLat[0]];
@@ -123,12 +124,12 @@ function NasaLegend({ meta }: { meta?: ZoneMeta }) {
   return (
     <div className="mt-2 border-t border-line pt-2">
       <p className="font-bold">NASA zones</p>
-      <p><Swatch fill="fill-[url(#nasa-hatch)]" /> Cold night. POWER, {day(d?.temperatureDate)}, {km(r?.temperatureApprox)} grid</p>
-      <p><Swatch fill="fill-[url(#nasa-cross)]" /> Silent zone: damage, power out, few calls</p>
-      <p><Swatch dashed /> Silent zone not evaluated. Data could not say</p>
+      <p><Swatch fill="fill-[url(#nasa-hatch)]" /> Cold exposure · POWER, {day(d?.temperatureDate)}</p>
+      <p><Swatch fill="fill-[url(#nasa-cross)]" /> Silent-zone signal, when supported</p>
+      <p><Swatch dashed /> Satellite assessment needs more evidence</p>
       <p className="mt-1 max-w-64 text-muted">
         Damage: ARIA Sentinel-1, {day(d?.damageDate)}, {km(r?.damage)}. Night lights: Black Marble, {day(d?.lightsAfterDate)}, {km(r?.nightLights)}.
-        Satellite data only raises priority.
+        Weather: {km(r?.temperatureApprox)} grid. Click a demo cell for its evidence.
       </p>
     </div>
   );
@@ -263,6 +264,7 @@ export default function DeskMapView({ items, now, live, zonesUrl, focus }: {
         </MapContainer>
         <HatchDefs />
         <Legend meta={zones?.metadata} zones={!!zones} />
+        {zones && <NasaEvidence fc={zones} onLocate={setFlyTarget} />}
       </div>
     </div>
   );

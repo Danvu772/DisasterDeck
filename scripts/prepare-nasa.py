@@ -227,6 +227,11 @@ def main():
         "bboxOrder": "west,south,east,north", "coordinateOrder": "longitude,latitude", "thresholds": CONFIG["thresholds"],
         "dates": {key: CONFIG[key] for key in ["damageDate", "lightsBeforeDate", "lightsAfterDate", "temperatureDate"]},
         "nativeResolutionMeters": {"damage": 30, "nightLights": 500, "temperatureApprox": 50000},
+        "temperatureSeries": [
+            {"date": f"{day[:4]}-{day[4:6]}-{day[6:]}", "minTempC": value}
+            for day, value in sorted(values.items())
+            if value != power["header"]["fill_value"] and math.isfinite(value)
+        ],
         "sourcesManifestRepositoryPath": "data/nasa/manifest.json", "reportWindowSeconds": CONFIG["reportWindowSeconds"],
         "sourceURLs": {"damage": ARIA, "nightLights": CAPABILITIES, "nightLightsColormap": source_urls()["lights-colormap.xml"], "temperature": source_urls()["power-malatya.json"]},
         "attribution": "NASA JPL/Caltech ARIA Team, Copernicus, ESA; NASA GIBS / Suomi NPP VIIRS Black Marble; NASA POWER / MERRA-2",

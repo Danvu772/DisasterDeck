@@ -1,5 +1,11 @@
 # Malatya NASA evidence · v1
 
+## Map presentation
+
+Open `/map` and expand **NASA · Cold exposure**. The chart shows all five daily minimum temperatures from the archived POWER response. The two Locate buttons focus the synthetic 500 m cells. Both cells share the same regional weather observation.
+
+Click a hatched cell for its dated evidence and the suggested blanket/shelter review. The expandable satellite explanation describes the radar validity and night-light saturation limitations. Missing measurements remain null in the evidence. The map presents no silent-zone alert or completed priority change for these cells.
+
 The map contains two synthetic 500 m demo cells inside longitude 38.29–38.35 and latitude 38.33–38.39. The retrospective scene is 11 February 2023 at 09:00 Türkiye time. Source products were retrieved on 14 November 2026. Their processing versions reflect the present archive. The exact 2023 publication times are unavailable.
 
 | Input | Observation dates and native scale | Decision supported by this cache |

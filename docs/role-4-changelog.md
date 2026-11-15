@@ -2,6 +2,12 @@
 
 All timestamps use America/New_York, EST (UTC−05:00).
 
+## v0.6 NASA map presentation · 2026-11-14 22:08 EST
+
+- Added a collapsible map evidence card with the archived five-day POWER series, exact minimum, regional scale, source links and controls to locate both demo cells.
+- Replaced repeated unknown fields with a concise hover label, a clickable evidence popup and an expandable explanation of radar validity and night-light saturation. The display suggests a coordinator review without claiming an observed priority change.
+- Kept measurement nulls and alert rules intact. Six Python evidence checks, TypeScript and scoped lint passed. Chrome checks verified the five values, map focus, popup and a scrollable phone layout contained inside the map.
+
 ## v0.5 pitch and submission materials · 2026-11-14 21:36 EST
 
 - Wrote the English Devpost story and event-app description, including NASA product credits, the grant line, AI-tool disclosure and outstanding track decisions.

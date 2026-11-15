@@ -18,31 +18,37 @@ export interface ZoneProps {
 }
 export interface ZoneMeta {
   dates?: { damageDate?: string; lightsAfterDate?: string; temperatureDate?: string };
+  temperatureSeries?: { date: string; minTempC: number }[];
+  sourceURLs?: { temperature?: string; damage?: string; nightLights?: string };
   nativeResolutionMeters?: { damage?: number; nightLights?: number; temperatureApprox?: number };
   attribution?: string;
 }
-type ZoneFC = FeatureCollection<Polygon, ZoneProps> & { metadata?: ZoneMeta };
+export type ZoneFC = FeatureCollection<Polygon, ZoneProps> & { metadata?: ZoneMeta };
 
 const QUALITY: Record<string, string> = {
-  "saturated-rendering": "night lights are saturated in the rendering",
-  "unflagged-validity-unknown": "valid damage pixels cannot be told apart",
+  "saturated-rendering": "the night-light image reaches its brightness limit",
+  "unflagged-validity-unknown": "the radar image lacks a reliable valid-area mask",
 };
 
-function word(v: boolean | number | null, yes: string, no: string) {
-  return v === null ? "unknown" : v === false ? no : typeof v === "number" ? String(v) : yes;
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
 }
 
 export function zoneText(p: ZoneProps): string {
-  const lines = [`<b>${p.name}</b>`];
-  if (p.cold) lines.push(`Cold night: ${p.minTempC?.toFixed(1)} °C minimum, ${p.temperatureEvidence?.source ?? "NASA POWER"}, ${p.temperatureEvidence?.date ?? ""}. Raises warmth needs by 20.`);
+  const lines = [`<b>${escapeHtml(p.name)}</b>`];
+  if (p.minTempC !== undefined) lines.push(`<b>${p.minTempC.toFixed(2)} °C</b> regional minimum · ${escapeHtml(p.temperatureEvidence?.date ?? "")}`);
+  lines.push(escapeHtml(p.temperatureEvidence?.source ?? "NASA POWER"), "Shared regional weather measurement · approximately 50 km grid.");
+  if (p.cold) lines.push("Cold exposure: review blanket and shelter requests.");
   if (p.silentZone === null) {
     const why = [p.lightsEvidence?.quality, p.damageEvidence?.quality]
       .map((q) => (q ? QUALITY[q] ?? q : null)).filter(Boolean).join(", ");
-    lines.push(`Silent zone: not evaluated${why ? `, ${why}` : ""}.`);
+    lines.push(`Satellite assessment needs better coverage${why ? `: ${escapeHtml(why)}` : ""}.`);
   } else {
-    lines.push(`Silent zone: ${p.silentZone ? "yes, raises priority by 30" : "no"}.`);
+    lines.push(`Silent-zone signal: ${p.silentZone ? "detected; coordinator review needed" : "not detected"}.`);
   }
-  lines.push(`Damage ${word(p.damage, "yes", "none")}, power out ${word(p.dark, "yes", "no")}, calls ${p.calls ?? "unknown"}.`);
+  if (p.damage != null) lines.push(`Damage proxy: ${(p.damage * 100).toFixed(1)}%.`);
+  if (p.dark != null) lines.push(`Night-light drop: ${p.dark ? "detected" : "not detected"}.`);
+  if (p.calls != null) lines.push(`Synthetic original calls: ${p.calls}. Demo cell: 500 m.`);
   return lines.join("<br>");
 }
 
@@ -87,7 +93,11 @@ export function ZoneLayer({ fc }: { fc: ZoneFC }) {
         const p = (f as Feature<Polygon, ZoneProps>).properties;
         return { className: className(p), weight: 2, dashArray: p.silentZone === null ? "6 6" : undefined, fillOpacity: 1 };
       }}
-      onEachFeature={(f, layer) => layer.bindTooltip(zoneText(f.properties as ZoneProps), { sticky: true })}
+      onEachFeature={(f, layer) => {
+        const p = f.properties as ZoneProps;
+        layer.bindTooltip(`${escapeHtml(p.name)} · ${p.minTempC?.toFixed(2) ?? "—"} °C`, { sticky: true });
+        layer.bindPopup(zoneText(p), { maxWidth: 330 });
+      }}
     />
   );
 }

@@ -31,6 +31,28 @@
       "nightLights": 500,
       "temperatureApprox": 50000
     },
+    "temperatureSeries": [
+      {
+        "date": "2023-02-06",
+        "minTempC": -3.49
+      },
+      {
+        "date": "2023-02-07",
+        "minTempC": -9.56
+      },
+      {
+        "date": "2023-02-08",
+        "minTempC": -10.79
+      },
+      {
+        "date": "2023-02-09",
+        "minTempC": -14.38
+      },
+      {
+        "date": "2023-02-10",
+        "minTempC": -11.04
+      }
+    ],
     "sourcesManifestRepositoryPath": "data/nasa/manifest.json",
     "reportWindowSeconds": [
       0,
