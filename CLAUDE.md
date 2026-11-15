@@ -8,6 +8,10 @@ GitHub Issues on `DarshalShetty/HackTheNest26`, via the `gh` CLI. See `docs/agen
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
 
+## Deployment
+
+Production is the `prod` branch: every push to `prod` deploys to the Vultr VM behind https://disasterdeck.us (`.github/workflows/deploy.yml`). Promote with `git push origin main:prod`, only when the person asks. One Brain per database, and the prod VM runs it. How it works, the rules and debugging: `docs/agents/deploy.md`.
+
 ## Team tracking
 
 Every session starts with the open task list, injected by the SessionStart hook (`scripts/team-tasks.mjs`). The shared tracker is GitHub Issues. Your role lane is in `docs/agents/team.md`.
