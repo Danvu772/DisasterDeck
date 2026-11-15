@@ -1,8 +1,8 @@
 import type { Need } from "@/lib/types";
 import { ageText, confidenceBorder, statusTag, statusText, tierBar } from "./encode";
 
-// Until Role 1 adds requestedBy to Need (see "Personal agents").
-export type MyNeed = Need & { requestedBy?: string[] };
+// Need.requestedBy is in the contract (lib/types.ts v2.1), so a need is its own type here.
+export type MyNeed = Need;
 
 // The needs this person filed, sorted by the same tier and score as the shared list.
 // Each row: what they asked for, where it stands, and the latest thing the desk did about it.

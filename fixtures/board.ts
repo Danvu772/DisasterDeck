@@ -33,7 +33,7 @@ export function makeBoard(now: number) {
     },
   ];
 
-  // requestedBy is not in the contract yet (asked Role 1 in "Personal agents"). Fixture-only until then.
+  // requestedBy is in the contract (lib/types.ts v2.1), same shape as the API.
   const needs: (Need & { requestedBy: string[] })[] = [
     {
       _id: "need-1", item: "blankets", quantity: 20, region: "malatya-merkez", siteIds: ["site-52"],

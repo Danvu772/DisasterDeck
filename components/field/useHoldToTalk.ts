@@ -1,94 +1,93 @@
 "use client";
-// Hold to record, let go to send. MediaRecorder in, POST /api/chat with { audioBase64, mimeType } out.
-// Phones only hand the mic to HTTPS pages (or localhost), so check that first.
+// Hold to talk: the browser turns speech into text (Web Speech API), and only the text goes to /api/chat.
+// The route does not take audio (app/api/chat/route.ts says so), so nothing is recorded or uploaded.
+// Phones only give the speech engine a secure page (HTTPS or localhost), so check that first.
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type TalkState = "unsupported" | "idle" | "starting" | "recording" | "sending";
 
-const MIN_MS = 400;   // shorter than this is a tap, not a message
+type SpeechResult = { isFinal: boolean; 0: { transcript: string } };
+type SpeechEvent = { resultIndex: number; results: ArrayLike<SpeechResult> };
+type SpeechRec = {
+  lang: string; interimResults: boolean; continuous: boolean;
+  onresult: ((e: SpeechEvent) => void) | null;
+  onerror: ((e: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void; stop(): void;
+};
+type SpeechCtor = new () => SpeechRec;
 
-function toBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).replace(/^data:[^,]*,/, ""));
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(blob);
-  });
+function speechCtor(): SpeechCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { SpeechRecognition?: SpeechCtor; webkitSpeechRecognition?: SpeechCtor };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
 export function useHoldToTalk(user: string) {
   const [state, setState] = useState<TalkState>("idle");
   const [reply, setReply] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const held = useRef(false);
-  const rec = useRef<MediaRecorder | null>(null);
-  const startedAt = useRef(0);
+  const rec = useRef<SpeechRec | null>(null);
+  const heard = useRef("");
+  const failed = useRef(false);
 
   useEffect(() => {
-    const ok = window.isSecureContext && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== "undefined";
-    if (!ok) setState("unsupported");
+    if (!speechCtor() || !window.isSecureContext) setState("unsupported");
   }, []);
 
-  const send = useCallback(async (blob: Blob, mimeType: string) => {
+  const send = useCallback(async (text: string) => {
     setState("sending");
     try {
-      const audioBase64 = await toBase64(blob);
       const r = await fetch(`/api/chat?user=${encodeURIComponent(user)}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ audioBase64, mimeType }),
+        body: JSON.stringify({ text }),
         signal: AbortSignal.timeout(30000),
       });
       const body = (await r.json().catch(() => ({}))) as { reply?: string; error?: string };
       if (r.ok && body.reply) setReply(body.reply);
       else setError(body.error ?? `The desk did not answer (${r.status})`);
     } catch {
-      setError("Could not send the voice message, no network.");
+      setError("Could not send the message, no network.");
     }
     setState("idle");
   }, [user]);
 
-  const start = useCallback(async () => {
+  const start = useCallback(() => {
     if (state !== "idle") return;
-    held.current = true;
+    const Ctor = speechCtor();
+    if (!Ctor) { setState("unsupported"); return; }
     setError(null);
-    setState("starting");
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setError("The phone did not give us the microphone.");
-      setState("idle");
-      return;
-    }
-    if (!held.current) {   // let go while the permission prompt was up
-      stream.getTracks().forEach((t) => t.stop());
-      setState("idle");
-      return;
-    }
-    const chunks: Blob[] = [];
-    const r = new MediaRecorder(stream);
-    r.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-    r.onstop = () => {
-      stream.getTracks().forEach((t) => t.stop());
-      rec.current = null;
-      if (Date.now() - startedAt.current < MIN_MS || !chunks.length) {
-        setError("Hold the button the whole time you talk.");
-        setState("idle");
-        return;
+    setReply(null);
+    heard.current = "";
+    failed.current = false;
+    const r = new Ctor();
+    r.lang = navigator.language || "en-US";
+    r.interimResults = false;
+    r.continuous = true;
+    r.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i += 1) {
+        if (e.results[i].isFinal) heard.current += `${e.results[i][0].transcript} `;
       }
-      const mimeType = r.mimeType || chunks[0].type || "audio/webm";
-      send(new Blob(chunks, { type: mimeType }), mimeType);
+    };
+    r.onerror = (e) => {
+      failed.current = true;
+      setError(e.error === "not-allowed" ? "The phone did not give us the microphone." : "Could not hear that. Try again.");
+    };
+    r.onend = () => {
+      rec.current = null;
+      const text = heard.current.trim();
+      if (text) { send(text); return; }
+      if (!failed.current) setError("Hold the button the whole time you talk.");
+      setState("idle");
     };
     rec.current = r;
-    startedAt.current = Date.now();
-    r.start();
     setState("recording");
+    r.start();
   }, [state, send]);
 
   const stop = useCallback(() => {
-    held.current = false;
-    if (rec.current?.state === "recording") rec.current.stop();
+    rec.current?.stop();
   }, []);
 
   return { state, reply, error, start, stop };
