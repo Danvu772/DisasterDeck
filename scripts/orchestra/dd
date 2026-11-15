@@ -93,9 +93,11 @@ check)
 merge)
   d="$WT/$id"
   [ -z "$(git -C "$d" status --porcelain)" ] || { echo "$id has uncommitted changes"; exit 1; }
-  git -C "$d" fetch -q origin && git -C "$d" rebase -q origin/main
-  "$0" check "$id"
+  # Sync main with origin first (pushes any local doc commits), then put the branch on top of it.
   git -C "$REPO" pull -q --rebase --autostash
+  git -C "$REPO" push -q
+  git -C "$d" rebase -q main
+  "$0" check "$id"
   git -C "$REPO" merge -q --ff-only "fe/$id"
   git -C "$REPO" push -q
   echo "$(date +%H:%M:%S) [$id] MERGED $(git -C "$REPO" log --oneline -1)" >> "$STREAM"

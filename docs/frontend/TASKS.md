@@ -6,17 +6,15 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 
 | Task | Effort | What |
 |---|---|---|
-| [t15-nav-phone](tasks/t15-nav-phone.md) | low | the top bar fits a 390 px phone |
-| [t16-fixtures-seed-ids](tasks/t16-fixtures-seed-ids.md) | medium | fixtures use the seed's people (`field-alpha`, not `team-4`) so screens survive real data |
-| [t11-today-vs-desk](tasks/t11-today-vs-desk.md) | medium | `/compare`: the 2023 spreadsheet next to the desk, same five tweets |
+| [t12-ask-the-desk](tasks/t12-ask-the-desk.md) | medium | Ask the desk box on the board |
+| [t14-loop-step](tasks/t14-loop-step.md) | medium | "Step 3 of 5: team approved." on site cards |
+| [t19-phone-polish](tasks/t19-phone-polish.md) | medium | map legend collapses on a phone, field says "Acting as" in demo |
 
 ## Next (queued)
 
 | Task | Effort | Waits on |
 |---|---|---|
-| [t19-phone-polish](tasks/t19-phone-polish.md) | medium | t16 (ids). Map legend covers the map on a phone, field says "Signed in" in demo mode |
-| [t12-ask-the-desk](tasks/t12-ask-the-desk.md) | medium | t16 (ids) |
-| [t14-loop-step](tasks/t14-loop-step.md) | medium | t16 (ids) |
+| [t20-compare-consistency](tasks/t20-compare-consistency.md) | low | ready. `/compare` says "Zeynep is calling" next to "not called" |
 | t17 Modify on approvals posts a real change | medium | Role 1: an approval with another `assignee` |
 | t18 hold to talk turns speech into text | medium | Role 2: does `/api/chat` take audio, or text from the browser? |
 | t04 priority breakdown on click | medium | Role 1: the score parts per record, so the screen does not guess them |
@@ -44,3 +42,6 @@ Sources: `Roles/Role 3 - Frontend.md`, `Related systems/08 Synthesis/What to bor
 | [t09-map-validation](tasks/t09-map-validation.md): Yeni Cami independent check on `/map` | `1030ef1` |
 | [t06-coordinator](tasks/t06-coordinator.md): `/coordinator` | `7411dc7` |
 | [t07-field-phone](tasks/t07-field-phone.md): `/field` | `ce98454` |
+| [t15-nav-phone](tasks/t15-nav-phone.md): nav scrolls sideways on a phone | `c953b29` |
+| [t16-fixtures-seed-ids](tasks/t16-fixtures-seed-ids.md): fixtures use the seed's people | `d0d5d61` |
+| [t11-today-vs-desk](tasks/t11-today-vs-desk.md): `/compare` for the pitch | `bcad602` |

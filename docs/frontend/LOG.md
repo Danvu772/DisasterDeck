@@ -2,6 +2,14 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 21:35 t11, t15, t16 merged, Atlas, demo mode
+- **t16** fixtures use the seeded people (`volunteer-callback`, `field-alpha`, `supplier-primary`, `coordinator-duty`) and region `malatya-merkez`. Before this, every screen would have lost its tasks the moment `/api/board` served real records. The seed has one field team, so the team that declined in the story is now `volunteer-mechanic`.
+- **t15** the nav row scrolls sideways on a phone, "Malatya" and "Design lab" hide below `sm`.
+- **t11** `/compare` for the pitch opening, checked at 1280 by 720: the 2023 sheet (five rows, nobody called, nobody on it) next to the desk (one site, "4 posts from 1 person", an owner). It contradicts itself in two places, that is t20.
+- **Database:** `.env.local` points at Darshal's MongoDB Atlas cluster (ping ok, `events`, `inbox`, `tasks`, `shelters`, `users` exist). The credentials live only in `.env.local`, which git ignores. Button presses on demo screens now reach Atlas and come back 404 "no such task", correct until `/api/board` serves real tasks.
+- **Demo mode:** Dan set `DEMO_MODE=1`, so every screen opens without SSOJet. The dev server needed a restart to see it.
+- **Orchestra fix:** `dd merge` refused to fast-forward when main had an unpushed docs commit. It now pushes main first and rebases the worker onto it.
+
 ### 21:25 t06, t07, t09 merged (`7411dc7`, `ce98454`, `1030ef1`)
 - **t06 `/coordinator`** (opus, $1.26, 2.7 min). Approvals sorted by deadline, red with "Waiting too long" when overdue. Approve, Modify, Reject. Modify picks a person but posts nothing yet (needs Role 1). Escalated tasks list who was tried. Open problems, critical first.
 - **t07 `/field`** (opus, $1.57, 4 min). One task per screen, On our way (10, 20, 30, 60 min), Arrived, Done, red Problem. An offline outbox in `localStorage` with `dedupeKey`, retried every 10 s. Hold to talk records and posts audio, but `/api/chat` can't listen yet. Arrived posts `accepted` with ETA 0 and the note "Arrived", because the answer schema has no arrived value.
