@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { ChatLine } from "./ChatLine";
 import { button } from "./encode";
-
-const NOT_ANSWERING = "The desk agent is not answering";
+import { chatErrorText } from "./chatError";
 
 export function AskDesk() {
   const [text, setText] = useState("");
@@ -28,10 +27,9 @@ export function AskDesk() {
       });
       const body = (await r.json().catch(() => null)) as { reply?: unknown; error?: unknown } | null;
       if (r.ok && typeof body?.reply === "string") setAnswer(body.reply);
-      else if (typeof body?.error === "string") setError(body.error);
-      else setError(NOT_ANSWERING);
+      else setError(chatErrorText(r.ok ? 502 : r.status, body));
     } catch {
-      setError(NOT_ANSWERING);
+      setError(chatErrorText(0, null));
     }
     setAsking(false);
   }

@@ -9,6 +9,8 @@ import { TaskCard } from "./TaskCard";
 import { getCoords, sendTaskEvent, taskEventBody, type ProblemKind, type TaskAction } from "./taskEvents";
 import { ChatLine } from "./ChatLine";
 import { stubReply } from "./stubAgent";
+import { chatErrorText } from "./chatError";
+import { cursorOf, feedUrl, mergeServer, shownEvents } from "./agentFeed";
 import { YourNeeds } from "./YourNeeds";
 import { usePolled } from "./map/usePolled";
 import { isRealTask, needsFor, nextLocalStatus, openTasksFor, viewTask, type LocalTask } from "./taskState";
@@ -25,7 +27,16 @@ export function AgentDesk(props: {
 }) {
   const { user } = props;
   const { data: board, live, now } = usePolled<DeskBoard>("/api/board", props.initial);
-  const [events, setEvents] = useState(props.events);
+  // Server events (null until the first answer), the lines the buttons add, and fixtures as the start.
+  const [server, setServer] = useState<FeedEvent[] | null>(null);
+  const [locals, setLocals] = useState<FeedEvent[]>([]);
+  const polled = usePolled<FeedEvent[] | null>(feedUrl(cursorOf(server)), null, 2000);
+  const [seen, setSeen] = useState<FeedEvent[] | null>(null);
+  if (polled.data !== seen) {
+    setSeen(polled.data);
+    if (polled.data) setServer(mergeServer(server, polled.data));
+  }
+  const events = shownEvents(server, locals, props.events);
   const [messages, setMessages] = useState(props.messages);
   const [text, setText] = useState("");
   const [stub, setStub] = useState(false);
@@ -68,7 +79,7 @@ export function AgentDesk(props: {
 
   function localEvent(e: Omit<FeedEvent, "_id" | "ts" | "deskId" | "lane" | "status" | "actor">, demo: boolean) {
     const id = `local-${lineSeq.current++}`;
-    setEvents((xs) => [{ ...e, _id: id, ts: new Date(), deskId: user.deskId,
+    setLocals((xs) => [{ ...e, _id: id, ts: new Date(), deskId: user.deskId,
       lane: 0, status: "pending", actor: user._id }, ...xs]);
     if (demo) setDemoLines((d) => new Set(d).add(id));
     return id;
@@ -84,10 +95,11 @@ export function AgentDesk(props: {
       const r = await fetch(`/api/chat?user=${user._id}`, {
         method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: said }),
       });
-      if (!r.ok) throw new Error(String(r.status));
-      reply = (await r.json()).reply;
+      const body = await r.json().catch(() => null);
+      reply = r.ok && typeof body?.reply === "string" ? body.reply : chatErrorText(r.ok ? 502 : r.status, body);
       setStub(false);
     } catch {
+      // Only an unreachable route gets the stub. A 502 is shown as what it is.
       reply = stubReply(user, top?.task, said);
       setStub(true);
     }
@@ -121,7 +133,7 @@ export function AgentDesk(props: {
       setLocal((l) => ({ ...l, [id]: { ...l[id], pending: false } }));
     } else {
       setLocal((l) => { const rest = { ...l }; delete rest[id]; return prev ? { ...rest, [id]: prev } : rest; });
-      setEvents((xs) => xs.filter((x) => x._id !== line));
+      setLocals((xs) => xs.filter((x) => x._id !== line));
     }
     note(id, result);
   }
@@ -130,6 +142,7 @@ export function AgentDesk(props: {
   return (
     <div className="flex flex-col gap-5">
       {!live && <p className="text-sm text-muted">Demo data, the board API is not answering.</p>}
+      {server === null && <p className="text-sm text-muted">Demo data, the events API is not answering.</p>}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <section aria-label="Your tasks" className="flex min-w-0 flex-col gap-4">
           <details className={`${card} p-3 text-sm`}>
@@ -189,7 +202,7 @@ export function AgentDesk(props: {
               className="min-w-0 flex-1 rounded-button border border-muted px-3 py-2 text-sm" />
             <button className={button.primary}>Send</button>
           </form>
-          {stub && <p className="px-4 pb-3 text-xs text-muted">Stub agent. /api/chat is not up yet.</p>}
+          {stub && <p className="px-4 pb-3 text-xs text-muted">{chatErrorText(0, null)} This is a stub reply.</p>}
         </section>
       </div>
 
