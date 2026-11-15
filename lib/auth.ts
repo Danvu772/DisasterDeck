@@ -2,7 +2,7 @@
 //
 // Order:
 // 1. `x-agent-key: <AGENT_KEY>`: a worker or the scenario player. It may name itself.
-// 2. A login session (SSOJet, Role 3). Not wired yet: see getSessionUserId().
+// 2. A login session (SSOJet through Auth.js, Role 3): see getSessionUserId().
 // 3. `?user=<id>` only when DEMO_MODE=1: the role picker on our laptops.
 import { createHash, timingSafeEqual } from "node:crypto";
 import { cols } from "./db";
@@ -28,7 +28,14 @@ function sameSecret(a: string, b: string): boolean {
  */
 async function getSessionUserId(req: Request): Promise<string | null> {
   void req; // Auth.js reads the session cookie from the request context itself
-  return sessionUserId();
+  try {
+    return await sessionUserId();
+  } catch (err) {
+    // Called outside a Next request (npm run api:check calls the handler directly):
+    // there is no cookie, so there is no session. Any other error is real: rethrow it.
+    if (err instanceof Error && err.message.includes("outside a request scope")) return null;
+    throw err;
+  }
 }
 
 export async function resolveCaller(req: Request): Promise<CallerResult> {

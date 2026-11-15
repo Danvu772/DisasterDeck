@@ -1,9 +1,50 @@
 // Checks POST /api/events without starting Next: calls the route handler directly.
+// Also checks that lib/openapi.ts lists exactly the routes in app/api, with the same methods.
 // Run: npm run api:check (needs npm run db:seed first, and AGENT_KEY + DEMO_MODE=1 in .env.local).
 // Creates one test task and some events, and deletes all of them at the end.
 import assert from "node:assert/strict";
+import { readdir, readFile } from "node:fs/promises";
+import { join, relative, sep } from "node:path";
 import { POST } from "../app/api/events/route";
 import { closeDb, cols } from "./db";
+import { buildSpec, UNDOCUMENTED } from "./openapi";
+
+const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+
+/** Every app/api route file, as an OpenAPI path ([id] → {id}) with the methods it exports. */
+async function routeFiles(): Promise<Map<string, string[]>> {
+  const root = join(import.meta.dirname, "..", "app");
+  const found = new Map<string, string[]>();
+  for (const f of await readdir(join(root, "api"), { recursive: true })) {
+    if (!/(^|[/\\])route\.(ts|tsx|js)$/.test(f)) continue;
+    const dir = relative(root, join(root, "api", f)).split(sep).slice(0, -1);
+    const path = "/" + dir.map((s) => s.replace(/^\[\.{0,3}(.+)\]$/, "{$1}")).join("/");
+    const src = await readFile(join(root, "api", f), "utf8");
+    const methods = METHODS.filter((m) =>
+      new RegExp(`export\\s+(async\\s+)?(function|const)\\s+${m}\\b|export\\s+const\\s*\\{[^}]*\\b${m}\\b`).test(src));
+    found.set(path, methods);
+  }
+  return found;
+}
+
+async function checkSpecMatchesRoutes() {
+  const spec = buildSpec();
+  const files = await routeFiles();
+  const documented = new Map(Object.entries(spec.paths).map(([p, ops]) =>
+    [p, Object.keys(ops).map((m) => m.toUpperCase()).sort()]));
+  const skipped = (p: string) => UNDOCUMENTED.some((u) => p === u || p.startsWith(u.endsWith("/") ? u : `${u}/`));
+
+  for (const [path, methods] of files) {
+    if (skipped(path)) continue;
+    assert(documented.has(path), `${path} has a route file but no entry in lib/openapi.ts (or UNDOCUMENTED)`);
+    assert.deepEqual(documented.get(path), [...methods].sort(), `${path}: methods in lib/openapi.ts differ from the route file`);
+  }
+  for (const path of documented.keys()) {
+    assert(files.has(path), `${path} is in lib/openapi.ts but app${path}/route.ts does not exist`);
+  }
+  assert(JSON.stringify(spec).length > 1000 && spec.components.schemas.EventBody, "spec builds");
+  console.log(`ok  openapi: ${documented.size} documented, ${[...files.keys()].filter(skipped).length} undocumented on purpose, routes match`);
+}
 
 const BASE = "http://localhost/api/events";
 const created: string[] = [];
@@ -28,6 +69,8 @@ async function expect(name: string, p: ReturnType<typeof post>, status: number) 
 }
 
 async function main() {
+  await checkSpecMatchesRoutes();
+
   const key = process.env.AGENT_KEY;
   assert(key, "set AGENT_KEY in .env.local");
   assert.equal(process.env.DEMO_MODE, "1", "set DEMO_MODE=1 in .env.local");

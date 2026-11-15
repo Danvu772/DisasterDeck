@@ -11,7 +11,8 @@ Everyone may **call** these functions. Only Role 1 changes them, and announces i
 | `auth.ts` | Who is calling: agent key, login session, or `?user=` in demo mode |
 | `seed.ts` | Loads `data/seed.json` (users, shelters): `npm run db:seed` |
 | `db-check.ts` | A smoke test: `npm run db:check` |
-| `api-check.ts` | Checks `POST /api/events` (identity, permissions, validation): `npm run api:check` |
+| `api-check.ts` | Checks `POST /api/events` (identity, permissions, validation) and that the API docs list every route: `npm run api:check` |
+| `openapi.ts` | The OpenAPI description of the HTTP API, shown at `/api/docs` |
 | `rules/` | Later: the dispatcher's plain-code rules (`priority.ts`, `assign.ts`, `incidents.ts`) |
 
 ---
@@ -145,9 +146,24 @@ of a collection writes to it (Team contracts §2).
 Screens and remote clients use these. The `lib/` functions above sit behind them, in `app/api/`.
 The shapes are fixed by Team contracts §4.
 
+### Browse them: `/api/docs`
+
+With `npm run dev` running, open **http://localhost:3000/api/docs**. It's Swagger UI over
+`/api/openapi.json`: every endpoint, its body and responses, examples, and **Try it out**.
+Click **Authorize** and either paste the `x-agent-key`, or type a seeded user id (for example
+`coordinator-duty`) into `user` when `DEMO_MODE=1`. If you're signed in with SSOJet, your
+cookie is sent automatically.
+
+The list comes from `lib/openapi.ts`. Next.js can't discover routes by itself, so that file is
+the registry. The event body there is generated from `schemas.ts`. **When you add a route, add
+it to `lib/openapi.ts`** (or to `UNDOCUMENTED` there). Otherwise `npm run api:check` fails and
+names the route.
+
 | Method | Path | Body / query | Returns | Status |
 |---|---|---|---|---|
 | `POST` | `/api/events` | An event: `type`, `source`, `payload`, optional `deskId`, `observedAt`, `dedupeKey`, `actor` | `{ id }` | **Built** |
+| `POST` | `/api/chat` | `{ text?, imageBase64?, coords? }` | `{ reply, eventIds, actions }` | **Built** (Role 2) |
+| `GET` | `/api/openapi.json`, `/api/docs` | (none) | The API description, and the Swagger UI page | **Built** |
 | `GET` | `/api/board` | (none) | `Board` (`getBoard()`) | Not yet |
 | `GET` | `/api/inbox` | (none) | `InboxItem[]` of the signed-in person; also stamps `lastSeen` | Not yet |
 | `GET` | `/api/health` | (none) | `Health` (`getHealth()`) | Not yet |
@@ -158,7 +174,7 @@ The shapes are fixed by Team contracts §4.
 
 1. **Header `x-agent-key: $AGENT_KEY`**: a worker or the scenario player. It may name itself with
    `"actor": "x-agent"`. Without that, the actor is `<source>-agent` (for example `nasa-agent`).
-2. **The login session** (SSOJet). Not wired yet; the hook is `getSessionUserId()` in `auth.ts`.
+2. **The login session**: SSOJet through Auth.js (Role 3's `/auth.ts`), read by `getSessionUserId()` in `auth.ts`.
 3. **`?user=<id>`**, only when `DEMO_MODE=1`. The id must be a seeded user.
 
 A signed-in person is always the actor. An `actor` in their body is ignored.
