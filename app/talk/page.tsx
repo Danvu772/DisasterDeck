@@ -16,12 +16,13 @@ const DEMO_PEOPLE = ["field-alpha", "volunteer-callback", "supplier-primary", "s
 // The aftershock strip must not hold the page: a cold AFAD/USGS fetch can take seconds (10 s
 // timeout). Wait at most QUAKE_WAIT_MS; the fetch goes on and the 30 s refresh shows it (speed, 15 Nov).
 const QUAKE_WAIT_MS = 400;
+const CTX_STALE_MS = 5 * 60_000;
 const late = <T,>(ms: number) => new Promise<undefined>((r) => setTimeout(r, ms)) as Promise<T | undefined>;
 
 export default async function TalkPage({ searchParams }: { searchParams: Promise<{ user?: string }> }) {
   const { user: wanted } = await searchParams;
   const d = desk();
-  const all = await shared("talk-users", 30_000, () => d.listUsers());
+  const all = await shared("talk-users", 30_000, () => d.listUsers(), 10 * 60_000);
   const people: TalkPerson[] = DEMO_PEOPLE
     .map((id) => all.find((u) => u._id === id))
     .filter((u): u is NonNullable<typeof u> => Boolean(u))
@@ -30,7 +31,10 @@ export default async function TalkPage({ searchParams }: { searchParams: Promise
 
   const nearFor = (c: Parameters<typeof recentQuakesNear>[0]) =>
     Promise.race([recentQuakesNear(c, 60).catch(() => undefined), late<Awaited<ReturnType<typeof recentQuakesNear>>>(QUAKE_WAIT_MS)]);
-  const ctx = await d.getUserContext(meId);
+  // The person's context (chat, inbox, the whole board) takes seconds to read cold. The screen only
+  // shows their tasks, so a copy up to CTX_STALE_MS old answers at once while a fresh one loads;
+  // the 30 s refresh then shows it (speed, 15 Nov).
+  const ctx = await shared(`talk-ctx:${meId}`, 5_000, () => d.getUserContext(meId), CTX_STALE_MS);
   const tasks: TalkTask[] = ctx.tasks.slice(0, 5).map((t) => ({
     id: t._id, title: t.title, detail: plainDetail(t.detail).replace(/\d[\d\s]{8,}\d/g, "•••"), tier: t.tier, status: t.status,
   }));
