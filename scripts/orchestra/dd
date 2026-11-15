@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # dd: run frontend tasks as headless Claude workers in tmux. Docs: docs/frontend/README.md
 #
+#   dd all             ONE terminal, four panes: dev server, Brain, worker stream, desk health (tmux session "desk")
 #   dd up              tmux session "dd": stream window (every worker's thoughts), dev server, shell
 #   dd run <id>        start docs/frontend/tasks/<id>.md in its own worktree and tmux session dd-<id>
 #   dd ls              workers, their branches and whether they are still running
@@ -47,6 +48,22 @@ up)
     tmux select-window -t dd:stream
   fi
   echo "tmux attach -t dd    (stream, dev, shell)"
+  ;;
+
+all)
+  # One terminal, four panes: dev server | Brain, worker stream | desk health. Attach with: tmux attach -t desk
+  tmux kill-session -t desk 2>/dev/null || true
+  if lsof -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; then DEV="echo 'dev server already on :3000 (pid' \$(lsof -tiTCP:3000 -sTCP:LISTEN)')'; exec \$SHELL"
+  else DEV="rm -rf .next && npx next dev -H 127.0.0.1 -p 3000; exec \$SHELL"; fi
+  if pgrep -f "workers/brain.ts" >/dev/null; then BRAIN="echo 'Brain already running (pid' \$(pgrep -f workers/brain.ts | head -1)'), one per database'; exec \$SHELL"
+  else BRAIN="npm run brain; exec \$SHELL"; fi
+  HEALTH="while true; do clear; date +%H:%M:%S; curl -s -m 3 localhost:3000/api/health || echo 'dev server not answering'; echo; curl -s -m 3 localhost:3000/api/board | node -e 'let s=\"\";process.stdin.on(\"data\",d=>s+=d).on(\"end\",()=>{try{const b=JSON.parse(s);console.log(Object.entries(b).filter(([k,v])=>Array.isArray(v)).map(([k,v])=>k+\" \"+v.length).join(\"  \"))}catch{}})'; sleep 3; done"
+  tmux new-session -d -s desk -n all -c "$REPO" "$DEV"
+  tmux split-window -h -t desk:all -c "$REPO" "$BRAIN"
+  tmux split-window -v -t desk:all.0 -c "$REPO" "tail -n 50 -F '$STREAM'"
+  tmux split-window -v -t desk:all.1 -c "$REPO" "$HEALTH"
+  tmux select-layout -t desk:all tiled
+  echo "desk running: http://localhost:3000   watch: tmux attach -t desk   (Ctrl-b d to leave it running)"
   ;;
 
 run)
