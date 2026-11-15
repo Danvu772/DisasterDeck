@@ -33,7 +33,7 @@ The VM is **IPv6-only**. Vultr gave it `100.68.113.147/18` with no IPv4 default 
 
 | Path or unit | Role |
 |---|---|
-| `/etc/desk/env.local` | The production `.env.local`. Copied into each slot on release. Edit it here, then `systemctl restart desk-web desk-brain`. |
+| `/etc/desk/env.local` | The production `.env.local`. Copied into each slot on release. Edit it here, copy it to `/opt/desk/.env.local`, then `systemctl restart desk-web desk-brain`. It has `AUTH_URL=https://disasterdeck.us`: behind the tunnel Next sees `localhost:3000`, and without it Auth.js sends people to `https://localhost:3000`. |
 | `/opt/desk` | Symlink to the live slot. |
 | `/opt/desk-stage` | Where the workflow uploads (user `deployer`). |
 | `desk-web` | `next start` on `127.0.0.1:3000`, user `desk`. |
@@ -56,6 +56,7 @@ The VM is **IPv6-only**. Vultr gave it `100.68.113.147/18` with no IPv4 default 
 - One Brain per database. The prod VM runs it. Do not start a laptop Brain against the shared Atlas cluster, or the VM's Brain waits on the lease and the board stops moving.
 - `?user=` demo identity must stay refused through the tunnel (`lib/localDemo.ts`). Check `https://disasterdeck.us/api/board?user=coordinator-duty` answers 401 after changes to auth or middleware.
 - A new `NEXT_PUBLIC_*` variable needs a GitHub secret and a line in the Build step of `deploy.yml`.
+- Never remove `AUTH_URL` from the VM's env, and never set it on a laptop (local login would go to the domain).
 - A new server variable goes into `/etc/desk/env.local` on the VM. Tell the person, since only Dan can reach the VM.
 
 ## Debugging
