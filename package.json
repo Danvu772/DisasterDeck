@@ -14,6 +14,7 @@
     "check:tokens": "! grep -rnE \"#[0-9a-fA-F]{3,8}\\b|(bg|text|border|fill|stroke|ring|from|to)-(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone|black|white)\\b\" app components --include=*.ts --include=*.tsx"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "mongodb": "^6.22.0",
     "next": "15.5.4",
     "react": "19.1.0",
