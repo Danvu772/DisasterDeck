@@ -31,7 +31,6 @@ export function Gauge({ point: p, unit }: { point: MetricPoint; unit?: string })
       </div>
       <p aria-hidden className="mt-1 text-xs text-muted">
         <span className="font-mono">{fmtNum(p.value)}</span> of <span className="font-mono">{fmtNum(max)}</span>{u}
-        {p.note ? `, ${p.note}` : ""}
       </p>
     </div>
   );

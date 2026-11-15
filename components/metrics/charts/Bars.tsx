@@ -27,7 +27,6 @@ function Row({ p, unit, index, scale }: { p: MetricPoint; unit?: string; index: 
         {p.max !== undefined && <span aria-hidden> of <span className="font-mono">{fmtNum(p.max)}</span></span>}
         <span aria-hidden>{u}</span>
       </div>
-      {p.note && <p aria-hidden className="col-span-3 text-xs text-muted">{p.note}</p>}
     </li>
   );
 }
