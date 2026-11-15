@@ -1,12 +1,20 @@
 // Smoke test for lib/db.ts. Run: npm run db:check
 // Checks the connection, the indexes, postEvent (dedupe and lanes) and that every read works.
-// It only touches events whose dedupeKey starts with "check:", and deletes them at the end.
+// Everything it writes goes to the throwaway desk "check-db", never to DESK_ID, and the desk's
+// events are deleted at the end, also after a failure.
 import assert from "node:assert/strict";
 import { closeDb, cols, getBoard, getUserContext, postEvent, searchMemory } from "./db";
 
-async function main() {
+const DESK = "check-db";
+
+async function cleanup() {
   const c = await cols();
-  await c.events.deleteMany({ dedupeKey: /^check:/ });
+  await c.events.deleteMany({ deskId: DESK });
+}
+
+async function main() {
+  await cleanup();
+  const c = await cols();
 
   const indexes = (await c.events.indexes()).map((i) => i.name);
   const taskIndexes = (await c.tasks.indexes()).map((i) => i.name);
@@ -18,19 +26,19 @@ async function main() {
 
   // Dedupe: the same key twice gives one event and the same id, even when racing.
   const tweet = {
-    type: "report" as const, source: "x" as const, actor: "db-check", dedupeKey: "check:1",
+    deskId: DESK, type: "report" as const, source: "x" as const, actor: "db-check", dedupeKey: "check:1",
     payload: { kind: "trapped", text: "test", textEn: "test" },
   };
   const [a, b] = await Promise.all([postEvent(tweet), postEvent(tweet)]);
   const again = await postEvent(tweet);
   assert.equal(a, b, "racing duplicates return the same id");
   assert.equal(a, again, "a later duplicate returns the same id");
-  assert.equal(await c.events.countDocuments({ dedupeKey: "check:1" }), 1, "one event stored");
+  assert.equal(await c.events.countDocuments({ deskId: DESK, dedupeKey: "check:1" }), 1, "one event stored");
   console.log("ok  dedupe: one event,", a);
 
   // Lanes: people and the sweeper first, outside sources second.
   const personId = await postEvent({
-    type: "answer", source: "person", actor: "db-check", dedupeKey: "check:2",
+    deskId: DESK, type: "answer", source: "person", actor: "db-check", dedupeKey: "check:2",
     payload: { taskId: "none", result: "accepted" },
   });
   const person = await c.events.findOne({ _id: personId });
@@ -42,9 +50,9 @@ async function main() {
   console.log("ok  lanes: person 0, x 1; status pending");
 
   // Reads work on an empty or seeded database.
-  const board = await getBoard();
+  const board = await getBoard(DESK);
   const ctx = await getUserContext("nobody");
-  const hits = await searchMemory({ collection: "shelters", text: "a" });
+  const hits = await searchMemory({ deskId: DESK, collection: "shelters", text: "a" });
   assert(board.health.pending >= 2, "health counts the pending events");
   assert.equal(ctx.user, null, "unknown user gives null");
   console.log("ok  reads:", {
@@ -54,7 +62,6 @@ async function main() {
     searchHits: hits.length,
   });
 
-  await c.events.deleteMany({ dedupeKey: /^check:/ });
   console.log("\nAll checks passed.");
 }
 
@@ -63,4 +70,7 @@ main()
     console.error("\nFAILED:", err instanceof Error ? err.message : err);
     process.exitCode = 1;
   })
-  .finally(closeDb);
+  .finally(async () => {
+    await cleanup();
+    await closeDb();
+  });
