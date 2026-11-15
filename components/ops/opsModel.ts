@@ -8,6 +8,8 @@ const RESEARCH = new Set(["x", "news", "instagram", "facebook", "reddit", "sheet
 const SOURCE_WORD: Record<string, string> = { x: "X", news: "News", instagram: "IG", facebook: "FB", reddit: "Reddit", sheet: "Sheet" };
 
 // Live desk: every research-agent event becomes one stream line, with what the Brain made of it.
+// Oldest first, like the replay. "merged" is a copy only for a report: a merged shelter, road or
+// need update is still that shelter, road or need (it updated the record the desk already had).
 export function fromEvents(events: Event[]): OpsPost[] {
   return events
     .filter((e) => RESEARCH.has(e.source) && ["report", "need", "closure", "capacity"].includes(e.type))
@@ -17,7 +19,7 @@ export function fromEvents(events: Event[]): OpsPost[] {
       let outcome: Outcome;
       if (e.status === "pending" || e.status === "working") outcome = { kind: "pending" };
       else if (e.status === "rejected" || e.status === "failed") outcome = { kind: "none", why: e.result?.reason ?? "no record" };
-      else if (e.status === "merged") outcome = { kind: "copy", site: record, counted: true };
+      else if (e.status === "merged" && e.type === "report") outcome = { kind: "copy", site: record, counted: true };
       else if (e.type === "report" && p.kind === "rescued") outcome = { kind: "rescued", site: record, people: p.peopleCount ?? 1 };
       else if (e.type === "report") outcome = { kind: "site", site: record, people: p.peopleCount ?? 1 };
       else if (e.type === "need") outcome = { kind: "need", item: (p.item ?? "supplies") as NeedItem, quantity: p.quantity ?? 1, unit: "", lifeThreatening: !!p.lifeThreatening };
@@ -33,7 +35,8 @@ export function fromEvents(events: Event[]): OpsPost[] {
         coords: p.coords,
         outcome,
       };
-    });
+    })
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }
 
 // ---------- One line per post ----------
@@ -95,7 +98,9 @@ export interface OpsSummary {
 
 const NEED_ORDER: NeedItem[] = ["insulin", "blankets", "heaters", "tents", "water", "baby formula", "hot meals", "diesel"];
 
-export function summarize(posts: OpsPost[], quakes: Quake[]): OpsSummary {
+// live: the posts are from today, not from the 2023 scenario, so the hours are the last 12 hours
+// of posts (by local time) and the aftershock row stays empty.
+export function summarize(posts: OpsPost[], quakes: Quake[], { live = false } = {}): OpsSummary {
   const sites = new Map<string, { people: number; open: boolean; district: string }>();
   const needQty = new Map<string, { q: number; unit: string; life: boolean }>();
   const shelters = new Map<string, { used: number; total: number }>();
@@ -145,13 +150,25 @@ export function summarize(posts: OpsPost[], quakes: Quake[]): OpsSummary {
     label, value: s.used, max: s.total, tone: s.used >= s.total * 0.9 ? "warn" : "calm",
   }));
 
-  const lastMin = posts.length ? minutesAfterQuake(posts[posts.length - 1].at) : 0;
-  const hours = Math.max(1, Math.min(12, Math.floor(lastMin / 60) + 1));
-  const perHour = Array.from({ length: hours }, (_, h) => ({
-    label: localTime(new Date(Date.parse(QUAKE_AT) + h * 3_600_000).toISOString()).slice(0, 2),
-    posts: posts.filter((p) => Math.floor(minutesAfterQuake(p.at) / 60) === h).length,
-    quakes: quakes.filter((q) => q.mag >= 5 && Math.floor(minutesAfterQuake(q.time) / 60) === h).length,
-  }));
+  const H = 3_600_000;
+  let perHour: OpsSummary["perHour"];
+  if (live && posts.length) {
+    const end = Math.floor(Date.parse(posts[posts.length - 1].at) / H) * H;
+    const start = Math.max(Math.floor(Date.parse(posts[0].at) / H) * H, end - 11 * H);
+    perHour = Array.from({ length: (end - start) / H + 1 }, (_, h) => ({
+      label: localTime(new Date(start + h * H).toISOString()).slice(0, 2),
+      posts: posts.filter((p) => Math.floor((Date.parse(p.at) - start) / H) === h).length,
+      quakes: 0,
+    }));
+  } else {
+    const lastMin = posts.length ? minutesAfterQuake(posts[posts.length - 1].at) : 0;
+    const hours = Math.max(1, Math.min(12, Math.floor(lastMin / 60) + 1));
+    perHour = Array.from({ length: hours }, (_, h) => ({
+      label: localTime(new Date(Date.parse(QUAKE_AT) + h * H).toISOString()).slice(0, 2),
+      posts: posts.filter((p) => Math.floor(minutesAfterQuake(p.at) / 60) === h).length,
+      quakes: quakes.filter((q) => q.mag >= 5 && Math.floor(minutesAfterQuake(q.time) / 60) === h).length,
+    }));
+  }
 
   return {
     read: posts.length,

@@ -2,6 +2,8 @@
 // /ops: the operations room for whoever runs the desk. Left, every post the research agents read
 // and what the desk made of it. Middle, the map that stream builds, with the real aftershocks.
 // Right, the numbers. Live from GET /api/events when the desk has posts, else the exercise replay.
+// New posts join the top of the list one at a time and push the rest down. A number panel with
+// nothing in it yet (no shelters reported, say) shows the exercise's numbers, marked "Sample".
 import dynamic from "next/dynamic";
 import { useMemo, useState, type ComponentType } from "react";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
@@ -10,12 +12,13 @@ import {
   RotateCcw, Sparkles, TriangleAlert, Users,
 } from "lucide-react";
 import usgs from "../../agents/fixtures/usgs-kahramanmaras-2023.json";
-import { SECOND_QUAKE_MIN, type OpsPost } from "@/fixtures/opsPosts";
+import { makeOpsPosts, SECOND_QUAKE_MIN, type OpsPost } from "@/fixtures/opsPosts";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui";
 import { Bars } from "../metrics/charts/Bars";
+import type { MetricPoint } from "../metrics/types";
 import { Count, useStagger } from "../metrics/charts/motion";
 import { chip, tierBar } from "../encode";
 import {
@@ -75,17 +78,19 @@ function OutcomeBadge({ p }: { p: OpsPost }) {
   );
 }
 
-function PostLine({ p }: { p: OpsPost }) {
+// A new post slides in from above and the list below moves down to make room (layout).
+// The newest one keeps a soft highlight until the next arrives.
+function PostLine({ p, fresh }: { p: OpsPost; fresh: boolean }) {
   const { tier, actNow } = outcomeTier(p.outcome);
   const main = p.textEn || p.text;
   return (
     <motion.li
       layout="position"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0, y: -18 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, transition: { duration: 0.15 } }}
       transition={spring}
-      className="flex gap-3 px-4 py-3"
+      className={cn("flex gap-3 px-4 py-3 transition-colors duration-1000", fresh && "bg-accent")}
     >
       <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${tierBar(tier, actNow)}`} />
       <div className="min-w-0 flex-1 space-y-1.5">
@@ -154,19 +159,26 @@ function PerHour({ rows }: { rows: OpsSummary["perHour"] }) {
   );
 }
 
-function Panel({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
+function Panel({ title, aside, sample, children }: {
+  title: string; aside?: React.ReactNode; sample?: boolean; children: React.ReactNode;
+}) {
   return (
     <article className={cn(card, "p-4")}>
       <header className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{title}</h2>
-        {aside && <span className="text-xs text-muted-foreground">{aside}</span>}
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          {sample && <Badge variant="outline" className="font-normal" title="Nothing reported yet, these are the exercise's numbers">Sample</Badge>}
+          {aside}
+        </span>
       </header>
       {children}
     </article>
   );
 }
 
-const Empty = ({ children }: { children: React.ReactNode }) => <p className="text-sm text-muted-foreground">{children}</p>;
+// A panel's own numbers, or the exercise's when it has nothing above zero yet.
+const orSample = (own: MetricPoint[], sample: MetricPoint[]) =>
+  own.some((p) => p.value > 0) ? { points: own, sample: false } : { points: sample, sample: true };
 
 export function OpsRoom() {
   const feed = useOpsFeed();
@@ -175,7 +187,12 @@ export function OpsRoom() {
   const last = posts[posts.length - 1];
   const lastMs = last ? Date.parse(last.at) : 0;
   const quakes = useMemo(() => QUAKES.filter((q) => Date.parse(q.time) <= lastMs), [lastMs]);
-  const s = useMemo(() => summarize(posts, quakes), [posts, quakes]);
+  const s = useMemo(() => summarize(posts, quakes, { live: feed.isLive }), [posts, quakes, feed.isLive]);
+  // The whole exercise, summed once: what an empty panel shows instead of "None yet".
+  const sample = useMemo(() => summarize(makeOpsPosts(), QUAKES), []);
+  const districts = orSample(s.districts, sample.districts);
+  const needs = orSample(s.needs, sample.needs);
+  const shelters = orSample(s.shelters, sample.shelters);
   const pins = useMemo(() => pinsOf(posts), [posts]);
   const keep = FILTERS.find((f) => f.id === filter)!.keep;
   const listed = posts.filter(keep).slice(-80).reverse();
@@ -213,7 +230,7 @@ export function OpsRoom() {
               <div className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-card px-2.5 text-sm shadow-xs">
                 <Clock aria-hidden className="size-4 text-muted-foreground" />
                 <span className="font-mono font-medium">{localTime(last.at)}</span>
-                <span className="text-muted-foreground">hour <span className="font-mono">{Math.floor(minute / 60) + 1}</span></span>
+                {!feed.isLive && <span className="text-muted-foreground">hour <span className="font-mono">{Math.floor(minute / 60) + 1}</span></span>}
               </div>
             )}
             {!feed.isLive && (
@@ -270,8 +287,10 @@ export function OpsRoom() {
           <Kpi i={6} label="Not a request" value={s.notRequest} icon={CircleSlash} />
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)_minmax(0,22rem)]">
-          <section aria-label="Incoming posts" className={cn(card, "flex max-h-[80vh] min-h-0 flex-col overflow-hidden xl:max-h-none")}>
+        {/* xl: one row exactly as tall as what is left of the screen, so the post list scrolls inside
+            its card instead of stretching the page (it used to leave a tall empty strip below). */}
+        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)_minmax(0,22rem)] xl:grid-rows-[minmax(0,1fr)]">
+          <section aria-label="Incoming posts" className={cn(card, "flex max-h-[80vh] min-h-0 flex-col overflow-hidden xl:h-full xl:max-h-none")}>
             <div className="space-y-3 border-b p-4">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold">Incoming posts</h2>
@@ -286,9 +305,13 @@ export function OpsRoom() {
                 ))}
               </div>
             </div>
-            <ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-live="polite">
+            {/* relative: the posts' screen-reader text (sr-only, position absolute) stays inside this
+                scroll box. Without it, it hung below the page and made the window scroll ~10,000 px. */}
+            {/* keyed by source: when the live desk takes over from the replay, the list starts fresh
+                instead of fading 14 replay posts out above the live ones. */}
+            <ul key={feed.isLive ? "live" : "replay"} className="relative min-h-0 flex-1 divide-y overflow-y-auto" aria-live="polite">
               <AnimatePresence initial={false}>
-                {listed.map((p) => <PostLine key={p.id} p={p} />)}
+                {listed.map((p, i) => <PostLine key={p.id} p={p} fresh={i === 0 && p.id === last?.id} />)}
               </AnimatePresence>
               {!listed.length && <li className="p-6 text-center text-sm text-muted-foreground">No posts here yet.</li>}
             </ul>
@@ -298,21 +321,21 @@ export function OpsRoom() {
             <OpsMap pins={pins} quakes={quakes} freshKey={freshKey} />
           </section>
 
-          <section aria-label="Numbers" className="space-y-4 lg:col-span-2 xl:col-span-1 xl:min-h-0 xl:overflow-y-auto">
+          <section aria-label="Numbers" className="relative space-y-4 lg:col-span-2 xl:col-span-1 xl:h-full xl:min-h-0 xl:overflow-y-auto">
             <Panel title="Posts per hour">
               <PerHour rows={s.perHour} />
             </Panel>
             <Panel title="What the posts became" aside={<><span className="font-mono">{s.read}</span> posts</>}>
               <Bars points={s.byOutcome} />
             </Panel>
-            <Panel title="Still trapped, by district" aside="Open sites">
-              {s.districts.length ? <Bars points={s.districts} unit="people" /> : <Empty>None yet.</Empty>}
+            <Panel title="Still trapped, by district" aside="Open sites" sample={districts.sample}>
+              <Bars points={districts.points} unit="people" />
             </Panel>
-            <Panel title="Needs asked for" aside="Total quantity">
-              {s.needs.length ? <Bars points={s.needs} /> : <Empty>None yet.</Empty>}
+            <Panel title="Needs asked for" aside="Total quantity" sample={needs.sample}>
+              <Bars points={needs.points} />
             </Panel>
-            <Panel title="Shelters" aside="Beds used">
-              {s.shelters.length ? <Bars points={s.shelters} unit="beds" /> : <Empty>None yet.</Empty>}
+            <Panel title="Shelters" aside="Beds used" sample={shelters.sample}>
+              <Bars points={shelters.points} unit="beds" />
             </Panel>
           </section>
         </div>
