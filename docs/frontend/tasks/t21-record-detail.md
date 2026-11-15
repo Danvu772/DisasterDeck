@@ -4,7 +4,7 @@ effort: high
 checkpoint: CP3
 files: components/BoardTabs.tsx, components/BoardCards.tsx, components/RecordCard.tsx, components/TaskCard.tsx (stopPropagation only), components/LiveBoard.tsx, components/map/* , app/map/page.tsx, new components/detail/*
 ---
-# Click any card: all its metadata, pinned on a map
+# Click any card: all its metadata, pinned on a map. One "Incident sites" tab
 
 Dan's request: on the board (`/`, every tab: sites, needs, shelters, roads, incidents, tasks), clicking a card opens everything the desk knows about that record and pinpoints it on a map.
 
@@ -31,3 +31,10 @@ Move the marker drawing (`icon()` and the zone/hatch pieces it needs) out of `De
 Everything comes from the board the page already polls (`LiveBoard`), so the panel works on fixtures and on the live `/api/board` unchanged. Leaflet must load client-side only (`next/dynamic` with `ssr: false`, as `DeskMap.tsx` does).
 
 Accept when: every tab's cards open the panel, a site, a need, a task and the incident each pin the right place, "Near the mosque, Kale" says "No location yet", `/map?focus=site:site-57` opens on that site, and Escape closes the panel.
+
+## Also: merge the Sites and Incidents tabs into one "Incident sites" tab (Dan, 22:05)
+- `BoardTabs` goes from six tabs to five: **Incident sites**, Needs, Shelters, Roads, Tasks.
+- The Incident sites tab lists sites and incidents together, sorted by tier then priority (an incident's tier comes from `severityTier`). An incident whose task points at a site (directly, or through the need it delivers, the same chain `fromBoard` uses) sits directly under that site's card, indented, so a reader sees the problem next to the place. Incidents with no site sit in tier order on their own.
+- The count in brackets is sites plus open incidents. The red act-now count adds both (tier 0 open sites, critical unresolved incidents).
+- Clicking either kind of card opens the detail panel as above. `?open=site:<id>` and `?open=incident:<id>` both work.
+- Do not change `SiteCards` or `IncidentCards` themselves, compose them in the tab.
