@@ -283,7 +283,9 @@ async function main() {
   assert.equal(repl.open, true); assert.deepEqual(repl.tried, [U.volA, second]);
   assert(repl.assignee ? !repl.tried.includes(repl.assignee) : repl.status === "escalated", "the replacement never goes back to someone who tried");
   assert.equal(inc.severity, "high"); assert((inc.caseNo ?? 0) > 0);
-  assert.equal(inc.status, repl.status === "assigned" ? "helping" : "escalated");
+  // helping only when every step found someone: the replacement, and the helper (nobody here has a mechanic skill or a vehicle)
+  const helper = await c.tasks.findOne({ recordType: "incident", recordId: inc._id, type: "assist" });
+  assert.equal(inc.status, repl.status === "assigned" && helper && helper.status !== "escalated" ? "helping" : "escalated");
   for (const coord of [U.coord1, U.coord2]) {
     assert.equal((await c.inbox.countDocuments({ userId: coord, incidentId: inc._id, kind: "incident" })), 1);
   }

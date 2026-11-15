@@ -14,7 +14,7 @@ import { maskPhones } from "../agents/shared/privacy";
 import { cols, getDb } from "../lib/db";
 import { haversineMeters, normalizeAddress, normalizeText, pointInPolygon } from "../lib/geo";
 import { conflictNote, resolveConflict, trustedClash, trustRank, type Stamp } from "../lib/rules/conflict";
-import { HAZARD_KINDS, severity } from "../lib/rules/incidents";
+import { blocks, PLAYBOOK, severity } from "../lib/rules/incidents";
 import { decideReport, type SiteLite } from "../lib/rules/merge";
 import { isTrusted, matchNeed, mergeLines, needStatus } from "../lib/rules/needs";
 import { confidence, scored, siteTier, support, type Voice } from "../lib/rules/priority";
@@ -42,7 +42,7 @@ export interface Change {
   fields: string[];
   /** What the dispatcher should do about it: "notify" (a road changed), "full", "confirm" (shelters),
    * "silent" (a zone), "rescored" (a record got a satellite term). */
-  flags?: ("notify" | "full" | "confirm" | "silent" | "rescored")[];
+  flags?: ("notify" | "full" | "confirm" | "silent" | "rescored" | "resolved")[];
   note?: string;
   /** A need moved to this status (the dispatcher tells the people who asked). */
   toStatus?: Need["status"];
@@ -411,6 +411,9 @@ async function approveEvacuation(event: Event, task: { _id: string; history: His
 
 // ---------- incidents: the help desk (§6) ----------
 
+/** The need a short_supply incident splits off: its id comes from the incident, so a re-run finds it. */
+export const restNeedId = (incidentId: string) => `need-${incidentId.replace(/^inc-/, "")}-rest`;
+
 async function applyIncident(event: Event): Promise<KeeperResult> {
   const parsed = incidentPayload.safeParse(event.payload);
   if (!parsed.success) return reject(`payload is not a valid incident: ${firstIssue(parsed.error)}`);
@@ -423,29 +426,36 @@ async function applyIncident(event: Event): Promise<KeeperResult> {
   if (p.incidentId) {
     const inc = await c.incidents.findOne({ _id: p.incidentId, deskId: event.deskId });
     if (!inc) return reject(`incident ${p.incidentId} not found`);
+    if (hasEvent(inc.history, eventId)) return done([inc._id], "already applied", [], [], "merged");
     const status: Incident["status"] = p.resolved ? "resolved" : inc.status;
+    const freed = p.resolved ? await freePeople(inc) : [];
     await c.incidents.updateOne({ _id: inc._id }, {
       $set: { status, canContinue: p.canContinue },
       $push: {
-        history: historyOf(event, p.resolved ? `resolved: ${textEn}` : `update: ${textEn}`),
-        actions: { ts: now, what: p.resolved ? `${event.actor} says it is over` : `update from ${event.actor}` },
+        history: withEvent(event, p.resolved ? `resolved: ${textEn}` : `update: ${textEn}`),
+        actions: {
+          ts: now,
+          what: p.resolved ? `${event.actor} says it is over${freed.length ? `, ${freed.join(" and ")} available again` : ""}` : `update from ${event.actor}`,
+        },
       },
     });
     return done([inc._id], `incident ${inc._id} ${p.resolved ? "resolved" : "updated"}`,
-      [{ recordType: "incident", recordId: inc._id, op: "updated", eventId, fields: ["status", "history", "actions"] }], [], "merged");
+      [{ recordType: "incident", recordId: inc._id, op: "updated", eventId, fields: ["status", "history", "actions"], ...(p.resolved ? { flags: ["resolved" as const] } : {}) }], [], "merged");
   }
 
+  const plan = PLAYBOOK[p.kind];
   const task = p.taskId ? await c.tasks.findOne({ _id: p.taskId, deskId: event.deskId }) : null;
   const need = task?.recordType === "need" ? await c.needs.findOne({ _id: task.recordId }) : null;
   const me = await c.users.findOne({ _id: event.actor }, { projection: { role: 1 } });
-  // Only the person on the task, a coordinator, or the sweeper (nobody answers) can stop it.
-  const mayBlock = Boolean(task?.open && task.status !== "escalated" && (task.assignee === event.actor || me?.role === "coordinator"
+  // Only the person on the task, a coordinator, or the sweeper (nobody answers) can act on it.
+  const mayAct = Boolean(task?.open && task.status !== "escalated" && (task.assignee === event.actor || me?.role === "coordinator"
     || (event.actor === "sweeper" && event.source === "system")));
-  const block = mayBlock && !p.canContinue;
+  const block = mayAct && blocks(p.kind, p.canContinue);
 
   const id = `inc-${eventId}`;
   const changes: Change[] = [];
-  if (!(await c.incidents.findOne({ _id: id }, { projection: { _id: 1 } }))) {
+  const fresh = !(await c.incidents.findOne({ _id: id }, { projection: { _id: 1 } }));
+  if (fresh) {
     const incident: Incident = {
       _id: id, deskId: event.deskId, kind: p.kind, reportedBy: event.actor,
       ...(p.taskId ? { taskId: p.taskId } : {}),
@@ -458,23 +468,133 @@ async function applyIncident(event: Event): Promise<KeeperResult> {
           + (p.taskId && !task ? `, task ${p.taskId} not found` : ""),
         ...(p.taskId ? { taskId: p.taskId } : {}),
       }],
-      history: [historyOf(event, textEn)],
+      history: [withEvent(event, textEn)],
       caseNo: await nextCaseNo(event.deskId),
     };
     await insertOnce(() => c.incidents.insertOne(incident));
   }
   changes.push({ recordType: "incident", recordId: id, op: "created", eventId, fields: ["status", "severity", "taskId"] });
 
-  if (task && HAZARD_KINDS.includes(p.kind) && task.recordType === "site") {
-    changes.push(...await moveSite(event, task.recordId, {}, { hazard: textEn }, `hazard: ${p.kind}`));
-  }
-  if (block && need) {
-    // What did not arrive goes back to open. The dispatcher's replacement takes it from there.
-    changes.push(...await moveNeed(event, need._id, ["assigned", "on_the_way"], { status: "open" }, `back to open: incident ${id}`));
+  // The record side effects run once, for the event that opened the incident (a re-run adds nothing).
+  if (fresh) {
+    const step = (what: string, taskId?: string) =>
+      c.incidents.updateOne({ _id: id }, { $push: { actions: { ts: new Date(), what, ...(taskId ? { taskId } : {}) } } });
+    if (task && plan.hazard && task.recordType === "site") {
+      changes.push(...await moveSite(event, task.recordId, {}, { hazard: textEn }, `hazard: ${p.kind}`));
+      await step(`site flagged as a hazard: ${textEn}`);
+    } else if (task && plan.hazard && need?.siteIds[0]) {
+      changes.push(...await moveSite(event, need.siteIds[0], {}, { hazard: textEn }, `hazard: ${p.kind}`));
+      await step(`site flagged as a hazard: ${textEn}`);
+    }
+    if (block && need && plan.reopenNeed) {
+      // What did not arrive goes back to open. The dispatcher's replacement takes it from there.
+      changes.push(...await moveNeed(event, need._id, ["assigned", "on_the_way"], { status: "open" }, `back to open: incident ${id}`));
+    }
+    if (block && plan.busy) {
+      const who = await setBusy([event.actor, task?.assignee]);
+      if (who.length) await step(`${who.join(" and ")} marked busy until the problem is over`);
+    }
+    if (mayAct && plan.splitNeed && need && p.canDeliver !== undefined && p.canDeliver < need.quantity) {
+      changes.push(...await splitNeed(event, id, need, p.canDeliver, step));
+    }
+    if (plan.verifySite && task?.recordType === "site") {
+      changes.push(...await verifyAgain(event, id, task.recordId, textEn, step));
+    }
+    if (plan.closure) changes.push(...await closeRoad(event, id, p, textEn, step));
   }
   return done([id, ...(task ? [task._id] : [])],
     `incident ${id} opened (${p.kind})${block ? `, task ${task!._id} blocked` : ""}`, changes,
     block ? [{ kind: "block", taskId: task!._id, by: event.actor, incidentId: id, reason: `${p.kind.replace(/_/g, " ")}: ${textEn}` }] : []);
+}
+
+/**
+ * Users are written by the app's API, and there is no clean call from here, so these two small
+ * writes (busy, available again) live next to the incident and touch only `status`. Only a person
+ * who is "available" becomes busy, and only a "busy" one is freed: offline stays offline.
+ */
+async function setBusy(ids: (string | undefined)[]): Promise<string[]> {
+  const { users } = await cols();
+  const list = [...new Set(ids.filter((i): i is string => Boolean(i) && i !== "sweeper"))];
+  const mine = await users.find({ _id: { $in: list }, status: "available" }, { projection: { _id: 1 } }).toArray();
+  if (!mine.length) return [];
+  await users.updateMany({ _id: { $in: mine.map((u) => u._id) }, status: "available" }, { $set: { status: "busy" } });
+  return mine.map((u) => u._id);
+}
+
+/** Resolved: the reporter and the blocked task's assignee are free again, if they were busy. */
+async function freePeople(inc: Incident): Promise<string[]> {
+  const { users, tasks } = await cols();
+  const assignee = inc.taskId ? (await tasks.findOne({ _id: inc.taskId }, { projection: { assignee: 1 } }))?.assignee : undefined;
+  const list = [...new Set([inc.reportedBy, assignee].filter((i): i is string => Boolean(i) && i !== "sweeper"))];
+  const busy = await users.find({ _id: { $in: list }, deskId: inc.deskId, status: "busy" }, { projection: { _id: 1 } }).toArray();
+  if (!busy.length) return [];
+  await users.updateMany({ _id: { $in: busy.map((u) => u._id) }, status: "busy" }, { $set: { status: "available" } });
+  return busy.map((u) => u._id);
+}
+
+/** short_supply: the reported amount stays on the need, the rest becomes its own open need. */
+async function splitNeed(event: Event, incidentId: string, need: Need, canDeliver: number, step: (what: string) => Promise<unknown>): Promise<Change[]> {
+  const c = await cols();
+  const restId = restNeedId(incidentId);
+  if (await c.needs.findOne({ _id: restId }, { projection: { _id: 1 } })) return [];
+  const rest = need.quantity - canDeliver;
+  // The last lines give up their quantity first.
+  const keep = need.lines.map((l) => ({ ...l }));
+  const moved: Need["lines"] = [];
+  let left = rest;
+  for (let i = keep.length - 1; i >= 0 && left > 0; i--) {
+    const take = Math.min(keep[i].quantity, left);
+    keep[i].quantity -= take; left -= take;
+    moved.unshift({ ...(keep[i].siteId ? { siteId: keep[i].siteId } : {}), quantity: take });
+  }
+  const kept = keep.filter((l) => l.quantity > 0);
+  const now = new Date();
+  const sites = [...new Set(moved.map((l) => l.siteId).filter((s): s is string => Boolean(s)))];
+  const second: Need = {
+    _id: restId, item: need.item, quantity: rest, region: need.region, siteIds: sites.length ? sites : need.siteIds,
+    status: "open", history: [{ ...historyOf(event, `the rest of ${need.item} (${rest}) from ${need._id}: the first supplier can bring ${canDeliver}, incident ${incidentId}`), ts: now }],
+    deskId: need.deskId, confidence: need.confidence, lifeThreatening: need.lifeThreatening, lines: moved,
+    tier: need.tier, priority: need.priority, support: need.support, requestedBy: [],
+    ...(need.scoreParts ? { scoreParts: need.scoreParts } : {}), caseNo: await nextCaseNo(event.deskId),
+  };
+  await insertOnce(() => c.needs.insertOne(second));
+  await c.needs.updateOne({ _id: need._id }, {
+    $set: { quantity: canDeliver, lines: kept },
+    $push: { history: historyOf(event, `only ${canDeliver} of ${need.quantity} will come, the other ${rest} are need ${restId}`) },
+  });
+  await step(`${canDeliver} of ${need.quantity} ${need.item} continue, the other ${rest} are a new open need`);
+  return [
+    { recordType: "need", recordId: need._id, op: "updated", eventId: event._id!, fields: ["quantity", "lines", "history"] },
+    { recordType: "need", recordId: restId, op: "created", eventId: event._id!, fields: ["status", "quantity", "lines"] },
+  ];
+}
+
+/** cannot_find: the site goes back to "not called", unless it already failed once before (a coordinator decides). */
+async function verifyAgain(event: Event, incidentId: string, siteId: string, text: string, step: (what: string) => Promise<unknown>): Promise<Change[]> {
+  const c = await cols();
+  const atSite = (await c.tasks.find({ deskId: event.deskId, recordId: siteId }, { projection: { _id: 1 } }).toArray()).map((t) => t._id);
+  const before = await c.incidents.countDocuments({ deskId: event.deskId, kind: "cannot_find", _id: { $ne: incidentId }, taskId: { $in: atSite } });
+  if (before > 0) {
+    await step("second time the address could not be found: it needs a coordinator");
+    return [];
+  }
+  const changes = await moveSite(event, siteId, {}, { callStatus: "not_called" }, `address not found, to be verified by phone again: ${text}`);
+  await step("site back to not called: a volunteer verifies the address by phone");
+  return changes;
+}
+
+/** road_blocked: an unconfirmed closure on that road, through the same path as a closure event. */
+async function closeRoad(event: Event, incidentId: string, p: z.infer<typeof incidentPayload>, text: string, step: (what: string) => Promise<unknown>): Promise<Change[]> {
+  const named = text.match(/\b(?:on|at|near)\s+((?:[A-Z][\w'-]*\s?)+)/)?.[1]?.trim();
+  const road = named ?? (p.coords ? `Road near ${p.coords[0].toFixed(3)}, ${p.coords[1].toFixed(3)}` : undefined);
+  if (!road) return [];
+  const res = await applyClosure({
+    ...event, type: "closure", source: event.source === "person" ? "person" : event.source,
+    payload: { road, state: "unconfirmed", reason: text, ...(p.coords ? { coords: p.coords } : {}) },
+  });
+  if (res.status === "rejected") return [];
+  await step(`unconfirmed closure recorded on ${road}`);
+  return res.changes;
 }
 
 // ---------- needs: one need per item and place (§5, §8.2, §8.7) ----------
@@ -954,6 +1074,20 @@ export async function noteIncidentOutcome(incidentId: string, status: "helping" 
     $set: { status },
     $push: { actions: { ts: new Date(), what, ...(taskId ? { taskId } : {}) } },
   });
+}
+
+/** One line of what the desk did about an incident. The same line is written once (a re-run adds nothing). */
+export async function noteIncidentStep(incidentId: string, what: string, taskId?: string): Promise<void> {
+  const { incidents } = await cols();
+  await incidents.updateOne({ _id: incidentId, "actions.what": { $ne: what } }, {
+    $push: { actions: { ts: new Date(), what, ...(taskId ? { taskId } : {}) } },
+  });
+}
+
+/** The playbook is done: helping when every step found someone, else escalated. Only moves an open incident. */
+export async function setIncidentStatus(incidentId: string, status: "helping" | "escalated"): Promise<void> {
+  const { incidents } = await cols();
+  await incidents.updateOne({ _id: incidentId, status: "open" }, { $set: { status } });
 }
 
 /**
