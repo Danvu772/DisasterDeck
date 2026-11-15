@@ -8,6 +8,9 @@ import type {
   AnswerPayload, ApprovalPayload, CapacityPayload, ClaimPayload, ClosurePayload, CorrectionPayload,
   IncidentKind, IncidentPayload, NeedPayload, RecordType, ReportPayload, Role,
 } from "@/lib/types";
+import { deskNow, observeBoard } from "@/components/clock";
+import { METRIC_IDS, metric } from "@/components/metrics/registry";
+import type { MetricId } from "@/components/metrics/types";
 import { desk, type NewEvent, type UserContext } from "../desk";
 import { askDesk, topicsFor, type Topic } from "../desk/view";
 import { maskPhones } from "../shared/privacy";
@@ -134,14 +137,22 @@ const DEFS: Record<string, Tool> = {
     description: "Coordinator only. Write the shift handoff note for whoever takes over: what was done, what is open, what is stuck.",
     input_schema: obj({}),
   },
+  visualize_metric: {
+    name: "visualize_metric",
+    description: "Show a chart on the person's screen. Call it whenever they ask something quantitative about the desk: how many, how full, how fast, how fresh, how sure, how far, or a status report. At most 2 per turn. It returns the chart's headline, basis, source and status. Do not repeat those numbers in long form: one sentence is enough, the chart carries the rest.",
+    input_schema: obj({
+      metric: { type: "string", enum: METRIC_IDS },
+      why: { ...str, description: "One short line: what the person asked that this chart answers." },
+    }),
+  },
 };
 
 const ROLE_TOOLS: Record<Role, string[]> = {
-  volunteer: ["ask_desk", "answer_task", "file_need", "file_report", "file_closure", "report_problem", "declare_work", "correct_record"],
-  field: ["ask_desk", "answer_task", "file_need", "file_report", "file_closure", "report_problem", "declare_work", "correct_record"],
-  supplier: ["ask_desk", "answer_task", "file_need", "file_closure", "report_problem", "declare_work"],
-  shelter: ["ask_desk", "answer_task", "file_need", "file_report", "file_capacity", "report_problem", "correct_record"],
-  coordinator: ["ask_desk", "decide_approval", "shift_handoff", "file_report", "file_closure", "file_need", "correct_record"],
+  volunteer: ["ask_desk", "answer_task", "file_need", "file_report", "file_closure", "report_problem", "declare_work", "correct_record", "visualize_metric"],
+  field: ["ask_desk", "answer_task", "file_need", "file_report", "file_closure", "report_problem", "declare_work", "correct_record", "visualize_metric"],
+  supplier: ["ask_desk", "answer_task", "file_need", "file_closure", "report_problem", "declare_work", "visualize_metric"],
+  shelter: ["ask_desk", "answer_task", "file_need", "file_report", "file_capacity", "report_problem", "correct_record", "visualize_metric"],
+  coordinator: ["ask_desk", "decide_approval", "shift_handoff", "file_report", "file_closure", "file_need", "correct_record", "visualize_metric"],
   public: ["ask_desk", "file_need", "file_report", "file_closure"],
 };
 
@@ -156,7 +167,7 @@ export function toolsFor(ctx: UserContext): Anthropic.Beta.BetaToolUnion[] {
   return tools;
 }
 
-export interface ToolOutcome { content: string; eventId?: string; isError?: boolean; summary?: string }
+export interface ToolOutcome { content: string; eventId?: string; isError?: boolean; summary?: string; showMetric?: MetricId }
 
 class ToolInputError extends Error {}
 
@@ -301,6 +312,19 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       const note = await writeHandoff(u.deskId, ctx.now);
       if (!note.ok) return { content: note.text, isError: true, summary: "Handoff failed" };
       return { content: note.text, summary: "Handoff written" };
+    }
+
+    case "visualize_metric": {
+      const id = s(i.metric) as MetricId;
+      if (!METRIC_IDS.includes(id)) throw new ToolInputError(`Unknown metric. Allowed: ${METRIC_IDS.join(", ")}.`);
+      // The same engine the chart runs in the browser, on the same board, so the reply matches the chart.
+      const d = desk();
+      const [board, events, users] = await Promise.all([d.getBoard(u.deskId), d.recentEvents(u.deskId, 60), d.listUsers()]);
+      observeBoard(board);
+      const r = metric(id, { board, events, users, now: deskNow() });
+      const status = r.status === "unknown" ? `unknown: ${r.unknownReason ?? "no data"}` : r.status;
+      return { content: `Chart shown: ${r.title}. ${r.headline} Status ${status}. Basis: ${r.basis}. Source: ${r.source.name}.`,
+        summary: `Chart: ${r.title}`, showMetric: id };
     }
   }
   return { content: `Unknown tool ${name}.`, isError: true };

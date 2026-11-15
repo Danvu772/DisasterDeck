@@ -180,8 +180,11 @@ export function buildSpec() {
               type: "array",
               items: {
                 type: "object",
-                properties: { tool: { type: "string" }, summary: { type: "string" }, ok: { type: "boolean" } },
+                properties: { tool: { type: "string" }, summary: { type: "string" }, ok: { type: "boolean" },
+                  type: { type: "string", enum: ["show_metric"], description: "Optional. Set on visualize_metric calls: the screen shows the chart named by id" },
+                  id: { type: "string", description: "Optional, with type show_metric: the MetricId to chart (components/metrics/types.ts)" } },
               },
+              description: "What the agent filed this turn, one entry per tool call. visualize_metric entries also carry type \"show_metric\" and id",
             },
             model: { type: "string" },
           },

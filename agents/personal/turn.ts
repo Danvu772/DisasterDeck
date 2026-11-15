@@ -24,7 +24,8 @@ export interface TurnInput {
 export interface TurnResult {
   reply: string;
   eventIds: string[];
-  actions: { tool: string; summary: string; ok: boolean }[];   // for the screen: what the agent filed
+  // For the screen: what the agent filed, and the charts it asked for (type "show_metric", id).
+  actions: { tool: string; summary: string; ok: boolean; type?: "show_metric"; id?: string }[];
   model?: string;
 }
 
@@ -102,7 +103,8 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
         const out = await runTool(c.name, (c.input ?? {}) as Record<string, unknown>, ctx)
           .catch((e: Error) => ({ content: `Tool failed: ${e.message}`, isError: true, eventId: undefined, summary: undefined }));
         if (out.eventId) eventIds.push(out.eventId);
-        if (c.name !== "ask_desk") actions.push({ tool: c.name, summary: out.summary ?? out.content.slice(0, 120), ok: !out.isError });
+        if (c.name !== "ask_desk") actions.push({ tool: c.name, summary: out.summary ?? out.content.slice(0, 120), ok: !out.isError,
+          ...("showMetric" in out && out.showMetric ? { type: "show_metric" as const, id: out.showMetric } : {}) });
         return { type: "tool_result", tool_use_id: c.id, content: out.content, is_error: out.isError || undefined };
       }));
       messages.push({ role: "user", content: results });
