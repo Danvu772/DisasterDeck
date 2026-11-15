@@ -52,6 +52,8 @@ The VM is **IPv6-only**. Vultr gave it `100.68.113.147/18` with no IPv4 default 
 
 ## Rules for agents
 
+- An empty board on the live site with a working login usually means `DESK_ID` names a desk with no data. `live-api-check.mjs` shows both sides. On 15 Nov 2026 all data was under `malatya-2023`, while the code's default pilot (`data/pilot.json`) is `antakya-2023`.
+
 - Do not push to `prod` unless the person asks.
 - One Brain per database. The prod VM runs it. Do not start a laptop Brain against the shared Atlas cluster, or the VM's Brain waits on the lease and the board stops moving.
 - `?user=` demo identity must stay refused through the tunnel (`lib/localDemo.ts`). Check `https://disasterdeck.us/api/board?user=coordinator-duty` answers 401 after changes to auth or middleware.
@@ -70,6 +72,7 @@ journalctl -u desk-brain -n 50 --no-pager
 journalctl -u desk-tunnel -n 50 --no-pager
 curl -4 -s https://www.cloudflare.com/cdn-cgi/trace | grep -E 'colo|warp'   # on the VM: IPv4 through WARP
 curl -s http://127.0.0.1:3000/api/health         # on the VM: database and Brain loop
+cd /opt/desk && sudo -u desk -H node --env-file=.env.local deploy/vultr/live-api-check.mjs   # on the VM: database counts vs the live API
 ```
 
 `deploy/vultr/vultr-console.sh` and `netcheck.sh` are for rebuilding the VM from the Vultr web console. `setup.sh`, `deploy.sh` and the `desk-deploy` timer are an older pull-based design and are not installed.
