@@ -58,7 +58,7 @@ export function ApprovalCard({ item, now, userId, people }: {
         About: {about.found ? about.name : `${about.name}, not on the board`}
       </p>
       <p className="mt-1 text-xs text-muted">
-        Waiting {waited} min
+        Waiting <span className="font-mono">{waited} min</span>
         {overdue && <span className="ml-1 font-bold text-act">Waiting too long</span>}
       </p>
       <div className="mt-2 flex flex-wrap gap-2">

@@ -59,6 +59,15 @@ export function aboutRecord(b: CoordinatorSource, t: Task): About {
   return { name: t.recordId, confidence: "unconfirmed", at: fallback, found: false };
 }
 
+// Low-risk work the dispatcher gave to someone without asking: open, has an owner, newest first.
+export function handedOut(b: CoordinatorSource, limit = 5) {
+  return (b.tasks ?? [])
+    .filter((t) => t.open && t.assignee && t.risk === "low")
+    .map((task) => ({ task, at: task.history.at(-1)?.ts ?? task.deadline }))
+    .sort((x, y) => +new Date(y.at) - +new Date(x.at))
+    .slice(0, limit);
+}
+
 export function fromBoard(b: CoordinatorSource) {
   const tasks = b.tasks ?? [];
   const approvals = tasks
