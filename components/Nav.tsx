@@ -14,6 +14,8 @@ const LINKS = [
 
 export function Nav({ account }: { account?: React.ReactNode }) {
   const path = usePathname();
+  // The redesign under /v2 draws its own header.
+  if (path.startsWith("/v2")) return null;
   return (
     <nav className="flex shrink-0 items-baseline gap-4 border-b border-line bg-card px-4 py-2 text-sm">
       <Link href="/" className="shrink-0 font-bold">Disaster Desk</Link>
