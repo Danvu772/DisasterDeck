@@ -31,3 +31,12 @@ Dan: "I need map modality. When I ask geographical locations I need you to handl
 - **Agent action:** the reply may carry `{ type: "show_map", kinds, ids?, text? }` (task t52 adds the agent tool). Handle it like `show_metric`: late open straight to the map card.
 - History chips work for map cards too ("Shelters on map, 02:45").
 - Extend the check script: "give me location of all shelters" (location, kinds [shelter]), "where is Örnek St. 12" (location, site, text), "nearest shelter" (location, near me), "show closed roads on the map" (location, road, closed), "harita barınaklar" (location, shelter).
+
+## Change (Dan, 02:50): the stage lives below the chat box
+"Animation for quantitative metrics should open below the chatbox. That space becomes the animation stage. But only activate it when first queried."
+
+- **Placement:** the chart and map space is no longer a column beside the chat (t42's slide-in from the right, and the bottom sheet on phones). It is a stage **directly below the chat box** (under the message input), the full width of the chat column. On a phone it sits under the chat input too, no sheet.
+- **Activation:** nothing is rendered there until the first ask that `classifyAsk` (or an agent `show_metric` / `show_map` action) marks for the stage. That first time, the stage opens with motion (it grows open downward, about 250 ms ease-out, reduced motion: appears at once) and the page scrolls just enough to show it.
+- **After that it stays:** the stage remains open as the place where every later chart or map card animates in. Asks that are not quantitative and not location leave it as it is (the last cards stay, frozen at their values). Close collapses it, and the next qualifying ask opens it again.
+- The chat column keeps its full width at all times (the old "chat gets narrower" behaviour goes away). The text answer stays in the chat box, as before.
+- History chips sit at the top of the stage.
