@@ -1,0 +1,36 @@
+{
+  "_comment": "Edit this file to change what the UI critic looks at. Routes, references and the round limit live here only.",
+  "app": {
+    "baseUrl": "http://localhost:3123",
+    "launchName": "talk-check",
+    "_launchNote": "If nothing answers at baseUrl, start the server with preview_start {name: launchName} from .claude/launch.json and use its port."
+  },
+  "maxRounds": 3,
+  "stopWhen": "no high-severity findings",
+  "reportDir": "docs/ui-critic",
+  "models": { "critic": "opus", "fixer": "sonnet" },
+  "references": [
+    {
+      "id": "watchduty",
+      "name": "Watch Duty",
+      "url": "https://app.watchduty.org",
+      "lookAt": "Live incident map with a side list: per-incident status, age, size and containment on one card; icon-coded severity; mobile-first layout; calm map styling with strong markers.",
+      "fits": ["map", "field", "coordinator"]
+    },
+    {
+      "id": "hotosm",
+      "name": "HOT Tasking Manager",
+      "url": "https://tasks.hotosm.org/explore",
+      "lookAt": "Volunteer task cards: difficulty, progress bar, contributor count, priority tag; clear filter bar; how a person picks and claims a task.",
+      "fits": ["volunteer", "coordinator"]
+    }
+  ],
+  "routes": [
+    { "screen": "desk",        "path": "/",                                  "viewport": "desktop", "compareWith": ["watchduty", "hotosm"] },
+    { "screen": "coordinator", "path": "/coordinator?user=coordinator-duty", "viewport": "desktop", "compareWith": ["watchduty", "hotosm"] },
+    { "screen": "map",         "path": "/map",                               "viewport": "desktop", "compareWith": ["watchduty"] },
+    { "screen": "field",       "path": "/field?user=field-alpha",            "viewport": "mobile",  "compareWith": ["watchduty"] },
+    { "screen": "volunteer",   "path": "/agent?user=volunteer-callback",     "viewport": "desktop", "compareWith": ["hotosm"] },
+    { "screen": "talk",        "path": "/talk",                              "viewport": "desktop", "compareWith": [] }
+  ]
+}
