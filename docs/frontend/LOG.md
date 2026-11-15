@@ -2,6 +2,13 @@
 
 Newest first. One entry per merge, plus anything a teammate should know. Times are EST, Saturday 14 Nov.
 
+### 21:25 t06, t07, t09 merged (`7411dc7`, `ce98454`, `1030ef1`)
+- **t06 `/coordinator`** (opus, $1.26, 2.7 min). Approvals sorted by deadline, red with "Waiting too long" when overdue. Approve, Modify, Reject. Modify picks a person but posts nothing yet (needs Role 1). Escalated tasks list who was tried. Open problems, critical first.
+- **t07 `/field`** (opus, $1.57, 4 min). One task per screen, On our way (10, 20, 30, 60 min), Arrived, Done, red Problem. An offline outbox in `localStorage` with `dedupeKey`, retried every 10 s. Hold to talk records and posts audio, but `/api/chat` can't listen yet. Arrived posts `accepted` with ETA 0 and the note "Arrived", because the answer schema has no arrived value.
+- **t09** Yeni Cami ring on `/map`: "Independent check: Yeni Cami collapsed, 6 Feb 2023 (DHA). ARIA overlay covers 98% of its 500 m cell." Hover only, so not on touch.
+
+What the workers found: the fixture people (`zeynep`, `team-4`) are not the seed people (`volunteer-callback`, `field-alpha`), so every screen would lose its tasks the moment `/api/board` answers. That is t16. The nav overflows on a phone, that is t15.
+
 ### 21:20 t01, t02, t08 merged (`3765df2`, `28009e7`, and the map commit)
 - **t01** `/` polls `GET /api/board` through `LiveBoard`, says "Demo data" until the route answers. The health line shows failed events when there are any.
 - **t02** Accept, Decline, Done, Problem post real events to `POST /api/events?user=`. Problem asks which kind first (Vehicle, Road blocked, Can't find it, Other) and adds the browser position when it gets one within 3 s. The card says "Sent" or the server's own error. When the desk is offline, the screen still updates locally and says so.
