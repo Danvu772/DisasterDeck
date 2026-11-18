@@ -233,10 +233,24 @@
       "passes": false
     },
     {
-      "id": "UI-1",
+      "id": "UI-1a",
       "section": "§6 D-0001",
-      "requirement": "Screens use USWDS components and pass axe with no serious or critical violations",
-      "check": "axe run in CI on every screen",
+      "requirement": "The shell (header, nav, footer, skip link) and /login use USWDS components and pass axe with no serious or critical violations, in light and dark mode",
+      "check": "e2e test:a11y on a production build, in CI",
+      "passes": false
+    },
+    {
+      "id": "UI-1b",
+      "section": "§6 D-0001",
+      "requirement": "Every product screen passes full-page axe with no serious or critical violations, in light and dark mode",
+      "check": "e2e full-page axe on /, /field, /talk, /coordinator, /map, /ops in both themes, in CI",
+      "passes": false
+    },
+    {
+      "id": "UI-3",
+      "section": "§6 D-0001, §2.5",
+      "requirement": "A shell or theme change never makes an existing screen less accessible than main, in either theme",
+      "check": "Full-page axe serious/critical counts per screen and theme are no higher than main's baseline (ratchet), in CI",
       "passes": false
     },
     {
