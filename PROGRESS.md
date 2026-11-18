@@ -19,9 +19,9 @@ Current state, so any agent or person can pick up. The orchestrator updates this
 
 Ready to build (unblocked):
 
-- #39 vision model: describe photos into text behind the LLM port (D-0016, PHO-1)
-- #12 identity (Cognito federation, no-login reports, roles in db) — was blocked on #6
-- #14 voice port (dictation, Transcribe, Polly) — was blocked on #6
+- #39 vision model: describe photos into text behind the LLM port (D-0016, PHO-1) — PR #42 open, model id provisional `nvidia/nemotron-3.5-super-vl`, needs Dan's confirm + evaluator
+- #12 identity (Cognito federation, no-login reports, roles in db) — was blocked on #6; staged in `.worktrees/12`, no owner yet
+- #14 voice port (dictation, Transcribe, Polly) — was blocked on #6; in flight (uncommitted `agents/shared/voice/` in root worktree on `feat/39-vision-model`)
 - #16 USWDS field phone + Talk — blocked on #15 (done) + #14 (open)
 
 Blocked / needs Dan:
@@ -29,7 +29,7 @@ Blocked / needs Dan:
 - #7 deploy to AWS with OIDC — unblocked by #4/#6, but needs the AWS account + ECR + OIDC role actually provisioned
 - #13 audit log — blocked on #12
 - #19 IU tabletop — blocked on #12, #16, #18 (18 done)
-- #22 photos — decision locked (option 2); build is #39
+- #22 photos — decision locked (option 2); build is #39. Issue still OPEN on GitHub, close it.
 
 ## Done (history)
 
