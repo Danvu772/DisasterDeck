@@ -2,21 +2,33 @@
 
 Current state, so any agent or person can pick up. The orchestrator updates this at the end of every session.
 
-**Phase:** Design. `docs/SYSTEM_DESIGN.md` v3 is in PR #2. It locks when Dan merges it.
+**Phase:** Build. The design is locked (`docs/SYSTEM_DESIGN.md` v3.1, decisions D-0001 to D-0015). The build is cut into issues on the fork, in dependency order.
 
 ## Waiting on Dan
 
-- Merge PR #2 (design v3) and PR #3 (this workflow).
-- Pick the 9 open calls under "Decide next" in the DisasterDeck HQ doc's Your Desk tab: the web search provider plus `SYSTEM_DESIGN.md` §8 items 2 to 7.
-- Turn on Issues for the fork (Settings → General → Features) and branch protection on `main` (Settings → Branches). Agents can't change repo settings.
+- #4: turn on Actions and branch protection, delete merged branches. Agents can't change repo settings.
+- #5: open the AWS account, create your Atlas cluster, get an OpenRouter key. #6, #8 and #12 wait on it.
 
-## Next for the orchestrator
+## Build order (issues on the fork)
 
-1. Write each of Dan's §8 picks as a decision record and update the design, in one `design/` PR.
-2. Write the requirements into `tests/requirements.json` from the locked design.
-3. Cut the design into vertical-slice issues in dependency order, starting with D-0002 (AWS infrastructure as code) and D-0003 (model adapter), since most other work sits on them.
+| Wave | Issues | Can start |
+|---|---|---|
+| 1 | #9 model adapter | Now (build on fixtures; live test needs #5) |
+| 1 | #15 USWDS foundation, #11 Mongo checks in CI | After #4 |
+| 1 | #6 AWS infrastructure, #8 Atlas cluster | After #5 |
+| 2 | #10 official feeds, #7 deploy via OIDC, #12 identity, #14 voice | After #9, #4 + #6, #6, #6 |
+| 3 | #13 audit log, #16 field + Talk, #17 coordinator, #18 desk + map + ops | After #12, #15 + #14, #15, #15 |
+| 4 | #19 IU tabletop end to end | After #10, #12, #16, #17, #18 |
+
+Parallel builders only on issues whose files don't overlap (#9 and #15 don't).
+
+## In flight
+
+- #21 (#9 model adapter): evaluator says MERGE after #20, round 3 of 3. LLM-1's live half and LLM-3b wait on #23.
+- #24 (#15 USWDS foundation): failed round 1 on dark mode; builder on round 2.
+- #22: photos, Dan's decision. #23: live model check, blocked on #5.
 
 ## Done
 
-- 17 Nov: system design v3, decision records D-0001 to D-0008, fork made the tracker (PR #2).
-- 17 Nov: Dan's workflow added: `AGENTS.md`, skill, `PROGRESS.md`, requirements file, PR template.
+- 17 Nov: system design v3 and D-0001 to D-0008 (#2); Dan's workflow in the repo (#3); planning snapshot (#1).
+- 17 Nov: the seven open calls decided as D-0009 to D-0015; design v3.1; requirement IDs for the whole build; issues cut.

@@ -32,6 +32,7 @@ An issue is done when all of these hold, with evidence in the PR:
 2. **Tests first** from the requirement IDs.
 3. **Build** on `feat/<issue#>-slug` (or `fix/`, `design/`, `chore/`) in its own git worktree until the tests pass.
 4. **Evaluate.** A different agent gets the issue, the design section, the requirement IDs, the diff and the runnable checks, **never the builder's chat**. It answers PASS, FAIL or UNKNOWN per requirement, with evidence, and checks the claims in the PR description.
+   When the evaluator's check critique leads the orchestrator to tighten a requirement, the orchestrator puts the new requirement text in the builder's next handoff. A builder is never graded against wording it hasn't seen (learned on #21, which lost a round to this).
 5. **Merge.** Rebase on `main`, rerun checks, squash merge, delete the branch. The merge closes the issue.
 
 **Loop cap:** three failed evaluations on one issue → stop. The builder hands the orchestrator all three rounds of findings. The orchestrator re-scopes the issue or opens a `design` issue.
