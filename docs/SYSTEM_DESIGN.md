@@ -5,7 +5,7 @@
 | Version | 3.1, 17 Nov 2026 (v3 plus D-0009 to D-0015: every open call decided) |
 | Status | **Locked.** v3 merged 17 Nov (#2). Dan is the only voter |
 | Owner | Dan Vu. He owns the fork and decides alone |
-| Replaces | `docs/Multiplayer Disaster Deck/Final system design.md` (v2, 14 Nov), which is kept as the hackathon record |
+| Replaces | Multiplayer Disaster Deck v2 (14 Nov) |
 | Built state checked against | `main` @ `9d1ca24` |
 | Whiteboard | [Planned vs built](https://claude.ai/artifact/L5faK5xgBt6R3Tz5k9P7eJ) |
 
@@ -65,7 +65,7 @@ Status: **built** = works as designed in v2. **changed** = built, but differs fr
 | Event queue | `events` collection, `postEvent()` in `lib/db.ts` | built | Lane 0 (people, sweeper) before lane 1 (sources), oldest first. Unique `dedupeKey`. `lockedAt`, 3 attempts, then `failed` |
 | Brain loop | `workers/brain.ts` | built | Take one event → keeper → dispatcher. Sweeper every 5 s |
 | Brain lease | `acquireLease()` in `workers/brain.ts` | added | 15 s lease in `meta`. One Brain per database |
-| Memory keeper | `workers/memory-keeper.ts` | built | Handles all 11 event types (`HANDLED`). `docs/ARCHITECTURE.md` still says 6: that line is out of date |
+| Memory keeper | `workers/memory-keeper.ts` | built | Handles all 11 event types (`HANDLED`) |
 | Dispatcher | `workers/dispatcher.ts`, `lib/rules/` | built | Tier, score, `pickPerson()`, approvals, `one_open_task` unique index |
 | Help desk playbook | `lib/rules/incidents.ts` | built | One rule per incident kind (§5.4) |
 | Sweeper | `workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts |

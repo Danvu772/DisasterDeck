@@ -1,6 +1,6 @@
 ---
-name: "dans-agentic-workflow-engineering"
-description: "Dan's multi-agent workflow: kick off each repo with a workflow review, lock the system design, then one orchestrator runs design-derived issues. Works for teammates on other agent tools. Use for any new repo."
+name: dans-agentic-workflow-engineering
+description: Dan's multi-agent workflow: kick off each repo with a workflow review, lock the system design, then one orchestrator runs design-derived issues. Works for teammates on other agent tools. Use for any new repo.
 ---
 
 # Dan's agentic workflow engineering
@@ -9,12 +9,17 @@ description: "Dan's multi-agent workflow: kick off each repo with a workflow rev
 
 **Kickoff → Design → Build.** Nothing here is a hard rule for every repo; Kickoff decides what applies.
 
-1. **Kickoff.** With Dan and every collaborator: pick the tier (R1), the done check, who votes on design and the tie-break, everyone's lanes and tools, and the orchestrator. Review what went wrong last project. Write it all into `AGENTS.md`.
-2. **Design.** The orchestrator grills **everyone with a vote** until every branch is resolved, then writes `docs/SYSTEM_DESIGN.md` (components, contracts, locked decisions, glossary) and, at Tier 1+, `tests/requirements.json`. All voters sign off. The design is locked.
-3. **Build.** The orchestrator is the single point of entry for design questions. It cuts the design into vertical-slice issues in dependency order, assigns agents and people, and runs issues in parallel only when their files don't overlap. Each issue runs its tier's loop (R1).
-4. **Disagreements** go through the orchestrator and a real conversation between people, then a vote (R2). Nobody works around one in their own branch.
-5. **Every change is branch → PR → merge (R4).** Features, fixes and design changes alike. Merging the PR is the review gate.
-6. **Collaborators** can use any agent tool, as long as their work goes through the shared artifacts (R3).
+**Kickoff.** With Dan and every collaborator: pick the tier (R1), the done check, who votes on design and the tie-break, everyone's lanes and tools, and the orchestrator. Review what went wrong last project. Write it all into `AGENTS.md`.
+
+**Design.** The orchestrator grills **everyone with a vote** until every branch is resolved, then writes `docs/SYSTEM_DESIGN.md` (components, contracts, locked decisions, glossary) and, at Tier 1+, `tests/requirements.json`. All voters sign off. The design is locked.
+
+**Build.** The orchestrator is the single point of entry for design questions. It cuts the design into vertical-slice issues in dependency order, assigns agents and people, and runs issues in parallel only when their files don't overlap. Each issue runs its tier's loop (R1).
+
+**Disagreements** go through the orchestrator and a real conversation between people, then a vote (R2). Nobody works around one in their own branch.
+
+**Every change is branch → PR → merge (R4).** Features, fixes and design changes alike. Merging the PR is the review gate.
+
+**Collaborators** can use any agent tool, as long as their work goes through the shared artifacts (R3).
 
 ---
 
@@ -33,11 +38,15 @@ description: "Dan's multi-agent workflow: kick off each repo with a workflow rev
 
 ## R2. Design disagreements
 
-1. **File** a `design` issue: what to change and why. Only dependent work pauses.
-2. **Brief.** The orchestrator writes up both positions fairly, the trade-offs, what each option costs (issues, tests, time), and the single question to decide.
-3. **Talk.** The orchestrator tells both people by name to talk directly (call, in person, or a live thread), not through agents, and gives each the brief.
-4. **Vote** on the issue. Still split → the Kickoff tie-break (default: the design owner decides and the dissent is recorded).
-5. **Record and apply.** Decision record in `docs/decisions/` with the outcome and dissent → update the design → then issues and tests.
+**File** a `design` issue: what to change and why. Only dependent work pauses.
+
+**Brief.** The orchestrator writes up both positions fairly, the trade-offs, what each option costs (issues, tests, time), and the single question to decide.
+
+**Talk.** The orchestrator tells both people by name to talk directly (call, in person, or a live thread), not through agents, and gives each the brief.
+
+**Vote** on the issue. Still split → the Kickoff tie-break (default: the design owner decides and the dissent is recorded).
+
+**Record and apply.** Decision record in `docs/decisions/` with the outcome and dissent → update the design → then issues and tests.
 
 **Tier 3 override:** no design-owner tie-break. Every design change needs (a) the risk analysis redone for affected items, (b) traceability updated, and (c) signed approval from the approvers Kickoff named, all **before** any issue or code changes. No agreement means no change.
 
@@ -76,6 +85,7 @@ The evaluator is whatever approves the work before merge: the Tier 0 review agen
 **Grader order:** prefer checks run by code (tests, scripts, measured numbers) because they're fast and repeatable. Use LLM judgment only where code can't decide, and give it a concrete rubric taken from the requirements, never "looks good." Humans are the gold standard and are reserved for the tier's gate.
 
 **Output:** for each requirement (or, at Tier 0, each part of the issue):
+
 - `PASS`: with evidence (command output, test result, screenshot, numbers).
 - `FAIL`: what's wrong and where. Surface-level compliance counts as FAIL, e.g. a file that exists but holds the wrong content.
 - `UNKNOWN`: not enough evidence to decide. Treat it as FAIL for merging.
@@ -83,6 +93,7 @@ The evaluator is whatever approves the work before merge: the Tier 0 review agen
 No evidence means no PASS.
 
 **Also:**
+
 - **Check the builder's claims.** Pull factual claims out of the PR description ("handles empty input", "all tests pass") and verify them.
 - **Critique the checks.** Flag any requirement that would also pass for clearly wrong work, and any important behavior no requirement covers. Send these to the orchestrator so it can fix `requirements.json`.
 - **Tier 2+:** run several independent reviewers in parallel (correctness, design and contract compliance, security), score each finding's confidence, and only report high-confidence findings, so noise doesn't bury real problems.
