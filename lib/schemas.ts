@@ -19,7 +19,7 @@ const latLng = z.tuple([z.number().min(-90).max(90), z.number().min(-180).max(18
 // app/api/chat/route.ts, plus the "data:image/...;base64," prefix). One schema for report, incident and capacity.
 const MAX_PHOTO_DATA_URL = 5 * 1024 * 1024 + 100;
 const photoUrl = z.union([
-  z.url().max(2000),
+  z.url().max(2000).regex(/^https?:\/\//),
   z.string().max(MAX_PHOTO_DATA_URL).regex(/^data:image\/(jpeg|png|webp|heic|gif);base64,[A-Za-z0-9+/]*={0,2}$/),
 ]);
 const count = z.number().int().min(0).max(1_000_000);
