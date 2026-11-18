@@ -6,7 +6,7 @@ Stale rules: a lane whose `lastTouch` is more than 4 hours old is dead. Confirm 
 
 ## Live lanes
 
-None right now. Dan closed the session. Pick up from `PROGRESS.md` and the open PRs (#42 vision, #43 voice).
+- **claude-orch-1118b**: Claude orchestrator, builders and evaluators on DeepSeek via `opencode run`. lastTouch 2026-11-18. Owns: #39 round 2 on `feat/39-vision-model` (`.worktrees/39`), #7 on `feat/7-aws-deploy` (`.worktrees/7`), #16 stacked on `feat/14-voice-port` (`.worktrees/16`). #43 evaluated: code green, VOX live halves wait on #7. Vision model id waits on Dan.
 
 ## History
 
