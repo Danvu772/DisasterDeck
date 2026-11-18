@@ -2,30 +2,36 @@
 
 Current state, so any agent or person can pick up. The orchestrator updates this at the end of every session.
 
-**Phase:** Build. The design is locked (`docs/SYSTEM_DESIGN.md` v3.1, decisions D-0001 to D-0015). The build is cut into issues on the fork, in dependency order. Hackathon-era docs and role lanes are gone (18 Nov).
+**Phase:** Build. Design locked (`docs/SYSTEM_DESIGN.md` v3.1 + D-0001 to D-0016). Build is cut into issues on the fork. Hackathon-era docs and role lanes gone.
+
+## Merged (18 Nov)
+
+- #8 Atlas cluster module (PR #27)
+- #6 AWS infra as code (PR #29)
+- #11 Mongo-backed checks in CI (PR #30)
+- #23 live model check (PR #31)
+- #10 official feeds + contact directory (PR #34)
+- #17 USWDS coordinator (PR #35)
+- #18 USWDS desk/map/ops (PR #40)
+- #22 → D-0016 photos (option 2, vision model) — design PR #38
 
 ## Open work
 
-| Issue | What | Blocks / blocked by | Owner |
-|---|---|---|---|
-| #22 | Photos: gpt-oss is text-only, so photo reports no longer reach a model | Dan's decision (option 2, photo functionality now) | Dan |
-| #23 | Live model check: LLM-1 network log + LLM-3b smoke on gpt-oss-120b | needs the OpenRouter key | |
-| #6 | AWS infra as code (VPC, Fargate web + Brain, Secrets Manager, CloudTrail, alarms) | needs the AWS account | Dan |
-| #8 | Atlas cluster behind one repository module | needs the Atlas cluster; work on `origin/feat/8-atlas-module` | Dan |
-| #7 | Deploy from GitHub Actions with OIDC; retire Vultr | after #6 | |
-| #10 | Official feeds + help-desk directory replace web search | | Dan |
-| #11 | Mongo-backed checks in CI | | Dan |
-| #12 | Identity: Cognito federation, no-login reports, roles in the database | after #6 | |
-| #13 | App audit log | after #12 | |
-| #14 | Voice port (on-device dictation, Transcribe, Polly) | after #6 | |
-| #16 | USWDS field phone and Talk screens | after #15 + #14 | |
-| #17 | USWDS coordinator screen | after #15 | Dan |
-| #18 | USWDS desk board, map and ops room | after #15 | Dan |
-| #19 | IU tabletop scenario end to end | after #10, #12, #16, #17, #18 | |
+Ready to build (unblocked):
 
-Parallel builders only on issues whose files don't overlap.
+- #39 vision model: describe photos into text behind the LLM port (D-0016, PHO-1)
+- #12 identity (Cognito federation, no-login reports, roles in db) — was blocked on #6
+- #14 voice port (dictation, Transcribe, Polly) — was blocked on #6
+- #16 USWDS field phone + Talk — blocked on #15 (done) + #14 (open)
 
-## Done
+Blocked / needs Dan:
 
-- 17 Nov: system design v3 and D-0001 to D-0008; the seven open calls decided (D-0009 to D-0015); design v3.1; requirement IDs for the whole build; issues cut.
-- 18 Nov: #15 USWDS foundation (PR #24); #9 model adapter, drop Anthropic SDK (PR #21); role lanes and hackathon docs swept (PR #26, #28).
+- #7 deploy to AWS with OIDC — unblocked by #4/#6, but needs the AWS account + ECR + OIDC role actually provisioned
+- #13 audit log — blocked on #12
+- #19 IU tabletop — blocked on #12, #16, #18 (18 done)
+- #22 photos — decision locked (option 2); build is #39
+
+## Done (history)
+
+- 17 Nov: system design v3 + D-0001..D-0008; open calls decided D-0009..D-0015; requirements; issues cut.
+- 18 Nov: #15 USWDS foundation; #9 model adapter (drop Anthropic); role lanes + hackathon docs swept; orchestrator-lane workflow (SKILL R6); D-0016 photos option 2.
