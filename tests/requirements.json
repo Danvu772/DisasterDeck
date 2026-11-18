@@ -1,13 +1,243 @@
 {
   "_about": "One entry per requirement: id, design section, what is checked, how, and passes (true, false, or null = not run yet). The orchestrator writes these from docs/SYSTEM_DESIGN.md. Issues list the ids they satisfy. These first entries are the design's invariants and the checks that already exist.",
   "requirements": [
-    { "id": "INV-1", "section": "§2.1", "requirement": "Agents never call each other. Research and personal agents reach memory only through DeskPort", "check": "Evaluator review of imports in agents/ and workers/", "passes": null },
-    { "id": "INV-2", "section": "§2.2, §4.2", "requirement": "Each collection has one writer: keeper for records, dispatcher for tasks and inbox", "check": "npm run keeper:check", "passes": null },
-    { "id": "INV-3", "section": "§2.3", "requirement": "No LLM call decides merge, score, assignment, escalation or timers", "check": "Evaluator review: no llm.ts import in lib/rules/, workers/dispatcher.ts, workers/sweeper.ts", "passes": null },
-    { "id": "INV-4", "section": "§2.4", "requirement": "A high-risk task waits for a coordinator, and only a coordinator's approval event is accepted", "check": "npm run keeper:check (approval cases)", "passes": null },
-    { "id": "INV-5", "section": "§2.5", "requirement": "Accept, Decline, Done and Problem work with the model unavailable", "check": "e2e field and coordinator specs with no model key", "passes": null },
-    { "id": "INV-7", "section": "§2.7, §4.3", "requirement": "The event actor comes from the session or agent key, never the body. ?user= is refused through a tunnel", "check": "npm run api:check && npm run security:check", "passes": null },
-    { "id": "SWP-1", "section": "§3.2", "requirement": "The sweeper times out unanswered tasks, sends check-ins, opens unreachable incidents and requeues stuck events", "check": "npm run sweeper:check", "passes": null },
-    { "id": "CI-1", "section": "AGENTS.md done check", "requirement": "Typecheck, lint, build, replay tests and token checks pass", "check": ".github/workflows/ci.yml", "passes": null }
+    {
+      "id": "INV-1",
+      "section": "§2.1",
+      "requirement": "Agents never call each other. Research and personal agents reach memory only through DeskPort",
+      "check": "Evaluator review of imports in agents/ and workers/",
+      "passes": null
+    },
+    {
+      "id": "INV-2",
+      "section": "§2.2, §4.2",
+      "requirement": "Each collection has one writer: keeper for records, dispatcher for tasks and inbox",
+      "check": "npm run keeper:check",
+      "passes": null
+    },
+    {
+      "id": "INV-3",
+      "section": "§2.3",
+      "requirement": "No LLM call decides merge, score, assignment, escalation or timers",
+      "check": "Evaluator review: no llm.ts import in lib/rules/, workers/dispatcher.ts, workers/sweeper.ts",
+      "passes": null
+    },
+    {
+      "id": "INV-4",
+      "section": "§2.4",
+      "requirement": "A high-risk task waits for a coordinator, and only a coordinator's approval event is accepted",
+      "check": "npm run keeper:check (approval cases)",
+      "passes": null
+    },
+    {
+      "id": "INV-5",
+      "section": "§2.5",
+      "requirement": "Accept, Decline, Done and Problem work with the model unavailable",
+      "check": "e2e field and coordinator specs with no model key",
+      "passes": null
+    },
+    {
+      "id": "INV-7",
+      "section": "§2.7, §4.3",
+      "requirement": "The event actor comes from the session or agent key, never the body. ?user= is refused through a tunnel",
+      "check": "npm run api:check && npm run security:check",
+      "passes": null
+    },
+    {
+      "id": "SWP-1",
+      "section": "§3.2",
+      "requirement": "The sweeper times out unanswered tasks, sends check-ins, opens unreachable incidents and requeues stuck events",
+      "check": "npm run sweeper:check",
+      "passes": null
+    },
+    {
+      "id": "CI-1",
+      "section": "AGENTS.md done check",
+      "requirement": "Typecheck, lint, build, replay tests and token checks pass",
+      "check": ".github/workflows/ci.yml",
+      "passes": null
+    },
+    {
+      "id": "INF-1",
+      "section": "§6 D-0002",
+      "requirement": "The web app runs on ECS Fargate in at least two availability zones, defined in infrastructure as code",
+      "check": "cdk synth / terraform plan shows two AZs; stopping one task keeps /login answering 200",
+      "passes": false
+    },
+    {
+      "id": "INF-2",
+      "section": "§6 D-0002, §3.2",
+      "requirement": "The Brain runs as its own Fargate service, and a second Brain waits on the lease",
+      "check": "Start two Brain tasks; exactly one processes events (meta lease holder)",
+      "passes": false
+    },
+    {
+      "id": "INF-3",
+      "section": "§6 D-0002, D-0015",
+      "requirement": "No secret lives in a file on a host or in the repo; every secret comes from Secrets Manager",
+      "check": "Grep of the deployed task definitions and repo finds no secret values; app boots with only Secrets Manager references",
+      "passes": false
+    },
+    {
+      "id": "OBS-1",
+      "section": "§6 D-0014",
+      "requirement": "CloudTrail records every AWS API action; CloudWatch alarms fire on Brain loop stall and 5xx rate",
+      "check": "Console or CLI evidence of the trail and alarms; a stopped Brain triggers the stall alarm",
+      "passes": false
+    },
+    {
+      "id": "OBS-2",
+      "section": "§6 D-0014",
+      "requirement": "Opening a full phone number and every admin action write an audit entry: who, what, when",
+      "check": "API test reads a masked number as the assigned volunteer and finds the audit entry",
+      "passes": false
+    },
+    {
+      "id": "CD-1",
+      "section": "§6 D-0015",
+      "requirement": "Deploys authenticate to AWS with GitHub OIDC; no long-lived AWS keys exist",
+      "check": "Repo and Actions secrets contain no AWS access keys; deploy run log shows AssumeRoleWithWebIdentity",
+      "passes": false
+    },
+    {
+      "id": "CD-2",
+      "section": "§6 D-0015",
+      "requirement": "A version tag on main deploys; a failed health check rolls back",
+      "check": "Tag a release; break /login in a test release and see the rollback",
+      "passes": false
+    },
+    {
+      "id": "DB-1",
+      "section": "§6 D-0007",
+      "requirement": "All database access goes through one repository module so DocumentDB stays possible",
+      "check": "Evaluator review: no direct mongodb driver import outside lib/db.ts and the repository module",
+      "passes": false
+    },
+    {
+      "id": "DB-2",
+      "section": "§6 D-0007",
+      "requirement": "The fork runs on Dan's own Atlas cluster with fresh credentials; no hackathon key works",
+      "check": "db:check passes against the new cluster; old URI and keys rejected",
+      "passes": false
+    },
+    {
+      "id": "LLM-1",
+      "section": "§6 D-0003, §4.5",
+      "requirement": "Every model call goes through modelFor()/send() to OpenRouter's US endpoint with gpt-oss-120b (gpt-oss-20b for small jobs)",
+      "check": "Unit test of the adapter; network log of a chat turn shows only the OpenRouter US host",
+      "passes": false
+    },
+    {
+      "id": "LLM-2",
+      "section": "§6 D-0003",
+      "requirement": "The Anthropic SDK and keys are gone",
+      "check": "package.json has no @anthropic-ai/sdk; .env.example has no ANTHROPIC_ key",
+      "passes": false
+    },
+    {
+      "id": "LLM-3",
+      "section": "§2.3, §3.3",
+      "requirement": "Personal agents file events through their role tools with the new model, and every tool input is schema-checked",
+      "check": "agents/scripts/smoke.ts and contract-check.ts pass on gpt-oss-120b",
+      "passes": false
+    },
+    {
+      "id": "WS-1",
+      "section": "§6 D-0009",
+      "requirement": "No open-web search runs in the pilot build",
+      "check": "No web_search tool in toolsFor(); news agent makes no search-API call",
+      "passes": false
+    },
+    {
+      "id": "WS-2",
+      "section": "§6 D-0009, §3.1",
+      "requirement": "The news agent turns NWS, FEMA and USGS feeds into schema-checked events with a dedupeKey",
+      "check": "Replay of saved feed fixtures posts the expected events once each",
+      "passes": false
+    },
+    {
+      "id": "WS-3",
+      "section": "§6 D-0009, §5.4",
+      "requirement": "A supplier or field team with an open incident gets matching contacts from the desk's directory",
+      "check": "API test: vehicle_breakdown incident returns tow and tire contacts for that desk",
+      "passes": false
+    },
+    {
+      "id": "ID-1",
+      "section": "§6 D-0004",
+      "requirement": "Agency staff sign in through Cognito federated to an Entra ID or Okta test tenant",
+      "check": "e2e login through a test IdP lands on the right role screen",
+      "passes": false
+    },
+    {
+      "id": "ID-2",
+      "section": "§6 D-0004, §2.7",
+      "requirement": "A person with no login can file an emergency report, rate limited and marked public trust",
+      "check": "API test: anonymous report accepted as source person, trust public; 11th report in a minute refused",
+      "passes": false
+    },
+    {
+      "id": "ID-3",
+      "section": "§6 D-0004, §9 v2",
+      "requirement": "Roles live in the database, are requested by the person and granted by a coordinator, and the grant is logged",
+      "check": "API test of request, grant and the history entry",
+      "passes": false
+    },
+    {
+      "id": "ID-4",
+      "section": "§4.3",
+      "requirement": "?user= demo identity cannot be enabled in a production build",
+      "check": "Production build with DEMO_MODE=1 still refuses ?user= (security:check)",
+      "passes": false
+    },
+    {
+      "id": "VOX-1",
+      "section": "§6 D-0005",
+      "requirement": "Field dictation uses on-device recognition (processLocally: true) and falls back to typing; audio never goes to Google",
+      "check": "e2e on Chrome: network log shows no speech request; unsupported browser shows the text box",
+      "passes": false
+    },
+    {
+      "id": "VOX-2",
+      "section": "§6 D-0005, §4.5",
+      "requirement": "Talk uses Amazon Transcribe and Polly behind a voice port",
+      "check": "Integration test with the port's AWS provider; swapping the provider changes one config value",
+      "passes": false
+    },
+    {
+      "id": "MAP-1",
+      "section": "§6 D-0006",
+      "requirement": "MapLibre is the only map renderer, with Esri basemaps and an OSM tile fallback",
+      "check": "package.json has no leaflet or react-leaflet; with Esri blocked the map loads the fallback tiles",
+      "passes": false
+    },
+    {
+      "id": "UI-1",
+      "section": "§6 D-0001",
+      "requirement": "Screens use USWDS components and pass axe with no serious or critical violations",
+      "check": "axe run in CI on every screen",
+      "passes": false
+    },
+    {
+      "id": "UI-2",
+      "section": "§6 D-0001, §3.3",
+      "requirement": "One screen set: field, talk, coordinator, desk, map, ops; /v2, /compare and /lab removed from the product build",
+      "check": "Route list of the production build",
+      "passes": false
+    },
+    {
+      "id": "CI-2",
+      "section": "AGENTS.md done check",
+      "requirement": "The Mongo-backed checks (keeper, sweeper, api, security) run in CI against a throwaway database",
+      "check": "CI job log shows each check passing",
+      "passes": false
+    },
+    {
+      "id": "PIL-1",
+      "section": "§6 pilot",
+      "requirement": "An IU tabletop scenario runs end to end through the event API: a call, a dispatch with approval, a breakdown and its re-plan",
+      "check": "scenario-player run on the IU scenario reaches the expected board state",
+      "passes": false
+    }
   ]
 }

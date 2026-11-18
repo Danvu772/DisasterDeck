@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Version | 3 (redesign baseline), 17 Nov 2026 |
-| Status | **Locked when Dan merges this into `main`.** Dan is the only voter |
+| Version | 3.1, 17 Nov 2026 (v3 plus D-0009 to D-0015: every open call decided) |
+| Status | **Locked.** v3 merged 17 Nov (#2). Dan is the only voter |
 | Owner | Dan Vu. He owns the fork and decides alone |
 | Replaces | `docs/Multiplayer Disaster Deck/Final system design.md` (v2, 14 Nov), which is kept as the hackathon record |
 | Built state checked against | `main` @ `9d1ca24` |
@@ -49,14 +49,14 @@ Status: **built** = works as designed in v2. **changed** = built, but differs fr
 | Component | Code | Status | Today | Target |
 |---|---|---|---|---|
 | X agent | `workers/x-agent.ts`, `agents/research/x-extract.ts` | changed | Replays the 43-post real archive (`data/replays/`) or the synthetic file. No live search | Optional feed with a written agency policy. Archive replay for demos |
-| News agent | `workers/news-agent.ts`, `agents/research/news-search.ts` | changed | Claude web search tool (not Exa), `news` and `official` channels | Needs a new search provider: Claude is out (D-0003). Official feeds first |
+| News agent | `workers/news-agent.ts`, `agents/research/news-search.ts` | changed | Claude web search tool (not Exa), `news` and `official` channels | Official feeds only: NWS, FEMA, USGS, agency announcements. Open-web search later behind a port (D-0009) |
 | Sheet sync | `workers/sheet-sync.ts` | built | Two-way shelter sheet, no LLM, never overwrites a row a person changed in the last 5 min | Keep as an integration, not a dependency |
 | Satellite watcher | `workers/satellite-watcher.ts` | built | Cached NASA Black Marble + POWER → silent-zone and cold `alert` events | Keep |
 | Quake watcher | `workers/quake-watcher.ts` | added | Replays the USGS catalog, posts aftershock warnings | Keep. Add NOAA/NWS and OpenFEMA feeds. Owner needed (upstream #17) |
 | Scenario player, synthetic feed | `workers/scenario-player.ts`, `workers/synthetic-feed.ts` | added | Demo cues sent through the real event API | Demo and tabletop exercises only |
 | Instagram, Facebook, Reddit agents | — | not built | APIs closed (FB Groups API removed 2024, Reddit blocks the crawler) | Cut |
-| Photo agent (shelter whiteboard photos) | — | not built | — | Open (§8) |
-| Evacuation planner | — | not built | The keeper accepts and stores a `plan` event and the coordinator can approve it, but nothing creates one | Open (§8) |
+| Photo agent (shelter whiteboard photos) | — | not built | — | Deferred (D-0012) |
+| Evacuation planner | — | not built | The keeper accepts and stores a `plan` event and the coordinator can approve it, but nothing creates one | Deferred. The `plan` path stays (D-0011) |
 
 ### 3.2 Queue and Brain
 
@@ -77,7 +77,7 @@ Status: **built** = works as designed in v2. **changed** = built, but differs fr
 | Personal agents | `agents/personal/turn.ts`, `tools.ts`, `prompts.ts` | changed | Claude Sonnet 5.5 through `modelFor()`. Tools per role (`ROLE_TOOLS`). No memory of their own | gpt-oss-120b via OpenRouter, US-only routing (D-0003) |
 | Chat memory | `agents/personal/memory.ts`, `agents/desk/chat-memory.ts` | added | Haiku folds old lines into a rolling summary stored in Mongo | Keep, on the small model |
 | Agent extras | `visualize_metric`, `show_on_map` | added | Numbers come from `components/metrics/compute/`, never the model | Keep |
-| Help-desk lookup | `web_search` in `toolsFor()` | changed | Claude web search, offered only with an open incident | Needs a new search provider (§8) |
+| Help-desk lookup | `web_search` in `toolsFor()` | changed | Claude web search, offered only with an open incident | A fixed per-desk directory of tow, tire, fuel and pharmacy contacts (D-0009) |
 | Voice | `components/field/`, `components/talk/`, `agents/shared/voice.ts` | changed | Web Speech on `/field` (Chrome sends audio to Google by default). ElevenLabs Scribe and TTS on `/talk` | Transcribe + Polly behind a voice port. On-device dictation only (D-0005) |
 | Screens | `app/` | changed | `/` Desk, `/agent`, `/map`, `/ops`, `/coordinator`, `/field`, `/talk`, plus `/v2`, `/compare`, `/demo`, `/lab` | Rebuilt in USWDS (D-0001). One screen set (closes upstream #34) |
 | Map evidence | `components/map/`, `public/data/` | added | Maxar before/after tiles, HOT/OSM buildings, NASA atlas | Keep, on MapLibre only (D-0006) |
@@ -127,12 +127,12 @@ Every outside vendor gets a narrow interface so an agency can require a differen
 | Port | Today | Target default | Fallback |
 |---|---|---|---|
 | LLM (`modelFor()` / `send()` in `agents/shared/llm.ts`) | Anthropic SDK | OpenRouter, gpt-oss-120b, gpt-oss-20b for small jobs | Same open model on Bedrock |
-| Web search | Claude web search tool | Open (§8) | — |
+| Web search | Claude web search tool | None: official feeds and a contact directory (D-0009) | Brave Search API, when a real pilot needs it |
 | Speech to text | Web Speech, ElevenLabs Scribe | Chrome on-device (`processLocally: true`) for dictation, Amazon Transcribe on the server | Typing |
 | Text to speech | ElevenLabs | Amazon Polly | ElevenLabs for Government, if the agency approves it |
 | Identity | SSOJet | Cognito → agency Entra ID or Okta | Login.gov for the public |
 | Basemap | Mapbox or Esri gray | Esri, US-hosted | Our own OSM tiles on S3 |
-| Messaging | none | Open (§8) | — |
+| Messaging | none | None for the pilot (D-0013) | AWS End User Messaging / SNS once a county signs on; IPAWS on the roadmap |
 
 ## 5. Rules
 
@@ -181,7 +181,7 @@ Task: `created → waiting_approval | assigned | escalated → accepted | declin
 
 ## 6. Target stack
 
-Locked by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reasoning and vendor comparisons: the "Stack review" tab of the DisasterDeck HQ doc.
+Decided by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reasoning and vendor comparisons: the "Stack review" tab of the DisasterDeck HQ doc.
 
 | # | Layer | Decision | Replaces | Record |
 |---|---|---|---|---|
@@ -193,6 +193,13 @@ Locked by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reason
 | 6 | Maps | MapLibre only. Esri basemaps, own OSM tiles on AWS as fallback | Mapbox, Leaflet | [D-0006](decisions/0006-maps-maplibre-esri.md) |
 | 7 | Database | Keep MongoDB on a new Atlas cluster Dan owns. Atlas for Government when an agency needs it. Thin repository layer keeps DocumentDB possible | Darshal's hackathon cluster | [D-0007](decisions/0007-database-mongodb-atlas.md) |
 | 8 | License | AGPL. Anyone may run it. The business sells hosting, setup, training and support | No license | [D-0008](decisions/0008-license-agpl.md) |
+| 9 | Web search | Official feeds only for the pilot; Brave behind a search port later | Claude web search | [D-0009](decisions/0009-web-search-official-feeds.md) |
+| 10 | Queue | Keep polling MongoDB; change streams when load needs it | — | [D-0010](decisions/0010-queue-keep-polling.md) |
+| 11 | Evacuation planner | Deferred; the `plan` approval path stays | — | [D-0011](decisions/0011-evacuation-planner-deferred.md) |
+| 12 | Photo agent | Deferred until a pilot runs shelters | — | [D-0012](decisions/0012-photo-agent-deferred.md) |
+| 13 | SMS, offline | Deferred; 10DLC when a county signs on; IPAWS on the roadmap | — | [D-0013](decisions/0013-sms-offline-deferred.md) |
+| 14 | Observability | CloudTrail, CloudWatch, app audit log in MongoDB | Health scripts | [D-0014](decisions/0014-observability-audit.md) |
+| 15 | CI to AWS | GitHub Actions with OIDC, Secrets Manager, deploy by tag | Tailscale + rsync | [D-0015](decisions/0015-ci-github-oidc.md) |
 
 **First pilot:** an IU Emergency Management tabletop exercise (no real data, so no compliance paperwork). Monroe County and Maui are on hold.
 
@@ -201,11 +208,11 @@ Locked by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reason
 | Decision | v2 plan, 14 Nov | Built, 17 Nov | Target |
 |---|---|---|---|
 | LLM | OpenAI (track rule) | Claude Sonnet / Opus / Haiku | gpt-oss on OpenRouter |
-| Web search | Exa | Claude web search | Open |
+| Web search | Exa | Claude web search | Official feeds only (D-0009) |
 | Voice | OpenAI speech to text | Web Speech + ElevenLabs | On-device dictation, Transcribe + Polly |
 | Scene | Malatya, then Lahaina | Antakya pilot only | IU tabletop, then a county |
 | Social inputs | X, Instagram, Facebook, Reddit | X archive only | X optional, official feeds first |
-| Evacuation | Flow planner on an OSM graph | Approval path only | Open |
+| Evacuation | Flow planner on an OSM graph | Approval path only | Deferred (D-0011) |
 | Dispatcher | Rules, no LLM | Rules, no LLM | Unchanged |
 | Agent memory | None of its own | Collective, plus rolling summary | Unchanged |
 | Hosting | Laptop + tunnel, Vultr optional | Vultr VM, Cloudflare tunnel, WARP, blue/green deploy | AWS Fargate |
@@ -213,15 +220,9 @@ Locked by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reason
 
 ## 8. Open decisions
 
-These block parts of the build. Each one becomes a `design` issue.
+None. The seven calls left open in v3 were decided on 17 Nov as D-0009 to D-0015 (§6). A new open question becomes a `design` issue on the fork.
 
-1. **Web search provider** for the news agent and the help-desk lookup, now that Claude's tool is gone. Exa was never checked for a government listing.
-2. **Queue transport:** keep polling Mongo, move to Atlas change streams, or a real broker (SQS)? The design keeps the Kafka-like shape either way.
-3. **Evacuation planner:** build it (needs a road graph per pilot area) or cut it.
-4. **Photo agent** for shelter whiteboards: build or cut.
-5. **Messaging and the offline path:** SMS through AWS End User Messaging/SNS (10DLC registration takes weeks), and IPAWS as a roadmap item.
-6. **Observability:** CloudTrail, CloudWatch, and an app-level audit log of who changed which case. Recommended in the stack review, not yet decided.
-7. **CI to AWS:** GitHub Actions with OIDC and Secrets Manager. Recommended, not yet decided.
+**Also settled:** Dan owns `disasterdeck.us` (registered at Porkbun, DNS on Cloudflare). It moves with the site to AWS under D-0002.
 
 ## 9. Known limits
 
