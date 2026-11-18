@@ -70,3 +70,84 @@ jobs:
             e2e/report/a11y
             e2e/test-results/a11y
           retention-days: 7
+
+  # CI-2: the Mongo-backed checks (keeper, sweeper, api, security) against a throwaway database,
+  # so the done check no longer needs a hand-run evidence step. Mongo is a fresh service container
+  # that dies with the job; the checks themselves still use their own throwaway desks and delete
+  # what they make. Only security:check needs an HTTP server, so it starts `next start` itself.
+  mongo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mongo:
+        image: mongo:8
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping:1}).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Every value here is throwaway for CI. AGENT_KEY and AUTH_SECRET are not real secrets;
+      # .env.local is gitignored and only ever written at run time, never committed.
+      MONGODB_URI: mongodb://127.0.0.1:27017
+      MONGODB_DB: disaster_desk
+      DESK_ID: antakya-2023
+      DEMO_MODE: "1"
+      AGENT_KEY: ci-throwaway-agent-key-0123456789abcdef
+      AUTH_SECRET: ci-build-placeholder-not-a-secret
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            e2e/package-lock.json
+      - run: npm ci
+      # The check scripts run with `tsx --env-file=.env.local`, which errors if the file is
+      # missing, so write it. Process env set above already wins over this file; it stays the
+      # single source of truth for `next build`/`next start` and any plain `node` step.
+      - name: Write a throwaway .env.local
+        run: |
+          printf '%s\n' \
+            'MONGODB_URI=mongodb://127.0.0.1:27017' \
+            'MONGODB_DB=disaster_desk' \
+            'DESK_ID=antakya-2023' \
+            'DEMO_MODE=1' \
+            'AGENT_KEY=ci-throwaway-agent-key-0123456789abcdef' \
+            'AUTH_SECRET=ci-build-placeholder-not-a-secret' \
+            'NEXT_TELEMETRY_DISABLED=1' \
+            > .env.local
+      - name: Wait for Mongo
+        run: |
+          for i in $(seq 1 30); do
+            node -e "require('mongodb').MongoClient.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 500 }).then(() => process.exit(0)).catch(() => process.exit(1))" && exit 0
+            sleep 1
+          done
+          echo "Mongo did not become ready" >&2
+          exit 1
+      - name: Seed users and shelters
+        run: npm run db:seed
+      - name: Memory keeper check
+        run: npm run keeper:check
+      - name: Sweeper check
+        run: npm run sweeper:check
+      - name: API check
+        run: npm run api:check
+      - name: Build (for security:check's server)
+        run: npx next build
+      - name: Security check (next start, DEMO_MODE=1)
+        run: |
+          npx next start -p 3000 >/tmp/next.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 120); do
+            curl -fsS http://127.0.0.1:3000/login >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3000/login >/dev/null || { cat /tmp/next.log; exit 1; }
+          npm run security:check
