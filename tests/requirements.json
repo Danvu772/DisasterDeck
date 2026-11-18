@@ -19,7 +19,7 @@
       "id": "INV-3",
       "section": "§2.3",
       "requirement": "No LLM call decides merge, score, assignment, escalation or timers",
-      "check": "Evaluator review: no llm.ts import in lib/rules/, workers/dispatcher.ts, workers/sweeper.ts",
+      "check": "check:llm test of imports, transitive (rules, dispatcher, sweeper, keeper never reach agents/shared/llm.ts)",
       "passes": null
     },
     {
@@ -123,22 +123,43 @@
     {
       "id": "LLM-1",
       "section": "§6 D-0003, §4.5",
-      "requirement": "Every model call goes through modelFor()/send() to OpenRouter's US endpoint with gpt-oss-120b (gpt-oss-20b for small jobs)",
-      "check": "Unit test of the adapter; network log of a chat turn shows only the OpenRouter US host",
+      "requirement": "Every model call goes through modelFor()/send() to OpenRouter's US endpoint with gpt-oss-120b (gpt-oss-20b for small jobs), and production refuses to start on any other host",
+      "check": "check:llm denylist of model hosts and SDK imports outside agents/shared/llm.ts; /api/health reports the model host; network log of a live chat turn shows only us.openrouter.ai (live part needs #5)",
       "passes": false
     },
     {
       "id": "LLM-2",
       "section": "§6 D-0003",
       "requirement": "The Anthropic SDK and keys are gone",
-      "check": "package.json has no @anthropic-ai/sdk; .env.example has no ANTHROPIC_ key",
+      "check": "No @anthropic-ai/sdk in package.json or package-lock.json; no ANTHROPIC_ key in .env.example or any env read",
       "passes": false
     },
     {
-      "id": "LLM-3",
+      "id": "LLM-3a",
       "section": "§2.3, §3.3",
-      "requirement": "Personal agents file events through their role tools with the new model, and every tool input is schema-checked",
-      "check": "agents/scripts/smoke.ts and contract-check.ts pass on gpt-oss-120b",
+      "requirement": "Every tool call's arguments are parsed and schema-checked before running, and a tool outside the role's allowlist is refused",
+      "check": "check:llm unit tests with mocked responses",
+      "passes": false
+    },
+    {
+      "id": "LLM-3b",
+      "section": "§2.3, §3.3",
+      "requirement": "Personal agents file events through their role tools on the live gpt-oss-120b model",
+      "check": "agents/scripts/smoke.ts and contract-check.ts pass against the live model (needs the OpenRouter key from #5)",
+      "passes": false
+    },
+    {
+      "id": "LLM-4",
+      "section": "§2.5, §6 D-0003",
+      "requirement": "A model failure never reaches a person as a finished answer: finish_reason error or length, and a missing usage block, are handled, and the budget is never undercounted",
+      "check": "check:llm tests for error, length and missing usage, streamed and not",
+      "passes": false
+    },
+    {
+      "id": "LLM-5",
+      "section": "§3.3",
+      "requirement": "No prompt promises a tool or capability the agent doesn't have",
+      "check": "check:llm test: prompts mention no tool that toolsFor() doesn't define (e.g. web search)",
       "passes": false
     },
     {
