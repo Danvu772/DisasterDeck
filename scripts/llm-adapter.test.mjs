@@ -342,6 +342,24 @@ test("PHO-1: file_capacity carries the photoUrl the turn attached", async () => 
   assert.equal(capacity.payload.photoUrl, "data:image/jpeg;base64,/9j/AAAA", "capacity carries the photoUrl");
 });
 
+test("PHO-1: on the confirm path the photo rides with the pending batch and lands on the event after settlePending approve", async () => {
+  const { runTurn, settlePending } = await import("../agents/personal/turn.ts");
+  const description = "A collapsed wall with two people nearby.";
+  answers.push(json({ id: "gen-v", model: "nvidia/nemotron-3.5-super-vl", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(completion({ content: null, tool_calls: [{ id: "call_fr", type: "function", function: { name: "file_report", arguments: JSON.stringify({ kind: "trapped", text: description, text_en: description, address: null, region: null, people_count: 2, site_id: null }) } }] }, "tool_calls"));
+  answers.push(completion({ content: "Ready." }));
+  const r = await runTurn({ userId: "field-alpha", text: "look at this", confirm: true, image: { mediaType: "image/png", base64: "iVBORw0KGgo=" } });
+  assert.ok(r.pending, "the write was held");
+  assert.deepEqual(r.eventIds, [], "nothing filed before the yes");
+  // The model never sees the bytes, and the pending items it gets back are text.
+  assert.ok(!JSON.stringify(modelCalls()[1].body).includes("iVBORw0KGgo"), "the chat model gets text, not the image bytes");
+  const s = await settlePending("field-alpha", r.pending.id, true);
+  assert.ok(s && s.sent && s.eventIds.length === 1, "approved: one event filed");
+  const report = globalThis.__deskStore.events.find((e) => e._id === s.eventIds[0]);
+  assert.equal(report.type, "report");
+  assert.equal(report.payload.photoUrl, "data:image/png;base64,iVBORw0KGgo=", "photoUrl survives the confirm path");
+});
+
 test("summary: the shift handoff goes to gpt-oss-120b at medium effort", async () => {
   const { writeHandoff } = await import("../agents/personal/handoff.ts");
   answers.push(completion({ content: "1. Nothing on the desk." }));

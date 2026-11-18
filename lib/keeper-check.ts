@@ -320,6 +320,16 @@ async function main() {
   assert.equal(ev.status, "rejected");
   ok(`claim: an accepted assist task for ${U.volA}. A claim that names nothing: rejected with a reason`);
 
+  // --- PHO-1: a photo that came through /api/chat is a data URL of a megabyte or more ---
+  const bigPhoto = `data:image/jpeg;base64,${"A".repeat(1_100_000)}`;
+  ev = await say("photo-report", "report", U.field1, { kind: "site_update", text: "duvar yıkıldı", textEn: "A wall collapsed", region: "antakya-merkez", photoUrl: bigPhoto });
+  assert.notEqual(ev.status, "rejected", `report with a 1 MB photo: ${ev.result?.reason}`);
+  ev = await say("photo-incident", "incident", U.field1, { kind: "unsafe", text: "tehlike", textEn: "Unsafe wall", canContinue: true, photoUrl: bigPhoto });
+  assert.notEqual(ev.status, "rejected", `incident with a 1 MB photo: ${ev.result?.reason}`);
+  ev = await say("photo-capacity", "capacity", U.field1, { shelter: "Check photo shelter", bedsUsed: 10, bedsTotal: 20, region: "antakya-merkez", photoUrl: bigPhoto });
+  assert.notEqual(ev.status, "rejected", `capacity with a 1 MB photo: ${ev.result?.reason}`);
+  ok("PHO-1: report, incident and capacity events carrying a 1.1 MB photo data URL are applied, not rejected");
+
   const pending = await c.events.countDocuments({ deskId: DESK, status: { $in: ["pending", "working"] } });
   assert.equal(pending, 0, "nothing left pending");
   ok("every event on the desk ended done, merged or rejected");
