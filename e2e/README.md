@@ -17,6 +17,17 @@ npm run report                 # prints the path of report/index.html, opens not
 
 **Flaky against the dev server?** When another browser has the desk open, the dev server recompiles as that browser moves between pages, and every recompile refreshes the page under test. A page that refreshes before it hydrates never polls, so its test times out on server-rendered text. That is what made the field tests fail at random on 15 Nov. For a stable run, stop the dev server and test a production build: `npm run build && npm start` in the repo root, then `npm test` here. 19 of 19 passed five times in a row that way. Restart the dev server afterwards.
 
+## Accessibility (UI-1, runs in CI)
+
+`tests/a11y.spec.ts` runs axe on the USWDS shell (skip link, header, nav, footer) of the six screens and on the whole `/login` page, and fails on any serious or critical violation. Its own config starts `next start` on a production build, port 3100, with `DEMO_MODE=1` and no database:
+
+```bash
+npx next build                 # in the repo root
+cd e2e && npm run test:a11y    # CHROME_PATH=/usr/bin/google-chrome to use an installed Chrome
+```
+
+The plain `npm test` above picks the spec up too, against the dev server.
+
 ## What it covers
 
 Two projects, laptop (1440 by 900) and phone (390 by 844). `field.spec.ts` and `field-voice.spec.ts` run on the phone, the rest on the laptop.

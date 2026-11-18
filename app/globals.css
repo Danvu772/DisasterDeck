@@ -1,10 +1,16 @@
+/* One cascade-layer order for the page, the same statement as app/uswds.scss (whichever loads first
+   wins, so both say it): Tailwind preflight < USWDS components < Tailwind utilities. */
+@layer properties, theme, base, uswds, components, utilities;
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 /*
-  TOKENS. The only place a colour, font or radius is written. Version 5, 15 Nov 2026.
+  TOKENS for the hackathon screens (shadcn/ui, theme v5, 15 Nov 2026). The USWDS theme (D-0001)
+  lives in app/uswds.scss and is mapped into Tailwind below as the usa-* colours. New screens use
+  USWDS components and the usa-* tokens; these shadcn names stay until #16 to #18 rebuild the screens.
   Theme: shadcn/ui "neutral" (the Obra shadcn/ui kit, Community edition, is built on the same
   variables): oklch values from ui.shadcn.com/docs/theming. Light and dark (.dark on <html>).
   Rules and examples: .claude/skills/desk-design/SKILL.md.
@@ -167,9 +173,35 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  /* Geist, shadcn/ui's face. Next sets the vars on <body>. Mono ONLY for ids, times, scores, counts. */
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* USWDS tokens from app/uswds.scss (D-0001). New code: USWDS components first, then these
+     for layout utilities (bg-usa-primary, text-usa-ink, border-usa-base-lighter). */
+  --color-usa-primary-lighter: var(--usa-primary-lighter);
+  --color-usa-primary-light: var(--usa-primary-light);
+  --color-usa-primary: var(--usa-primary);
+  --color-usa-primary-dark: var(--usa-primary-dark);
+  --color-usa-primary-darker: var(--usa-primary-darker);
+  --color-usa-primary-darkest: var(--usa-primary-darkest);
+  --color-usa-secondary-lighter: var(--usa-secondary-lighter);
+  --color-usa-secondary: var(--usa-secondary);
+  --color-usa-secondary-dark: var(--usa-secondary-dark);
+  --color-usa-base-lightest: var(--usa-base-lightest);
+  --color-usa-base-lighter: var(--usa-base-lighter);
+  --color-usa-base-light: var(--usa-base-light);
+  --color-usa-base: var(--usa-base);
+  --color-usa-base-dark: var(--usa-base-dark);
+  --color-usa-base-darkest: var(--usa-base-darkest);
+  --color-usa-ink: var(--usa-ink);
+  --color-usa-white: var(--usa-white);
+  --color-usa-error: var(--usa-error);
+  --color-usa-error-lighter: var(--usa-error-lighter);
+  --color-usa-warning: var(--usa-warning);
+  --color-usa-success: var(--usa-success);
+  --color-usa-info: var(--usa-info);
+
+  /* Public Sans, USWDS's face (D-0001), for the shell and the old screens alike.
+     Mono ONLY for ids, times, scores, counts. */
+  --font-sans: var(--usa-font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--usa-font-mono), ui-monospace, monospace;
   --font-serif: initial;
 }
 

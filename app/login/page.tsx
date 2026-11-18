@@ -1,12 +1,11 @@
-// Sign in. SSOJet handles Google, Microsoft and an agency's own sign-in (SAML/OIDC),
-// so one button covers all of them. Owner: Role 3.
+// Sign in, in USWDS (D-0001). SSOJet handles Google, Microsoft and an agency's own sign-in
+// (SAML/OIDC), so one button covers all of them. The Auth.js wiring (auth.ts) is unchanged;
+// Cognito replaces SSOJet in #12 (D-0004).
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Alert, AlertHeading, AlertText, Button } from "@trussworks/react-uswds";
 import { auth, signIn } from "@/auth";
-import { CircleAlert, LifeBuoy, LogIn } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { isLocalDemo } from "@/lib/localDemo";
 
 export const dynamic = "force-dynamic";
@@ -34,43 +33,28 @@ export default async function LoginPage({ searchParams }: {
   }
 
   return (
-    <main className="flex h-full items-center justify-center bg-paper p-4 md:p-6">
-      <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-xs">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <span className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <LifeBuoy aria-hidden className="size-5" />
-          </span>
-          <div className="space-y-1">
-            <h1 className="text-xl font-semibold tracking-tight">Sign in to Disaster Deck</h1>
-            <p className="text-sm text-muted-foreground">Use your work or agency account.</p>
-          </div>
-        </div>
+    <main className="dd-login">
+      <div className="dd-login__card">
+        <h1 className="usa-heading m-0 text-2xl">Sign in to Disaster Deck</h1>
+        <p className="usa-intro mt-2 mb-0 text-base">Use your work or agency account.</p>
 
         {error && (
-          <div role="alert" className="mt-6 flex gap-2.5 rounded-lg border border-destructive/30 bg-destructive-soft p-3 text-sm">
-            <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-destructive" />
-            <div>
-              <p className="font-medium">Sign-in failed</p>
-              <p className="text-muted-foreground">{ERRORS[error] ?? "Something went wrong. Try again."}</p>
-            </div>
-          </div>
+          <Alert type="error" className="mt-4" role="alert">
+            <AlertHeading level="h2">Sign-in failed</AlertHeading>
+            <AlertText>{ERRORS[error] ?? "Something went wrong. Try again."}</AlertText>
+          </Alert>
         )}
 
         <form action={signInWithSSOJet} className="mt-6">
-          <Button type="submit" size="lg" className="w-full">
-            <LogIn aria-hidden />
-            Continue with SSOJet
-          </Button>
+          <Button type="submit" size="big" className="w-full">Continue with SSOJet</Button>
         </form>
 
         {localDemo && (
           <>
-            <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
-              <Separator className="flex-1" />or<Separator className="flex-1" />
-            </div>
-            <Button asChild variant="outline" size="lg" className="w-full">
-              <Link href="/">Continue without signing in</Link>
-            </Button>
+            <p className="my-4 text-center text-sm">or</p>
+            <Link href="/" className="usa-button usa-button--outline usa-button--big w-full">
+              Continue without signing in
+            </Link>
           </>
         )}
       </div>

@@ -30,7 +30,8 @@ export function ThemeToggle({ className }: { className?: string }) {
       type="button"
       onClick={() => setDark(!dark)}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-      className={cn("inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground", className)}
+      // In the USWDS header, light in both themes: USWDS token colours.
+      className={cn("inline-flex size-8 items-center justify-center rounded-md text-usa-base-dark transition-colors hover:bg-usa-base-lightest hover:text-usa-ink", className)}
     >
       {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </button>
