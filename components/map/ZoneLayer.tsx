@@ -1,12 +1,11 @@
 "use client";
 // NASA zones from Role 4's evidence GeoJSON (public/data/zones.geojson), not from the Zone
 // records: the records have no shape and cannot hold "unknown". Unknown stays unknown here.
-//   cold: true          → diagonal hatch
-//   silentZone: true    → cross hatch
+//   cold: true          → diagonal hatch (drawn as a soft fill on MapLibre)
+//   silentZone: true    → cross hatch (drawn as a soft line fill)
 //   silentZone: null    → dashed outline only, "not evaluated"
 import { useEffect, useState } from "react";
-import { GeoJSON } from "react-leaflet";
-import type { Feature, FeatureCollection, Polygon } from "geojson";
+import type { FeatureCollection, Polygon } from "geojson";
 
 export interface ZoneProps {
   _id: string; name: string;
@@ -55,12 +54,6 @@ export function zoneText(p: ZoneProps): string {
   return lines.join("<br>");
 }
 
-function className(p: ZoneProps): string {
-  if (p.silentZone) return "fill-[url(#nasa-cross)] stroke-hatch";
-  if (p.cold) return "fill-[url(#nasa-hatch)] stroke-hatch";
-  return "fill-none stroke-hatch";
-}
-
 export function useZones(url: string) {
   const [fc, setFc] = useState<ZoneFC | null>(null);
   useEffect(() => {
@@ -68,40 +61,4 @@ export function useZones(url: string) {
     fetch(url).then((r) => (r.ok ? r.json() : null)).then(setFc).catch(() => setFc(null));
   }, [url]);
   return fc;
-}
-
-// The hatch patterns. Any SVG on the page can use them with url(#id).
-export function HatchDefs() {
-  return (
-    <svg width="0" height="0" className="absolute" aria-hidden>
-      <defs>
-        <pattern id="nasa-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="8" className="stroke-hatch" strokeWidth="2" />
-        </pattern>
-        <pattern id="nasa-cross" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="8" className="stroke-hatch" strokeWidth="2" />
-          <line x1="0" y1="0" x2="8" y2="0" className="stroke-hatch" strokeWidth="2" />
-        </pattern>
-      </defs>
-    </svg>
-  );
-}
-
-export function ZoneLayer({ fc }: { fc: ZoneFC }) {
-  return (
-    <GeoJSON
-      key={fc.features.map((f) => f.properties._id).join()}
-      data={fc}
-      style={(f) => {
-        const p = (f as Feature<Polygon, ZoneProps>).properties;
-        // map-fade-in: the layer appears once, when it mounts (globals.css). Nothing repeats.
-        return { className: `${className(p)} map-fade-in`, weight: 2, dashArray: p.silentZone === null ? "6 6" : undefined, fillOpacity: 1 };
-      }}
-      onEachFeature={(f, layer) => {
-        const p = f.properties as ZoneProps;
-        layer.bindTooltip(`${escapeHtml(p.name)} · ${p.minTempC?.toFixed(2) ?? "—"} °C`, { sticky: true });
-        layer.bindPopup(zoneText(p), { maxWidth: 330 });
-      }}
-    />
-  );
 }

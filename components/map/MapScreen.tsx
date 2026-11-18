@@ -13,10 +13,13 @@ import { ageText, isStale } from "../encode";
 import { fromBoard, type MapItem, type MapSource } from "./mapItems";
 import type { Names, WorkState } from "./siteWork";
 import { usePolled } from "./usePolled";
-import { DeskMap } from "./DeskMap";
 import type { GlQuake } from "./gl/DeskGlMap";
 
 const DeskGlMap = dynamic(() => import("./gl/DeskGlMap"), {
+  ssr: false,
+  loading: () => <div className="h-full w-full animate-pulse bg-secondary" />,
+});
+const EvidenceGlMap = dynamic(() => import("./gl/EvidenceGlMap").then((m) => m.EvidenceGlMap), {
   ssr: false,
   loading: () => <div className="h-full w-full animate-pulse bg-secondary" />,
 });
@@ -193,7 +196,7 @@ export function MapScreen({ initial, initialLive = false, focus, quakes, names }
       <div className="relative order-1 h-[55vh] md:order-2 md:h-auto md:flex-1">
         {mode === "live"
           ? <DeskGlMap items={items} now={now} selected={selected} onPick={pick} flyKey={flyKey} quakes={quakes} ringKeys={ringKeys} />
-          : <DeskMap embedded onPick={pick} initial={initial} initialLive={initialLive} focus={selected ?? undefined} />}
+          : <EvidenceGlMap items={items} onPick={pick} focus={selected} />}
       </div>
     </div>
   );

@@ -15,9 +15,7 @@ import {
 import usgs from "../../agents/fixtures/usgs-kahramanmaras-2023.json";
 import { makeOpsPosts, SECOND_QUAKE_MIN, type OpsPost } from "@/fixtures/opsPosts";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui";
+import { Button, Tag } from "@trussworks/react-uswds";
 import { Bars } from "../metrics/charts/Bars";
 import type { MetricPoint } from "../metrics/types";
 import { Count, useStagger } from "../metrics/charts/motion";
@@ -29,7 +27,7 @@ import { useOpsFeed } from "./useOpsFeed";
 
 const OpsMap = dynamic(() => import("./OpsMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full rounded-none" />,
+  loading: () => <div className="h-full w-full animate-pulse bg-secondary" />,
 });
 
 const QUAKES: Quake[] = usgs.events.map((e) => ({ id: e.id, time: e.time, mag: e.mag, place: e.place, lat: e.lat, lon: e.lon }));
@@ -70,12 +68,12 @@ function Kpi({ i, label, value, icon: Icon, act, note }: {
 function OutcomeBadge({ p }: { p: OpsPost }) {
   const { tier, actNow } = outcomeTier(p.outcome);
   const word = OUTCOME_TAG[p.outcome.kind];
-  if (actNow) return <Badge variant="destructive" className="shrink-0">{word}</Badge>;
+  if (actNow) return <Tag className="shrink-0 bg-destructive text-destructive-foreground">{word}</Tag>;
   return (
-    <Badge variant="outline" className="shrink-0 bg-background font-normal">
+    <Tag className="shrink-0 bg-background font-normal">
       <span aria-hidden className={cn("size-1.5 rounded-full", tier === 1 ? "bg-warning" : "bg-calm")} />
       {word}
-    </Badge>
+    </Tag>
   );
 }
 
@@ -103,9 +101,9 @@ function PostLine({ p, fresh }: { p: OpsPost; fresh: boolean }) {
             </span>
           )}
           {p.accountAgeDays === 0 && (
-            <Badge variant="outline" className="font-normal">
+            <Tag className="font-normal">
               <span aria-hidden className="size-1.5 rounded-full bg-warning" />New account
-            </Badge>
+            </Tag>
           )}
           <span className="ml-auto shrink-0 font-mono">{localTime(p.at)}</span>
         </div>
@@ -168,7 +166,7 @@ function Panel({ title, aside, sample, children }: {
       <header className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{title}</h2>
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          {sample && <Badge variant="outline" className="font-normal" title="Nothing reported yet, these are the exercise's numbers">Sample</Badge>}
+          {sample && <Tag className="font-normal" title="Nothing reported yet, these are the exercise's numbers">Sample</Tag>}
           {aside}
         </span>
       </header>
@@ -210,15 +208,15 @@ export function OpsRoom({ deskId }: { deskId: string }) {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight">Operations room</h1>
               {feed.isLive ? (
-                <Badge variant="outline" className="font-normal">
+                <Tag className="font-normal">
                   <span aria-hidden className="relative flex size-1.5">
                     <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
                     <span className="relative inline-flex size-1.5 rounded-full bg-success" />
                   </span>
                   Live
-                </Badge>
+                </Tag>
               ) : (
-                <Badge variant="secondary" className="font-normal">Exercise replay</Badge>
+                <Tag className="font-normal">Exercise replay</Tag>
               )}
             </div>
             <p className="text-sm text-muted-foreground">
@@ -237,18 +235,21 @@ export function OpsRoom({ deskId }: { deskId: string }) {
             {!feed.isLive && (
               <>
                 <div className="inline-flex h-8 items-center gap-0.5 rounded-lg border bg-card p-0.5 shadow-xs">
-                  <Button type="button" variant="ghost" size="icon-xs" onClick={() => feed.setPlaying(!feed.playing)}
-                    aria-label={feed.playing ? "Pause" : "Play"}>
-                    {feed.playing ? <Pause aria-hidden /> : <Play aria-hidden />}
+                  <Button type="button" unstyled onClick={() => feed.setPlaying(!feed.playing)}
+                    aria-label={feed.playing ? "Pause" : "Play"}
+                    className="grid size-6 place-items-center rounded-md text-foreground hover:bg-accent">
+                    {feed.playing ? <Pause aria-hidden className="size-4" /> : <Play aria-hidden className="size-4" />}
                   </Button>
                   {[1, 4].map((x) => (
-                    <Button key={x} type="button" size="xs" variant={feed.speed === x ? "secondary" : "ghost"}
-                      onClick={() => feed.setSpeed(x)} aria-pressed={feed.speed === x} className="font-mono">
+                    <Button key={x} type="button" unstyled
+                      onClick={() => feed.setSpeed(x)} aria-pressed={feed.speed === x}
+                      className={cn("rounded-md px-1.5 py-0.5 font-mono", feed.speed === x ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-accent")}>
                       {x}×
                     </Button>
                   ))}
-                  <Button type="button" variant="ghost" size="icon-xs" onClick={feed.restart} aria-label="Restart">
-                    <RotateCcw aria-hidden />
+                  <Button type="button" unstyled onClick={feed.restart} aria-label="Restart"
+                    className="grid size-6 place-items-center rounded-md text-foreground hover:bg-accent">
+                    <RotateCcw aria-hidden className="size-4" />
                   </Button>
                 </div>
                 <div className="flex w-28 flex-col gap-1" title={`${posts.length} of ${feed.total} posts`}>

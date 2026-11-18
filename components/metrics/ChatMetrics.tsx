@@ -4,7 +4,7 @@
 // the poller unmounts and the same cards keep their last values: no fetch, no motion in history.
 import { useEffect, useState } from "react";
 import type { Event } from "@/lib/types";
-import { Badge } from "@/components/ui/badge";
+import { Tag } from "@trussworks/react-uswds";
 import { MetricCard } from "./charts/MetricCard";
 import type { MetricId, MetricResult } from "./types";
 import { useMetrics } from "./useMetrics";
@@ -29,10 +29,10 @@ export function ChatMetrics({ ids, active, events, user }: {
     <div className="flex w-full flex-col gap-3 font-sans">
       {active && <Poller ids={ids} events={events} user={user} onResults={setShown} />}
       {shown && !shown.live && (
-        <Badge variant="outline" className="font-normal text-muted-foreground">
+        <Tag className="font-normal text-muted-foreground">
           <span aria-hidden className="size-1.5 rounded-full bg-calm" />
           Demo data
-        </Badge>
+        </Tag>
       )}
       {shown?.results.map((r) => <MetricCard key={r.id} result={r} />)}
     </div>
