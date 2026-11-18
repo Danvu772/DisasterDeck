@@ -17,7 +17,7 @@ people ── /api/chat ───┘          ▲
 ## Handoff to Göktürk (15 Nov)
 
 Start here, in this order:
-1. **Run it.** `npm install`, then `npm run dev` and open `/talk?user=field-alpha` (voice page) and `/agent`. Your `.env.local` needs `ANTHROPIC_API_KEY`, `MONGODB_URI` (shared Atlas, from Darshal), `DEMO_MODE=1`, and for voice `ELEVENLABS_API_KEY`. Ask Ömer for the keys privately; never commit them. Add `DESK_BACKEND=fixture` to try things without writing to the team's database.
+1. **Run it.** `npm install`, then `npm run dev` and open `/talk?user=field-alpha` (voice page) and `/agent`. Your `.env.local` needs `OPENROUTER_API_KEY`, `MONGODB_URI` (shared Atlas, from Darshal), `DEMO_MODE=1`, and for voice `ELEVENLABS_API_KEY`. Ask Ömer for the keys privately; never commit them. Add `DESK_BACKEND=fixture` to try things without writing to the team's database.
 2. **Read three files:** `agents/desk/port.ts` (what an agent can read and post), `agents/personal/turn.ts` (one chat turn), `agents/personal/tools.ts` (the agent's tools).
 3. **Check nothing broke:** `DESK_BACKEND=fixture npx tsx agents/scripts/contract-check.ts` (every event shape vs Role 1's schema, free) and `npx tsx --env-file=.env.local agents/scripts/events-check.ts` (how the Brain handled our events, read only).
 
@@ -80,7 +80,7 @@ Open, in priority order:
 | Tweet / news extraction | Claude Sonnet 5.5 | low | $0.002 per tweet, $0.07 per news run |
 | Shift handoff | Claude Opus 5.5 | medium | about $0.05 |
 
-Change with `ANTHROPIC_MODEL_CHAT` / `_EXTRACT` / `_SUMMARY` and `ANTHROPIC_EFFORT_*`. Haiku 5.5 is 20× cheaper if money runs short. Safety declines: server-side fallback, plus one retry on Opus 5.5; a declined tweet still goes in through the plain rules.
+Since D-0003 the models are gpt-oss on OpenRouter (`agents/shared/llm.ts`). Change with `OPENROUTER_MODEL_CHAT` / `_EXTRACT` / `_SUMMARY` / `_DIGEST` and `OPENROUTER_EFFORT_*`. A declined tweet still goes in through the plain rules.
 
 ### Run
 
@@ -96,7 +96,7 @@ npx tsx agents/scripts/spend.ts                                  # what we spent
 npm run dev                                                      # then /agent?user=zeynep
 ```
 
-`.env.local` needs `ANTHROPIC_API_KEY`, `DEMO_MODE=1` (the chat accepts `?user=` only then) and, for the real desk, `MONGODB_URI` / `MONGODB_DB` / `DESK_ID` from `.env.example`, then `npm run db:up` and `npm run db:seed`. Check: `npx tsx --env-file=.env.local agents/scripts/lib-check.ts` (~$0.03).
+`.env.local` needs `OPENROUTER_API_KEY`, `DEMO_MODE=1` (the chat accepts `?user=` only then) and, for the real desk, `MONGODB_URI` / `MONGODB_DB` / `DESK_ID` from `.env.example`, then `npm run db:up` and `npm run db:seed`. Check: `npx tsx --env-file=.env.local agents/scripts/lib-check.ts` (~$0.03).
 
 Demo people on the real desk (from `data/seed.json`): `volunteer-callback`, `volunteer-mechanic`, `field-alpha`, `supplier-primary`, `supplier-backup`, `shelter-desk`, `coordinator-duty`, `coordinator-backup`, `public-demo`. On the fake desk also Dan's `zeynep`, `team-4`, `supplier-2`, `coord-1`, plus `shelter-b-staff`, `citizen-1`.
 
@@ -140,7 +140,7 @@ No key? Publish the sheet (File → Share → Publish to web → CSV) and set `G
 | **Role 3 (Dan)** | Add `shelter-b-staff` and `citizen-1` to the "talk as" list | They exist in the agent's fake desk, not in `fixtures/desk.ts` |
 | **Role 1** | Optional `needsCheck?: string` on `ReportPayload` | The X agent's "unclear" note rides in `textEn` today because the schema strips unknown fields. With a field the Brain could open a call task for it directly |
 | **Role 3 (Dan)** | Field phone view: send the hold-to-talk recording as `audioBase64` (MediaRecorder, webm/opus) with `speak: true`, show `heard` as the person's line, and play `replyAudio` | ElevenLabs track: "the voice is the product". A field team in the rubble talks and listens, hands free. Browser speech recognition stays as the fallback |
-| **Everyone** | Set a spend limit of about $18 on the API key's workspace in the Anthropic Console | `AGENT_BUDGET_USD` only guards this machine |
+| **Everyone** | Set a credit limit on the OpenRouter API key | `AGENT_BUDGET_USD` only guards this machine |
 
 ---
 

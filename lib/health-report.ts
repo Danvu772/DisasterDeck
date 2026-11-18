@@ -94,8 +94,8 @@ async function main() {
   const lastMsg = await c.messages.findOne({}, { sort: { ts: -1 }, projection: { ts: 1 } });
   rows.push({
     subsystem: "personal agents (chat)",
-    status: set("ANTHROPIC_API_KEY") ? (ago(lastMsg?.ts) !== null ? "ok" : "idle") : "off",
-    detail: `${set("ANTHROPIC_API_KEY") ? "key set" : "no ANTHROPIC_API_KEY"}, last message ${agoText(ago(lastMsg?.ts))}`,
+    status: set("OPENROUTER_API_KEY") ? (ago(lastMsg?.ts) !== null ? "ok" : "idle") : "off",
+    detail: `${set("OPENROUTER_API_KEY") ? "key set" : "no OPENROUTER_API_KEY"}, last message ${agoText(ago(lastMsg?.ts))}`,
   });
 
   // Config-only subsystems

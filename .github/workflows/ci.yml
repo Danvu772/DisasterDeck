@@ -33,6 +33,8 @@ jobs:
         run: npx tsc --noEmit
       - name: Historical replay integrity and worker tests
         run: npm run check:replay
+      - name: Model adapter (OpenRouter, mocked; no key)
+        run: npm run check:llm
       - name: Lint
         run: npx eslint
       - name: Product name is Disaster Deck

@@ -33,7 +33,7 @@ Two projects, laptop (1440 by 900) and phone (390 by 844). `field.spec.ts` and `
 
 ## It never writes to the real desk
 
-The content tests answer `/api/board`, `/api/events` and `/api/users` from the repo's `fixtures/` (see `tests/desk.ts`), so they pass whatever the live desk holds, and every other non-GET call to `/api` is aborted. The chat is answered in the test too (`tests/chat.ts`), because a real `POST /api/chat` saves to the person's history and spends the Anthropic key. `E2E_LIVE_CHAT=1 npm test` lets the chat reach the real agent. The layout smoke tests for `/` and `/coordinator` and the security tests read the live server.
+The content tests answer `/api/board`, `/api/events` and `/api/users` from the repo's `fixtures/` (see `tests/desk.ts`), so they pass whatever the live desk holds, and every other non-GET call to `/api` is aborted. The chat is answered in the test too (`tests/chat.ts`), because a real `POST /api/chat` saves to the person's history and spends the OpenRouter key. `E2E_LIVE_CHAT=1 npm test` lets the chat reach the real agent. The layout smoke tests for `/` and `/coordinator` and the security tests read the live server.
 
 ## Where to look afterwards
 

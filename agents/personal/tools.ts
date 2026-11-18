@@ -3,8 +3,6 @@
 // Schemas are strict: every key required, null for "not said".
 // Inputs are checked again here (task ids, roles), because the model's output is untrusted.
 
-import { pilot } from "@/lib/pilot";
-import type Anthropic from "@anthropic-ai/sdk";
 import type {
   AnswerPayload, ApprovalPayload, CapacityPayload, ClaimPayload, ClosurePayload, CorrectionPayload,
   IncidentKind, IncidentPayload, LatLng, NeedPayload, RecordType, ReportPayload, Role,
@@ -15,16 +13,19 @@ import type { MetricId } from "@/components/metrics/types";
 import { desk, type NewEvent, type UserContext } from "../desk";
 import { haversineMeters } from "@/lib/geo";
 import { age, askDesk, distance, topicsFor, type Topic } from "../desk/view";
+import type { FunctionTool } from "../shared/llm";
 import { maskPhones } from "../shared/privacy";
 import { writeHandoff } from "./handoff";
 
-type Tool = Anthropic.Beta.BetaTool;
+// A tool as written here; toolsFor() turns it into an OpenAI-style function for the chat completions API.
+type Schema = Record<string, unknown>;
+interface Tool { name: string; description: string; input_schema: Schema }
 const str = { type: "string" } as const;
 const nstr = { type: ["string", "null"] } as const;
 const nint = { type: ["integer", "null"] } as const;
 
-function obj(properties: Record<string, unknown>): Tool["input_schema"] {
-  return { type: "object", additionalProperties: false, required: Object.keys(properties), properties } as Tool["input_schema"];
+function obj(properties: Record<string, unknown>): Schema {
+  return { type: "object", additionalProperties: false, required: Object.keys(properties), properties };
 }
 
 const INCIDENT_KINDS: IncidentKind[] = ["vehicle_breakdown", "road_blocked", "cannot_find", "short_supply",
@@ -41,8 +42,8 @@ const DEFS: Record<string, Tool> = {
     input_schema: obj({
       topic: { type: "string", enum: ["summary", "mine", "sites", "needs", "shelters", "roads", "incidents", "tasks"] },
       region: { ...nstr, description: "District or neighbourhood to filter by, or null for all." },
-      // Plain integer, not nullable: the API allows at most 16 nullable parameters across all of a
-      // request's strict tools, and the volunteer and field tool sets were at 17 (HTTP 400).
+      // Plain integer, not nullable: keeps the count of nullable parameters per request low (the old
+      // capped it at 16 and some strict-mode providers have similar limits).
       page: { type: "integer", description: "0 for the first 12 lines, 1 for the next 12, and so on." },
     }),
   },
@@ -126,7 +127,7 @@ const DEFS: Record<string, Tool> = {
       action: { type: "string", enum: ["retract", "edit"] },
       record_type: { type: "string", enum: RECORD_TYPES },
       record_id: str,
-      // Nullable enum: the API wants anyOf here, not type ["string","null"] + enum.
+      // Nullable enum: anyOf, not type ["string","null"] + enum, which strict mode handles unevenly.
       field: { anyOf: [{ type: "string", enum: ["address", "peopleTrapped", "quantity", "bedsUsed", "bedsTotal", "state"] }, { type: "null" }] },
       value: { ...nstr, description: "The new value for field, as text." },
       reason: str,
@@ -184,15 +185,17 @@ const ROLE_TOOLS: Record<Role, string[]> = {
   public: ["ask_desk", "file_need", "file_report", "file_closure"],
 };
 
-export function toolsFor(ctx: UserContext): Anthropic.Beta.BetaToolUnion[] {
-  const tools: Anthropic.Beta.BetaToolUnion[] = ROLE_TOOLS[ctx.user.role].map((n) => ({ ...DEFS[n], strict: true }));
-  // Web search only when a supplier or field team has an open problem: the help-desk lookup.
-  // Billed per search, so it is offered only then, and capped at 2 searches per turn.
-  if ((ctx.user.role === "supplier" || ctx.user.role === "field") && ctx.myIncidents.length > 0) {
-    tools.push({ type: "web_search_20260209", name: "web_search", max_uses: 2,
-      user_location: { type: "approximate", city: pilot.name, country: "TR" } });
-  }
-  return tools;
+/** The role's tools as strict function definitions. No web search: Claude's server-side tool went with D-0003. */
+export function toolsFor(ctx: UserContext): FunctionTool[] {
+  return ROLE_TOOLS[ctx.user.role].map((n) => ({
+    type: "function",
+    function: { name: DEFS[n].name, description: DEFS[n].description, parameters: DEFS[n].input_schema, strict: true },
+  }));
+}
+
+/** The JSON schema of one tool's input, for checking what the model sent. */
+export function toolSchema(name: string): Schema | undefined {
+  return DEFS[name]?.input_schema;
 }
 
 export interface ToolOutcome { content: string; eventId?: string; isError?: boolean; summary?: string; pending?: true; showMetric?: MetricId; showMap?: { kinds: string[]; ids: string[]; text?: string } }

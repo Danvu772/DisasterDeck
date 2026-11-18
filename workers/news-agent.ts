@@ -1,5 +1,6 @@
-// News agent worker: live web searches for a region, findings posted as events
-// (closure, need, report, capacity).
+// News agent worker: news for a region, findings posted as events (closure, need, report, capacity).
+// OFF since D-0003: its search (Claude's web_search tool) is gone, and it exits with a message
+// pointing at issue #10, which gives it a new source.
 // Owner: Role 2. Run it by hand, or every 15–30 min during the demo.
 //
 //   npx tsx --env-file=.env.local workers/news-agent.ts                      both channels
@@ -9,13 +10,12 @@
 // Channels and their event source / actor:
 //   news      source "news"    actor "news-agent"
 //   official  source "news"    actor "official-agent"   (lib/types has no "official" source yet)
-// Reddit is not a channel: it blocks Claude's web search, and its API is closed to new apps.
-// About $0.05–0.15 per channel run (3 searches at most).
+// Reddit is not a channel: its API is closed to new apps.
 
 import { configuredDeskId } from "../lib/pilot";
 import { createHash } from "node:crypto";
 import { desk } from "../agents/desk";
-import { CHANNELS, searchNews, type Channel } from "../agents/research/news-search";
+import { CHANNELS, NewsSearchOffError, searchNews, type Channel } from "../agents/research/news-search";
 import { BudgetError, spentUsd } from "../agents/shared/cost";
 
 function arg(name: string, fallback: string): string {
@@ -54,7 +54,7 @@ async function main() {
       log(`[${channel}] ${findings.length} findings`);
       total += findings.length;
     } catch (e) {
-      if (e instanceof BudgetError) throw e;
+      if (e instanceof BudgetError || e instanceof NewsSearchOffError) throw e;
       log(`[${channel}] failed: ${(e as Error).message}`); // one channel failing must not stop the others
     }
   }
@@ -63,7 +63,7 @@ async function main() {
 }
 
 main().catch(async (e) => {
-  log(e instanceof BudgetError ? e.message : `fatal: ${(e as Error).message}`);
+  log(e instanceof BudgetError || e instanceof NewsSearchOffError ? e.message : `fatal: ${(e as Error).message}`);
   await desk().close?.();
   process.exit(1);
 });

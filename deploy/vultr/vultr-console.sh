@@ -98,7 +98,7 @@ miss=0
 for k in MONGODB_URI DESK_ID AUTH_SECRET SSOJET_CLIENT_ID SSOJET_CLIENT_SECRET SSOJET_ISSUER_URL; do
   v=$(envval "$k"); if [ -n "$v" ]; then ok "$k (${#v} chars)"; else bad "$k missing or empty"; miss=1; fi
 done
-for k in MONGODB_DB AGENT_KEY ANTHROPIC_API_KEY ELEVENLABS_API_KEY NEXT_PUBLIC_MAPBOX_TOKEN; do
+for k in MONGODB_DB AGENT_KEY OPENROUTER_API_KEY ELEVENLABS_API_KEY NEXT_PUBLIC_MAPBOX_TOKEN; do
   v=$(envval "$k"); if [ -n "$v" ]; then ok "$k (${#v} chars)"; else warn "$k empty: that feature stays off"; fi
 done
 case "$(envval MONGODB_URI)" in mongodb+srv://*|mongodb://*) ok "MONGODB_URI starts with mongodb";; *) bad "MONGODB_URI does not start with mongodb (first character lost in the paste?)"; miss=1;; esac

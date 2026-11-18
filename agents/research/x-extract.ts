@@ -1,6 +1,6 @@
 // X agent, extraction step: one tweet → a report about people, needs it asks for, roads it says
 // are closed or open, and how full a shelter is.
-// One Claude call per tweet. The worker (workers/x-agent.ts) handles timing and posting.
+// One model call per tweet (structured JSON). The worker (workers/x-agent.ts) handles timing and posting.
 
 import type { CapacityPayload, ClosurePayload, LatLng, NeedPayload, ReportPayload } from "@/lib/types";
 import { RefusalError, structured } from "../shared/llm";
