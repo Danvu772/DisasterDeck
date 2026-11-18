@@ -66,7 +66,7 @@ Rebuilt from scratch by D-0017. Everything that fed the queue before (X agent, n
 | Memory keeper | `workers/memory-keeper.ts` | built | Handles all 11 event types (`HANDLED`) |
 | Dispatcher | `workers/dispatcher.ts`, `lib/rules/` | built | Tier, score, `pickPerson()`, approvals, `one_open_task` unique index |
 | Help desk playbook | `lib/rules/incidents.ts` | built | One rule per incident kind (§5.4) |
-| Sweeper | `workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts. Target: timers read `deskNow(deskId)` (D-0017) |
+| Sweeper | `workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts. Target: timers, keeper ages and dispatcher deadlines read `deskNow(deskId)` (D-0017) |
 
 ### 3.3 People, agents and screens
 
@@ -100,6 +100,7 @@ The TypeScript in `lib/types.ts` and the runtime checks in `lib/schemas.ts` are 
 | `tasks`, `inbox` | Dispatcher (playbook and sweeper are part of it) |
 | `users`, `messages` | The app's API (login, heartbeat, chat). Chat memory folds `messages` |
 | `meta` | Brain (lease, desk version, loop time). Demo player, only its `demo:<deskId>` documents (D-0017) |
+| `demo_requests` | `POST /api/desk/demo` only. The demo player reads it (D-0017 amendment) |
 
 Every document carries `deskId`. Every record keeps a `history` (who, when, source, reason).
 

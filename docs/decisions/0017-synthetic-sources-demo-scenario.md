@@ -104,3 +104,14 @@ Today the keeper gives `news` public trust, so an AP wire story counts the same 
 1. **Setting:** Antakya, synthetic, modelled on 6 Feb 2023. The map imagery stays.
 2. **AP is vetted** (§5).
 3. **The cast** (§3) goes in as designed, on `demo: true` desks only (orchestrator's recommendation; Dan said go on the whole design).
+
+## Amendment, 18 Nov (from the build plans for #51 and #53)
+
+Planning found gaps. This amendment closes them.
+
+1. **The demo button writes to its own collection.** `POST /api/desk/demo` inserts into `demo_requests`, and the route is that collection's only writer. The player reads the requests and records the last one it handled in its own `demo:<deskId>` document, so `meta` keeps one writer per document. `wipeDesk()` never touches `demo_requests`.
+2. **A cast line acts as whoever the rules picked.** `as: "assignee"` means the person the dispatcher assigned the task to. A person's own report, correction or approval names the seeded user. The rules keep choosing who goes where (invariant 3), and each beat asserts who got the task instead of scripting it.
+3. **The desk clock reaches the whole Brain.** Keeper scoring and age, dispatcher deadlines and ETAs, and sweeper timers all read `deskNow(deskId)`, not just the sweeper. On a desk with no demo document, `deskNow` is `Date.now()`, so live behaviour does not change. #52 grows to cover this.
+4. **Beats were rewritten to land on today's Brain** (`docs/demo-scenario.md`). Nothing routes placements, silence alone never escalates, hazards live on sites, and a coordinator cannot clear a hazard field. The beats now show what the rules really do. The seed suppliers stock insulin, tents and heaters.
+5. **Bug: a public `rescued` report lowers a site's `peopleTrapped`.** That lets one social post change a life-safety record, against §5.2 ("a social post alone can never approve, close or cancel anything"). Fix: only a trusted voice changes `peopleTrapped`. Beat 15 depends on it.
+6. **`check:scenario` runs on virtual time** (`V = T0 + atS`, Brain drained after each line, sweeper ticked about every 30 virtual seconds). This is the pattern `sweeper-check` already uses. The wall-clock player is tested separately by DEMO-3.
