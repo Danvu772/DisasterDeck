@@ -22,3 +22,4 @@ Dan decides alone. Template: `# D-NNNN Title`, then Date, Status (proposed, acce
 | [D-0014](0014-observability-audit.md) | CloudTrail, CloudWatch, app audit log | accepted |
 | [D-0015](0015-ci-github-oidc.md) | CI to AWS: GitHub Actions with OIDC, Secrets Manager | accepted |
 | [D-0016](0016-photos-option2.md) | Photos: a vision model describes them into text (option 2) | accepted |
+| [D-0017](0017-two-modes-replay-and-live.md) | Two desk modes, replay and live; replay empties the desk and plays one timeline | proposed |
