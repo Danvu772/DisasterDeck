@@ -428,6 +428,32 @@ async function main() {
   assert.deepEqual(apSite[0].supporters, ["news:ap"]); assert.equal(apSite[0].support, 1);
   ok("SRC-4 (c): two AP posts with different texts are one voice (news:ap)");
 
+  // --- TRUST-1 (#56): a public rescued post never lowers peopleTrapped ---
+  const R: LatLng = [37.1, 37.1];
+  const rescuedText = (n: string) => ({ kind: "rescued" as const, text: `Rescued ${n}`, textEn: `Rescued ${n}`, coords: R, peopleCount: 1 });
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "x", actor: "x-agent", dedupeKey: "check:cp1:t1-trapped",
+    payload: { kind: "trapped", text: "Trust check: 4 people under the rubble", textEn: "Trust check: 4 trapped", coords: R, region: "antakya-merkez", peopleCount: 4 } });
+  await drain();
+  const t1 = (await c.sites.findOne({ deskId: DESK, coords: R }))!;
+  assert.equal(t1.peopleTrapped, 4);
+  for (const src of ["x", "instagram", "facebook"] as const) {
+    await post<ReportPayload>({ deskId: DESK, type: "report", source: src, actor: `${src}-agent`, dedupeKey: `check:cp1:t1-pub-${src}`, payload: rescuedText(src) });
+  }
+  await drain();
+  const t2 = (await c.sites.findOne({ _id: t1._id }))!;
+  assert.equal(t2.peopleTrapped, 4, "public rescued posts do not lower peopleTrapped");
+  assert.equal(t2.tier, t1.tier); assert.equal(t2.status, t1.status);
+  assert.equal(t2.sources.length, t1.sources.length + 3, "the public posts are still recorded as sources");
+  ok("TRUST-1: public x, instagram and facebook rescued posts leave peopleTrapped 4, tier and status unchanged, and are recorded as sources");
+  // Control: a vetted voice (AP) and a person still lower it.
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "news", actor: "ap", dedupeKey: "check:cp1:t1-ap", payload: rescuedText("ap") });
+  await drain();
+  assert.equal((await c.sites.findOne({ _id: t1._id }))!.peopleTrapped, 3, "a vetted rescued report lowers it");
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "person", actor: U.volA, dedupeKey: "check:cp1:t1-person", payload: rescuedText("person") });
+  await drain();
+  assert.equal((await c.sites.findOne({ _id: t1._id }))!.peopleTrapped, 2, "a person's rescued report lowers it");
+  ok("TRUST-1 control: a vetted (AP) and a person's rescued report still lower peopleTrapped");
+
   const pending = await c.events.countDocuments({ deskId: DESK, status: { $in: ["pending", "working"] } });
   assert.equal(pending, 0, "nothing left pending");
   ok("every event on the desk ended done, merged or rejected");
