@@ -11,7 +11,7 @@ test.describe("board", () => {
   // Live desk, whatever it holds. Only the layout and the header pill are checked.
   test("loads with the status pill, list, map and detail @smoke", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("status")).toBeVisible();
+    await expect(page.getByRole("banner").getByRole("status")).toBeVisible();
     await expect(page.getByRole("region", { name: "Shared priority list" })).toBeVisible();
     await expect(page.locator(".maplibregl-map")).toBeVisible();
     await expect(detail(page)).toBeVisible();

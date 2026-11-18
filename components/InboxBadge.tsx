@@ -3,7 +3,6 @@
 // The person is the session, or ?user= on this laptop. When the API refuses (nobody identified), it renders nothing.
 import { useSearchParams } from "next/navigation";
 import { CheckCheck, Inbox } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 import { Suspense, useEffect, useState } from "react";
 import type { InboxItem } from "@/lib/types";
 import { ageText } from "./encode";
@@ -55,14 +54,13 @@ function Badge() {
       <button type="button" aria-expanded={open} aria-label={`Inbox, ${items.length} unread`}
         onClick={() => setOpen((o) => !o)}
         className={`inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-medium transition-colors ${
-          act ? "border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90" : "bg-background hover:bg-secondary"}`}>
+          act ? "border-usa-error bg-usa-error text-usa-white hover:opacity-90" : "border-usa-base-lighter bg-usa-white text-usa-ink hover:bg-usa-base-lightest"}`}>
         <Inbox className="size-3.5" aria-hidden />
         <span className="font-mono">{items.length}</span>
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 400, damping: 34 }}
+      {/* No motion in the shell (D-0001): the panel opens and closes at once. */}
+      {open && (
+          <div
             className="absolute right-0 z-50 mt-2 w-80 origin-top-right rounded-xl border bg-popover p-1.5 text-sm text-popover-foreground shadow-lg">
             <div className="flex items-center justify-between px-2 py-1.5">
               <p className="text-sm font-semibold">Inbox</p>
@@ -87,9 +85,8 @@ function Badge() {
                 );
               })}
             </ul>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
     </div>
   );
 }

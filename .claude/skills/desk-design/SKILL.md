@@ -1,93 +1,123 @@
 ---
 name: desk-design
-description: The Disaster Deck visual system (theme v5, 15 Nov 2026) — shadcn/ui neutral on the Obra shadcn kit, Geist, Lucide, motion. Load before writing or changing any screen, component, map layer or copy in app/ or components/.
+description: The Disaster Deck visual system on USWDS 3 (D-0001, Nov 2026) — react-uswds components, USWDS design tokens, Public Sans, the shared shell, Tailwind 4 for layout only, axe in CI. Load before writing or changing any screen, component, map layer or copy in app/ or components/.
 ---
 
-# Disaster Deck design system (v5)
+# Disaster Deck design system (USWDS, D-0001)
 
-One look for every screen: **shadcn/ui "neutral"** (the Obra shadcn/ui kit, Community edition, MIT),
-**Geist** type, **Lucide** icons, **motion** (`motion/react`) for movement, **MapLibre** for maps.
-Calm, grey and white; colour only where it carries meaning.
+Agencies buy tools that pass Section 508 and look like government software, so every screen is
+built on the **U.S. Web Design System 3** (`@uswds/uswds` 3.14) through **react-uswds**
+(`@trussworks/react-uswds` 13, React 19, "use client" bundle). Next.js App Router and React stay.
+Decision: `docs/decisions/0001-frontend-uswds.md`. Requirement: `UI-1` in `tests/requirements.json`.
 
-## 1. Colour = meaning (tokens only)
+The hackathon screens (shadcn/ui, Geist, motion) still run inside the new shell until #16, #17 and
+#18 rebuild them. Don't extend that look: anything new follows this file.
 
-All values live in `app/globals.css`. Never write a hex, rgb, oklch or a Tailwind palette name
-(`red-500`, `white`, `gray-…`) in app/ or components/. `npm run check:tokens` must exit 0.
+## 1. Where things live
 
-| Token (class)                                   | Means                                                    |
-|-------------------------------------------------|----------------------------------------------------------|
-| `background`, `card`, `paper`                   | surfaces: page = `bg-paper`, panels = `bg-card`          |
-| `foreground`, `muted-foreground`                | text, secondary text                                     |
-| `primary` / `primary-foreground`                | the one main action, selected chip                       |
-| `secondary`, `accent`                           | quiet fills, hover                                       |
-| `border`, `input`, `ring`                       | lines, fields, focus                                     |
-| `destructive` / `destructive-foreground` / `destructive-soft` | **act now**: tier 0, critical, overdue. Nothing else is red |
-| `warning` / `warning-foreground`                | tier 1, urgent                                           |
-| `calm`                                          | tier 2                                                   |
-| `success` / `success-soft`                      | healthy system state only                                |
-| `info` / `info-foreground` / `info-soft`        | the agent (its voice, its answers). Nothing else is blue |
+| What | File |
+|---|---|
+| USWDS theme: every colour, font and shape setting, as USWDS tokens | `app/uswds.scss` |
+| Which USWDS packages compile (all of them except its utilities) | `app/_uswds-packages.scss` |
+| Tailwind 4 + the `usa-*` colour mapping + the old shadcn tokens | `app/globals.css` |
+| The shell: skip link, header, primary nav, footer | `app/layout.tsx`, `components/shell/` |
+| The six screens, in nav order | `components/shell/screens.ts` |
+| Login page (USWDS) | `app/login/page.tsx` |
+| Production stand-in for motion | `components/motion/static.tsx`, `next.config.ts` |
+| Accessibility test (axe) | `e2e/tests/a11y.spec.ts`, `e2e/playwright.a11y.config.ts` |
 
-**Trap:** in this app `muted` (the v4 alias `text-muted`) is muted TEXT. For shadcn's grey fill
-write `bg-secondary`, never `bg-muted`. New code writes `text-muted-foreground`.
-Old v4 names (`ink`, `line`, `act`, `urgent`, `ok`, `night*`) still resolve; prefer the shadcn names.
+## 2. Components first
 
-Dark mode: `.dark` on `<html>` (toggle in the nav). Every token has a dark value; test both.
-Canvas or MapLibre paint needs real colours: read the raw CSS var (`--destructive`, not
-`--color-destructive`) through `components/map/gl/tokens.ts`.
+1. **A react-uswds component** when one exists: `Button`, `Alert`, `Card`, `Tag`, `Table`, `Modal`,
+   `Fieldset`, `Label`, `TextInput`, `Select`, `Radio`, `Checkbox`, `StepIndicator`, `SummaryBox`,
+   `Accordion`, `SideNav`, `ProcessList`, `Icon`. Import from `@trussworks/react-uswds`.
+   They are client components; a server page can render them with plain props.
+2. **USWDS markup and classes** (`usa-button`, `usa-tag`, `usa-alert`...) when the component needs a
+   different element, e.g. a Next `<Link className="usa-button usa-button--outline">`.
+   Check the markup against designsystem.digital.gov/components.
+3. **A small local component** under `components/` built from USWDS classes, when neither fits.
 
-## 2. Type
+Never install another component kit. `components/ui/*` (shadcn) is legacy: do not use it in new code.
 
-- Geist Sans everywhere; Geist Mono only for numbers that line up (counts, times, scores, ids if ever shown).
-- Sizes: page title `text-xl font-semibold tracking-tight`; card title `text-sm font-semibold`;
-  body `text-sm`; meta `text-xs text-muted-foreground`. No `uppercase` labels, no `font-bold` walls.
+## 3. Tokens, never values
 
-## 3. Space and shape
+- Colour, type, spacing and radius come from USWDS tokens. In Sass: `usa.color("primary")`,
+  `usa.units(2)`, `usa.font-size("ui", "sm")`, `usa.radius("md")`. In markup: the Tailwind colours
+  mapped from them, `bg-usa-primary`, `text-usa-ink`, `border-usa-base-lighter` (full list:
+  `--color-usa-*` in `app/globals.css`).
+- Never write a hex, rgb or oklch value, or a Tailwind palette name (`red-500`, `white`, `gray-…`),
+  in app/ or components/. `npm run check:tokens` must exit 0.
+- To change the theme, change a `$theme-*` setting in `app/uswds.scss` to another USWDS system
+  token (`"blue-warm-60v"`), then export it in `:root` and map it in `globals.css` if markup needs it.
 
-- Radius from `--radius` (0.625rem): `rounded-md` controls, `rounded-lg`/`rounded-xl` cards, `rounded-full` chips.
-- Cards: `rounded-xl border bg-card shadow-xs`. Gaps: 2/3/4 (8/12/16 px). Page padding `p-4 md:p-6`.
-- One quiet border per surface; no double borders, no heavy outlines.
+The theme (not flat government gray):
 
-## 4. Components
+| Role | Token | Means |
+|---|---|---|
+| `primary` family | blue-warm (60v; dark 70v, darker 80v, darkest 90) | you can act here: buttons, links, current page |
+| `secondary` family | orange-warm (50v) | signal: the exercise label, attention that is not an error |
+| `base` family | gray-cool | structure: lines, quiet fills, secondary text |
+| `ink` | gray-cool-90 | text |
+| `error`, `warning`, `success`, `info` | USWDS defaults | state only: act now, urgent, healthy, the agent |
 
-- `components/ui/*` (shadcn): Button, Badge, Card, Avatar, Input, Separator, Skeleton, Tooltip.
-  Use them for new UI. Button variants: default, outline, secondary, ghost, destructive, link; sizes xs/sm/default/lg/icon*.
-- `components/encode.ts`: `chip(active)`, `pill`, `statusTag`, `button.{primary,outline,act}`,
-  `tierBadge(tier)`, `tierBar(tier)` — same shapes as shadcn, for existing code.
-- `components/motion/*` (adapted from Watermelon UI, tokenized): `ExpandablePersonCard`,
-  `PinnedList`, `IntensitySlider`.
-- Icons, two sets with one job each. No emoji as icons, no react-icons.
-  - **Things** (what is on the map: fire, gas, live wires, could-collapse, water, other danger, shelter,
-    closed or unsure road, field problems, need): Koboyo "Solid" icons from `components/icons/koboyo.tsx`
-    (`KFire`, `KGas`, `KTent`, `KRoadblock` …). Pick them through `components/icons/things.ts`
-    (`hazardType(text)`, `INCIDENT_ICON[kind]`) or `KIND_ICON` in `detail/fields.ts`, so the map, the map
-    list, the legend and the record cards always show the same icon. A Koboyo icon has no size of its
-    own: always give a size class. New ones: download the solid-style SVG from koboyo.com/icons (free,
-    no attribution) and add it to `koboyo.tsx`; skip busy ones that blur at 16px.
-  - **Interface** (buttons, close, send, arrows, menus, status): `lucide-react`, `size-4` in text,
-    `size-5` in big buttons.
+Contrast: USWDS grades make it checkable. Text and background grades must differ by **50 or more**
+for normal text (AA), 40+ for large text. axe in CI checks it on the shell.
 
-## 5. Words
+## 4. Type and shape
 
-- English everywhere on screen.
-- Short. One line of help at most per screen; no paragraphs explaining how the screen works.
-- Never show internal ids (`site-6af9…`, `task-5`), raw keys (`callStatus`), coordinates,
-  underscores, `T0/T1/T2` codes, or source plumbing. Say what a person needs: what, where, how bad, how long ago, what to do.
-- Tier words: "Life-threatening", "Urgent", "Can wait" (`TIER_WORD` in detail/fields.ts).
+- Public Sans everywhere (USWDS serves it from the app, no Google Fonts); Roboto Mono only for numbers
+  that line up (counts, times, scores).
+- Use USWDS type classes (`usa-intro`, `usa-prose`) or Tailwind size utilities; headings in order,
+  one `h1` per page.
+- Buttons and inputs: USWDS sizes (44 px touch targets). Radius: `md`.
 
-## 6. Motion
+## 5. Tailwind 4 next to USWDS
 
-- `motion/react`, springs (`stiffness 300–400, damping 30–40`). Lists: `layout` + fade/scale 0.95.
-- Map: life-threatening markers breathe (`.marker-pulse`), hazards glow (`.marker-glow`), new criticals ring once.
-- Everything respects `prefers-reduced-motion` (CSS block at the end of globals.css).
+- **USWDS = components and tokens. Tailwind = layout utilities** (flex, grid, gap, padding, width,
+  responsive variants). USWDS's own utility classes (`.margin-0`, `.bg-primary`, `.text-white`) are
+  NOT compiled: their names collide with Tailwind's. Write `m-0`, not `margin-0`.
+- Cascade layers, declared at the top of both stylesheets:
+  `properties < theme < base (Tailwind preflight) < uswds < components < utilities`.
+  USWDS components beat Tailwind's reset; a Tailwind utility on an element beats USWDS. So add a
+  utility to adjust a USWDS component; don't fight it with `!important`.
+- Name custom shell classes `dd-*` and put them in the `@layer uswds` block of `app/uswds.scss`.
 
-## 7. Maps
+## 6. The shell
 
-`components/map/gl/DeskGlMap.tsx` (MapLibre GL + react-map-gl). Vector basemap (CARTO Positron /
-Dark Matter, follows the theme) or satellite. Layers: records (sites, problems, shelters, roads),
-hazards, destroyed buildings (OSM/HOT, 3D), USGS quakes. Clicking a marker shows a small card with
-human words only (what, how bad, people, when, sources) — never a raw field dump.
-The Leaflet NASA imagery view stays in `components/map/DeskMapView.tsx` (Role 4) as the "Imagery" mode on /map.
+`app/layout.tsx` renders, on every page: the USWDS skip link (`#main-content`), `SiteHeader`, the
+page, `SiteFooter`. The page and the footer scroll together under the header, so a full-height
+screen (`h-full`) still fills the window.
+
+- **No `.gov` banner** (`GovBanner`, `usa-banner`): Disaster Deck is not a government website.
+  The a11y test fails if one appears.
+- Primary nav: the six screens of `components/shell/screens.ts` (Desk, Field, Talk, Coordinator,
+  Map, Ops), `aria-current="page"` on the current one. Below 1024 px it is the USWDS drawer behind
+  the Menu button (Escape and navigation close it).
+- Header tools (inbox, account, desk health, theme toggle) use `usa-*` colours: the header stays
+  light in both themes.
+- A screen renders its own `<main>`. Don't add another landmark of the same kind.
+
+## 7. Motion
+
+- No motion library in new code. USWDS components animate where USWDS does; a CSS transition is
+  fine and must stop under `prefers-reduced-motion`.
+- `motion` (`motion/react`) and `liquid-gooey` are demo-only (D-0001). `liquid-gooey` is removed.
+  A build without `DEMO_MODE=1` aliases `motion/react` to `components/motion/static.tsx` (same
+  elements, no animation); `npm run check:bundle` fails if motion's runtime is in such a build.
+  The shell imports no motion at all.
+
+## 8. Icons, words, maps
+
+- Icons: USWDS `Icon` (react-uswds) for interface icons in new code. Map "things" stay the Koboyo
+  set (`components/icons/koboyo.tsx`, picked through `components/icons/things.ts`), so the map, the
+  list and the legend show the same icon. No emoji as icons.
+- Words: English, short, plain language. Never show internal ids, raw keys, coordinates, underscores
+  or `T0/T1/T2` codes. Tier words: "Life-threatening", "Urgent", "Can wait".
+- Maps: MapLibre only (D-0006), `components/map/gl/`. Paint needs real colours: read the raw CSS
+  var through `components/map/gl/tokens.ts`.
 
 ## Checklist before done
 
-`npx tsc --noEmit` · `npm run lint` · `npm run check:tokens` · look at it in light and dark.
+`npx tsc --noEmit` · `npx eslint` · `npm run check:tokens` · `DEMO_MODE=0 npx next build` then
+`npm run check:bundle` · `cd e2e && npm run test:a11y` (no serious or critical axe violations) ·
+look at it at 1440 px and 390 px, keyboard only (Tab from the top hits the skip link first).

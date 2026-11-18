@@ -16,7 +16,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       DEMO_MODE: "1"
       # Build-only placeholder so Auth.js can load. Not a real secret.
@@ -28,6 +28,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            e2e/package-lock.json
       - run: npm ci
       - name: Typecheck
         run: npx tsc --noEmit
@@ -41,5 +44,29 @@ jobs:
         run: npm run check:name
       - name: Design tokens
         run: npm run check:tokens
-      - name: Build
+      # The production artifact: DEMO_MODE=0, as deploy.yml builds it. motion is swapped out (D-0001).
+      - name: Build (production mode)
         run: npx next build
+        env:
+          DEMO_MODE: "0"
+      - name: motion and liquid-gooey are not in the build (D-0001)
+        run: npm run check:bundle
+      # UI-1: axe on the USWDS shell and /login. Starts `next start` on the build above with
+      # DEMO_MODE=1 and no database (e2e/playwright.a11y.config.ts).
+      - name: Install the accessibility test
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Accessibility (axe, UI-1)
+        working-directory: e2e
+        run: npm run test:a11y
+      - name: Keep the accessibility report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-report
+          path: |
+            e2e/report/a11y
+            e2e/test-results/a11y
+          retention-days: 7
