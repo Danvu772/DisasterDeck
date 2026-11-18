@@ -3,6 +3,8 @@
 
 The [live pipeline completion plan](completion-plan.md) reviews main at `f235d43` and gives the implementation order, owners, recovery requirements and live acceptance checks for the remaining work.
 
+**Gov-ready roadmap:** [planning/](planning/README.md) has the compliant stack, market, costs, funding and every action item blocked on a person.
+
 Start with [Multiplayer Disaster Deck](Multiplayer%20Disaster%20Deck/Multiplayer%20Disaster%20Deck.md). It explains the whole idea, the main flow and the demo plan.
 
 **Before you write code,** read [Team contracts](Multiplayer%20Disaster%20Deck/Roles/Team%20contracts.md): the data shapes, the API and who owns which folder.
