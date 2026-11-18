@@ -35,6 +35,7 @@
     "replay:real": "node --env-file-if-exists=.env.local --import tsx workers/x-agent.ts --file data/replays/antakya-real-tweets.json --require-live",
     "replay:synthetic": "node --env-file-if-exists=.env.local --import tsx workers/x-agent.ts --file data/tweets_replay.json",
     "check:replay": "node --import tsx --test scripts/real-replay.test.mjs",
+    "check:llm": "node --import tsx --test scripts/llm-adapter.test.mjs",
     "check:bundle": "node scripts/check-bundle.mjs"
   },
   "dependencies": {
