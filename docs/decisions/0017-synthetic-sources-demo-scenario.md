@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Date | 18 Nov 2026 |
-| Status | proposed |
+| Status | accepted |
 | Decided by | Dan |
 
 ## Context
@@ -99,8 +99,8 @@ Today the keeper gives `news` public trust, so an AP wire story counts the same 
 - Adding a real source later means one connector that emits the same bodies as its synthetic track; the synthetic track stays as its test.
 - Lost for now: LLM extraction of raw posts, the satellite silent-zone and cold alerts, aftershock warnings in personal agents, the sheet sync, and live mode. Each returns as a connector when needed.
 
-## Open for Dan
+## Settled by Dan, 18 Nov
 
-1. **Setting.** Antakya, synthetic, modelled on 6 Feb 2023 (recommended: the map imagery, desk and cast already fit). A US town for the IU tabletop is the alternative; it means new map layers.
-2. **AP as vetted** (§5). Recommended; it is the only Brain change.
-3. **The cast** (§3). Recommended on `demo: true` desks only.
+1. **Setting:** Antakya, synthetic, modelled on 6 Feb 2023. The map imagery stays.
+2. **AP is vetted** (§5).
+3. **The cast** (§3) goes in as designed, on `demo: true` desks only (orchestrator's recommendation; Dan said go on the whole design).
