@@ -2,8 +2,7 @@
 
 - **Date:** 2026-11-17
 - **Status:** accepted
-- **Decided by:** Dan Vu (design owner). Ömer to sign off on `docs/SYSTEM_DESIGN.md`
-- **Dissent:** none recorded
+- **Decided by:** Dan Vu (owner, only voter)
 
 ## Context
 Agencies buy tools that pass Section 508 and look like government software. The hackathon swapped Dan's original USWDS pick for shadcn/Radix with motion effects to win the demo.

@@ -2,8 +2,7 @@
 
 - **Date:** 2026-11-17
 - **Status:** accepted
-- **Decided by:** Dan Vu (design owner). Ömer to sign off on `docs/SYSTEM_DESIGN.md`
-- **Dissent:** none recorded
+- **Decided by:** Dan Vu (owner, only voter)
 
 ## Context
 Production is one IPv6-only Vultr VM with Cloudflare WARP for IPv4 and a Cloudflare tunnel. A disaster tool can't have one point of failure, and agencies expect FedRAMP-authorized hosting.

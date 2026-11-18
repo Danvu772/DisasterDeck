@@ -1,6 +1,6 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
+Issues and specs for this repo live as GitHub issues on `Danvu772/DisasterDeck`. Use the `gh` CLI for all operations, with `--repo Danvu772/DisasterDeck` or after `gh repo set-default Danvu772/DisasterDeck`.
 
 ## Conventions
 
@@ -12,7 +12,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
-Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
+Don't infer the repo from `git remote -v`: this is a fork, and `gh` defaults to the upstream parent. Always target `Danvu772/DisasterDeck`.
 
 ## Pull requests as a triage surface
 

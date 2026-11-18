@@ -2,22 +2,25 @@
 
 ### Issue tracker
 
-GitHub Issues on `DarshalShetty/HackTheNest26`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+GitHub Issues on `Danvu772/DisasterDeck` (this fork), via the `gh` CLI. Pass `--repo Danvu772/DisasterDeck` or run `gh repo set-default Danvu772/DisasterDeck` once, because `gh` otherwise picks the upstream parent. See `docs/agents/issue-tracker.md`.
 
-### Domain docs
+### Design and decisions
 
-Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
+The design is `docs/SYSTEM_DESIGN.md`. Its glossary is §11. Decision records live in `docs/decisions/`, one per decision. There is no `docs/adr/` and no separate `GLOSSARY.md`. See `docs/agents/domain.md`.
+
+A change to the design goes in its own `design/` PR (the design file plus a decision record) and merges before any code that depends on it. A code PR never quietly changes the design.
 
 ## Deployment
 
-Production is the `prod` branch: every push to `prod` deploys to the Vultr VM behind https://disasterdeck.us (`.github/workflows/deploy.yml`). Promote with `git push origin main:prod`, only when the person asks. One Brain per database, and the prod VM runs it. How it works, the rules and debugging: `docs/agents/deploy.md`.
+**Today:** production is the `prod` branch. Every push to `prod` deploys to the Vultr VM behind https://disasterdeck.us (`.github/workflows/deploy.yml`). Promote with `git push origin main:prod`, only when the person asks. One Brain per database, and the prod VM runs it. How it works, the rules and debugging: `docs/agents/deploy.md`.
 
-## Team tracking
+**Being retired:** D-0002 moves hosting to AWS ECS Fargate. Don't extend the Vultr scripts.
 
-Every session starts with the open task list, injected by the SessionStart hook (`scripts/team-tasks.mjs`). The shared tracker is GitHub Issues. Your role lane is in `docs/agents/team.md`.
+## Owner and tracking
 
-- Tie each request to an issue number. If nothing matches and the work will take more than a few minutes, open an issue (`gh issue create`) and claim it before you edit.
-- Claim before you start: `gh issue edit <n> --add-assignee @me`. Do not work on an issue claimed by someone else without asking them.
-- Work your lane first (the `role:` label). Take unclaimed work from another lane only when the person asks, and say so.
-- `decision` issues are not yours to make. Put the options in front of the person and stop there.
-- Never mark an issue closed on someone's behalf. Comment with what was done and let them close it.
+Dan (`Danvu772`) owns this fork and everything in it, and he is the only design voter. There are no role lanes.
+
+- Every change is branch → PR → merge into `main`. Nobody commits to `main` directly.
+- Tie each request to an issue number. If nothing matches and the work will take more than a few minutes, open an issue on the fork before you edit.
+- `decision` issues are Dan's to make. Put the options in front of him and stop there.
+- Never close an issue on Dan's behalf. Comment with what was done and let him close it.

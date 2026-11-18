@@ -19,7 +19,7 @@ try { me = gh(["api", "user", "--jq", ".login"]).trim(); } catch { /* not logged
 
 let issues;
 try {
-  issues = JSON.parse(gh(["issue", "list", "--state", "open", "--limit", "200", "--json", "number,title,labels,assignees,updatedAt"]));
+  issues = JSON.parse(gh(["issue", "list", "--repo", "Danvu772/DisasterDeck", "--state", "open", "--limit", "200", "--json", "number,title,labels,assignees,updatedAt"]));
 } catch {
   console.log("Team tasks: could not read GitHub issues (run `gh auth login`). The list lives at the repo's Issues tab.");
   process.exit(0);

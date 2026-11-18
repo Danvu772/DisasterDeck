@@ -2,8 +2,7 @@
 
 - **Date:** 2026-11-17
 - **Status:** accepted
-- **Decided by:** Dan Vu (design owner). Ömer to sign off on `docs/SYSTEM_DESIGN.md`
-- **Dissent:** none recorded
+- **Decided by:** Dan Vu (owner, only voter)
 
 ## Context
 `/talk` streams audio to ElevenLabs. `/field` uses the browser's Web Speech API, and the README says no audio leaves the phone. In Chrome that is wrong by default: Web Speech sends audio to Google. Chrome's on-device mode (`processLocally: true`) keeps audio and text on the device.

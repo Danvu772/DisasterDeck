@@ -2,8 +2,7 @@
 
 - **Date:** 2026-11-17
 - **Status:** accepted
-- **Decided by:** Dan Vu (design owner). Ömer to sign off on `docs/SYSTEM_DESIGN.md`
-- **Dissent:** none recorded
+- **Decided by:** Dan Vu (owner, only voter)
 
 ## Context
 Login is Auth.js 5 beta with SSOJet over OIDC, and roles come from an email map in an env var. SSOJet has no government listing, and agencies want staff on their own logins.

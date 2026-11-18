@@ -2,8 +2,7 @@
 
 - **Date:** 2026-11-17
 - **Status:** accepted
-- **Decided by:** Dan Vu (design owner). Ömer to sign off on `docs/SYSTEM_DESIGN.md`
-- **Dissent:** none recorded
+- **Decided by:** Dan Vu (owner, only voter)
 
 ## Context
 Every agent calls Claude through `agents/shared/llm.ts`. Dan decided against Claude for the product and wants US-built models with US-only data routing.

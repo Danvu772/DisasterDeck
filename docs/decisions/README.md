@@ -2,7 +2,7 @@
 
 One record per design decision, including dissent. A record merges in a `design/` PR together with the change to `docs/SYSTEM_DESIGN.md`, before any code that depends on it.
 
-Template: `# D-NNNN Title`, then Date, Status (proposed, accepted, superseded by D-NNNN), Decided by, Dissent, then Context, Decision, Consequences.
+Dan decides alone. Template: `# D-NNNN Title`, then Date, Status (proposed, accepted, superseded by D-NNNN), Decided by, then Context, Decision, Consequences.
 
 | Record | Decision | Status |
 |---|---|---|
@@ -13,4 +13,4 @@ Template: `# D-NNNN Title`, then Date, Status (proposed, accepted, superseded by
 | [D-0005](0005-voice-transcribe-polly-on-device.md) | Transcribe + Polly, on-device dictation only | accepted |
 | [D-0006](0006-maps-maplibre-esri.md) | MapLibre with Esri basemaps, own OSM tiles as fallback | accepted |
 | [D-0007](0007-database-mongodb-atlas.md) | Keep MongoDB on Atlas, Atlas for Government when needed | accepted |
-| [D-0008](0008-license-agpl.md) | Open source under AGPL | accepted, pending team agreement |
+| [D-0008](0008-license-agpl.md) | Open source under AGPL | accepted |

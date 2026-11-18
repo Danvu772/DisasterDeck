@@ -3,18 +3,11 @@
 | | |
 |---|---|
 | Version | 3 (redesign baseline), 17 Nov 2026 |
-| Status | **Draft, waiting for sign-off.** It is not locked until every voter below signs |
-| Design owner | Dan Vu |
+| Status | **Locked when Dan merges this into `main`.** Dan is the only voter |
+| Owner | Dan Vu. He owns the fork and decides alone |
 | Replaces | `docs/Multiplayer Disaster Deck/Final system design.md` (v2, 14 Nov), which is kept as the hackathon record |
 | Built state checked against | `main` @ `9d1ca24` |
 | Whiteboard | [Planned vs built](https://claude.ai/artifact/L5faK5xgBt6R3Tz5k9P7eJ) |
-
-**Sign-off**
-
-| Voter | Role | Signed |
-|---|---|---|
-| Dan Vu | Design owner, operator | ☐ |
-| Ömer | Cofounder, agent design | ☐ |
 
 To change this file after it is locked: open a `design` issue, write a record in `docs/decisions/`, and merge both in a `design/` PR **before** any code that depends on the change.
 
@@ -199,7 +192,7 @@ Locked by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reason
 | 5 | Voice | Transcribe + Polly behind a voice port. Dictation on-device only, typing as fallback, never Google's cloud path | ElevenLabs, Web Speech cloud path | [D-0005](decisions/0005-voice-transcribe-polly-on-device.md) |
 | 6 | Maps | MapLibre only. Esri basemaps, own OSM tiles on AWS as fallback | Mapbox, Leaflet | [D-0006](decisions/0006-maps-maplibre-esri.md) |
 | 7 | Database | Keep MongoDB on a new Atlas cluster Dan owns. Atlas for Government when an agency needs it. Thin repository layer keeps DocumentDB possible | Darshal's hackathon cluster | [D-0007](decisions/0007-database-mongodb-atlas.md) |
-| 8 | License | AGPL. Anyone may run it. The business sells hosting, setup, training and support. Needs the team's written agreement | No license | [D-0008](decisions/0008-license-agpl.md) |
+| 8 | License | AGPL. Anyone may run it. The business sells hosting, setup, training and support | No license | [D-0008](decisions/0008-license-agpl.md) |
 
 **First pilot:** an IU Emergency Management tabletop exercise (no real data, so no compliance paperwork). Monroe County and Maui are on hold.
 
@@ -242,7 +235,7 @@ These block parts of the build. Each one becomes a `design` issue.
 
 ## 10. Upstream issues this design settles
 
-The fork inherits `DarshalShetty/HackTheNest26` issues. Issues are off on the fork.
+These are issues on the upstream hackathon repo `DarshalShetty/HackTheNest26`. The fork tracks its own work in its own Issues from now on.
 
 | Upstream | Title | In this design |
 |---|---|---|
@@ -251,7 +244,7 @@ The fork inherits `DarshalShetty/HackTheNest26` issues. Issues are off on the fo
 | #32 | Pick one city | Antakya stays the demo data. The pilot is the IU tabletop |
 | #34 | v1 or `/v2` screens | Obsolete: both are replaced by the USWDS rebuild |
 | #39 | Deploy to Vultr | Obsolete after D-0002 |
-| #17 | Quake watcher has no owner | Still open: needs an owner on the fork |
+| #17 | Quake watcher has no owner | Settled: Dan owns everything on the fork |
 | #28 | Ground truth for two agent metrics | Still open (§9) |
 | #9, #12, #29, #30, #31, #33, #36, #38 | Demo-day items | Hackathon only, no design impact |
 
