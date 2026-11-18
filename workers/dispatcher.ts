@@ -17,8 +17,7 @@
 // Nobody fits: the task is escalated with the reason. Every task that gets a person writes one
 // inbox item for them. Every approval writes one per coordinator. The one_open_task index keeps
 // one open task per record and type, so a second run of the same event makes nothing new.
-import { MongoServerError, type Filter } from "mongodb";
-import { cols, newId } from "../lib/db";
+import { cols, newId, MongoServerError, type Filter } from "../lib/db";
 import { haversineMeters } from "../lib/geo";
 import { distanceText, isOnline, pickPerson, SEEN_WITHIN_MS, stockOf, type Pick, type Place } from "../lib/rules/assign";
 import { PLAYBOOK } from "../lib/rules/incidents";

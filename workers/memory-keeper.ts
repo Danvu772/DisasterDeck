@@ -9,9 +9,8 @@
 // and every status move is guarded by the status it moves from.
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { MongoServerError, type Filter } from "mongodb";
 import { maskPhones } from "../agents/shared/privacy";
-import { cols, getDb } from "../lib/db";
+import { cols, getDb, MongoServerError, type Filter } from "../lib/db";
 import { haversineMeters, normalizeAddress, normalizeText, pointInPolygon } from "../lib/geo";
 import { conflictNote, resolveConflict, trustedClash, trustRank, type Stamp } from "../lib/rules/conflict";
 import { blocks, PLAYBOOK, severity } from "../lib/rules/incidents";
