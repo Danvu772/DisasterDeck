@@ -1,0 +1,283 @@
+// USWDS 3.14 for Disaster Deck (D-0001). The ONLY place the USWDS theme is set.
+// Colours, fonts and spacing are USWDS design tokens ("blue-warm-60v", units(2)), never hex.
+// Rules: .claude/skills/desk-design/SKILL.md.
+//
+// How it sits next to Tailwind 4 (app/globals.css):
+//   - One cascade-layer order for the whole page, declared here AND at the top of globals.css,
+//     so whichever stylesheet loads first sets the same order:
+//       properties < theme < base (Tailwind preflight) < uswds (components) < components < utilities
+//     USWDS components beat Tailwind's reset; a Tailwind utility on an element beats USWDS.
+//   - USWDS's own utility classes are not compiled (app/_uswds-packages.scss): Tailwind is the
+//     utility layer, and USWDS names like .text-white or .bg-primary would collide with Tailwind's.
+//   - The theme colours are exported below as --usa-* custom properties; globals.css maps them
+//     to Tailwind colours (bg-usa-primary, text-usa-ink...), so layout utilities use the same tokens.
+
+@use "sass:meta";
+@use "uswds-core" as usa with (
+  // Paths are relative to this file. resolve-url-loader rewrites them and webpack bundles the
+  // files that are used, so nothing is copied into public/.
+  $theme-font-path: "~@uswds/uswds/fonts",
+  $theme-image-path: "~@uswds/uswds/img",
+  $theme-show-notifications: false,
+  $theme-show-compile-warnings: false,
+
+  // Type: Public Sans everywhere (USWDS's own face), Roboto Mono for ids, times and counts.
+  $theme-font-type-sans: "public-sans",
+  $theme-font-type-mono: "roboto-mono",
+  $theme-font-type-serif: false,
+  $theme-font-role-ui: "sans",
+  $theme-font-role-heading: "sans",
+  $theme-font-role-body: "sans",
+  $theme-font-role-code: "mono",
+  $theme-font-role-alt: "sans",
+  $theme-font-weight-semibold: 600,
+  $theme-respect-user-font-size: true,
+  $theme-body-font-size: "sm",
+  $theme-style-body-element: false,
+
+  // Colour. Not flat government gray: a deep warm blue for "you can act here", a signal
+  // orange as the secondary, cool grays for structure. State colours stay USWDS defaults.
+  $theme-color-primary-family: "blue-warm",
+  $theme-color-primary-lighter: "blue-warm-10",
+  $theme-color-primary-light: "blue-warm-30v",
+  $theme-color-primary: "blue-warm-60v",
+  $theme-color-primary-vivid: "blue-warm-50v",
+  $theme-color-primary-dark: "blue-warm-70v",
+  $theme-color-primary-darker: "blue-warm-80v",
+  $theme-color-primary-darkest: "blue-warm-90",
+
+  $theme-color-secondary-family: "orange-warm",
+  $theme-color-secondary-lighter: "orange-warm-10",
+  $theme-color-secondary-light: "orange-warm-30v",
+  $theme-color-secondary: "orange-warm-50v",
+  $theme-color-secondary-vivid: "orange-warm-50v",
+  $theme-color-secondary-dark: "orange-warm-60v",
+  $theme-color-secondary-darker: "orange-warm-70v",
+
+  $theme-color-accent-cool: "cyan-30v",
+  $theme-color-accent-warm: "gold-20v",
+
+  $theme-color-base-family: "gray-cool",
+  $theme-color-base-lightest: "gray-cool-3",
+  $theme-color-base-lighter: "gray-cool-10",
+  $theme-color-base-light: "gray-cool-30",
+  $theme-color-base: "gray-cool-50",
+  $theme-color-base-dark: "gray-cool-60",
+  $theme-color-base-darker: "gray-cool-70",
+  $theme-color-base-darkest: "gray-cool-90",
+  $theme-color-base-ink: "gray-cool-90",
+
+  // Shape: slightly rounded controls, not pills.
+  $theme-button-border-radius: "md",
+  $theme-input-line-height: 3,
+  $theme-header-max-width: "widescreen",
+  $theme-footer-max-width: "widescreen",
+  $theme-site-margins-width: 4,
+  $theme-focus-color: "blue-40v"
+);
+
+// Sass puts @use first, so the layer order is the first CSS this file emits.
+@layer properties, theme, base, uswds, components, utilities;
+
+@layer uswds {
+  @include meta.load-css("uswds-packages");
+}
+
+// ---------------------------------------------------------------------------------------------
+// The theme as custom properties, for Tailwind (globals.css) and plain CSS.
+// ---------------------------------------------------------------------------------------------
+:root {
+  --usa-primary-lighter: #{usa.color("primary-lighter")};
+  --usa-primary-light: #{usa.color("primary-light")};
+  --usa-primary: #{usa.color("primary")};
+  --usa-primary-dark: #{usa.color("primary-dark")};
+  --usa-primary-darker: #{usa.color("primary-darker")};
+  --usa-primary-darkest: #{usa.color("primary-darkest")};
+  --usa-secondary-lighter: #{usa.color("secondary-lighter")};
+  --usa-secondary: #{usa.color("secondary")};
+  --usa-secondary-dark: #{usa.color("secondary-dark")};
+  --usa-base-lightest: #{usa.color("base-lightest")};
+  --usa-base-lighter: #{usa.color("base-lighter")};
+  --usa-base-light: #{usa.color("base-light")};
+  --usa-base: #{usa.color("base")};
+  --usa-base-dark: #{usa.color("base-dark")};
+  --usa-base-darkest: #{usa.color("base-darkest")};
+  --usa-ink: #{usa.color("ink")};
+  --usa-white: #{usa.color("white")};
+  --usa-error: #{usa.color("error")};
+  --usa-error-lighter: #{usa.color("error-lighter")};
+  --usa-warning: #{usa.color("warning")};
+  --usa-success: #{usa.color("success")};
+  --usa-info: #{usa.color("info")};
+  --usa-focus: #{usa.color("blue-40v")};
+  --usa-font-sans: #{usa.family("sans")};
+  --usa-font-mono: #{usa.family("mono")};
+}
+
+// ---------------------------------------------------------------------------------------------
+// The shell (components/shell/). USWDS header, nav and footer markup with a compact desktop
+// header: the screens below are full-height maps and boards, so the header is one row.
+// ---------------------------------------------------------------------------------------------
+@layer uswds {
+  .dd-shell-header {
+    position: relative;
+    z-index: 40;
+    flex-shrink: 0;
+    background-color: usa.color("white");
+    border-top: usa.units(0.5) solid usa.color("primary-darker");
+    border-bottom: usa.units(1px) solid usa.color("base-lighter");
+
+    .usa-nav-container {
+      display: flex;
+      align-items: center;
+      gap: usa.units(2);
+      max-width: none;
+      padding-left: usa.units(2);
+      padding-right: usa.units(2);
+    }
+
+    // Below desktop: logo, tools and the Menu button share one row; the nav is a drawer.
+    .usa-navbar {
+      display: flex;
+      align-items: center;
+      flex: 1 1 auto;
+      height: auto;
+      min-height: usa.units(6);
+      border-bottom: 0;
+    }
+    .usa-logo {
+      flex: 1 1 auto;
+      margin: 0;
+      font-size: usa.font-size("ui", "sm");
+      line-height: 1;
+    }
+    .usa-logo a {
+      display: inline-flex;
+      align-items: center;
+      gap: usa.units(1);
+      white-space: nowrap;
+      color: usa.color("primary-darker");
+    }
+    .usa-menu-btn {
+      flex: 0 0 auto;
+      height: usa.units(5);
+      margin-left: usa.units(1);
+      border-radius: usa.radius("md");
+    }
+
+    @include usa.at-media("desktop") {
+      .usa-navbar {
+        flex: 0 0 auto;
+        width: auto;
+      }
+      .usa-nav {
+        flex: 1 1 auto;
+        padding: 0;
+        // The basic header floats the nav right; here it sits after the logo.
+        float: none;
+      }
+      .usa-nav__primary {
+        display: flex;
+        align-items: stretch;
+      }
+      .usa-nav__primary > .usa-nav__primary-item > a {
+        padding: usa.units(2) usa.units(1.5);
+        font-size: usa.font-size("ui", "2xs");
+        font-weight: usa.font-weight("semibold");
+        color: usa.color("base-darkest");
+        line-height: 1;
+      }
+      .usa-nav__primary > .usa-nav__primary-item > a:hover {
+        color: usa.color("primary");
+      }
+      .usa-nav__primary > .usa-nav__primary-item > a.usa-current {
+        color: usa.color("primary-dark");
+      }
+      // The basic header's current-page bar sits at the very bottom of the one-row header.
+      .usa-nav__primary > .usa-nav__primary-item > a.usa-current::after,
+      .usa-nav__primary > .usa-nav__primary-item > a:hover::after {
+        bottom: usa.units(-1);
+        left: usa.units(1.5);
+        right: usa.units(1.5);
+      }
+    }
+  }
+
+  // The skip link shows above the header when it has focus.
+  .usa-skipnav {
+    z-index: 100;
+  }
+
+  .dd-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: usa.units(4);
+    height: usa.units(4);
+    border-radius: usa.radius("md");
+    background-color: usa.color("primary");
+    color: usa.color("white");
+  }
+
+  .dd-shell-tools {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: usa.units(1);
+  }
+
+  // The exercise label: what the desk is showing is a drill, never a live incident.
+  .dd-exercise-tag {
+    background-color: usa.color("secondary-lighter");
+    color: usa.color("secondary-darker");
+    border: usa.units(1px) solid usa.color("secondary-light");
+    white-space: nowrap;
+  }
+
+  .dd-shell-footer {
+    flex-shrink: 0;
+
+    .usa-footer__primary-section {
+      background-color: usa.color("primary-darkest");
+    }
+    .usa-footer__primary-link,
+    .usa-footer__primary-link:visited {
+      color: usa.color("white");
+    }
+    .usa-footer__primary-link:hover {
+      color: usa.color("primary-lighter");
+    }
+    .usa-footer__secondary-section {
+      background-color: usa.color("base-lightest");
+      padding-top: usa.units(2);
+      padding-bottom: usa.units(2);
+    }
+    .usa-footer__return-to-top {
+      padding-top: usa.units(2);
+      padding-bottom: usa.units(2);
+    }
+  }
+
+  .dd-login {
+    display: flex;
+    min-height: 100%;
+    align-items: flex-start;
+    justify-content: center;
+    padding: usa.units(4) usa.units(2);
+    background-color: usa.color("base-lightest");
+
+    @include usa.at-media("tablet") {
+      padding-top: usa.units(8);
+    }
+  }
+
+  .dd-login__card {
+    width: 100%;
+    max-width: usa.units("mobile-lg");
+    padding: usa.units(4);
+    background-color: usa.color("white");
+    border: usa.units(1px) solid usa.color("base-lighter");
+    border-top: usa.units(1) solid usa.color("primary");
+    border-radius: usa.radius("md");
+  }
+}

@@ -1,0 +1,45 @@
+// Every USWDS 3.14 package that @uswds/uswds/packages/uswds/_index.scss loads, in its order,
+// EXCEPT "uswds-utilities". Tailwind 4 is the utility layer here: USWDS's .bg-*, .text-*,
+// .padding-* classes would collide with Tailwind's names. Loaded inside @layer uswds by uswds.scss.
+// When USWDS adds a package, copy the new @forward line here.
+@forward "uswds-global";
+@forward "uswds-helpers";
+@forward "uswds-typography";
+@forward "usa-accordion/src/styles";
+@forward "usa-alert/src/styles";
+@forward "usa-banner/src/styles";
+@forward "usa-breadcrumb/src/styles";
+@forward "usa-button-group/src/styles";
+@forward "usa-button/src/styles";
+@forward "usa-card/src/styles";
+@forward "usa-checklist/src/styles";
+@forward "usa-collection/src/styles";
+@forward "usa-embed-container/src/styles";
+@forward "usa-footer/src/styles";
+@forward "usa-form/src/styles";
+@forward "usa-graphic-list/src/styles";
+@forward "usa-header/src/styles";
+@forward "usa-hero/src/styles";
+@forward "usa-icon-list/src/styles";
+@forward "usa-icon/src/styles";
+@forward "usa-identifier/src/styles";
+@forward "usa-in-page-navigation/src/styles";
+@forward "usa-language-selector/src/styles";
+@forward "usa-layout-docs/src/styles";
+@forward "usa-layout-grid/src/styles";
+@forward "usa-media-block/src/styles";
+@forward "usa-modal/src/styles";
+@forward "usa-nav/src/styles";
+@forward "usa-pagination/src/styles";
+@forward "usa-process-list/src/styles";
+@forward "usa-search/src/styles";
+@forward "usa-section/src/styles";
+@forward "usa-sidenav/src/styles";
+@forward "usa-site-alert/src/styles";
+@forward "usa-skipnav/src/styles";
+@forward "usa-step-indicator/src/styles";
+@forward "usa-summary-box/src/styles";
+@forward "usa-table/src/styles";
+@forward "usa-tag/src/styles";
+@forward "usa-tooltip/src/styles";
+@forward "uswds-form-controls";

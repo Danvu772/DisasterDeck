@@ -4,9 +4,11 @@
   "scripts": {
     "test": "playwright test",
     "test:smoke": "playwright test --grep @smoke",
-    "report": "node -e \"console.log(require('path').resolve('report/index.html'))\""
+    "report": "node -e \"console.log(require('path').resolve('report/index.html'))\"",
+    "test:a11y": "playwright test -c playwright.a11y.config.ts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.65.1"
   }
 }

@@ -41,14 +41,15 @@ export function healthPill(h: HealthInput, live: boolean, now: number) {
 const pillBase = "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-medium";
 
 // Presentational. Below sm only the dot shows, the words stay for screen readers.
+// USWDS tokens (D-0001): ink text on a light tint, so it passes AA contrast in the shell.
 export function HealthPill({ health, live = true, now }: { health: HealthInput; live?: boolean; now: number }) {
   const { bad, parts } = healthPill(health, live, now);
   return (
     <span role="status"
-      className={`${pillBase} ${bad ? "border-destructive/30 bg-destructive/10 text-destructive" : "bg-background text-foreground"}`}>
+      className={`${pillBase} ${bad ? "border-usa-error bg-usa-error-lighter text-usa-ink" : "border-usa-base-lighter bg-usa-white text-usa-ink"}`}>
       <span aria-hidden="true" className="relative flex size-2 shrink-0">
-        {!bad && <span className="absolute inset-0 animate-ping rounded-full bg-success opacity-60 motion-reduce:hidden" />}
-        <span className={`relative size-2 rounded-full ${bad ? "bg-destructive" : "bg-success"}`} />
+        {!bad && <span className="absolute inset-0 animate-ping rounded-full bg-usa-success opacity-60 motion-reduce:hidden" />}
+        <span className={`relative size-2 rounded-full ${bad ? "bg-usa-error" : "bg-usa-success"}`} />
       </span>
       <span className="sr-only sm:not-sr-only">
         {parts.map((p, i) => p.mono ? <span key={i} className="font-mono">{p.text}</span> : p.text)}
@@ -63,8 +64,8 @@ export function StatusPill() {
   const { data, live, now, checked } = usePolled<HealthInput>("/api/health", {}, 5000);
   if (!checked) {
     return (
-      <span className={`${pillBase} text-muted-foreground`}>
-        <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-border" />
+      <span className={`${pillBase} border-usa-base-lighter bg-usa-white text-usa-base-dark`}>
+        <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-usa-base-light" />
         <span className="sr-only sm:not-sr-only">Connecting</span>
       </span>
     );
