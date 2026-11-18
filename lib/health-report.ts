@@ -73,23 +73,6 @@ async function main() {
     detail: `${open} open, ${escalated} escalated, last task change ${agoText(ago(lastTaskTs))}`,
   });
 
-  // Simulated feeds: one loop (workers/synthetic-feed.ts), one row per channel and the actor it posts as
-  const simUp = running("workers/synthetic-feed.ts");
-  const channels = [
-    { name: "simulated x", actor: "synthetic-feed" },
-    { name: "simulated sheet", actor: "synthetic-sheet" },
-    { name: "simulated news", actor: "synthetic-news" },
-  ];
-  for (const ch of channels) {
-    const last = await c.events.findOne({ actor: ch.actor, deskId: desk }, { sort: { ts: -1 }, projection: { ts: 1 } });
-    const s2 = ago(last?.ts);
-    rows.push({
-      subsystem: ch.name,
-      status: simUp ? (s2 !== null && s2 < 120 ? "ok" : "idle") : "down",
-      detail: `loop ${simUp ? "running" : "not running"}, last event ${agoText(s2)}`,
-    });
-  }
-
   // Personal agents (chat)
   const lastMsg = await c.messages.findOne({}, { sort: { ts: -1 }, projection: { ts: 1 } });
   rows.push({

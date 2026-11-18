@@ -7,7 +7,7 @@ import { pilot } from "@/lib/pilot";
 import seed from "@/data/seed.json";
 import { makeBoard } from "@/fixtures/board";
 import { makeEvents, makeMessages, users as fixtureUsers } from "@/fixtures/desk";
-import type { Event, InboxItem, Message, Shelter, User } from "@/lib/types";
+import type { Event, InboxItem, Message, User } from "@/lib/types";
 import { composeContext, type Board, type DeskPort, type NewEvent, type UserContext } from "./port";
 
 const DESK = pilot.id;
@@ -41,15 +41,9 @@ function allUsers(): User[] {
 
 function board(now: number): Board {
   const b = makeBoard(now);
-  // Seed times are in Feb 2023. Move them to "now", keeping their offsets, like the fixtures do.
-  const raw = seed.shelters as unknown as Shelter[];
-  const newest = Math.max(...raw.map((s) => +new Date(s.observedAt)));
-  const shift = (t: Date | string) => new Date(now - (newest - +new Date(t)));
-  const seedShelters = raw.map((s) => ({ ...s, updated: shift(s.updated), observedAt: shift(s.observedAt),
-    history: (s.history ?? []).map((h) => ({ ...h, ts: shift(h.ts) })) }));
   return {
     sites: b.sites, needs: b.needs, roads: b.roads, incidents: b.incidents, tasks: b.tasks,
-    shelters: [...b.shelters, ...seedShelters],
+    shelters: b.shelters,
     zones: [],
   };
 }

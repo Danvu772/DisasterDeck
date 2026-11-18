@@ -1,12 +1,11 @@
 // CP1 and CP2 check for the Brain: npm run keeper:check
-// Replays the five demo tweets (data/tweets_replay.json) plus edge cases into a separate desk,
+// Replays five inline demo tweets plus edge cases into a separate desk,
 // "check-cp1", runs the Brain on that desk only, checks the sites, then deletes everything it
 // made. The shared board (antakya-2023) is not touched. Also checks GET /api/events?since=.
 // CP2: throwaway people on the same desk, then a report becomes a site and a call task, an
 // accept, a done, an approval with an assignee, an arrived, a decline, an incident that blocks
 // a task, a need and a claim.
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import { GET as feed } from "../app/api/events/route";
 import { processEvent } from "../workers/brain";
 import { closeDb, cols, getBoard, newId } from "./db";
@@ -87,8 +86,18 @@ async function main() {
   const startedAt = new Date(Date.now() - 1);
 
   // --- the CP1 case: the replay file ---
-  const tweets = JSON.parse(await readFile(new URL("../data/tweets_replay.json", import.meta.url), "utf8")) as
-    { id: string; text: string; coords: LatLng; region: string }[];
+  const tweets: { id: string; text: string; coords: LatLng; region: string }[] = [
+    { id: "demo-antakya-001", coords: [36.194, 36.157], region: "antakya-merkez",
+      text: "Tatbikat: Antakya merkez, Turuncu Avlu'da Ayşe enkaz altında. Bir kişi için yardım istiyoruz. Demo irtibat: 000 000 00 42." },
+    { id: "demo-antakya-002", coords: [36.194, 36.157], region: "antakya-merkez",
+      text: "İlk ihbarı aktarıyorum: Antakya merkezdeki Turuncu Avlu'da Ayşe mahsur kalmış. Tatbikat irtibatı 000 000 00 42." },
+    { id: "demo-antakya-003", coords: [36.194, 36.157], region: "antakya-merkez",
+      text: "Aynı çağrıyı yeniden paylaşıyorum. Antakya merkez, Turuncu Avlu. Ayşe için ekip bekleniyor, bir kişi enkaz altında." },
+    { id: "demo-antakya-004", coords: [36.194, 36.157], region: "antakya-merkez",
+      text: "Tatbikat güncellemesi: Turuncu Avlu'daki Ayşe için ilk yardım çağrısını tekrar iletiyorum. Yer Antakya merkez, kişi sayısı bir." },
+    { id: "demo-antakya-005", coords: [36.2125, 36.157], region: "antakya-merkez",
+      text: "Ayrı tatbikat ihbarı: Antakya merkez, Mor Avlu'da iki kişi enkaz altında. Ekip gerekiyor. Demo irtibat: 000 000 00 73." },
+  ];
   for (const t of tweets) {
     const two = t.text.includes("iki kişi");
     await report(t.id, { kind: "trapped", text: t.text, textEn: t.text, coords: t.coords, region: t.region, peopleCount: two ? 2 : 1 });
@@ -96,7 +105,7 @@ async function main() {
   await drain();
 
   let sites = await c.sites.find({ deskId: DESK }).toArray();
-  const ayse = sites.find((s) => s.sources.some((x) => x.eventId) && s.coords?.[1] === 36.157) as Site;
+  const ayse = sites.find((s) => s.sources.some((x) => x.eventId) && s.coords?.[0] === 36.194) as Site;
   assert.equal(sites.length, 2, `5 tweets → 2 sites, got ${sites.length}`);
   assert.equal(ayse.sources.length, 4, "Ayşe: 4 tweets → one site with 4 sources");
   assert.equal(ayse.support, 4, "4 different wordings are 4 voices");

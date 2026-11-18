@@ -9,7 +9,7 @@ Everyone may **call** these functions. Only Role 1 changes them, and announces i
 | `db.ts` | The connection, the indexes, `postEvent()`, and the read functions |
 | `schemas.ts` | Runtime (zod) checks for every event payload, kept in step with `types.ts` by `tsc` |
 | `auth.ts` | Who is calling: agent key, login session, or `?user=` in demo mode |
-| `seed.ts` | Loads `data/seed.json` (users, shelters): `npm run db:seed` |
+| `seed.ts` | Loads `data/seed.json` (users): `npm run db:seed` |
 | `db-check.ts` | A smoke test: `npm run db:check` |
 | `api-check.ts` | Checks `POST /api/events` (identity, permissions, validation) and that the API docs list every route: `npm run api:check` |
 | `openapi.ts` | The OpenAPI description of the HTTP API, shown at `/api/docs` |
@@ -49,7 +49,7 @@ That's all a teammate needs. The other commands:
 
 | Command | Who runs it | Does |
 |---|---|---|
-| `npm run db:seed` | **Role 1 only** | Loads the demo users and shelters from `data/seed.json`. It's one shared database, so once is enough |
+| `npm run db:seed` | **Role 1 only** | Loads the demo users from `data/seed.json`. Shelters arrive through the event queue (D-0017). It's one shared database, so once is enough |
 | `npm run api:check` | Anyone | Checks `POST /api/events` and that `/api/docs` lists every route. Needs `AGENT_KEY` and `DEMO_MODE=1` |
 | `npm run keeper:check` | Anyone | Checks the memory keeper (CP1) |
 | `npm run brain` | **One person** | The Brain loop. Only one runs per database: a second one waits (see below) |

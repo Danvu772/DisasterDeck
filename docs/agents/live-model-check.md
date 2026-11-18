@@ -36,4 +36,4 @@ gpt-oss emits `reasoning_details` on every round, including the two `tool_calls`
 ## Findings
 
 1. `agents/scripts/smoke.ts` is stale. Its scenario user ids are `zeynep`, `team-4`, `supplier-2`, `coord-1`, none of which exist on the fixture desk (current ids are `volunteer-callback`, `field-alpha`, `supplier-primary`, `coordinator-duty`). `smoke.ts` throws `unknown user zeynep` before any model call. The live probe above used the current ids.
-2. `contract-check.ts` reports 15/16. The one miss is the quake-watcher `alert` event: `payload.kind` is `"quake"`, but `eventBody` only allows `silent_zone` or `cold`. This is a system-source event, not a personal-agent tool, so it is out of LLM-3b scope, but it is a real schema mismatch worth its own issue.
+2. `contract-check.ts` reports 15/16. The one miss was the quake-watcher `alert` event: `payload.kind` is `"quake"`, but `eventBody` only allows `silent_zone` or `cold`. The quake watcher and that check case were deleted in D-0017, so the mismatch is gone with them.
