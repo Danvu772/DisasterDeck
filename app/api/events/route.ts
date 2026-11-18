@@ -107,6 +107,7 @@ export async function POST(req: Request): Promise<Response> {
       deskId: body.deskId ?? (caller.kind === "person" ? caller.user.deskId : undefined),
       observedAt: body.observedAt,
       dedupeKey: body.dedupeKey,
+      origin: body.origin,
     });
     return json(200, { id });
   } catch (err) {
