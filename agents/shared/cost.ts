@@ -114,12 +114,16 @@ export function recordUsage(label: string, requested: string, u: UsageLike, serv
 }
 
 /**
- * A response that came without a usage block (a provider or stream that left it out). Never record
- * $0 for it: assume the worst, max_tokens of output at the most expensive rate, and say so.
+ * A response that came without a usage block (a provider or stream that left it out, an error body,
+ * a stream that broke). Never record $0 for it: assume the worst for this call, the whole request
+ * as prompt tokens (characters are an upper bound on tokens) and max_tokens of output, at the
+ * model's own table rates, or the most expensive rates for a model not in the table. Says so.
  */
-export function recordMissingUsage(label: string, served: string, maxTokens: number): number {
-  const usd = maxTokens * MOST_EXPENSIVE.output / 1_000_000;
-  console.warn(`[cost] ${label}: no usage in the response from ${served}; recording a pessimistic $${usd.toFixed(4)} (${maxTokens} tokens at $${MOST_EXPENSIVE.output}/M)`);
+export function recordMissingUsage(label: string, model: string, maxTokens: number, promptChars: number, served = model): number {
+  const p = PRICES[model] ?? MOST_EXPENSIVE;
+  const usd = (promptChars * p.input + maxTokens * p.output) / 1_000_000;
+  console.warn(`[cost] ${label}: no usage in the response from ${served}; recording a pessimistic $${usd.toFixed(6)} ` +
+    `(${promptChars} prompt chars at $${p.input}/M, ${maxTokens} output tokens at $${p.output}/M${PRICES[model] ? "" : ", unknown model: top rates"})`);
   const row = JSON.stringify({ ts: new Date().toISOString(), label, model: served, in: 0, out: 0, cacheR: 0,
     priced: "estimate", usd: Number(usd.toFixed(6)) }) + "\n";
   try {

@@ -16,11 +16,13 @@
 //   digest   gpt-oss-20b,  effort low     folding old chat lines into a short memo, after the turn
 
 import { assertBudget, recordMissingUsage, recordUsage, type UsageLike } from "./cost";
+import { assertModelHost, baseUrl, hostOf, US_HOST } from "./model-host";
+
+export { assertModelHost, baseUrl, DEFAULT_BASE_URL, ModelHostError, US_HOST } from "./model-host";
 
 export type Effort = "low" | "medium" | "high";
 export type Purpose = "chat" | "extract" | "summary" | "digest";
 
-export const DEFAULT_BASE_URL = "https://us.openrouter.ai/api/v1";
 
 const DEFAULTS: Record<Purpose, { model: string; effort: Effort }> = {
   chat: { model: "openai/gpt-oss-120b", effort: "low" },
@@ -40,8 +42,14 @@ export function modelFor(p: Purpose): { model: string; effort: Effort } {
   };
 }
 
-export function baseUrl(): string {
-  return (process.env.OPENROUTER_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, "");
+/** For GET /api/health: which host and models the agents use. No key, no path, no credentials. */
+export function modelInfo(): { host: string; usOnly: boolean; models: Record<Purpose, string> } {
+  const host = hostOf(baseUrl()) ?? "invalid";
+  return {
+    host,
+    usOnly: host === US_HOST,
+    models: { chat: modelFor("chat").model, extract: modelFor("extract").model, summary: modelFor("summary").model, digest: modelFor("digest").model },
+  };
 }
 
 // ── Chat completions types (the subset we use) ────────────────────────────────────────────────
@@ -92,6 +100,11 @@ function apiKey(): string {
   return k;
 }
 
+/** Size of the request as sent: an upper bound on its prompt tokens, for pricing a call with no usage. */
+function requestChars(params: ChatParams, stream: boolean): number {
+  return body(params, stream).length;
+}
+
 function body(params: ChatParams, stream: boolean): string {
   const { effort, ...rest } = params;
   return JSON.stringify({
@@ -113,6 +126,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** POST with a timeout, retrying 408, 429, any 5xx and network errors (2 retries, Retry-After honoured, at most 10 s). */
 async function post(params: ChatParams, stream: boolean): Promise<Response> {
+  assertModelHost();
   const url = `${baseUrl()}/chat/completions`;
   const init = {
     method: "POST",
@@ -169,10 +183,18 @@ function result(model: string, choice: WireChoice | undefined, usage: UsageLike 
   };
 }
 
-/** Record the cost; a response without usage is priced pessimistically. A finish_reason "error" throws. */
-function settle(label: string, params: ChatParams, out: ChatResult): ChatResult {
-  if (out.usage) recordUsage(label, params.model, out.usage, out.model);
-  else recordMissingUsage(label, out.model, params.max_tokens ?? DEFAULT_MAX_TOKENS);
+/**
+ * Record what a call cost: its usage when the response had one, else a pessimistic estimate. Runs
+ * before any error is thrown for a response that came back, so the budget never undercounts.
+ */
+function charge(label: string, params: ChatParams, stream: boolean, usage: UsageLike | undefined, served?: string): void {
+  if (usage) recordUsage(label, params.model, usage, served ?? params.model);
+  else recordMissingUsage(label, params.model, params.max_tokens ?? DEFAULT_MAX_TOKENS, requestChars(params, stream), served);
+}
+
+/** Record the cost, then throw on a finish_reason "error". */
+function settle(label: string, params: ChatParams, stream: boolean, out: ChatResult): ChatResult {
+  charge(label, params, stream, out.usage, out.model);
   if (out.finishReason === "error") throw new LlmError(`${label}: the provider ended the response with an error`);
   return out;
 }
@@ -184,10 +206,14 @@ export async function send(label: string, params: ChatParams): Promise<ChatResul
   const raw = await res.text();
   let json: WireResponse;
   try { json = JSON.parse(raw) as WireResponse; } catch {
+    charge(label, params, false, undefined);   // a 200 may still have been billed
     throw new LlmError(`OpenRouter: response is not JSON (${raw.slice(0, 120)})`, res.status);
   }
-  if (json.error) throw new LlmError(`OpenRouter: ${json.error.message ?? "error"}`, json.error.code);
-  return settle(label, params, result(params.model, json.choices?.[0], json.usage, json.model));
+  if (json.error) {
+    charge(label, params, false, json.usage, json.model);
+    throw new LlmError(`OpenRouter: ${json.error.message ?? "error"}`, json.error.code);
+  }
+  return settle(label, params, false, result(params.model, json.choices?.[0], json.usage, json.model));
 }
 
 /**
@@ -214,9 +240,9 @@ export async function sendStream(label: string, params: ChatParams, onText: (del
       tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[];
     } })[] };
     try { chunk = JSON.parse(data); } catch { return; }
-    if (chunk.error) throw new LlmError(`OpenRouter: ${chunk.error.message ?? "stream error"}`, chunk.error.code);
     served = chunk.model ?? served;
     if (chunk.usage) usage = chunk.usage;
+    if (chunk.error) throw new LlmError(`OpenRouter: ${chunk.error.message ?? "stream error"}`, chunk.error.code);
     const c = chunk.choices?.[0];
     if (!c) return;
     const d = c.delta;
@@ -250,6 +276,7 @@ export async function sendStream(label: string, params: ChatParams, onText: (del
     if (buf.startsWith("data:")) onEvent(buf.slice(5).trim());
   } catch (e) {
     await reader.cancel().catch(() => undefined);   // free the connection
+    charge(label, params, true, usage, served);      // what came so far was billed: record it first
     throw e;
   }
 
@@ -257,7 +284,7 @@ export async function sendStream(label: string, params: ChatParams, onText: (del
   const toolCalls = calls.flatMap((c, i) => (c ? [{ id: c.id || `call_${i}`, type: "function" as const,
     function: { name: c.name, arguments: c.args } }] : []));
   // Streamed reasoning_details come in fragments; the plaintext `reasoning` is what we send back.
-  return settle(label, params, result(params.model, {
+  return settle(label, params, true, result(params.model, {
     finish_reason: finish ?? (toolCalls.length ? "tool_calls" : "stop"),
     message: { content: text, refusal: refusal || null, tool_calls: toolCalls, reasoning: reasoning || null },
   }, usage, served));

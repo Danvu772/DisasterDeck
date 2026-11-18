@@ -34,7 +34,8 @@ const missing = (obj, keys) => keys.filter((k) => !(k in obj));
 }
 {
   const r = await call("GET", "/api/health");
-  const bad = r.status !== 200 ? `status ${r.status}` : missing(r.json ?? {}, ["pending", "oldestPendingSeconds", "failed", "lastLoopAt"]).join(", ");
+  const bad = r.status !== 200 ? `status ${r.status}` : [...missing(r.json ?? {}, ["pending", "oldestPendingSeconds", "failed", "lastLoopAt", "model"]),
+    ...(r.json?.model && typeof r.json.model.host !== "string" ? ["model.host"] : [])].join(", ");
   line(!bad, "GET /api/health", bad && `missing or wrong: ${bad}`);
 }
 {

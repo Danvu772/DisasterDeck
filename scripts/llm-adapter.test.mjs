@@ -7,9 +7,9 @@
 // (agents/scripts/smoke.ts on gpt-oss-120b) needs a key.
 
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, appendFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, appendFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -316,7 +316,8 @@ function files(d, out = []) {
   }
   return out;
 }
-const code = ["agents", "app", "components", "lib", "workers", "scripts"].flatMap((d) => files(join(root, d)));
+const code = [...["agents", "app", "components", "lib", "workers", "scripts"].flatMap((d) => files(join(root, d))),
+  ...readdirSync(root).filter((n) => /\.(ts|mjs|js)$/.test(n)).map((n) => join(root, n))];
 
 test("LLM-2: no @anthropic-ai/sdk in package.json or any import; no ANTHROPIC_ key in .env.example", () => {
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -328,17 +329,24 @@ test("LLM-2: no @anthropic-ai/sdk in package.json or any import; no ANTHROPIC_ k
   assert.match(env, /^OPENROUTER_API_KEY=/m);
   assert.match(env, /^OPENROUTER_BASE_URL=https:\/\/us\.openrouter\.ai\/api\/v1$/m);
   assert.ok(!/anthropic/i.test(readFileSync(join(root, "package-lock.json"), "utf8")), "package-lock.json mentions anthropic");
+  // ...and no code, script or deploy file reads an ANTHROPIC_ variable.
+  const deploy = readdirSync(join(root, "deploy"), { recursive: true }).map((n) => join(root, "deploy", String(n))).filter((p) => /\.(sh|mjs|js|ts|ya?ml)$/.test(p));
+  for (const f of [...code, ...deploy, join(root, ".github", "workflows", "ci.yml"), join(root, ".github", "workflows", "deploy.yml")].filter((f) => existsSync(f))) {
+    if (f.endsWith("llm-adapter.test.mjs")) continue;
+    assert.ok(!/ANTHROPIC_/.test(readFileSync(f, "utf8")), `${f} reads an ANTHROPIC_ variable`);
+  }
 });
 
-test("LLM-1: no other model host or model SDK anywhere outside agents/shared/llm.ts", () => {
+test("LLM-1: no other model host or model SDK anywhere outside agents/shared/llm.ts (and its model-host.ts)", () => {
   const deny = [
-    /https?:\/\/[a-z.]*openrouter\.ai/i, /\/chat\/completions/, /api\.openai\.com/i, /anthropic\.com/i, /api\.groq\.com/i,
+    /https?:\/\/[a-z.]*openrouter\.ai/i, /\/chat\/completions/, /api\.openai\.com/i, /api\.anthropic\.com/i, /api\.groq\.com/i,
     /api\.together\.(xyz|ai)/i, /api\.mistral\.ai/i, /bedrock-runtime/i, /generativelanguage\.googleapis/i,
     /from\s+["'](openai|@anthropic-ai\/[^"']*|@ai-sdk\/[^"']*|ai|groq-sdk|together-ai|@mistralai\/[^"']*|@aws-sdk\/client-bedrock[^"']*|@openrouter\/[^"']*)["']/,
     /require\(["'](openai|@anthropic-ai\/[^"']*|@ai-sdk\/[^"']*|groq-sdk|together-ai|@mistralai\/[^"']*)["']\)/,
   ];
   for (const f of code) {
-    if (f.endsWith(join("agents", "shared", "llm.ts")) || f.endsWith("llm-adapter.test.mjs")) continue;
+    // The adapter is llm.ts plus its edge-safe host module (model-host.ts, loaded by instrumentation.ts).
+    if (f.endsWith(join("agents", "shared", "llm.ts")) || f.endsWith(join("agents", "shared", "model-host.ts")) || f.endsWith("llm-adapter.test.mjs")) continue;
     const text = readFileSync(f, "utf8");
     for (const re of deny) assert.ok(!re.test(text), `${f} matches ${re}`);
   }
@@ -347,35 +355,114 @@ test("LLM-1: no other model host or model SDK anywhere outside agents/shared/llm
   for (const d of deps) assert.ok(!/^(openai|@anthropic-ai\/|@ai-sdk\/|ai$|groq-sdk|together-ai|@mistralai\/|@aws-sdk\/client-bedrock|@openrouter\/)/.test(d), d);
 });
 
-test("INV-3: no LLM import in lib/rules/, dispatcher, sweeper or memory keeper", () => {
+// Import graph: every static import, export-from and dynamic import(), type-only imports included,
+// with "./" and "@/" (tsconfig paths) resolved. Bare package names are not followed.
+const EXTS = ["", ".ts", ".tsx", ".mjs", ".js", "/index.ts", "/index.tsx"];
+function resolveImport(from, spec) {
+  const base = spec.startsWith("@/") ? join(root, spec.slice(2)) : spec.startsWith(".") ? join(dirname(from), spec) : null;
+  if (!base) return null;
+  for (const e of EXTS) { const p = base + e; if (existsSync(p) && statSync(p).isFile()) return p; }
+  return null;
+}
+function importsOf(f) {
+  const out = [];
+  const re = /(?:^|[;\n])\s*(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\sfrom\s+)?["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
+  for (const m of readFileSync(f, "utf8").matchAll(re)) out.push(m[1] ?? m[2]);
+  return out;
+}
+/** The import chain from any of `starts` to `target`, or null when it is unreachable. */
+function chainTo(starts, target) {
+  const prev = new Map(starts.map((s) => [s, null]));
+  const queue = [...starts];
+  while (queue.length) {
+    const f = queue.shift();
+    for (const spec of importsOf(f)) {
+      const r = resolveImport(f, spec);
+      if (r && !prev.has(r)) { prev.set(r, f); queue.push(r); }
+    }
+  }
+  if (!prev.has(target)) return null;
+  const chain = [];
+  for (let c = target; c; c = prev.get(c)) chain.unshift(c.slice(root.length));
+  return chain;
+}
+const LLM_FILE = join(root, "agents", "shared", "llm.ts");
+
+test("INV-3: rules, dispatcher, sweeper and memory keeper never reach agents/shared/llm.ts through any import chain", () => {
   const ruled = [
     ...files(join(root, "lib", "rules")),
     join(root, "workers", "dispatcher.ts"), join(root, "workers", "sweeper.ts"), join(root, "workers", "memory-keeper.ts"),
   ];
-  for (const f of ruled) assert.ok(!/shared\/llm|@anthropic-ai|openrouter/i.test(readFileSync(f, "utf8")), f);
+  assert.ok(ruled.length >= 4 && ruled.every((f) => existsSync(f)));
+  assert.equal(chainTo(ruled, LLM_FILE), null, `reachable: ${chainTo(ruled, LLM_FILE)?.join(" -> ")}`);
+  // The walk itself works: the personal agent's turn does reach the adapter, through "../shared/llm".
+  assert.deepEqual(chainTo([join(root, "agents", "personal", "turn.ts")], LLM_FILE), ["agents/personal/turn.ts", "agents/shared/llm.ts"]);
+  // ...and through an "@/" alias and a second hop (route → agents/personal/turn → shared/llm).
+  assert.ok(chainTo([join(root, "app", "api", "chat", "route.ts")], LLM_FILE)?.length >= 3);
 });
 
 // ── Evaluation round 1 fixes ──────────────────────────────────────────────────────────────────
-test("prompts: no role prompt tells the agent to search the web while no search tool is defined", async () => {
+const ROLES = ["volunteer", "field", "supplier", "shelter", "coordinator", "public"];
+// Every tool any role has, plus tools that are gone: a prompt must not name them unless the role has them.
+const ALL_TOOLS = new Set([...ROLES.flatMap((r) => toolsFor(ctxFor(r)).map((t) => t.function.name)), "web_search", "emit_findings"]);
+const sentences = (p) => p.split(/(?<=[.!?])\s+|\n+/);
+
+test("LLM-5: a prompt names a tool only if the role has it, or gates it with \"if/when you have\"", async () => {
   const { systemPrompt } = await import("../agents/personal/prompts.ts");
-  for (const role of ["volunteer", "field", "supplier", "shelter", "coordinator", "public"]) {
-    const hasSearch = toolsFor(ctxFor(role)).some((t) => /search/i.test(t.function.name));
-    if (hasSearch) continue;
-    const p = systemPrompt(role);
-    assert.ok(!/search (the )?(web|internet|online)|web search|look (it )?up online|google/i.test(p), `${role} prompt mentions web search`);
+  for (const role of ROLES) {
+    const has = new Set(toolsFor(ctxFor(role)).map((t) => t.function.name));
+    for (const sentence of sentences(systemPrompt(role))) {
+      for (const m of sentence.matchAll(/\b[a-z]+(?:_[a-z]+)+\b/g)) {
+        const name = m[0];
+        if (!ALL_TOOLS.has(name) || has.has(name)) continue;
+        const upTo = sentence.slice(0, m.index + name.length);
+        assert.match(upTo, new RegExp(`\\b(if|when)\\b[^.]*\\byou have\\b[^.]*\\b${name}\\b`, "i"),
+          `${role}: names ${name}, which it does not have, without "if/when you have": ${sentence.slice(0, 160)}`);
+      }
+    }
   }
-  const { systemPrompt: sp } = await import("../agents/personal/prompts.ts");
-  assert.match(sp("supplier"), /no directory/i);
-  assert.match(sp("supplier"), /report_problem/);
 });
 
-test("cost: a response with no usage records a pessimistic estimate (max_tokens at the top output rate) and warns", async (t) => {
+test("LLM-5: no prompt tells the agent to search the web while no search tool is defined", async () => {
+  const { systemPrompt } = await import("../agents/personal/prompts.ts");
+  for (const role of ROLES) {
+    if (toolsFor(ctxFor(role)).some((t) => /search/i.test(t.function.name))) continue;
+    assert.ok(!/search (the )?(web|internet|online)|web search|look (it )?up online|google (it|search)/i.test(systemPrompt(role)), `${role} prompt mentions web search`);
+  }
+  assert.match(systemPrompt("supplier"), /no directory/i);
+  assert.match(systemPrompt("supplier"), /report_problem/);
+});
+
+test("LLM-5: no prompt or tool description says the agent can see or read photos (the models are text-only)", async () => {
+  const { systemPrompt } = await import("../agents/personal/prompts.ts");
+  const { PHOTO_NOTE } = await import("../agents/personal/turn.ts");
+  const texts = [...ROLES.map((r) => [r, systemPrompt(r)]), ...ROLES.flatMap((r) => toolsFor(ctxFor(r)).map((t) => [`${r}/${t.function.name}`, t.function.description]))];
+  for (const [where, text] of texts) {
+    for (const sentence of sentences(text)) {
+      if (!/\b(photo|image|picture|whiteboard)s?\b/i.test(sentence)) continue;
+      if (/\b(read|see|look at|readable|visible|from (a|the|their) (photo|image|picture))\b/i.test(sentence)) {
+        assert.match(sentence, /\b(cannot|can't|can not|not able|unable)\b/i, `${where}: ${sentence}`);
+      }
+    }
+  }
+  assert.match(systemPrompt("shelter"), /ask (them|the person) for the two numbers/i);
+  // /api/chat does not store photos (app/api/chat/route.ts passes them only to runTurn), so no prompt may say it does.
+  for (const r of ROLES) {
+    for (const sentence of sentences(systemPrompt(r))) {
+      if (/\bphotos?\b[^.]*\b(kept|saved|stored|attached to)\b/i.test(sentence)) assert.match(sentence, /\bnot (kept|saved|stored)\b/i, `${r}: ${sentence}`);
+    }
+  }
+  assert.match(PHOTO_NOTE, /cannot see photos/);
+});
+
+test("LLM-4 cost: no usage → estimate at the model's own rates (request size as input, max_tokens as output), with a warning", async (t) => {
   const warn = t.mock.method(console, "warn", () => {});
   answers.push(json({ model: "openai/gpt-oss-120b", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "x" } }] }));
   await llm.send("no-usage", { model: "openai/gpt-oss-120b", max_tokens: 8000, messages: [] });
   const row = JSON.parse(readFileSync(ledger, "utf8").trim());
   assert.equal(row.priced, "estimate");
-  assert.equal(row.usd, 8000 * 50 / 1e6);
+  const len = calls[0].init.body.length;
+  assert.equal(row.usd, Number(((len * 0.03 + 8000 * 0.15) / 1e6).toFixed(6)));
   assert.ok(warn.mock.calls.some((c) => /no usage/i.test(String(c.arguments[0]))));
 
   writeFileSync(ledger, "");
@@ -383,8 +470,15 @@ test("cost: a response with no usage records a pessimistic estimate (max_tokens 
   await llm.sendStream("no-usage-stream", { model: "openai/gpt-oss-120b", max_tokens: 2000, messages: [] }, () => {});
   const row2 = JSON.parse(readFileSync(ledger, "utf8").trim());
   assert.equal(row2.priced, "estimate");
-  assert.equal(row2.usd, 2000 * 50 / 1e6);
+  assert.equal(row2.usd, Number(((calls[1].init.body.length * 0.03 + 2000 * 0.15) / 1e6).toFixed(6)));
   assert.ok(row2.usd > 0);
+
+  // An unknown model keeps the worst case: $10/M in, $50/M out.
+  writeFileSync(ledger, "");
+  answers.push(json({ choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "x" } }] }));
+  await llm.send("no-usage-unknown", { model: "some/unknown", max_tokens: 1000, messages: [] });
+  const row3 = JSON.parse(readFileSync(ledger, "utf8").trim());
+  assert.equal(row3.usd, Number(((calls[2].init.body.length * 10 + 1000 * 50) / 1e6).toFixed(6)));
 });
 
 test("send(): finish_reason error throws LlmError (non-streamed and streamed)", async () => {
@@ -465,4 +559,116 @@ test("reasoning is sent back between tool rounds: reasoning_details (non-streame
   const s = await llm.sendStream("t", { model: "m", messages: [] }, () => {});
   assert.equal(s.message.reasoning, "think");
   assert.equal(s.message.reasoning_details, undefined);
+});
+
+// ── Evaluation round 2 fixes ──────────────────────────────────────────────────────────────────
+test("LLM-4: a mid-stream {error, usage} chunk records its cost before throwing", async () => {
+  answers.push(sse([
+    { choices: [{ index: 0, delta: { content: "par" } }] },
+    { error: { message: "provider died", code: 502 }, usage: { prompt_tokens: 50, completion_tokens: 10, cost: 0.0123 } },
+  ]));
+  await assert.rejects(llm.sendStream("mid-error", { model: "openai/gpt-oss-120b", max_tokens: 100, messages: [] }, () => {}), /provider died/);
+  const row = JSON.parse(readFileSync(ledger, "utf8").trim());
+  assert.equal(row.label, "mid-error");
+  assert.equal(row.usd, 0.0123);
+});
+
+test("LLM-4: a mid-stream error without usage records the estimate before throwing", async () => {
+  answers.push(sse([{ error: { message: "gone" } }]));
+  await assert.rejects(llm.sendStream("mid-error-2", { model: "openai/gpt-oss-120b", max_tokens: 100, messages: [] }, () => {}), /gone/);
+  const row = JSON.parse(readFileSync(ledger, "utf8").trim());
+  assert.equal(row.priced, "estimate");
+  assert.ok(row.usd > 0);
+});
+
+test("LLM-4: a 200 whose JSON body has `error` records usage (or the estimate) before throwing", async () => {
+  answers.push(json({ error: { message: "upstream failed", code: 502 }, usage: { prompt_tokens: 5, completion_tokens: 0, cost: 0.0007 } }));
+  await assert.rejects(llm.send("body-error", { model: "openai/gpt-oss-120b", messages: [] }), (e) => e instanceof llm.LlmError && /upstream failed/.test(e.message));
+  assert.equal(JSON.parse(readFileSync(ledger, "utf8").trim()).usd, 0.0007);
+
+  writeFileSync(ledger, "");
+  answers.push(json({ error: { message: "upstream failed" } }));
+  await assert.rejects(llm.send("body-error-2", { model: "openai/gpt-oss-120b", max_tokens: 500, messages: [] }), llm.LlmError);
+  const row = JSON.parse(readFileSync(ledger, "utf8").trim());
+  assert.equal(row.priced, "estimate");
+  assert.ok(row.usd > 0);
+
+  writeFileSync(ledger, "");
+  answers.push(new Response("<html>gateway</html>", { status: 200 }));
+  await assert.rejects(llm.send("not-json", { model: "openai/gpt-oss-120b", max_tokens: 500, messages: [] }), llm.LlmError);
+  assert.equal(JSON.parse(readFileSync(ledger, "utf8").trim()).priced, "estimate");
+});
+
+test("LLM-1: in production, any base URL whose host is not us.openrouter.ai is refused before a request", async () => {
+  const old = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  try {
+    for (const bad of ["https://openrouter.ai/api/v1", "https://eu.openrouter.ai/api/v1", "https://gateway.example.test/v1", "http://us.openrouter.ai.evil.test/api/v1", "not a url"]) {
+      process.env.OPENROUTER_BASE_URL = bad;
+      assert.throws(() => llm.assertModelHost(), /us\.openrouter\.ai/);
+      await assert.rejects(llm.send("t", { model: "m", messages: [] }), /us\.openrouter\.ai/);
+    }
+    assert.equal(calls.length, 0);
+    process.env.OPENROUTER_BASE_URL = "https://us.openrouter.ai/api/v1";
+    assert.doesNotThrow(() => llm.assertModelHost());
+    delete process.env.OPENROUTER_BASE_URL;
+    assert.doesNotThrow(() => llm.assertModelHost());
+    answers.push(completion({ content: "ok" }));
+    assert.equal((await llm.send("t", { model: "m", messages: [] })).text, "ok");
+  } finally {
+    process.env.NODE_ENV = old;
+    if (old === undefined) delete process.env.NODE_ENV;
+  }
+});
+
+test("LLM-1: the server refuses to start in production with another model host (exit 1 at startup)", async (t) => {
+  const { startupCheck } = await import("../agents/shared/model-host.ts");
+  const { register } = await import("../instrumentation.ts");
+  const src = readFileSync(join(root, "instrumentation.ts"), "utf8");
+  assert.match(src, /startupCheck\(\(code\) => process\.exit\(code\)\)/);
+  const old = { env: process.env.NODE_ENV, rt: process.env.NEXT_RUNTIME };
+  t.mock.method(console, "error", () => {});
+  process.env.NODE_ENV = "production"; process.env.NEXT_RUNTIME = "nodejs";
+  try {
+    process.env.OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+    const exits = [];
+    assert.throws(() => startupCheck((c) => exits.push(c)), /us\.openrouter\.ai/);
+    assert.deepEqual(exits, [1]);
+    delete process.env.OPENROUTER_BASE_URL;
+    const none = [];
+    startupCheck((c) => none.push(c));
+    assert.deepEqual(none, []);
+    await register();   // the real hook, with the default (US) host: starts
+  } finally {
+    for (const [k, v] of [["NODE_ENV", old.env], ["NEXT_RUNTIME", old.rt]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  }
+});
+
+test("LLM-1: modelInfo() for /api/health reports the host and the model ids, and nothing secret", () => {
+  process.env.OPENROUTER_API_KEY = "sk-or-secret-value";
+  try {
+    const info = llm.modelInfo();
+    assert.deepEqual(info, {
+      host: "us.openrouter.ai", usOnly: true,
+      models: { chat: "openai/gpt-oss-120b", extract: "openai/gpt-oss-120b", summary: "openai/gpt-oss-120b", digest: "openai/gpt-oss-20b" },
+    });
+    assert.ok(!JSON.stringify(info).includes("secret"));
+    process.env.OPENROUTER_BASE_URL = "https://user:pw@gateway.example.test/v1?key=abc";
+    assert.deepEqual({ host: llm.modelInfo().host, usOnly: llm.modelInfo().usOnly }, { host: "gateway.example.test", usOnly: false });
+    assert.ok(!JSON.stringify(llm.modelInfo()).includes("pw"));
+  } finally { process.env.OPENROUTER_API_KEY = "test-key"; }
+});
+
+test("LLM-1: GET /api/health carries the model block next to the queue health", async () => {
+  const src = readFileSync(join(root, "app", "api", "health", "route.ts"), "utf8");
+  assert.match(src, /healthBody\(\)/);
+  assert.match(src, /from "@\/lib\/health-body"/);
+  const { healthBody } = await import("../lib/health-body.ts");
+  const body = await healthBody(async () => ({ pending: 1, oldestPendingSeconds: 2, failed: 0, lastLoopAt: null }));
+  assert.deepEqual(body, { pending: 1, oldestPendingSeconds: 2, failed: 0, lastLoopAt: null, model: llm.modelInfo() });
+  assert.equal(body.model.host, "us.openrouter.ai");
+  // Still reported when the queue cannot be read (no MongoDB): the 500 body carries it too.
+  assert.match(src, /error: "server error", model: modelBlock\(\)/);
+  const { modelBlock } = await import("../lib/health-body.ts");
+  assert.deepEqual(modelBlock(), llm.modelInfo());
 });
