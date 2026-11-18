@@ -1,7 +1,7 @@
 # D-0012 Photo agent: deferred
 
 - **Date:** 2026-11-17
-- **Status:** accepted
+- **Status:** superseded by D-0016
 - **Decided by:** Dan Vu (owner, only voter)
 
 ## Context

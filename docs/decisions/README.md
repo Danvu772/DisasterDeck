@@ -17,7 +17,8 @@ Dan decides alone. Template: `# D-NNNN Title`, then Date, Status (proposed, acce
 | [D-0009](0009-web-search-official-feeds.md) | Web search: official feeds only for now, Brave later behind a port | accepted |
 | [D-0010](0010-queue-keep-polling.md) | Queue: keep polling MongoDB | accepted |
 | [D-0011](0011-evacuation-planner-deferred.md) | Evacuation planner deferred | accepted |
-| [D-0012](0012-photo-agent-deferred.md) | Photo agent deferred | accepted |
+| [D-0012](0012-photo-agent-deferred.md) | Photo agent deferred | superseded by D-0016 |
 | [D-0013](0013-sms-offline-deferred.md) | SMS and offline path deferred | accepted |
 | [D-0014](0014-observability-audit.md) | CloudTrail, CloudWatch, app audit log | accepted |
 | [D-0015](0015-ci-github-oidc.md) | CI to AWS: GitHub Actions with OIDC, Secrets Manager | accepted |
+| [D-0016](0016-photos-option2.md) | Photos: a vision model describes them into text (option 2) | accepted |
