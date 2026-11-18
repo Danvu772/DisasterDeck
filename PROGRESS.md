@@ -22,6 +22,12 @@ Current state, so any agent or person can pick up. The orchestrator updates this
 
 Parallel builders only on issues whose files don't overlap (#9 and #15 don't).
 
+## In flight
+
+- #21 (#9 model adapter): evaluator says MERGE after #20, round 3 of 3. LLM-1's live half and LLM-3b wait on #23.
+- #24 (#15 USWDS foundation): failed round 1 on dark mode; builder on round 2.
+- #22: photos, Dan's decision. #23: live model check, blocked on #5.
+
 ## Done
 
 - 17 Nov: system design v3 and D-0001 to D-0008 (#2); Dan's workflow in the repo (#3); planning snapshot (#1).
