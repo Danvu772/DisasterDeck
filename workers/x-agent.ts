@@ -4,10 +4,10 @@
 // Other tweets are skipped. Owner: Role 2.
 //
 //   npx tsx --env-file=.env.local workers/x-agent.ts --mock      no key, no cost
-//   npx tsx --env-file=.env.local workers/x-agent.ts --limit 3   real Claude (about $0.006 per tweet)
+//   npx tsx --env-file=.env.local workers/x-agent.ts --limit 3   real model (gpt-oss-120b on OpenRouter)
 //
 // Flags: --file <path>  --speed <x>  --limit <n>  --mock  --dry-run  --require-live
-// Env:   ANTHROPIC_API_KEY, ANTHROPIC_MODEL_EXTRACT, DESK_API_URL (unset = fake desk, events printed),
+// Env:   OPENROUTER_API_KEY, OPENROUTER_MODEL_EXTRACT, DESK_API_URL (unset = fake desk, events printed),
 //        AGENT_KEY, DESK_ID, REPLAY_SPEED, AGENT_BUDGET_USD
 
 import { configuredDeskId } from "../lib/pilot";
@@ -52,7 +52,7 @@ async function main() {
       await d.getBoard(deskId); // Check connectivity/authorization before paying for extraction.
     }
     const spentAtStart = spentUsd();
-    log(`${tweets.length} tweets from ${file}, speed ${speed}×, ${mock ? "MOCK" : "Claude"}, desk: ${dryRun ? "dry-run (no writes)" : d.name}; ${tweets.filter(isHistoricalTweet).length} historical real posts`);
+    log(`${tweets.length} tweets from ${file}, speed ${speed}×, ${mock ? "MOCK" : "model"}, desk: ${dryRun ? "dry-run (no writes)" : d.name}; ${tweets.filter(isHistoricalTweet).length} historical real posts`);
 
     const start = Date.now();
     let reports = 0, unclear = 0, hazards = 0, needs = 0, closures = 0, capacities = 0, skipped = 0, failed = 0;

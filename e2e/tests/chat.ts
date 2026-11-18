@@ -1,5 +1,5 @@
 // POST /api/chat saves both lines of every turn to the person's chat history and spends the
-// Anthropic key. So by default the tests answer it here, and the screen still runs its whole path
+// OpenRouter key. So by default the tests answer it here, and the screen still runs its whole path
 // (send, show the answer, pick and draw the metric cards). E2E_LIVE_CHAT=1 lets it reach the real agent.
 import { expect, type Locator, type Page } from "@playwright/test";
 

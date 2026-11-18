@@ -1,20 +1,19 @@
 // One turn of a personal agent (Final system design §7):
-// load the person's context from the desk → one Claude call with tools → run the tools
-// (each posts one event) → loop until Claude answers → save both chat lines → reply.
+// load the person's context from the desk → one model call with tools → run the tools
+// (each posts one event) → loop until the model answers → save both chat lines → reply.
 // The agent keeps nothing between turns. Everything comes from the desk each time.
 
-import type Anthropic from "@anthropic-ai/sdk";
 import { desk, type UserContext } from "../desk";
 import {
   age, countBy, incidentLine, NEAR_ROAD_METERS, needLine, roadLine, roadsNear, shelterLine, sheltersFor, siteLine, taskLine, type Place,
 } from "../desk/view";
 import { quakeLine, recentQuakesNear, type NearbyQuake } from "../research/quakes";
 import { BudgetError } from "../shared/cost";
-import { modelFor, send, sendStream } from "../shared/llm";
+import { checkSchema, modelFor, send, sendStream, type ChatMessage, type ChatParams } from "../shared/llm";
 import { maskPhones } from "../shared/privacy";
 import { stashPending, takePending, type PendingCall } from "./pending";
 import { systemPrompt } from "./prompts";
-import { holdWrites, runTool, toolsFor, type ToolOutcome } from "./tools";
+import { holdWrites, runTool, toolSchema, toolsFor, type ToolOutcome } from "./tools";
 
 export interface TurnInput {
   userId: string;
@@ -41,7 +40,7 @@ export interface TurnResult {
 const MAX_ROUNDS = 5;        // model calls per turn
 const MAX_TOOL_CALLS = 8;    // "blankets, a doctor and a report" is 3; leave room, but stop loops
 
-type Msg = Anthropic.Beta.BetaMessageParam;
+type Msg = ChatMessage;
 
 export async function runTurn(input: TurnInput): Promise<TurnResult> {
   const d = desk();
@@ -53,39 +52,25 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
   const { model, effort } = modelFor("chat");
   if (input.confirm) holdWrites(ctx);
   const held: (PendingCall & { summary: string })[] = [];
-  let tools = toolsFor(ctx);
-  const system: Anthropic.Beta.BetaTextBlockParam[] = [
-    // Stable per role and shared by everyone in that role (tools + system are the prefix).
-    // 1-hour cache: chats pause for more than 5 minutes, and the 5-minute cache then made
-    // 16 of 20 measured turns rewrite this ~3.5k-token prefix. A 1-hour write costs 2× once
-    // per role per hour; every turn after that reads it at 0.05×.
-    { type: "text", text: systemPrompt(ctx.user.role), cache_control: { type: "ephemeral", ttl: "1h" } },
-  ];
+  const tools = toolsFor(ctx);
   // Aftershocks near this person (scenario clock during a replay). Plain code, no model call.
   const quakes = await recentQuakesNear(ctx.user.coords, 60).catch(() => undefined);
-  const past = history(ctx);
-  // Breakpoint at the end of the history: the next turn starts with the same lines plus two
-  // more, so within 5 minutes it reads them from the cache instead of writing them again.
-  const last = past[past.length - 1];
-  if (last && typeof last.content === "string") {
-    last.content = [{ type: "text", text: last.content, cache_control: { type: "ephemeral" } }];
-  }
-  const messages: Msg[] = [...past, { role: "user", content: userContent(ctx, said, input.image, quakes) }];
+  // System prompt first, stable per role: providers cache the shared prefix automatically.
+  const messages: Msg[] = [
+    { role: "system", content: systemPrompt(ctx.user.role) },
+    ...history(ctx),
+    { role: "user", content: userContent(ctx, said, input.image, quakes) },
+  ];
 
   const eventIds: string[] = [];
   const actions: TurnResult["actions"] = [];
   let toolCalls = 0;
-  let searches = 0;
   let reply = "";
   let servedBy: string | undefined;
 
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      const params = {
-        model, max_tokens: 8000, system, tools, messages, output_config: { effort },
-        // Later rounds of the same turn re-send everything: cache the growing tail too.
-        cache_control: { type: "ephemeral" },
-      } as const;
+      const params: ChatParams = { model, effort, max_tokens: 8000, tools, tool_choice: "auto", messages };
       let startedRound = false;
       const res = input.onText
         ? await sendStream(`chat:${ctx.user.role}`, params, (d) => {
@@ -95,43 +80,50 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
         })
         : await send(`chat:${ctx.user.role}`, params);
       servedBy = res.model;
-      searches += res.usage.server_tool_use?.web_search_requests ?? 0;
-      const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+      const text = res.text.trim();
       // never let an empty last round wipe an earlier answer
       reply = input.onText ? [reply, text].filter(Boolean).join(" ") : text || reply;
 
-      if (res.stop_reason === "refusal") {
+      if (res.finishReason === "content_filter") {
         reply = "I can't help with that one here. If someone is in danger, call 112.";
         break;
       }
-      if (res.stop_reason === "pause_turn") {           // web search ran long: resume as is
-        messages.push({ role: "assistant", content: res.content });
-        continue;
+      // Cut off at max_tokens: what came is incomplete (and any tool call in it may be too). Say so,
+      // on screen and in speech, and stop: nothing half-written is run.
+      if (res.finishReason === "length") {
+        input.onText?.(` ${CUT_OFF_NOTE}`);
+        reply = [reply, CUT_OFF_NOTE].filter(Boolean).join(" ");
+        break;
       }
-      const calls = res.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
-      if (res.stop_reason !== "tool_use" || calls.length === 0) break;
+      const calls = res.toolCalls;
+      if (calls.length === 0) break;
 
-      messages.push({ role: "assistant", content: res.content });
-      // Every tool_use needs a tool_result in the same message. Past the cap, answer with an error.
-      const results = await Promise.all(calls.map(async (c): Promise<Anthropic.Beta.BetaToolResultBlockParam> => {
+      messages.push(res.message);
+      // Every tool call needs a tool message with its id. Past the cap, answer with an error.
+      const results = await Promise.all(calls.map(async (c): Promise<Msg> => {
+        const name = c.function.name;
+        const answer = (content: string): Msg => ({ role: "tool", tool_call_id: c.id, content });
         if (toolCalls >= MAX_TOOL_CALLS) {
-          actions.push({ tool: c.name, summary: "skipped: too many actions in one message", ok: false });
-          return { type: "tool_result", tool_use_id: c.id, is_error: true,
-            content: "Skipped: too many actions in one message. Tell the person what was not filed and ask them to repeat it." };
+          actions.push({ tool: name, summary: "skipped: too many actions in one message", ok: false });
+          return answer("Error: skipped, too many actions in one message. Tell the person what was not filed and ask them to repeat it.");
         }
         toolCalls++;
-        const out = await runTool(c.name, (c.input ?? {}) as Record<string, unknown>, ctx)
-          .catch((e: Error): ToolOutcome => ({ content: `Tool failed: ${e.message}`, isError: true }));
+        // The model's arguments are untrusted text: parse them and check them against the tool's schema.
+        const args = parseArgs(c.function.arguments);
+        const schema = toolSchema(name);
+        const problems = args === undefined ? ["arguments are not a JSON object"] : schema ? checkSchema(schema, args) : [];
+        const out: ToolOutcome = problems.length
+          ? { content: `Input did not match the ${name} schema: ${problems.slice(0, 3).join("; ")}. Call it again with valid input.`, isError: true }
+          : await runTool(name, args ?? {}, ctx)
+            .catch((e: Error): ToolOutcome => ({ content: `Tool failed: ${e.message}`, isError: true }));
         if (out.eventId) eventIds.push(out.eventId);
-        if (out.pending) held.push({ name: c.name, input: (c.input ?? {}) as Record<string, unknown>, summary: out.summary ?? c.name });
-        if (c.name !== "ask_desk") actions.push({ tool: c.name, summary: out.summary ?? out.content.slice(0, 120), ok: !out.isError,
+        if (out.pending) held.push({ name, input: args ?? {}, summary: out.summary ?? name });
+        if (name !== "ask_desk") actions.push({ tool: name, summary: out.summary ?? out.content.slice(0, 120), ok: !out.isError,
           ...("showMetric" in out && out.showMetric ? { type: "show_metric" as const, id: out.showMetric } : {}),
           ...("showMap" in out && out.showMap ? { type: "show_map" as const, ...out.showMap } : {}) });
-        return { type: "tool_result", tool_use_id: c.id, content: out.content, is_error: out.isError || undefined };
+        return answer(out.isError && !out.content.startsWith("Error") ? `Error: ${out.content}` : out.content);
       }));
-      messages.push({ role: "user", content: results });
-      // Help-desk web search: at most 2 per turn (max_uses counts per request, not per turn).
-      if (searches >= 2) tools = tools.filter((t) => !("type" in t && t.type === "web_search_20260209"));
+      messages.push(...results);
     }
   } catch (e) {
     if (e instanceof BudgetError) {
@@ -206,11 +198,27 @@ function history(ctx: UserContext): Msg[] {
 
 type Quakes = { quakes: NearbyQuake[]; now: Date; replay: boolean } | undefined;
 
-function userContent(ctx: UserContext, said: string, image: TurnInput["image"], quakes: Quakes): Anthropic.Beta.BetaContentBlockParam[] {
-  const blocks: Anthropic.Beta.BetaContentBlockParam[] = [{ type: "text", text: contextBlock(ctx, quakes) }];
-  if (image) blocks.push({ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } });
-  blocks.push({ type: "text", text: `${ctx.user.name} says: ${said || "(sent a photo, no text)"}` });
-  return blocks;
+/** Arguments of a tool call: a JSON object, or undefined when the text is not one. */
+function parseArgs(raw: string): Record<string, unknown> | undefined {
+  try {
+    const v: unknown = JSON.parse(raw.trim() || "{}");
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined;
+  } catch { return undefined; }
+}
+
+/** Added to a reply the model did not finish (finish_reason "length"). */
+export const CUT_OFF_NOTE = "(My answer was cut off before the end. Ask again, or ask for less at once.)";
+
+// gpt-oss reads text only (D-0003): a photo is not sent to the model. The agent is told one came,
+// so it can ask the person to say what it shows.
+export const PHOTO_NOTE = "(The person attached a photo. You cannot see photos: ask them to say in words what it shows.)";
+
+function userContent(ctx: UserContext, said: string, image: TurnInput["image"], quakes: Quakes): string {
+  return [
+    contextBlock(ctx, quakes),
+    ...(image ? [PHOTO_NOTE] : []),
+    `${ctx.user.name} says: ${said || "(sent a photo, no text)"}`,
+  ].join("\n\n");
 }
 
 const NEAR_KM = NEAR_ROAD_METERS / 1000;

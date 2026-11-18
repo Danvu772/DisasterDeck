@@ -1,30 +1,25 @@
-// Spend meter and hard budget for every Claude call the agents make.
-// The team has about $20 of API credit. Every call is priced from its `usage` block and
-// appended to a ledger file (agents/.usage/usage.jsonl, git-ignored; AGENT_USAGE_FILE to move it).
-// Before every call the ledger is re-read, so the Next server and the workers, which are
-// separate processes, see each other's spend. When the total reaches AGENT_BUDGET_USD
-// (default 15), further calls throw BudgetError.
+// Spend meter and hard budget for every model call the agents make.
+// Every call is priced and appended to a ledger file (agents/.usage/usage.jsonl, git-ignored;
+// AGENT_USAGE_FILE to move it). Before every call the ledger is re-read, so the Next server and the
+// workers, which are separate processes, see each other's spend. When the total reaches
+// AGENT_BUDGET_USD (default 15), further calls throw BudgetError.
 //
-// This is a soft guard on one machine. The hard stop is a spend limit on the API key's
-// workspace in the Anthropic Console (set it to about $18).
+// This is a soft guard on one machine. The hard stop is a credit limit on the OpenRouter key.
 //
-// Prices: Anthropic first-party list prices, USD per 1M tokens (Nov 2026). Cache writes are
-// 1.25× input (5-minute TTL) or 2× (1-hour TTL). Web search is billed per search.
+// Price of a call: OpenRouter reports what it charged in usage.cost (USD credits) on every
+// response; that is what we record. Only when it is missing do we price the tokens from the table
+// below: OpenRouter's headline prices, USD per 1M tokens, read 17 Nov 2026 from
+// openrouter.ai/openai/gpt-oss-120b and openrouter.ai/openai/gpt-oss-20b. Headline prices are the
+// cheapest provider's; US in-region providers can cost more, which usage.cost captures.
 
 import { appendFileSync, existsSync, mkdirSync, openSync, readSync, closeSync, statSync } from "node:fs";
 import path from "node:path";
 
 const PRICES: Record<string, { input: number; output: number; cacheRead: number }> = {
-  "claude-fable-5-2": { input: 8, output: 40, cacheRead: 0.2 },
-  "claude-opus-5-5": { input: 4, output: 20, cacheRead: 0.2 },
-  "claude-opus-5": { input: 5, output: 25, cacheRead: 0.5 },
-  "claude-opus-4-8": { input: 5, output: 25, cacheRead: 0.5 },
-  "claude-sonnet-5-5": { input: 2, output: 10, cacheRead: 0.1 },
-  "claude-sonnet-5": { input: 2, output: 10, cacheRead: 0.2 },
-  "claude-haiku-5-5": { input: 0.1, output: 0.5, cacheRead: 0.01 },
+  "openai/gpt-oss-120b": { input: 0.03, output: 0.15, cacheRead: 0.015 },
+  "openai/gpt-oss-20b": { input: 0.018, output: 0.09, cacheRead: 0.009 },
 };
 const MOST_EXPENSIVE = { input: 10, output: 50, cacheRead: 1 }; // unknown model: price high, never low
-const WEB_SEARCH_USD = 0.01;
 
 const FILE = process.env.AGENT_USAGE_FILE ?? path.join(process.cwd(), "agents", ".usage", "usage.jsonl");
 
@@ -82,41 +77,22 @@ export function assertBudget(label: string): void {
   }
 }
 
-interface TokenCounts {
-  input_tokens: number;
-  output_tokens: number;
-  cache_creation_input_tokens?: number | null;
-  cache_read_input_tokens?: number | null;
-  // Split of cache_creation_input_tokens by TTL: 5-minute writes cost 1.25× input, 1-hour writes 2×.
-  cache_creation?: { ephemeral_5m_input_tokens?: number | null; ephemeral_1h_input_tokens?: number | null } | null;
-}
-/** The fields of BetaUsage we price. */
-export interface UsageLike extends TokenCounts {
-  server_tool_use?: { web_search_requests?: number | null } | null;
-  iterations?: ReadonlyArray<TokenCounts & { type: string; model?: string | null }> | null;
+/** The usage block of an OpenRouter chat completions response (the fields we price). */
+export interface UsageLike {
+  prompt_tokens: number;
+  completion_tokens: number;
+  prompt_tokens_details?: { cached_tokens?: number | null } | null;
+  /** What OpenRouter charged for the call, in USD credits. */
+  cost?: number | null;
 }
 
-function tokensUsd(model: string, u: TokenCounts): number {
+/** The charged cost when OpenRouter reports it, else the tokens priced from the table. */
+export function priceUsd(model: string, u: UsageLike): number {
+  if (typeof u.cost === "number" && Number.isFinite(u.cost) && u.cost >= 0) return u.cost;
   const p = PRICES[model] ?? MOST_EXPENSIVE;
   const m = 1 / 1_000_000;
-  const write1h = u.cache_creation?.ephemeral_1h_input_tokens ?? 0;
-  const write5m = (u.cache_creation_input_tokens ?? 0) - write1h;
-  return u.input_tokens * p.input * m +
-    write5m * p.input * 1.25 * m + write1h * p.input * 2 * m +
-    (u.cache_read_input_tokens ?? 0) * p.cacheRead * m +
-    u.output_tokens * p.output * m;
-}
-
-/**
- * With refusal fallbacks, top-level usage covers only the attempt that produced the answer;
- * a declined attempt is billed too and appears only in usage.iterations. Price every attempt.
- */
-export function priceUsd(model: string, u: UsageLike): number {
-  const attempts = (u.iterations ?? []).filter((it) => it.type === "message" || it.type === "fallback_message");
-  const tokens = attempts.length
-    ? attempts.reduce((sum, it) => sum + tokensUsd(it.model ?? model, it), 0)
-    : tokensUsd(model, u);
-  return tokens + (u.server_tool_use?.web_search_requests ?? 0) * WEB_SEARCH_USD;
+  const cached = Math.min(u.prompt_tokens ?? 0, u.prompt_tokens_details?.cached_tokens ?? 0);
+  return ((u.prompt_tokens ?? 0) - cached) * p.input * m + cached * p.cacheRead * m + (u.completion_tokens ?? 0) * p.output * m;
 }
 
 /** Record one response. `requested` is the model asked for; `served` the one that answered. */
@@ -124,9 +100,8 @@ export function recordUsage(label: string, requested: string, u: UsageLike, serv
   const usd = priceUsd(requested, u);
   const row = JSON.stringify({
     ts: new Date().toISOString(), label, model: served,
-    in: u.input_tokens, out: u.output_tokens,
-    cacheW: u.cache_creation_input_tokens ?? 0, cacheW1h: u.cache_creation?.ephemeral_1h_input_tokens ?? 0, cacheR: u.cache_read_input_tokens ?? 0,
-    search: u.server_tool_use?.web_search_requests ?? 0,
+    in: u.prompt_tokens ?? 0, out: u.completion_tokens ?? 0, cacheR: u.prompt_tokens_details?.cached_tokens ?? 0,
+    priced: typeof u.cost === "number" ? "openrouter" : "table",
     usd: Number(usd.toFixed(6)),
   }) + "\n";
   try {
@@ -134,6 +109,28 @@ export function recordUsage(label: string, requested: string, u: UsageLike, serv
     appendFileSync(FILE, row);
   } catch {
     unwritten += usd; // a read-only disk must not break the desk; this process still counts it
+  }
+  return usd;
+}
+
+/**
+ * A response that came without a usage block (a provider or stream that left it out, an error body,
+ * a stream that broke). Never record $0 for it: assume the worst for this call, the whole request
+ * as prompt tokens (characters are an upper bound on tokens) and max_tokens of output, at the
+ * model's own table rates, or the most expensive rates for a model not in the table. Says so.
+ */
+export function recordMissingUsage(label: string, model: string, maxTokens: number, promptChars: number, served = model): number {
+  const p = PRICES[model] ?? MOST_EXPENSIVE;
+  const usd = (promptChars * p.input + maxTokens * p.output) / 1_000_000;
+  console.warn(`[cost] ${label}: no usage in the response from ${served}; recording a pessimistic $${usd.toFixed(6)} ` +
+    `(${promptChars} prompt chars at $${p.input}/M, ${maxTokens} output tokens at $${p.output}/M${PRICES[model] ? "" : ", unknown model: top rates"})`);
+  const row = JSON.stringify({ ts: new Date().toISOString(), label, model: served, in: 0, out: 0, cacheR: 0,
+    priced: "estimate", usd: Number(usd.toFixed(6)) }) + "\n";
+  try {
+    mkdirSync(path.dirname(FILE), { recursive: true });
+    appendFileSync(FILE, row);
+  } catch {
+    unwritten += usd;
   }
   return usd;
 }

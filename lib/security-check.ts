@@ -67,7 +67,7 @@ async function main(): Promise<void> {
   expect(board, [200], "GET /api/board locally");
   expect(await call("GET", "/api/events?limit=1"), [200], "GET /api/events locally");
   expect(await call("POST", "/api/events?user=coordinator-duty", {}, approve(ghost)), [404], "POST /api/events?user=coordinator-duty locally, fake task");
-  // Audio-only messages get a fixed reply after the demo gate: no Anthropic spend, no write, even if the gate breaks.
+  // Audio-only messages get a fixed reply after the demo gate: no model spend, no write, even if the gate breaks.
   expect(await call("POST", "/api/chat?user=volunteer-callback", {}, { audioBase64: "AAAA" }), [200], "POST /api/chat?user=volunteer-callback locally");
   {
     const r = await call("GET", "/coordinator?user=coordinator-duty");

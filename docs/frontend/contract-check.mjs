@@ -34,7 +34,8 @@ const missing = (obj, keys) => keys.filter((k) => !(k in obj));
 }
 {
   const r = await call("GET", "/api/health");
-  const bad = r.status !== 200 ? `status ${r.status}` : missing(r.json ?? {}, ["pending", "oldestPendingSeconds", "failed", "lastLoopAt"]).join(", ");
+  const bad = r.status !== 200 ? `status ${r.status}` : [...missing(r.json ?? {}, ["pending", "oldestPendingSeconds", "failed", "lastLoopAt", "model"]),
+    ...(r.json?.model && typeof r.json.model.host !== "string" ? ["model.host"] : [])].join(", ");
   line(!bad, "GET /api/health", bad && `missing or wrong: ${bad}`);
 }
 {
@@ -67,11 +68,11 @@ for (const [name, user, body] of posts) {
   line(r.status === 404, `POST /api/events, ${name}`, why);
 }
 
-// Chat. A missing ANTHROPIC_API_KEY is a known cause, not a drifted contract, so it is named and not counted.
+// Chat. A missing OPENROUTER_API_KEY is a known cause, not a drifted contract, so it is named and not counted.
 {
   const r = await call("POST", "/api/chat?user=volunteer-callback", { text: "ping" });
   if (r.status === 200 && typeof r.json?.reply === "string") line(true, "POST /api/chat", "200 with a reply");
-  else if (r.status === 502) console.log("note POST /api/chat, 502, the server may be missing ANTHROPIC_API_KEY (see .env.example)");
+  else if (r.status === 502) console.log("note POST /api/chat, 502, the server may be missing OPENROUTER_API_KEY (see .env.example)");
   else line(false, "POST /api/chat", `status ${r.status}${r.json?.error ? `, ${r.json.error}` : ""}`);
 }
 

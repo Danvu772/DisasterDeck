@@ -35,10 +35,10 @@
     "replay:real": "node --env-file-if-exists=.env.local --import tsx workers/x-agent.ts --file data/replays/antakya-real-tweets.json --require-live",
     "replay:synthetic": "node --env-file-if-exists=.env.local --import tsx workers/x-agent.ts --file data/tweets_replay.json",
     "check:replay": "node --import tsx --test scripts/real-replay.test.mjs",
+    "check:llm": "node --import tsx --test scripts/llm-adapter.test.mjs",
     "check:bundle": "node scripts/check-bundle.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.8.0",
     "@elevenlabs/client": "1.32.1",
     "@trussworks/react-uswds": "13.0.1",
     "@uswds/uswds": "3.14.0",

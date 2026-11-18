@@ -1,5 +1,5 @@
 // Shift handoff writer: one call over the desk's state and the last hours of events, for
-// whoever takes over. Claude Opus 5.5 at medium effort: rare, long input, quality matters.
+// whoever takes over. gpt-oss-120b at medium effort (modelFor "summary"): rare, long input, quality matters.
 // Written as the questions an incoming coordinator asks (LLM situation-report study, Sci Rep 2026),
 // plus a public notice draft from confirmed facts only (DisasTeller); nothing is published from here.
 
@@ -38,12 +38,14 @@ export async function writeHandoff(deskId: string, now: Date): Promise<{ ok: boo
 
   const { model, effort } = modelFor("summary");
   const res = await send("shift-handoff", {
-    model, max_tokens: 16000, system: SYSTEM,
-    output_config: { effort },
-    messages: [{ role: "user", content: `Now: ${now.toISOString()}\n\n<desk_state>\n${state}\n</desk_state>` }],
+    model, effort, max_tokens: 16000,
+    messages: [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: `Now: ${now.toISOString()}\n\n<desk_state>\n${state}\n</desk_state>` },
+    ],
   });
-  const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
-  if (res.stop_reason === "refusal" || res.stop_reason === "max_tokens" || !text) {
+  const text = res.text.trim();
+  if (res.finishReason === "content_filter" || res.finishReason === "length" || !text) {
     return { ok: false, text: "The handoff could not be written this time. Use ask_desk with topic summary instead." };
   }
   return { ok: true, text };

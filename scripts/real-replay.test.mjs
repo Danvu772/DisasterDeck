@@ -15,7 +15,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const realFile = join(root, "data/replays/antakya-real-tweets.json");
 const real = readReplay(realFile);
 const worker = join(root, "workers/x-agent.ts");
-const env = { ...process.env, DESK_BACKEND: "fixture", DESK_ID: "antakya-2023", ANTHROPIC_API_KEY: "" };
+const env = { ...process.env, DESK_BACKEND: "fixture", DESK_ID: "antakya-2023", OPENROUTER_API_KEY: "" };
 
 async function fixture(t, rows) {
   const cache = resolve(root, ".next/cache");

@@ -1,17 +1,16 @@
-// News agent: searches the live web for one region and turns what it finds into closures,
-// needs, site reports and shelter counts. Uses Claude's web search tool (replaces Exa: no Exa credits).
+// News agent: turns news found for one region into closures, needs, site reports and shelter counts.
+//
+// OFF since D-0003. It searched with Claude's server-side web_search tool, which went with the move to
+// gpt-oss on OpenRouter. searchNews() now refuses to run (NewsSearchOffError). The replacement source
+// (official feeds first, SYSTEM_DESIGN §3.1 and §8) is issue #10. The prompt, the emit_findings schema
+// and toFindings() stay here for it.
+//
 // Two channels, each a separate run with its own allowed sites:
 //   news      any news site
 //   official  AFAD, Karayolları, governor, municipality, Interior Ministry, Kızılay, and the state
 //             news agencies that carry their announcements (Anadolu Ajansı, TRT Haber)
-// Not possible (checked 15 Nov 2026): Reddit blocks Claude's web search ("not accessible to our
-// user agent") and its API is closed to new apps; Facebook removed the Groups API in 2024.
-// No scraping.
-// Cost per channel run: up to 3 searches ($0.01 each) plus tokens, roughly $0.05–0.15.
 
-import type Anthropic from "@anthropic-ai/sdk";
 import type { CapacityPayload, ClosurePayload, NeedPayload, ReportPayload } from "@/lib/types";
-import { modelFor, send } from "../shared/llm";
 import { maskPhones } from "../shared/privacy";
 import { toCapacity } from "./x-extract";
 
@@ -35,7 +34,8 @@ export interface NewsFinding {
   publishedAt?: string;
 }
 
-const SYSTEM = `You are the news research agent of a disaster coordination desk.
+/** The prompt the search agent used. Kept for #10. */
+export const NEWS_SYSTEM = `You are the news research agent of a disaster coordination desk.
 Search the web for recent, specific facts about one region after an earthquake, then report them with the emit_findings tool. Call emit_findings exactly once, at the end.
 Keep only facts a coordinator can act on, each tied to a source URL you actually read:
 - closures: a named road or bridge that is closed, open again, or reported blocked.
@@ -47,77 +47,50 @@ Skip opinion, politics, donation appeals, death tolls and anything without a pla
 const str = { type: "string" } as const;
 const nstr = { type: ["string", "null"] } as const;
 
-const EMIT: Anthropic.Beta.BetaTool = {
-  name: "emit_findings",
-  description: "Report what you found. Call once, at the end. Empty lists are fine.",
-  strict: true,
-  input_schema: {
-    type: "object", additionalProperties: false, required: ["closures", "needs", "reports", "shelters"],
-    properties: {
-      closures: { type: "array", items: { type: "object", additionalProperties: false,
-        required: ["road", "state", "reason", "url", "published"],
-        properties: { road: str, state: { type: "string", enum: ["closed", "open", "unconfirmed"] }, reason: str, url: str, published: nstr } } },
-      needs: { type: "array", items: { type: "object", additionalProperties: false,
-        required: ["item", "quantity", "place", "life_threatening", "url", "published"],
-        properties: { item: str, quantity: { type: ["integer", "null"] }, place: str, life_threatening: { type: "boolean" }, url: str, published: nstr } } },
-      reports: { type: "array", items: { type: "object", additionalProperties: false,
-        required: ["kind", "place", "text_en", "people_count", "hazard", "url", "published"],
-        properties: { kind: { type: "string", enum: ["trapped", "missing", "rescued", "site_update"] }, place: str, text_en: str,
-          people_count: { type: ["integer", "null"] }, hazard: nstr, url: str, published: nstr } } },
-      shelters: { type: "array", items: { type: "object", additionalProperties: false,
-        required: ["name", "people", "capacity", "free", "full", "url", "published"],
-        properties: { name: str, people: { type: ["integer", "null"] }, capacity: { type: ["integer", "null"] },
-          free: { type: ["integer", "null"] }, full: { type: "boolean" }, url: str, published: nstr } } },
-    },
-  } as Anthropic.Beta.BetaTool["input_schema"],
+/** What the news agent reports, as a strict JSON schema (emit_findings). Kept for #10. */
+export const EMIT_FINDINGS_SCHEMA: Record<string, unknown> = {
+  type: "object", additionalProperties: false, required: ["closures", "needs", "reports", "shelters"],
+  properties: {
+    closures: { type: "array", items: { type: "object", additionalProperties: false,
+      required: ["road", "state", "reason", "url", "published"],
+      properties: { road: str, state: { type: "string", enum: ["closed", "open", "unconfirmed"] }, reason: str, url: str, published: nstr } } },
+    needs: { type: "array", items: { type: "object", additionalProperties: false,
+      required: ["item", "quantity", "place", "life_threatening", "url", "published"],
+      properties: { item: str, quantity: { type: ["integer", "null"] }, place: str, life_threatening: { type: "boolean" }, url: str, published: nstr } } },
+    reports: { type: "array", items: { type: "object", additionalProperties: false,
+      required: ["kind", "place", "text_en", "people_count", "hazard", "url", "published"],
+      properties: { kind: { type: "string", enum: ["trapped", "missing", "rescued", "site_update"] }, place: str, text_en: str,
+        people_count: { type: ["integer", "null"] }, hazard: nstr, url: str, published: nstr } } },
+    shelters: { type: "array", items: { type: "object", additionalProperties: false,
+      required: ["name", "people", "capacity", "free", "full", "url", "published"],
+      properties: { name: str, people: { type: ["integer", "null"] }, capacity: { type: ["integer", "null"] },
+        free: { type: ["integer", "null"] }, full: { type: "boolean" }, url: str, published: nstr } } },
+  },
 };
 
-interface Emitted {
+export interface Emitted {
   closures: { road: string; state: ClosurePayload["state"]; reason: string; url: string; published: string | null }[];
   needs: { item: string; quantity: number | null; place: string; life_threatening: boolean; url: string; published: string | null }[];
   reports: { kind: ReportPayload["kind"]; place: string; text_en: string; people_count: number | null; hazard: string | null; url: string; published: string | null }[];
   shelters: { name: string; people: number | null; capacity: number | null; free: number | null; full: boolean; url: string; published: string | null }[];
 }
 
-export async function searchNews(args: { region: string; when: string; focus?: string; channel?: Channel }): Promise<NewsFinding[]> {
-  const { model, effort } = modelFor("extract");
-  const channel = CHANNELS[args.channel ?? "news"];
-  const messages: Anthropic.Beta.BetaMessageParam[] = [{
-    role: "user",
-    content: `Region: ${args.region}\nPeriod: ${args.when}\nChannel: ${channel.brief}\n${args.focus ? `Focus: ${args.focus}\n` : ""}Find road closures, places short of supplies, collapse sites with people inside, and how full the shelters are.`,
-  }];
-  let tools: Anthropic.Beta.BetaToolUnion[] = [
-    { type: "web_search_20260209", name: "web_search", max_uses: 3,
-      ...(channel.domains ? { allowed_domains: channel.domains } : {}) },
-    EMIT,
-  ];
-  const seenUrls = new Set<string>();   // only URLs the search really returned may be cited
-  let searches = 0;
+export const NEWS_SEARCH_OFF =
+  "News search is off: it used Claude's web_search tool, removed with D-0003 (gpt-oss on OpenRouter). " +
+  "Its replacement source is issue #10 on Danvu772/DisasterDeck.";
 
-  for (let round = 0; round < 4; round++) {
-    const res = await send("news-search", { model, max_tokens: 16000, system: SYSTEM, tools, messages,
-      output_config: { effort }, cache_control: { type: "ephemeral" } });
-    if (res.stop_reason === "refusal") throw new Error("news-search: model refused");
-    if (res.stop_reason === "max_tokens") throw new Error("news-search: output cut off at max_tokens");
-    searches += res.usage.server_tool_use?.web_search_requests ?? 0;
-    for (const b of res.content) {
-      if (b.type === "web_search_tool_result" && Array.isArray(b.content)) {
-        for (const r of b.content) if (r.type === "web_search_result") seenUrls.add(r.url);
-      }
-    }
-    const emit = res.content.find((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use" && b.name === "emit_findings");
-    if (emit && res.stop_reason === "tool_use") return toFindings(emit.input as Emitted, args.region, seenUrls);
-    if (res.stop_reason === "pause_turn") { messages.push({ role: "assistant", content: res.content }); continue; }
-    // The cap on searches is per request: stop offering search once 3 ran in this run.
-    if (searches >= 3) tools = [EMIT];
-    // Ended without calling the tool: ask once more, briefly.
-    messages.push({ role: "assistant", content: res.content });
-    messages.push({ role: "user", content: "Now call emit_findings with what you found (empty lists if nothing)." });
-  }
-  return [];
+export class NewsSearchOffError extends Error {
+  constructor() { super(NEWS_SEARCH_OFF); }
 }
 
-function toFindings(e: Emitted, region: string, seenUrls: Set<string>): NewsFinding[] {
+/** Refuses to run until #10 gives the news agent a source. Makes no model or search call. */
+export async function searchNews(args: { region: string; when: string; focus?: string; channel?: Channel }): Promise<NewsFinding[]> {
+  void args;
+  throw new NewsSearchOffError();
+}
+
+/** Findings from an emit_findings answer. Only URLs in `seenUrls` (pages the search returned) are kept. */
+export function toFindings(e: Emitted, region: string, seenUrls: Set<string>): NewsFinding[] {
   const out: NewsFinding[] = [];
   const now = Date.now();
   // A date in the future (or unparseable) is dropped: the desk then uses the time it received it.
