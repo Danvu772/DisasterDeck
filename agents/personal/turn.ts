@@ -9,7 +9,7 @@ import {
 } from "../desk/view";
 import { quakeLine, recentQuakesNear, type NearbyQuake } from "../research/quakes";
 import { BudgetError } from "../shared/cost";
-import { checkSchema, modelFor, send, sendStream, type ChatMessage, type ChatParams } from "../shared/llm";
+import { checkSchema, describeImage, modelFor, send, sendStream, type ChatMessage, type ChatParams } from "../shared/llm";
 import { maskPhones } from "../shared/privacy";
 import { stashPending, takePending, type PendingCall } from "./pending";
 import { systemPrompt } from "./prompts";
@@ -61,7 +61,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
   const messages: Msg[] = [
     { role: "system", content: systemPrompt(ctx.user.role) },
     ...history(ctx),
-    { role: "user", content: userContent(ctx, said, input.image, quakes) },
+    { role: "user", content: await userContent(ctx, said, input.image, quakes, describeImage) },
   ];
 
   const eventIds: string[] = [];
@@ -211,14 +211,21 @@ function parseArgs(raw: string): Record<string, unknown> | undefined {
 /** Added to a reply the model did not finish (finish_reason "length"). */
 export const CUT_OFF_NOTE = "(My answer was cut off before the end. Ask again, or ask for less at once.)";
 
-// gpt-oss reads text only (D-0003): a photo is not sent to the model. The agent is told one came,
-// so it can ask the person to say what it shows.
-export const PHOTO_NOTE = "(The person attached a photo. You cannot see photos: ask them to say in words what it shows.)";
+// gpt-oss reads text only (D-0003). D-0016 changes this: a photo is described into text by a
+// vision model behind the same port, and the description is what the text-only agent reads.
+export const PHOTO_NOTE = "(The person attached a photo. I could not read it; ask them to say in words what it shows.)";
 
-function userContent(ctx: UserContext, said: string, image: TurnInput["image"], quakes: Quakes): string {
+async function userContent(ctx: UserContext, said: string, image: TurnInput["image"], quakes: Quakes, describeImageFn: typeof describeImage): Promise<string> {
+  let photoLine = "";
+  if (image) {
+    const desc = await describeImageFn({ mediaType: image.mediaType, base64: image.base64 }).catch(() => undefined);
+    photoLine = desc
+      ? `(The person attached a photo. A vision model described it as: "${desc}")`
+      : PHOTO_NOTE;
+  }
   return [
     contextBlock(ctx, quakes),
-    ...(image ? [PHOTO_NOTE] : []),
+    ...(photoLine ? [photoLine] : []),
     `${ctx.user.name} says: ${said || "(sent a photo, no text)"}`,
   ].join("\n\n");
 }

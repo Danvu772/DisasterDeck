@@ -21,7 +21,7 @@ import { assertModelHost, baseUrl, hostOf, US_HOST } from "./model-host";
 export { assertModelHost, baseUrl, DEFAULT_BASE_URL, ModelHostError, US_HOST } from "./model-host";
 
 export type Effort = "low" | "medium" | "high";
-export type Purpose = "chat" | "extract" | "summary" | "digest";
+export type Purpose = "chat" | "extract" | "summary" | "digest" | "vision";
 
 
 const DEFAULTS: Record<Purpose, { model: string; effort: Effort }> = {
@@ -29,6 +29,8 @@ const DEFAULTS: Record<Purpose, { model: string; effort: Effort }> = {
   extract: { model: "openai/gpt-oss-120b", effort: "low" },
   summary: { model: "openai/gpt-oss-120b", effort: "medium" },
   digest: { model: "openai/gpt-oss-20b", effort: "low" },
+  // D-0016: one open-weight vision model, used only to describe a photo into text.
+  vision: { model: "openai/gpt-oss-120b-vision", effort: "low" },
 };
 
 const EFFORTS: readonly Effort[] = ["low", "medium", "high"];
@@ -48,7 +50,7 @@ export function modelInfo(): { host: string; usOnly: boolean; models: Record<Pur
   return {
     host,
     usOnly: host === US_HOST,
-    models: { chat: modelFor("chat").model, extract: modelFor("extract").model, summary: modelFor("summary").model, digest: modelFor("digest").model },
+    models: { chat: modelFor("chat").model, extract: modelFor("extract").model, summary: modelFor("summary").model, digest: modelFor("digest").model, vision: modelFor("vision").model },
   };
 }
 
@@ -59,7 +61,9 @@ export interface FunctionTool {
   type: "function";
   function: { name: string; description: string; parameters: Record<string, unknown>; strict?: boolean };
 }
-export type ContentPart = { type: "text"; text: string };
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
 export type ChatMessage =
   | { role: "system"; content: string }
   | { role: "user"; content: string | ContentPart[] }
@@ -330,6 +334,29 @@ export function dropNulls(v: unknown): unknown {
     return out;
   }
   return v;
+}
+
+/**
+ * D-0016: describe a photo into text. Sends an OpenAI-format image content part to the vision model
+ * and returns its words. The caller files the description, never this function. If the vision call
+ * fails for any reason, return undefined so the caller falls back to "no description".
+ */
+export async function describeImage(opts: { mediaType: string; base64: string; system?: string }): Promise<string | undefined> {
+  const { model, effort } = modelFor("vision");
+  const dataUrl = `data:${opts.mediaType};base64,${opts.base64}`;
+  try {
+    const res = await send("describe-image", {
+      model, effort, max_tokens: 1000,
+      messages: [
+        { role: "system", content: opts.system ?? "Describe what this photo shows, in plain prose, for a dispatcher. Name what you see (damage, people, numbers, hazards), and say you are unsure where you are unsure." },
+        { role: "user", content: [{ type: "image_url", image_url: { url: dataUrl } }] },
+      ],
+    });
+    if (!res.text.trim()) return undefined;
+    return res.text;
+  } catch {
+    return undefined;
+  }
 }
 
 // ── A small JSON-schema check, for the subset our strict schemas use ──────────────────────────

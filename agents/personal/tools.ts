@@ -92,7 +92,7 @@ const DEFS: Record<string, Tool> = {
   },
   file_capacity: {
     name: "file_capacity",
-    description: "File a shelter's beds: used and total, from the person's words (you cannot read photos).",
+    description: "File a shelter's beds: used and total, from the person's words or the photo description.",
     input_schema: obj({ shelter: str, beds_used: { type: "integer" }, beds_total: { type: "integer" } }),
   },
   report_problem: {

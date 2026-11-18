@@ -50,11 +50,12 @@ test.afterEach(() => { globalThis.fetch = realFetch; });
 test.after(() => rmSync(dir, { recursive: true, force: true }));
 
 // ── LLM-1: models and endpoint ────────────────────────────────────────────────────────────────
-test("LLM-1 modelFor: gpt-oss-120b for chat, extract and summary; gpt-oss-20b for digest", () => {
+test("LLM-1 modelFor: gpt-oss-120b for chat, extract and summary; gpt-oss-20b for digest; vision model separate", () => {
   assert.deepEqual(llm.modelFor("chat"), { model: "openai/gpt-oss-120b", effort: "low" });
   assert.deepEqual(llm.modelFor("extract"), { model: "openai/gpt-oss-120b", effort: "low" });
   assert.deepEqual(llm.modelFor("summary"), { model: "openai/gpt-oss-120b", effort: "medium" });
   assert.deepEqual(llm.modelFor("digest"), { model: "openai/gpt-oss-20b", effort: "low" });
+  assert.deepEqual(llm.modelFor("vision"), { model: "openai/gpt-oss-120b-vision", effort: "low" });
 });
 
 test("LLM-1 modelFor: OPENROUTER_MODEL_* and OPENROUTER_EFFORT_* override; a bad effort is ignored", () => {
@@ -280,14 +281,22 @@ test("LLM-3 runTurn(): a tool outside the role's allowlist is refused, not run",
   assert.match(tool.content, /not available to the field role/);
 });
 
-test("runTurn(): a photo is not sent to the text-only model; the agent is told one came", async () => {
-  const { runTurn, PHOTO_NOTE } = await import("../agents/personal/turn.ts");
-  answers.push(completion({ content: "What does the photo show?" }));
+test("runTurn(): a photo is described into text by the vision model first, and that description reaches the chat model", async () => {
+  const { runTurn } = await import("../agents/personal/turn.ts");
+  answers.push(json({ id: "gen-v", model: "openai/gpt-oss-120b-vision", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "A collapsed wall with two people nearby." } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(completion({ content: "I'll file the report from the photo." }));
   await runTurn({ userId: "field-alpha", text: "look", image: { mediaType: "image/png", base64: "iVBORw0KGgo=" } });
-  const last = modelCalls()[0].body.messages.at(-1);
-  assert.equal(typeof last.content, "string");
-  assert.ok(last.content.includes(PHOTO_NOTE));
-  assert.ok(!JSON.stringify(modelCalls()[0].body).includes("iVBORw0KGgo"));
+  const calls = modelCalls();
+  const vision = calls[0];
+  const chat = calls[1];
+  // The vision call goes to the vision model with an image_url content part.
+  assert.equal(vision.body.model, "openai/gpt-oss-120b-vision");
+  assert.equal(vision.body.messages.at(-1).content[0].type, "image_url");
+  assert.ok(vision.body.messages.at(-1).content[0].image_url.url.includes("data:image/png;base64,iVBORw0KGgo="));
+  // The chat call is text-only and carries the vision description, not the base64.
+  assert.equal(typeof chat.body.messages.at(-1).content, "string");
+  assert.ok(chat.body.messages.at(-1).content.includes("A collapsed wall with two people nearby."));
+  assert.ok(!chat.body.messages.at(-1).content.includes("iVBORw0KGgo"), "the chat model gets text, not the image bytes");
 });
 
 test("summary: the shift handoff goes to gpt-oss-120b at medium effort", async () => {
@@ -437,26 +446,26 @@ test("LLM-5: no prompt tells the agent to search the web while no search tool is
   assert.match(systemPrompt("supplier"), /report_problem/);
 });
 
-test("LLM-5: no prompt or tool description says the agent can see or read photos (the models are text-only)", async () => {
+test("LLM-5: no prompt or tool description tells the agent it can read a photo directly (D-0016: a vision model describes it, the agent reads the description)", async () => {
   const { systemPrompt } = await import("../agents/personal/prompts.ts");
-  const { PHOTO_NOTE } = await import("../agents/personal/turn.ts");
   const texts = [...ROLES.map((r) => [r, systemPrompt(r)]), ...ROLES.flatMap((r) => toolsFor(ctxFor(r)).map((t) => [`${r}/${t.function.name}`, t.function.description]))];
   for (const [where, text] of texts) {
     for (const sentence of sentences(text)) {
       if (!/\b(photo|image|picture|whiteboard)s?\b/i.test(sentence)) continue;
-      if (/\b(read|see|look at|readable|visible|from (a|the|their) (photo|image|picture))\b/i.test(sentence)) {
-        assert.match(sentence, /\b(cannot|can't|can not|not able|unable)\b/i, `${where}: ${sentence}`);
+      // The agent must not claim to see the photo itself; any "read/see" must be qualified by the
+      // vision-model description (so "read the description", not "read the photo").
+      if (/\b(read|see|look at)\b[^.]*\b(photo|image|picture|whiteboard)\b/i.test(sentence)) {
+        assert.match(sentence, /\b(description|described|vision model|in (their|the person's) words|from (the|a) (description|vision))\b/i, `${where}: ${sentence}`);
       }
     }
   }
-  assert.match(systemPrompt("shelter"), /ask (them|the person) for the two numbers/i);
+  assert.match(systemPrompt("shelter"), /vision model/i);
   // /api/chat does not store photos (app/api/chat/route.ts passes them only to runTurn), so no prompt may say it does.
   for (const r of ROLES) {
     for (const sentence of sentences(systemPrompt(r))) {
       if (/\bphotos?\b[^.]*\b(kept|saved|stored|attached to)\b/i.test(sentence)) assert.match(sentence, /\bnot (kept|saved|stored)\b/i, `${r}: ${sentence}`);
     }
   }
-  assert.match(PHOTO_NOTE, /cannot see photos/);
 });
 
 test("LLM-4 cost: no usage → estimate at the model's own rates (request size as input, max_tokens as output), with a warning", async (t) => {
@@ -654,7 +663,7 @@ test("LLM-1: modelInfo() for /api/health reports the host and the model ids, and
     const info = llm.modelInfo();
     assert.deepEqual(info, {
       host: "us.openrouter.ai", usOnly: true,
-      models: { chat: "openai/gpt-oss-120b", extract: "openai/gpt-oss-120b", summary: "openai/gpt-oss-120b", digest: "openai/gpt-oss-20b" },
+      models: { chat: "openai/gpt-oss-120b", extract: "openai/gpt-oss-120b", summary: "openai/gpt-oss-120b", digest: "openai/gpt-oss-20b", vision: "openai/gpt-oss-120b-vision" },
     });
     assert.ok(!JSON.stringify(info).includes("secret"));
     process.env.OPENROUTER_BASE_URL = "https://user:pw@gateway.example.test/v1?key=abc";
