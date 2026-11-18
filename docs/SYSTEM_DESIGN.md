@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 3.1, 17 Nov 2026 (v3 plus D-0009 to D-0015: every open call decided) |
+| Version | 3.2, 18 Nov 2026 (v3.1 plus D-0016 photos and D-0017 replay and live modes) |
 | Status | **Locked.** v3 merged 17 Nov (#2). Dan is the only voter |
 | Owner | Dan Vu. He owns the fork and decides alone |
 | Replaces | Multiplayer Disaster Deck v2 (14 Nov) |
@@ -48,12 +48,12 @@ Status: **built** = works as designed in v2. **changed** = built, but differs fr
 
 | Component | Code | Status | Today | Target |
 |---|---|---|---|---|
-| X agent | `workers/x-agent.ts`, `agents/research/x-extract.ts` | changed | Replays the 43-post real archive (`data/replays/`) or the synthetic file. No live search | Optional feed with a written agency policy. Archive replay for demos |
+| X agent | `workers/x-agent.ts`, `agents/research/x-extract.ts` | changed | Replays the 43-post real archive (`data/replays/`) or the synthetic file. No live search | Archive posts extracted once into the replay timeline (D-0017). Live X is later, with the data job and a written agency policy |
 | News agent | `workers/news-agent.ts`, `agents/research/news-search.ts` | changed | Claude web search tool (not Exa), `news` and `official` channels | Official feeds only: NWS, FEMA, USGS, agency announcements. Open-web search later behind a port (D-0009) |
 | Sheet sync | `workers/sheet-sync.ts` | built | Two-way shelter sheet, no LLM, never overwrites a row a person changed in the last 5 min | Keep as an integration, not a dependency |
-| Satellite watcher | `workers/satellite-watcher.ts` | built | Cached NASA Black Marble + POWER → silent-zone and cold `alert` events | Keep |
-| Quake watcher | `workers/quake-watcher.ts` | added | Replays the USGS catalog, posts aftershock warnings | Keep. Add NOAA/NWS and OpenFEMA feeds. Owner needed (upstream #17) |
-| Scenario player, synthetic feed | `workers/scenario-player.ts`, `workers/synthetic-feed.ts` | added | Demo cues sent through the real event API | Demo and tabletop exercises only |
+| Satellite watcher | `workers/satellite-watcher.ts` | built | Cached NASA Black Marble + POWER → silent-zone and cold `alert` events | Zones go into the replay timeline. No live fetch yet |
+| Quake watcher | `workers/quake-watcher.ts` | added | Replays the USGS catalog, posts aftershock warnings | Replay: catalog as `quake` alerts in the timeline. Live: a poller inside the feeds worker (D-0017) |
+| Scenario player, synthetic feed | `workers/scenario-player.ts`, `workers/synthetic-feed.ts` | added | Demo cues sent through the real event API | Synthetic feed deleted. The five cues become the opt-in `antakya-drill` timeline, never mixed with the real replay (D-0017) |
 | Instagram, Facebook, Reddit agents | — | not built | APIs closed (FB Groups API removed 2024, Reddit blocks the crawler) | Cut |
 | Photo agent (shelter whiteboard photos) | — | not built | — | Deferred (D-0012). The general photo path is a vision-model describe-to-text (D-0016) |
 | Evacuation planner | — | not built | The keeper accepts and stores a `plan` event and the coordinator can approve it, but nothing creates one | Deferred. The `plan` path stays (D-0011) |
@@ -68,7 +68,9 @@ Status: **built** = works as designed in v2. **changed** = built, but differs fr
 | Memory keeper | `workers/memory-keeper.ts` | built | Handles all 11 event types (`HANDLED`) |
 | Dispatcher | `workers/dispatcher.ts`, `lib/rules/` | built | Tier, score, `pickPerson()`, approvals, `one_open_task` unique index |
 | Help desk playbook | `lib/rules/incidents.ts` | built | One rule per incident kind (§5.4) |
-| Sweeper | `workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts |
+| Sweeper | `workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts. Target: timers read `deskNow(deskId)` (D-0017) |
+| Feeds worker | `workers/feeds.ts` | not built | Target (D-0017): the third service. Reads the desk mode. Replay: wipes the desk, reseeds users, plays `data/replays/<id>/timeline.jsonl` through `postEvent()`. Live: runs the pollers |
+| Desk mode and clock | `meta` `mode:<deskId>`, `deskNow()` in `lib/` | not built | Target (D-0017): `replay` or `live`, nothing else. One clock for screens, agents and the sweeper |
 
 ### 3.3 People, agents and screens
 
@@ -91,7 +93,7 @@ The TypeScript in `lib/types.ts` and the runtime checks in `lib/schemas.ts` are 
 
 ### 4.1 Events
 
-`postEvent()` is the only way in. Types: `report`, `need`, `closure`, `capacity`, `answer`, `approval`, `alert`, `incident`, `claim`, `correction`, `plan`. Sources: `x`, `news`, `sheet`, `nasa`, `person`, `system` (and whatever new feeds add). Status: `pending → working → done | merged | rejected | failed`.
+`postEvent()` is the only way in. Types: `report`, `need`, `closure`, `capacity`, `answer`, `approval`, `alert`, `incident`, `claim`, `correction`, `plan`. Alert kinds: `silent_zone`, `cold`, and `quake` (D-0017). Sources: `x`, `news`, `sheet`, `nasa`, `person`, `system` (and whatever new feeds add). Status: `pending → working → done | merged | rejected | failed`.
 
 ### 4.2 Collections and their only writer
 
@@ -101,7 +103,7 @@ The TypeScript in `lib/types.ts` and the runtime checks in `lib/schemas.ts` are 
 | `sites`, `needs`, `roads`, `shelters`, `zones`, `incidents` | Memory keeper |
 | `tasks`, `inbox` | Dispatcher (playbook and sweeper are part of it) |
 | `users`, `messages` | The app's API (login, heartbeat, chat). Chat memory folds `messages` |
-| `meta` | Brain (lease, desk version, loop time) |
+| `meta` | Brain (lease, desk version, loop time). Feeds worker, only its `mode:<deskId>` documents (D-0017) |
 
 Every document carries `deskId`. Every record keeps a `history` (who, when, source, reason).
 
@@ -112,6 +114,7 @@ Every document carries `deskId`. Every record keeps a `history` (who, when, sour
 | `POST /api/events` | Signed-in person (as themselves, source `person`) or a worker with `x-agent-key` |
 | `GET /api/board`, `/api/inbox`, `/api/users`, `/api/events?since=` | Signed-in person by role, or agent key |
 | `POST /api/chat`, `GET /api/chat/token` | Signed-in person |
+| `POST /api/desk/mode` | Any signed-in person, to start, pause or stop a replay or switch to live. Refused on a `pilot: true` desk (D-0017) |
 | `GET /api/health` | Open, counts only |
 | `/api/docs`, `/api/openapi.json` | Open spec (`lib/openapi.ts`) |
 
@@ -203,6 +206,7 @@ Decided by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reaso
 | 14 | Observability | CloudTrail, CloudWatch, app audit log in MongoDB | Health scripts | [D-0014](decisions/0014-observability-audit.md) |
 | 15 | CI to AWS | GitHub Actions with OIDC, Secrets Manager, deploy by tag | Tailscale + rsync | [D-0015](decisions/0015-ci-github-oidc.md) |
 | 16 | Photos | A vision model describes each photo into text behind the same port, the description rides with the attachment | text-only gpt-oss (photos unreachable) | [D-0016](decisions/0016-photos-option2.md) |
+| 17 | Desk modes | Two modes, replay and live. Replay empties the desk and plays one recorded timeline over 30 min (72 h of scenario). Screens never fall back to fixtures | Five worker replay flags, synthetic feed, screen fixtures | [D-0017](decisions/0017-two-modes-replay-and-live.md) |
 
 **First pilot:** an IU Emergency Management tabletop exercise (no real data, so no compliance paperwork). Monroe County and Maui are on hold.
 
@@ -236,6 +240,8 @@ None. The seven calls left open in v3 were decided on 17 Nov as D-0009 to D-0015
 - Rate limits are in memory per process. The Mongo-backed checks don't run in CI.
 - `agent_fidelity` and `triage_order` have no ground truth (upstream #28).
 - Personal agents read a cached board, so they can be one event behind.
+- The real X archive is 43 posts over 168 s. Most of a replay is quakes and satellite zones until the data job adds posts.
+- Live mode has no X and no live satellite. NWS and FEMA only matter for a US desk.
 
 ## 10. Upstream issues this design settles
 

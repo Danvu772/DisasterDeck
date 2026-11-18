@@ -271,7 +271,7 @@
       "id": "PIL-1",
       "section": "§6 pilot",
       "requirement": "An IU tabletop scenario runs end to end through the event API: a call, a dispatch with approval, a breakdown and its re-plan",
-      "check": "scenario-player run on the IU scenario reaches the expected board state",
+      "check": "Feeds worker plays the IU drill timeline (D-0017) and the desk reaches the expected board state",
       "passes": false
     },
     {
@@ -280,6 +280,69 @@
       "requirement": "A photo sent through /api/chat is described into text by the vision model (a `vision` purpose behind modelFor()), and the description, not raw image bytes, is what the agent acts on and files; the photo still attaches to the event",
       "check": "check:llm test: vision purpose routes to the vision model on the US host; a mocked image input yields a text description the agent files; photoUrl stays on the event",
       "passes": false
+    },
+    {
+      "id": "RPL-1",
+      "section": "§3.2, §4.2 D-0017",
+      "requirement": "A desk is in exactly one mode, replay or live, stored in meta mode:<deskId> and written only by the feeds worker",
+      "check": "Unit test of the mode schema; keeper:check confirms no other writer touches mode: documents",
+      "passes": null
+    },
+    {
+      "id": "RPL-2",
+      "section": "§3.2 D-0017",
+      "requirement": "Starting a replay empties the desk's records (events, sites, needs, roads, shelters, zones, incidents, tasks, inbox, messages), reseeds users only, and touches no other desk",
+      "check": "Mongo-backed check on two throwaway desks: board of the replayed desk is empty except users before the first timeline line, the other desk is unchanged",
+      "passes": null
+    },
+    {
+      "id": "RPL-3",
+      "section": "§3.2 D-0017",
+      "requirement": "The replay posts every timeline line once, through postEvent(), in atS order, with observedAt from the recording and a dedupeKey carrying the runId",
+      "check": "Mongo-backed check at high speed: event count and order match the timeline; a second run posts a second set",
+      "passes": null
+    },
+    {
+      "id": "RPL-4",
+      "section": "§3.2 D-0017",
+      "requirement": "A 72 h scenario window plays in the chosen duration (default 30 min); pause holds the clock, resume continues",
+      "check": "Unit test of deskNow() with a fake clock at 10, 30 and 60 min",
+      "passes": null
+    },
+    {
+      "id": "RPL-5",
+      "section": "§3.1 D-0017",
+      "requirement": "The default Antakya timeline holds only real-sourced lines; the drill timeline holds only synthetic lines; the build script refuses a mix",
+      "check": "npm test of scripts/build-replay.ts on the committed timelines and a mixed fixture",
+      "passes": null
+    },
+    {
+      "id": "RPL-6",
+      "section": "§4.3 D-0017",
+      "requirement": "Only a signed-in person starts, pauses or stops a replay; agent keys, timers and unauthenticated calls cannot; a pilot desk refuses",
+      "check": "npm run api:check cases for POST /api/desk/mode",
+      "passes": null
+    },
+    {
+      "id": "RPL-7",
+      "section": "§3.2 D-0017",
+      "requirement": "Sweeper timers and personal agents read deskNow(deskId), so timeouts fire on the scenario clock",
+      "check": "npm run sweeper:check with a replay clock at 144×",
+      "passes": null
+    },
+    {
+      "id": "RPL-8",
+      "section": "§3.3 D-0017",
+      "requirement": "No product screen renders fixture data; an empty or failing desk shows the empty or error state, and every screen shows the mode banner",
+      "check": "Production-build grep for fixtures/ imports outside tests, plus e2e on an empty desk",
+      "passes": null
+    },
+    {
+      "id": "RPL-9",
+      "section": "§4.1 D-0017",
+      "requirement": "Quake alerts are a schema-checked alert kind and the keeper stores them",
+      "check": "npm run keeper:check quake alert case",
+      "passes": null
     }
   ]
 }

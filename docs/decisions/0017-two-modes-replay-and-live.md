@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Date | 18 Nov 2026 |
-| Status | **proposed** (draft, replay half first; the `SYSTEM_DESIGN.md` change follows once Dan accepts) |
+| Status | accepted |
 | Decided by | Dan |
 
 ## Context
@@ -69,13 +69,13 @@ A build script (`scripts/build-replay.ts`) merges the sources into it once:
 - the satellite zones as `alert` events at their `observedAt`;
 - the Antakya shelters as `capacity` events at T0, so shelters arrive on the board through the keeper like everything else.
 
-Every line keeps its `origin`. A synthetic line is marked `synthetic: true` and the default timeline has none. The scenario player's five cues can ship as a separate opt-in timeline (`antakya-drill`) for tabletop exercises; they never mix into the real one.
+Every line keeps its `origin`. A synthetic line is marked `synthetic: true` and the default timeline has none. The scenario player's five cues ship as a separate opt-in timeline (`antakya-drill`) for tabletop exercises. They never mix into the real one: a timeline is either all real lines or all synthetic, and the build script refuses a mix.
 
 The header (first line) holds `replayId`, `scenarioStart`, `scenarioEnd`, the extraction model and a hash of every source file, so the evaluator can rebuild it and compare.
 
 ### 3. Starting a replay empties the desk, not the database
 
-`POST /api/desk/mode {mode: "replay", replayId, durationS}`, coordinator only. The feeds worker then:
+`POST /api/desk/mode {mode: "replay", replayId, durationS}`. Any signed-in end user may call it: a replay is something a person starts, never a timer or a worker. The route refuses on a desk flagged `pilot: true` (a real agency desk), whatever the caller's role. The route only writes the request; the feeds worker then:
 
 1. sets `state: "wiping"`; screens show "Resetting desk" and the Brain skips this desk's events;
 2. runs `wipeDesk(deskId)` from `lib/reset.ts`: events, sites, needs, roads, shelters, zones, incidents, tasks, inbox, messages and the desk's counters go;
@@ -104,7 +104,7 @@ The sweeper's no-answer, missed-ETA and stale-fact timers read `deskNow(deskId)`
 
 ### 6. Screens show the mode and nothing they did not read
 
-- A banner on every screen: `Replay · Antakya 6 Feb 2023 · 11:52 scenario time · 14:10 of 30:00` with Pause and Stop for a coordinator, or `Live`.
+- A banner on every screen: `Replay · Antakya 6 Feb 2023 · 11:52 scenario time · 14:10 of 30:00` with Pause and Stop for any signed-in user, or `Live`.
 - Fixture fallbacks go: an empty desk renders the empty state, a failing API renders the error state. Fixtures stay for tests and Storybook-style previews only.
 
 ### 7. Nobody answers in replay unless someone is there
@@ -119,10 +119,10 @@ The dispatcher still creates tasks and asks coordinators. In an unattended repla
 - 43 posts across a 168 s archive span is thin. A 30 min replay spends most of its time on quakes and satellite zones. More archive posts are a data task, not a design change.
 - Live mode is honest about what is missing: no live X, no live satellite, and NWS/FEMA only matter for a US desk.
 
-## Open for Dan
+## Settled by Dan, 18 Nov
 
-1. **Replay duration.** Recommend a `durationS` the coordinator picks (10, 30, 60 min), default 30. The real span of the merged timeline sets the speed.
-2. **Scenario window.** Recommend 6 Feb 2023 01:17 local (the first quake) to +72 h, so both main shocks and the first aftershock days fit.
-3. **Drill timeline.** Keep the scenario player's cues as an opt-in `antakya-drill` replay (recommended), or delete them.
-4. **Who may start a replay on prod.** Recommend coordinator role, and never on a desk flagged `pilot: true` (a real agency desk).
-5. **Live X.** Leave it out of this change (recommended). It needs a paid X API tier and a written agency policy, which is a separate `decision` issue.
+1. **Duration:** default 30 min. The user may pick 10, 30 or 60 when starting. The span of the timeline sets the speed.
+2. **Scenario window:** 72 h from the first shock (6 Feb 2023 04:17 local, 01:17 UTC), so both main shocks and the first aftershock days fit. At 30 min that is 144×.
+3. **Drill timeline:** the scenario player's five cues stay as the opt-in `antakya-drill` timeline, never mixed into the real replay.
+4. **Who starts a replay:** an end user, by hand (`POST /api/desk/mode`). Nothing starts one on its own. Never on a `pilot: true` desk.
+5. **Live X:** out of this change. It moves to the later data job (more archive posts, then a live X client with an agency policy).
