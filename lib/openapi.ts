@@ -474,6 +474,38 @@ export function buildSpec() {
           },
         },
       },
+      "/api/chat/token": {
+        get: {
+          tags: ["agents"],
+          summary: "A single-use live transcription token for /talk",
+          description: [
+            "Owned by Role 2. Returns a one-shot token for live speech-to-text streaming on /talk,",
+            "plus the model id. Same 'who is talking' rule as POST /api/chat: the login, or ?user=",
+            "on this laptop in demo mode. 404 when live voice is off on this server.",
+          ].join("\n"),
+          security: [{ session: [] }, { demoUser: [] }],
+          responses: {
+            200: {
+              description: "A live transcription token and the model id",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    required: ["token", "modelId"],
+                    properties: {
+                      token: { type: "string" },
+                      modelId: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+            401: errorResponse("Sign in first"),
+            404: errorResponse("No live voice on this server, or unknown user"),
+            502: errorResponse("Could not get a live voice token"),
+          },
+        },
+      },
       "/api/openapi.json": {
         get: {
           tags: ["meta"],
