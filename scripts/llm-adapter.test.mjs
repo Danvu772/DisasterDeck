@@ -55,7 +55,7 @@ test("LLM-1 modelFor: gpt-oss-120b for chat, extract and summary; gpt-oss-20b fo
   assert.deepEqual(llm.modelFor("extract"), { model: "openai/gpt-oss-120b", effort: "low" });
   assert.deepEqual(llm.modelFor("summary"), { model: "openai/gpt-oss-120b", effort: "medium" });
   assert.deepEqual(llm.modelFor("digest"), { model: "openai/gpt-oss-20b", effort: "low" });
-  assert.deepEqual(llm.modelFor("vision"), { model: "openai/gpt-oss-120b-vision", effort: "low" });
+  assert.deepEqual(llm.modelFor("vision"), { model: "nvidia/nemotron-3.5-super-vl", effort: "low" });
 });
 
 test("LLM-1 modelFor: OPENROUTER_MODEL_* and OPENROUTER_EFFORT_* override; a bad effort is ignored", () => {
@@ -283,14 +283,14 @@ test("LLM-3 runTurn(): a tool outside the role's allowlist is refused, not run",
 
 test("runTurn(): a photo is described into text by the vision model first, and that description reaches the chat model", async () => {
   const { runTurn } = await import("../agents/personal/turn.ts");
-  answers.push(json({ id: "gen-v", model: "openai/gpt-oss-120b-vision", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "A collapsed wall with two people nearby." } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(json({ id: "gen-v", model: "nvidia/nemotron-3.5-super-vl", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "A collapsed wall with two people nearby." } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
   answers.push(completion({ content: "I'll file the report from the photo." }));
   await runTurn({ userId: "field-alpha", text: "look", image: { mediaType: "image/png", base64: "iVBORw0KGgo=" } });
   const calls = modelCalls();
   const vision = calls[0];
   const chat = calls[1];
   // The vision call goes to the vision model with an image_url content part.
-  assert.equal(vision.body.model, "openai/gpt-oss-120b-vision");
+  assert.equal(vision.body.model, "nvidia/nemotron-3.5-super-vl");
   assert.equal(vision.body.messages.at(-1).content[0].type, "image_url");
   assert.ok(vision.body.messages.at(-1).content[0].image_url.url.includes("data:image/png;base64,iVBORw0KGgo="));
   // The chat call is text-only and carries the vision description, not the base64.
@@ -663,7 +663,7 @@ test("LLM-1: modelInfo() for /api/health reports the host and the model ids, and
     const info = llm.modelInfo();
     assert.deepEqual(info, {
       host: "us.openrouter.ai", usOnly: true,
-      models: { chat: "openai/gpt-oss-120b", extract: "openai/gpt-oss-120b", summary: "openai/gpt-oss-120b", digest: "openai/gpt-oss-20b", vision: "openai/gpt-oss-120b-vision" },
+      models: { chat: "openai/gpt-oss-120b", extract: "openai/gpt-oss-120b", summary: "openai/gpt-oss-120b", digest: "openai/gpt-oss-20b", vision: "nvidia/nemotron-3.5-super-vl" },
     });
     assert.ok(!JSON.stringify(info).includes("secret"));
     process.env.OPENROUTER_BASE_URL = "https://user:pw@gateway.example.test/v1?key=abc";
