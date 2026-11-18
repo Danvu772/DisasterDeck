@@ -5,8 +5,8 @@ Every action item that needs Dan (or another human): a conversation, an account,
 ## Now
 
 - [ ] **Install the Claude GitHub App on `Danvu772/disasterdeck`** ([github.com/apps/claude](https://github.com/apps/claude/installations/select_target)) so planning updates can be pushed and PRs opened.
-- [ ] **Settle code ownership with the team.** The repo has no license and Darshal, Ömer and the others all wrote parts of it. Get written agreement to publish under AGPL before building a company on it.
-- [ ] **Talk to Ömer.** Cofounders: Dan as operator, Ömer as visionary (it was Ömer's idea). Cover roles, the AGPL license and ownership in one conversation.
+- [ ] **Code ownership: Dan owns the fork.** Nothing goes to the team. Add the AGPL LICENSE file when publishing.
+- [ ] **Talk to Ömer.** Cofounders: Dan as operator, Ömer as visionary (it was Ömer's idea). Cover the cofounder roles; the fork is Dan's either way.
 - [ ] **Rotate every hackathon secret.** Create Dan's own Atlas cluster (Darshal owns the old one); issue fresh OpenRouter, NASA and other keys; don't carry over Anthropic, SSOJet or old ElevenLabs keys; retire Vultr.
 - [ ] **Find out who controls `disasterdeck.us`.**
 - [ ] **Open the AWS account** (`us-east-2`, root MFA, Identity Center admin, budget alarms, CloudTrail). Guide: [AWS setup](aws-setup.md).
@@ -17,7 +17,7 @@ Every action item that needs Dan (or another human): a conversation, an account,
 
 - [ ] **Trademark "DisasterDeck."** Around $350 per class; run it past IU tech transfer or a startup lawyer first.
 - [ ] **Set up the official GitHub organization** with a CLA, an AUTHORS file and a short governance doc naming the founders.
-- [ ] **Publish the repo under AGPL** once the team agrees (also step one for PESOSE).
+- [ ] **Publish the repo under AGPL** whenever Dan is ready (also step one for PESOSE).
 - [ ] **Get IU's written OK that DisasterDeck isn't IU property** (IU innovation and commercialization office). Until then, keep it off IU laptops, servers and lab hours.
 
 ## Pilot

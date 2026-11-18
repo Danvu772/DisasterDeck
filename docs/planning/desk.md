@@ -42,8 +42,8 @@ Decision: on-device only (`processLocally: true`), with typing as the fallback w
 
 ## Blocked on a person
 
-- [ ] **Settle code ownership with the team.** The repo has no license, and Darshal, Ömer and the others all wrote parts of it. By default that code belongs to the people who wrote it, so get a written agreement before building a company on it. With the open-source plan, the ask is simple: everyone agrees to publish the code under AGPL.
-- [ ] **Talk to Ömer: cofounders, with Dan as operator and Ömer as visionary.** Cover the roles, the AGPL license and ownership in one conversation.
+- [ ] **Code ownership: Dan owns the fork.** His call (Nov 17): everything on the fork is his and nothing goes to the team. What's left is adding the AGPL LICENSE file when he publishes.
+- [ ] **Talk to Ömer: cofounders, with Dan as operator and Ömer as visionary.** Cover the cofounder roles; the fork and its design are Dan's either way.
 - [ ] **Rotate every hackathon secret. The fork is Dan's, so every key is new.** Vultr is being retired. Darshal owns the old Atlas cluster, so Dan creates his own Atlas cluster and connects it. Issue fresh keys for OpenRouter, NASA and anything else the fork calls; don't carry over the Anthropic, SSOJet or old ElevenLabs keys. Still open: who controls `disasterdeck.us`?
 - [ ] **Open the AWS account.** Guide in [AWS setup](aws-setup.md), about 45 minutes.
 
@@ -51,7 +51,7 @@ After the Ömer conversation:
 
 - [ ] **Trademark "DisasterDeck."** Anyone can fork the code, but only we can use the name. Around $350 per class; run it past IU tech transfer or a startup lawyer first.
 - [ ] **Set up the official GitHub organization**, with a contributor agreement (CLA), an AUTHORS file and a short governance doc naming the founders.
-- [ ] **Publish the repo under AGPL** once the team agrees. This is also step one for the PESOSE application.
+- [ ] **Publish the repo under AGPL** whenever Dan is ready. This is also step one for the PESOSE application.
 - [ ] **Ask IU's tech transfer office when the next regional I-Corps cohort starts.** Dan would be the entrepreneurial lead.
 - [ ] **Get IU's written OK that DisasterDeck isn't IU property.** IU owns what's made with IU funding, IU resources or within the scope of employment. DisasterDeck came from a hackathon at EMU, so it should belong to the team, but get IU's innovation and commercialization office to confirm in writing before charging anyone. Until then, keep it off IU laptops, servers and lab hours.
 
