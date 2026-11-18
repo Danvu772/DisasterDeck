@@ -213,7 +213,9 @@ async function applyReport(event: Event): Promise<KeeperResult> {
   if (p.kind === "trapped" || p.kind === "missing") {
     // A repeat of a call says how many are trapped, it does not add more people.
     if (p.kind === "trapped" && p.peopleCount !== undefined) people = Math.max(people, p.peopleCount);
-  } else if (p.kind === "rescued") {
+  } else if (p.kind === "rescued" && (event.source === "person" || isTrusted(thisVoice.trust))) {
+    // §5.2: a public post alone never changes a life-safety record. A person on the desk, a
+    // vetted source or an official one does. The post is still recorded as a source below.
     people = Math.max(0, people - (p.peopleCount ?? 1));
   }
   const firstSeen = observedAt < site.observedAt ? observedAt : site.observedAt;
