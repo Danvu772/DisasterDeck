@@ -166,22 +166,22 @@
       "id": "WS-1",
       "section": "§6 D-0009",
       "requirement": "No open-web search runs in the pilot build",
-      "check": "No web_search tool in toolsFor(); news agent makes no search-API call",
-      "passes": false
+      "check": "No web_search tool in toolsFor(); news agent makes no search-API call (npm run check:llm)",
+      "passes": true
     },
     {
       "id": "WS-2",
       "section": "§6 D-0009, §3.1",
       "requirement": "The news agent turns NWS, FEMA and USGS feeds into schema-checked events with a dedupeKey",
-      "check": "Replay of saved feed fixtures posts the expected events once each",
-      "passes": false
+      "check": "Replay of saved feed fixtures posts the expected events once each (npm run check:feeds)",
+      "passes": true
     },
     {
       "id": "WS-3",
       "section": "§6 D-0009, §5.4",
       "requirement": "A supplier or field team with an open incident gets matching contacts from the desk's directory",
-      "check": "API test: vehicle_breakdown incident returns tow and tire contacts for that desk",
-      "passes": false
+      "check": "API test: vehicle_breakdown incident returns tow and tire contacts for that desk (npm run check:feeds)",
+      "passes": true
     },
     {
       "id": "ID-1",

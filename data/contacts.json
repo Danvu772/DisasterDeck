@@ -1,0 +1,57 @@
+{
+  "antakya-2023": [
+    {
+      "id": "antakya-tow-1",
+      "name": "Bereket Çekici",
+      "category": "tow",
+      "phone": "+90 326 213 40 01",
+      "region": "antakya-merkez",
+      "notes": "Heavy recovery, available day and night"
+    },
+    {
+      "id": "antakya-tow-2",
+      "name": "Hatay Yol Yardım",
+      "category": "tow",
+      "phone": "+90 326 214 55 18",
+      "region": "antakya-merkez"
+    },
+    {
+      "id": "antakya-tire-1",
+      "name": "Lastikçi Mehmet Usta",
+      "category": "tire",
+      "phone": "+90 326 215 73 22",
+      "region": "antakya-merkez",
+      "notes": "Truck and van tires in stock"
+    },
+    {
+      "id": "antakya-tire-2",
+      "name": "Serinyol Lastik",
+      "category": "tire",
+      "phone": "+90 326 231 08 40",
+      "region": "serinyol"
+    },
+    {
+      "id": "antakya-fuel-1",
+      "name": "Asi Akaryakıt",
+      "category": "fuel",
+      "phone": "+90 326 221 12 09",
+      "region": "antakya-merkez",
+      "notes": "Diesel and petrol, generator fuel by call"
+    },
+    {
+      "id": "antakya-pharmacy-1",
+      "name": "Merkez Eczanesi",
+      "category": "pharmacy",
+      "phone": "+90 326 213 66 44",
+      "region": "antakya-merkez",
+      "notes": "Night shift pharmacy"
+    },
+    {
+      "id": "antakya-pharmacy-2",
+      "name": "Şifa Eczanesi",
+      "category": "pharmacy",
+      "phone": "+90 326 214 90 30",
+      "region": "antakya-merkez"
+    }
+  ]
+}

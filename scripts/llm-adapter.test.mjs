@@ -299,11 +299,15 @@ test("summary: the shift handoff goes to gpt-oss-120b at medium effort", async (
   assert.deepEqual(modelCalls()[0].body.reasoning, { effort: "medium" });
 });
 
-// ── news search (WS) ──────────────────────────────────────────────────────────────────────────
-test("news agent refuses to run, points at #10, makes no call", async () => {
-  const news = await import("../agents/research/news-search.ts");
-  await assert.rejects(news.searchNews({ region: "Antakya", when: "now" }), (e) => e instanceof news.NewsSearchOffError && /#10/.test(e.message));
-  assert.equal(calls.length, 0);
+// ── news feeds (WS-1/WS-2) ──────────────────────────────────────────────────────────────────────
+test("official feeds parse from saved fixtures with no model or search-API call", async () => {
+  const { readFeedFixture, parseFeed, FEED_KINDS } = await import("../agents/research/news-search.ts");
+  const events = FEED_KINDS.flatMap((kind) => parseFeed(kind, readFeedFixture(kind), "antakya-2023"));
+  assert.ok(events.length >= 8, `fixtures → ${events.length} events (nws + fema + usgs)`);
+  assert.ok(events.some((e) => e.type === "need"), "FEMA boiler-water → a need event");
+  assert.ok(events.some((e) => e.type === "report"), "NWS/USGS advisories → report events");
+  assert(events.every((e) => e.source === "news" && e.actor && /^(nws|fema|usgs):/.test(e.dedupeKey)), "every event is a news event with a feed dedupeKey");
+  assert.equal(calls.length, 0, "feeds make no model call");
 });
 
 // ── LLM-2 and invariant 3: static checks of the tree ──────────────────────────────────────────
@@ -429,7 +433,7 @@ test("LLM-5: no prompt tells the agent to search the web while no search tool is
     if (toolsFor(ctxFor(role)).some((t) => /search/i.test(t.function.name))) continue;
     assert.ok(!/search (the )?(web|internet|online)|web search|look (it )?up online|google (it|search)/i.test(systemPrompt(role)), `${role} prompt mentions web search`);
   }
-  assert.match(systemPrompt("supplier"), /no directory/i);
+  assert.match(systemPrompt("supplier"), /directory/i);
   assert.match(systemPrompt("supplier"), /report_problem/);
 });
 

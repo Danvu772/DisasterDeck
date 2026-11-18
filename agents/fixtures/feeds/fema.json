@@ -1,0 +1,38 @@
+[
+  {
+    "identifier": "ipaws-demo-boilwater-0001",
+    "sent": "2026-11-17T08:00:00-05:00",
+    "info": {
+      "event": "Local Area Emergency",
+      "headline": "Boil water advisory for the city of Bloomington",
+      "description": "A water main break may contaminate the supply. Boil water before drinking.",
+      "severity": "Severe",
+      "urgency": "Immediate",
+      "area": { "areaDesc": "Bloomington, IN" }
+    }
+  },
+  {
+    "identifier": "ipaws-demo-roadblock-0002",
+    "sent": "2026-11-17T08:30:00-05:00",
+    "info": {
+      "event": "Civil Emergency Message",
+      "headline": "State Route 46 closed at Smith Pike due to flooding",
+      "description": "Motorists are asked to avoid the area.",
+      "severity": "Severe",
+      "urgency": "Immediate",
+      "area": { "areaDesc": "Monroe County" }
+    }
+  },
+  {
+    "identifier": "ipaws-demo-evacuate-0003",
+    "sent": "2026-11-17T09:10:00-05:00",
+    "info": {
+      "event": "Immediate Evacuation",
+      "headline": "Evacuate the riverfront neighbourhood now",
+      "description": "Rising water threatens the homes along the river. Move to higher ground.",
+      "severity": "Extreme",
+      "urgency": "Immediate",
+      "area": { "areaDesc": "Bloomington riverfront" }
+    }
+  }
+]
