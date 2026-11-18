@@ -2,7 +2,7 @@
 // no `fromLookup`, no SDK calls; secrets are referenced by partial ARN and
 // resolved from pseudo-params (partition/region/account) so the same template
 // redeploys to GovCloud unchanged.
-import { Duration, Stack, type StackProps } from "aws-cdk-lib";
+import { CfnOutput, Duration, Stack, type StackProps } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 import * as cloudtrail from "aws-cdk-lib/aws-cloudtrail";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
@@ -90,6 +90,31 @@ export class DisasterDeckStack extends Stack {
       imageScanOnPush: true,
     });
 
+    // ----- GitHub OIDC: no long-lived AWS keys (D-0015 / CD-1) -----
+    // The deploy workflow authenticates by asking GitHub's Actions IdP for a web-identity token,
+    // then AssumeRoleWithWebIdentity into this role. Trust is scoped to version tags of this repo
+    // only, so a tag push from any other repo (or an untagged ref) cannot assume it.
+    const githubOidc = new iam.OpenIdConnectProvider(this, "GitHubOidcProvider", {
+      url: "https://token.actions.githubusercontent.com",
+      clientIds: ["sts.amazonaws.com"],
+      thumbprints: ["6938fd4d98bab03faadb97b34396831e3780aea1"],
+    });
+    const deployRole = new iam.Role(this, "DeployRole", {
+      roleName: "disasterdeck-deploy",
+      assumedBy: new iam.FederatedPrincipal(
+        githubOidc.openIdConnectProviderArn,
+        {
+          StringEquals: {
+            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          },
+          StringLike: {
+            "token.actions.githubusercontent.com:sub": "repo:Danvu772/DisasterDeck:ref:refs/tags/*",
+          },
+        },
+        "sts:AssumeRoleWithWebIdentity",
+      ),
+    });
+
     const cluster = new ecs.Cluster(this, "Cluster", { vpc });
 
     // One shared execution role (pulls the ECR image, reads the two secrets).
@@ -133,6 +158,11 @@ export class DisasterDeckStack extends Stack {
       desiredCount: 2,
       assignPublicIp: false,
       securityGroups: [webSg],
+      // A deploy whose tasks never pass the ALB health check on /login rolls back automatically:
+      // ECS's circuit breaker stops the rollout and reverts to the previous, healthy revision
+      // (CD-2). The workflow pushes a new image and wait services-stable; it does not roll back
+      // itself.
+      circuitBreaker: { rollback: true },
     });
 
     // ----- Brain task: single worker, no ALB -----
@@ -153,12 +183,15 @@ export class DisasterDeckStack extends Stack {
     brainContainer.addSecret("MONGODB_URI", ecs.Secret.fromSecretsManager(mongoUri));
     brainContainer.addSecret("OPENROUTER_API_KEY", ecs.Secret.fromSecretsManager(openRouterKey));
 
-    new ecs.FargateService(this, "BrainService", {
+    const brainService = new ecs.FargateService(this, "BrainService", {
       cluster,
       taskDefinition: brainTask,
       desiredCount: 1,
       assignPublicIp: false,
       securityGroups: [new ec2.SecurityGroup(this, "BrainSg", { vpc, allowAllOutbound: true, description: "Brain worker" })],
+      // Roll back a deploy whose tasks never reach RUNNING (no ALB here, so no /login signal;
+      // the web service's circuit breaker does the health-check rollback).
+      circuitBreaker: { rollback: true },
     });
 
     // ----- ALB (HTTP only; HTTPS + cert + AUTH_URL land in #7/#12) -----
@@ -171,8 +204,35 @@ export class DisasterDeckStack extends Stack {
       port: 3000,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [webService.loadBalancerTarget({ containerName: "web", containerPort: 3000 })],
-      healthCheck: { path: "/api/health", interval: Duration.seconds(30) },
+      // The login page is the same signal the Vultr release used: 200 means the app answers.
+      // The circuit breaker on WebService keys off this target group's health check.
+      healthCheck: { path: "/login", interval: Duration.seconds(30) },
     });
+
+    // ----- Deploy role permissions: push the image and roll out both services -----
+    repo.grantPullPush(deployRole);
+    deployRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "cloudformation:DescribeStacks",
+          "ecs:DescribeClusters",
+          "ecs:DescribeServices",
+          "ecs:DescribeTasks",
+          "ecs:ListTasks",
+          "ecs:UpdateService",
+        ],
+        resources: ["*"],
+      }),
+    );
+
+    // What the deploy workflow reads back from the stack: ECR repo to push, cluster and service
+    // names to roll out. Exposed as outputs rather than hardcoded so the same workflow works in
+    // any account (GovCloud included) without edits.
+    new CfnOutput(this, "RepositoryUri", { value: repo.repositoryUri });
+    new CfnOutput(this, "DeployRoleArn", { value: deployRole.roleArn });
+    new CfnOutput(this, "ClusterName", { value: cluster.clusterName });
+    new CfnOutput(this, "WebServiceName", { value: webService.serviceName });
+    new CfnOutput(this, "BrainServiceName", { value: brainService.serviceName });
 
     // ----- CloudTrail -----
     new cloudtrail.Trail(this, "Trail", {

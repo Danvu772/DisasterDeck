@@ -46,6 +46,13 @@ jobs:
         run: npm run check:name
       - name: Design tokens
         run: npm run check:tokens
+      # CD-1/CD-2: the deploy path stays OIDC-on-tag with circuit-breaker rollback and no AWS keys.
+      # The check runs `cdk synth` from infra/, which needs infra's own deps installed first.
+      - name: Install infra deps (for the deploy check)
+        working-directory: infra
+        run: npm ci
+      - name: Deploy shape (OIDC, tags, no keys, rollback)
+        run: npm run check:deploy
       # The production artifact: DEMO_MODE=0, as deploy.yml builds it. motion is swapped out (D-0001).
       - name: Build (production mode)
         run: npx next build

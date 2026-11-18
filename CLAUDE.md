@@ -9,6 +9,4 @@
 
 ## Deployment
 
-**Today:** production is the `prod` branch. Every push to `prod` deploys to the Vultr VM behind https://disasterdeck.us (`.github/workflows/deploy.yml`). Promote with `git push origin main:prod`, only when Dan asks. One Brain per database, and the prod VM runs it. Details and debugging: `docs/agents/deploy.md`.
-
-**Being retired:** D-0002 moves hosting to AWS ECS Fargate. Don't extend the Vultr scripts.
+Production runs on ECS Fargate (D-0002). A version tag on `main` deploys: `git tag -a v1.2.3 -m "release v1.2.3" && git push origin v1.2.3`. The workflow (`.github/workflows/deploy.yml`) authenticates to AWS with GitHub OIDC, builds the image, pushes to ECR, and rolls out the web and Brain services; a failed `/login` health check rolls back via ECS's circuit breaker. Only tag when Dan asks. One Brain per database, and the Brain Fargate service runs it. Details and debugging: `docs/agents/deploy.md`.

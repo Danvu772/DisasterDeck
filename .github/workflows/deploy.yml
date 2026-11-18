@@ -1,68 +1,85 @@
-# Deploy (#39): every push to prod goes live on the Vultr VM behind https://disasterdeck.us.
-# Promote what is on main:   git push origin main:prod
-# Builds here, joins the tailnet with an ephemeral key (the VM is IPv6-only, reachable on Tailscale),
-# rsyncs the build to the VM and runs /usr/local/bin/desk-release there: idle slot, restart of web
-# and Brain, health check on /login, rollback to the previous slot when the new one does not answer.
-# Secrets: TS_AUTHKEY (Tailscale, reusable + ephemeral), DEPLOY_SSH_KEY, NEXT_PUBLIC_MAPBOX_TOKEN.
-# The runtime .env.local lives on the VM at /etc/desk/env.local, not in GitHub.
+# Deploy (#7): a version tag on main goes live on ECS Fargate. Retires the Vultr prod-branch path.
+# Promote what is on main with a tag:
+#   git tag -a v1.2.3 -m "release v1.2.3" && git push origin v1.2.3
+# The workflow authenticates to AWS with GitHub OIDC (no long-lived keys), builds the image, pushes
+# it to the ECR repo the CDK stack defines, then rolls out both the web and Brain services and waits
+# for them to stabilize. A service whose tasks never pass the ALB health check on /login is rolled
+# back by ECS's deployment circuit breaker, which the CDK stack keeps enabled.
+#
+# AWS is selected through Actions `vars`, not secrets (a role ARN and region are not secrets). The
+# orchestrator sets them once after `cdk deploy`:
+#   vars.AWS_DEPLOY_ROLE_ARN  arn of the OIDC-trusted deploy role (stack output DeployRoleArn)
+#   vars.AWS_REGION           e.g. us-east-2
+#   vars.AWS_STACK_NAME       e.g. DisasterDeckStack
+# The cluster, service names and ECR repo URI are read back from the stack's outputs.
 name: Deploy
 
 on:
   push:
-    branches: [prod]
+    tags: ["v*"]
   workflow_dispatch:
-
-concurrency:
-  group: deploy-prod
-  cancel-in-progress: false
 
 permissions:
   contents: read
+  id-token: write   # OIDC: assume the deploy role with a web-identity token, no access keys
+
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      VM: 100.114.100.30
       NEXT_TELEMETRY_DISABLED: "1"
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_STACK_NAME: ${{ vars.AWS_STACK_NAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - name: Build
-        run: npx next build
-        env:
-          # Production has no demo shortcuts: the VM's env says DEMO_MODE=0 too.
-          DEMO_MODE: "0"
-          # Build-only placeholder so Auth.js can load, as in ci.yml. The VM has the real one.
-          AUTH_SECRET: ci-build-placeholder-not-a-secret
-          NEXT_PUBLIC_MAPBOX_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}
-          NEXT_PUBLIC_MAPBOX_STYLE: ${{ secrets.NEXT_PUBLIC_MAPBOX_STYLE }}
-      - name: Join the tailnet
-        uses: tailscale/github-action@064b10558093f38325e838ddea35486bdc6b1d5c # v4.4.0
+      # No AWS access keys. This step asks GitHub's IdP for a token and assumes the deploy role.
+      - name: Authenticate to AWS with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          authkey: ${{ secrets.TS_AUTHKEY }}
-          hostname: gh-deploy-${{ github.run_id }}
-          ping: 100.114.100.30
-      - name: SSH to the VM
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Read the stack (ECR repo, cluster, services)
+        id: stack
         env:
-          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
         run: |
-          install -d -m 700 ~/.ssh
-          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
-          echo "$VM ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBULO48yp6QH/V06JVlbrRDXlWp4VT7ZuHhfUHNJ9Rpe" > ~/.ssh/known_hosts
-      - name: Ship the build
-        run: rsync -az --delete --exclude /.git --exclude /node_modules --exclude /.next/cache --exclude /e2e ./ "deployer@$VM:/opt/desk-stage/"
-      - name: Release
-        run: ssh "deployer@$VM" sudo /usr/local/bin/desk-release "$GITHUB_SHA"
-      - name: Public check
+          outputs() {
+            aws cloudformation describe-stacks --stack-name "$AWS_STACK_NAME" \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue | [0]" --output text
+          }
+          echo "repo=$(outputs RepositoryUri)" >> "$GITHUB_OUTPUT"
+          echo "cluster=$(outputs ClusterName)" >> "$GITHUB_OUTPUT"
+          echo "web=$(outputs WebServiceName)" >> "$GITHUB_OUTPUT"
+          echo "brain=$(outputs BrainServiceName)" >> "$GITHUB_OUTPUT"
+      - name: Login to Amazon ECR
         run: |
-          code=$(curl -s -o /dev/null -m 20 -w '%{http_code}' https://disasterdeck.us/login || true)
-          echo "https://disasterdeck.us/login answers $code"
-          [ "$code" = 200 ] || echo "::warning::The VM serves the release, but disasterdeck.us answers $code (tunnel or DNS)."
-      - name: Product name on the live site
-        run: node scripts/check-name.mjs --site https://disasterdeck.us
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "${{ steps.stack.outputs.repo }}"
+      - name: Build and push the image
+        run: |
+          IMAGE="${{ steps.stack.outputs.repo }}"
+          docker build -t "$IMAGE:$GITHUB_SHA" -t "$IMAGE:latest" .
+          docker push "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:latest"
+      - name: Roll out web and Brain, wait for stability
+        # The task definitions pin the `latest` tag. A force-new-deployment relabels the tasks so
+        # ECS pulls the freshly pushed image. The web service's circuit breaker rolls back when
+        # /login never goes healthy; this step's wait then fails the run.
+        env:
+          AWS_EC2_METADATA_DISABLED: "true"
+        run: |
+          CLUSTER="${{ steps.stack.outputs.cluster }}"
+          WEB="${{ steps.stack.outputs.web }}"
+          BRAIN="${{ steps.stack.outputs.brain }}"
+          aws ecs update-service --cluster "$CLUSTER" --service "$WEB" --force-new-deployment --no-cli-pager
+          aws ecs update-service --cluster "$CLUSTER" --service "$BRAIN" --force-new-deployment --no-cli-pager
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$WEB" "$BRAIN"
