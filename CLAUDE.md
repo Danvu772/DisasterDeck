@@ -1,23 +1,15 @@
-## Agent skills
+@AGENTS.md
 
-### Issue tracker
+## Claude-specific
 
-GitHub Issues on `DarshalShetty/HackTheNest26`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
-
-### Domain docs
-
-Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
+- Dan's workflow is the project skill `dans-agentic-workflow-engineering` (`.claude/skills/`). Load it when you orchestrate, build or evaluate an issue.
+- The SessionStart hook (`scripts/team-tasks.mjs`) prints the fork's open issues. Start from that list.
+- `gh` on this fork defaults to the upstream parent. Pass `--repo Danvu772/DisasterDeck`, or run `gh repo set-default Danvu772/DisasterDeck` once per clone.
+- Before exploring for a change, read `docs/SYSTEM_DESIGN.md` and the records in `docs/decisions/` that touch the area (`docs/agents/domain.md`). There is no `docs/adr/` and no `GLOSSARY.md`.
+- Screens: load the `desk-design` skill before touching `app/` or `components/`. It describes the hackathon look, which D-0001 (USWDS) replaces. Follow D-0001 for anything new.
 
 ## Deployment
 
-Production is the `prod` branch: every push to `prod` deploys to the Vultr VM behind https://disasterdeck.us (`.github/workflows/deploy.yml`). Promote with `git push origin main:prod`, only when the person asks. One Brain per database, and the prod VM runs it. How it works, the rules and debugging: `docs/agents/deploy.md`.
+**Today:** production is the `prod` branch. Every push to `prod` deploys to the Vultr VM behind https://disasterdeck.us (`.github/workflows/deploy.yml`). Promote with `git push origin main:prod`, only when Dan asks. One Brain per database, and the prod VM runs it. Details and debugging: `docs/agents/deploy.md`.
 
-## Team tracking
-
-Every session starts with the open task list, injected by the SessionStart hook (`scripts/team-tasks.mjs`). The shared tracker is GitHub Issues. Your role lane is in `docs/agents/team.md`.
-
-- Tie each request to an issue number. If nothing matches and the work will take more than a few minutes, open an issue (`gh issue create`) and claim it before you edit.
-- Claim before you start: `gh issue edit <n> --add-assignee @me`. Do not work on an issue claimed by someone else without asking them.
-- Work your lane first (the `role:` label). Take unclaimed work from another lane only when the person asks, and say so.
-- `decision` issues are not yours to make. Put the options in front of the person and stop there.
-- Never mark an issue closed on someone's behalf. Comment with what was done and let them close it.
+**Being retired:** D-0002 moves hosting to AWS ECS Fargate. Don't extend the Vultr scripts.

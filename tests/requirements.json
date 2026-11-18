@@ -1,0 +1,13 @@
+{
+  "_about": "One entry per requirement: id, design section, what is checked, how, and passes (true, false, or null = not run yet). The orchestrator writes these from docs/SYSTEM_DESIGN.md. Issues list the ids they satisfy. These first entries are the design's invariants and the checks that already exist.",
+  "requirements": [
+    { "id": "INV-1", "section": "§2.1", "requirement": "Agents never call each other. Research and personal agents reach memory only through DeskPort", "check": "Evaluator review of imports in agents/ and workers/", "passes": null },
+    { "id": "INV-2", "section": "§2.2, §4.2", "requirement": "Each collection has one writer: keeper for records, dispatcher for tasks and inbox", "check": "npm run keeper:check", "passes": null },
+    { "id": "INV-3", "section": "§2.3", "requirement": "No LLM call decides merge, score, assignment, escalation or timers", "check": "Evaluator review: no llm.ts import in lib/rules/, workers/dispatcher.ts, workers/sweeper.ts", "passes": null },
+    { "id": "INV-4", "section": "§2.4", "requirement": "A high-risk task waits for a coordinator, and only a coordinator's approval event is accepted", "check": "npm run keeper:check (approval cases)", "passes": null },
+    { "id": "INV-5", "section": "§2.5", "requirement": "Accept, Decline, Done and Problem work with the model unavailable", "check": "e2e field and coordinator specs with no model key", "passes": null },
+    { "id": "INV-7", "section": "§2.7, §4.3", "requirement": "The event actor comes from the session or agent key, never the body. ?user= is refused through a tunnel", "check": "npm run api:check && npm run security:check", "passes": null },
+    { "id": "SWP-1", "section": "§3.2", "requirement": "The sweeper times out unanswered tasks, sends check-ins, opens unreachable incidents and requeues stuck events", "check": "npm run sweeper:check", "passes": null },
+    { "id": "CI-1", "section": "AGENTS.md done check", "requirement": "Typecheck, lint, build, replay tests and token checks pass", "check": ".github/workflows/ci.yml", "passes": null }
+  ]
+}

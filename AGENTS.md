@@ -1,100 +1,59 @@
-## Agent skills
+# AGENTS.md
 
-### Issue tracker
+Every agent reads this first, whatever tool it runs in. The workflow is Dan's: [`.claude/skills/dans-agentic-workflow-engineering/SKILL.md`](.claude/skills/dans-agentic-workflow-engineering/SKILL.md) (Kickoff → Design → Build). This file holds this repo's Kickoff answers. Only Dan changes them.
 
-GitHub Issues on `DarshalShetty/HackTheNest26`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+## Kickoff (17 Nov 2026)
 
-### Domain docs
+| Question | Answer |
+|---|---|
+| Tier | **2 Product.** Real agencies, a startup. Full loop on every issue, CI on every merge |
+| Design | [`docs/SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md). Locked when Dan merges it. Decisions: [`docs/decisions/`](docs/decisions/) |
+| Voters | Dan only. He owns the fork. No tie-break needed |
+| People and lanes | Dan (`Danvu772`). No other people, no role lanes |
+| Orchestrator | The agent session Dan starts as orchestrator. It is the single point of entry for design questions, cuts issues from the design, and assigns builders and evaluators |
+| Tracker | GitHub Issues on `Danvu772/DisasterDeck`. Always pass `--repo Danvu772/DisasterDeck` (`gh` defaults to the upstream parent on a fork) |
+| Requirements | [`tests/requirements.json`](tests/requirements.json): requirement ID, design section, check, `passes` |
+| State | [`PROGRESS.md`](PROGRESS.md), so any agent can pick up |
+| Deploy | Promote from `main` only when Dan asks. Today: `git push origin main:prod` to Vultr. After D-0002: AWS, by tag |
 
-Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
+### Done check (every issue)
 
-## Deployment
+An issue is done when all of these hold, with evidence in the PR:
 
-Production is the `prod` branch: every push to `prod` deploys to the Vultr VM behind https://disasterdeck.us (`.github/workflows/deploy.yml`). Promote with `git push origin main:prod`, only when the person asks. One Brain per database, and the prod VM runs it. How it works, the rules and debugging: `docs/agents/deploy.md`.
+1. Its requirement IDs in `tests/requirements.json` have checks, and they pass.
+2. CI is green: `tsc`, `eslint`, `next build`, the replay tests and the token checks in `.github/workflows/ci.yml`. Once USWDS lands, axe too (D-0001).
+3. Any Brain or API change also passes the Mongo-backed checks that CI can't run (`keeper:check`, `sweeper:check`, `api:check`, `security:check`), run by hand against a throwaway desk, with the output pasted in the PR.
+4. An evaluator agent that is not the builder grades it under R5 and reports PASS for every requirement. UNKNOWN counts as FAIL.
+5. No invariant in `docs/SYSTEM_DESIGN.md` §2 is broken, and no decision record is contradicted without a `design/` PR first.
 
-## Team tracking
+## The loop
 
-Every session starts with the open task list, injected by the SessionStart hook (`scripts/team-tasks.mjs`). The shared tracker is GitHub Issues. Your role lane is in `docs/agents/team.md`.
+1. **Explore and plan.** The builder reads the issue, its design section, its requirement IDs and the code. The orchestrator checks the plan against the design before any code.
+2. **Tests first** from the requirement IDs.
+3. **Build** on `feat/<issue#>-slug` (or `fix/`, `design/`, `chore/`) in its own git worktree until the tests pass.
+4. **Evaluate.** A different agent gets the issue, the design section, the requirement IDs, the diff and the runnable checks, **never the builder's chat**. It answers PASS, FAIL or UNKNOWN per requirement, with evidence, and checks the claims in the PR description.
+5. **Merge.** Rebase on `main`, rerun checks, squash merge, delete the branch. The merge closes the issue.
 
-- Tie each request to an issue number. If nothing matches and the work will take more than a few minutes, open an issue (`gh issue create`) and claim it before you edit.
-- Claim before you start: `gh issue edit <n> --add-assignee @me`. Do not work on an issue claimed by someone else without asking them.
-- Work your lane first (the `role:` label). Take unclaimed work from another lane only when the person asks, and say so.
-- `decision` issues are not yours to make. Put the options in front of the person and stop there.
-- Never mark an issue closed on someone's behalf. Comment with what was done and let them close it.
+**Loop cap:** three failed evaluations on one issue → stop. The builder hands the orchestrator all three rounds of findings. The orchestrator re-scopes the issue or opens a `design` issue.
 
-<!-- BEGIN AWS Agent Toolkit rules -->
-# AWS Guidance for the new AWS experience
+## Rules
 
-This user has signed up for the new AWS experience. This experience lets you sign into AWS using a social provider and requires the following additional context.
+- **`main` always works.** Nobody, human or agent, commits to it directly. Every change is branch → PR → merge.
+- **One issue → one short-lived branch → one PR.** The PR says `Closes #N`, lists its requirement IDs and says what was checked (template: `.github/pull_request_template.md`).
+- **Parallel builders** only on issues whose files don't overlap, each in its own worktree.
+- **The design changes only through a `design/` PR**: `SYSTEM_DESIGN.md` + a new record in `docs/decisions/` + updated requirements. It merges before any code that depends on it. A code PR that needs a design change stops and asks the orchestrator.
+- **Fixes:** bug → issue → `fix/` branch → first a failing test that reproduces it, then the fix.
+- **`decision` issues are Dan's.** Put the options and a recommendation in front of him and stop.
+- **Never close an issue for Dan** outside a merge. Comment with what was done.
+- **Personal settings stay personal:** `CLAUDE.local.md`, `.claude/settings.local.json`, your own tool config.
 
-Where this guidance conflicts with the project's own instructions, the project's instructions take precedence.
+## What went wrong at the hackathon (don't repeat it)
 
-## Context
+From the upstream repo's issues and docs, 14 to 16 Nov:
 
-### Terminology:
-
-- Say "project" instead of "account" — a project contains an AWS account and settings for sharing with other collaborators
-- Say "team member" instead of "IAM user" — users are invited by email, not created or federated in IAM
-- Say "AWS Settings" when referring to management tasks at [settings.aws.com](https://settings.aws.com/) (project management, billing, team members, spend limits). Users view their actual AWS resources in the AWS Management Console.
-- Say "selected Region" when referring to the user's Region — not "home Region"
-- The user has a managed IAM experience. This includes a managed service control policies (SCP) and resource control policies (RCP) that govern the use of AWS. They will still need to use IAM to create policies to let services work with each other. If there are questions about the SCPs or RCPs, go to the documentation at https://docs.aws.amazon.com/accounts/latest/reference/scps-and-rcps-for-projects.html
-
-### Constraints:
-
-- All projects share a single AWS Region determined by the user's contact address. Resources cannot be created in other Regions
-- When developing:
-  - MUST create all Regional resources in the project's assigned Region
-  - You CAN create AWS WAF and Cloudwatch Logs resources in us-east-1 when there are global resources (like a global WAF instance) that require a connection to dependencies in us-east-1. You should not use these for any other reason, because resources in the selected Region will provide lower cost (due to no cross-Region traffic), increased availability (due to no cross-Region traffic), and easier manageability (due to not needing to look in another Region). When you need to do an inventory of resources, you need to look in both the selected Region and us-east-1 for Cloudwatch Logs or WAF resources.
-  - MUST NOT attempt to create Lambda, API Gateway, or other Regional resources in any other Region
-  - MUST direct users to confirm their Region in AWS Settings > View all projects > Overview > Additional Info > Region. If the user cannot confirm their Region, check in ~/.aws/config
-  - MUST NOT use Lambda@Edge — excluded from both Lambda and CloudFront
-  - MUST NOT use CloudFormation StackSets — no multi-account or multi-Region deployments
-  - MUST NOT attempt cross-Region actions — no cross-Region replication for DynamoDB/S3/RDS, no multi-Region KMS keys
-  - MUST NOT use Route 53 cross-Region routing — geolocation, latency-based, and failover routing policies are not available
-  - CloudFront is a global service and its actions ARE allowed in `us-east-1`. A user can create a CloudFront distribution pointing to their project-region Lambda function URL or API Gateway. However, Lambda and API Gateway themselves MUST NOT be created in `us-east-1` — they must be in the project Region.
-  - Reduced availability in `eu-north-1` specifically: Amazon Rekognition, Amazon Textract, Amazon Personalize, AWS App Runner are not available in that Region.
-- IAM permissions for human access are managed by AWS. Don't assign roles to team members unless absolutely necessary
-- The user may have a spend limit if they are on the paid plan. The limit that pauses their project if it's exceeded. If resources suddenly become inaccessible, ask if they have a spend limit configured. Only project owners can modify a spend limit.
-- When developing:
-  - MUST ask about spend limit status if the user reports sudden "Access Denied" errors on operations that previously worked
-  - MUST direct users to check spend status in AWS Settings > Billing
-  - MUST check if a user has upgraded their account to the paid plan
-  - MUST ask the user if they want to clean up the successfully created resources or keep them to reduce cost
-- The user sets up billing, creates spend limits, and retrieves and pays invoices in AWS Settings. The user creates budgets and optimizes their costs in the AWS Billing and Cost Management console
-- Not all AWS services are available. If a service isn't working, do the following:
-  1. Run the command `aws freetier get-account-plan-state`
-  2. If accountPlanType": "FREE", check the [Free Tier supported services list](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html#supported-services-free-tier) next,
-  3. If accountPlanType": "PAID", check the [Paid Tier supported services list](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html#supported-services-paid-plan).
-  4. If neither list shows the service, check the [Not supported for this experience list](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html#unsupported-services). The user will need to activate advanced features to access this service.
-- Users can activate advanced AWS services and capabilities for their account.
-- For any AWS task or question — building, configuring, migrating, debugging, or operating a service, writing SDK code, authoring CDK/CloudFormation, or answering how a service works — first call `aws___search_documentation` with topic `agent_skills` and load the matching skill with `aws___retrieve_skill`. Do this even when you believe you know the answer: skills carry current service behavior that your training may not. Prefer the skill's guidance over general knowledge. Skip it only for work that does not involve AWS.
-
-### Help level
-
-- help_level (required): LOW, MEDIUM, or HIGH. While a user is building, you MUST ask the user: "How much guidance would you like from me? Low (I only flag security risks), medium (I ask a couple of clarifying questions if something seems off), or high (I explain what I'm doing, suggest alternatives, and flag best practices)."
-
-You CAN update this rule file to save a user's help_level.
-
-Constraints for each level:
-
-**LOW:**
-
-- MUST follow all constraints in this context file
-- MUST execute the user’s request without modification
-- MUST NOT ask clarifying questions unless the action would create a security vulnerability
-- MUST NOT suggest alternatives or improvements
-
-**MEDIUM:**
-
-- MUST execute the user's request
-- MAY ask up to two clarifying questions per task if the request has an ambiguity or a potential issue
-- MUST NOT repeat a question or suggestion the user has already dismissed
-- MUST NOT explain trade-offs or alternatives unless the user asks
-
-**HIGH:**
-
-- MUST explain what each step does and why before executing it
-- MUST suggest alternatives when a better approach exists
-- MUST flag best practices and explain trade-offs
-- MUST still execute the user's choice if they disagree with a suggestion
-<!-- END AWS Agent Toolkit rules -->
+- **The design drifted from the code.** `docs/ARCHITECTURE.md` said the keeper handled 6 event types after it handled 11, and the repo and vault copies of the Role 1 doc disagreed (upstream #16). → The design changes only through `design/` PRs, and the evaluator checks contract compliance.
+- **Work sat on unmerged branches.** The p-001 to p-003 proposals never got reviewed or closed (upstream #10), so the frontend waited on fixtures. → Short branches, merged within a day.
+- **Test data leaked onto the live desk** ("address unknown" sites, upstream #31 and #36). → Checks write only to throwaway desks and delete what they made.
+- **Integration came last.** Every screen polled routes that didn't exist yet (`api_front_back_gap/GAPS.md`). → Vertical slices: each issue cuts through API, Brain and screen together.
+- **"Agentic" everywhere.** → Invariant 3: rules allocate, the LLM explains. An issue that adds an LLM call where a rule would do fails evaluation.
+- **The checks that matter didn't run in CI.** → The done check makes the Mongo-backed checks mandatory evidence for Brain and API changes until they run in CI.
