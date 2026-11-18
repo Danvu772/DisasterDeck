@@ -406,7 +406,7 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
           <p className="text-sm text-usa-base-dark">Talking needs the phone&apos;s speech recognition on an HTTPS page. Type to your agent instead.</p>
         )}
         {dictation.error && <p className="text-sm text-usa-ink">{dictation.error}</p>}
-        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void ask(); }}>
+        <form className="relative flex gap-2" onSubmit={(e) => { e.preventDefault(); void ask(); }}>
           <label htmlFor="agent-text" className="sr-only">Tell your agent</label>
           <TextInput id="agent-text" name="agent-text" type="text" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Hold to talk, or type to your agent"
             className="h-12 min-w-0 flex-1 text-base" />

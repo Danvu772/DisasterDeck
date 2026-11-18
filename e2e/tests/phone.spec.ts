@@ -41,7 +41,33 @@ async function noSpeechRequest(urls: string[]) {
   expect(bad).toEqual([]);
 }
 
+// The page itself must not scroll: the screen scrolls inside #main-content. A stray absolutely
+// positioned element (the sr-only label) once stretched the document to 1343 px of blank white.
+async function pageDoesNotScroll(page: Page) {
+  const h = await page.evaluate(() => ({ doc: document.documentElement.scrollHeight, win: window.innerHeight }));
+  expect(h.doc).toBeLessThanOrEqual(h.win + 4);
+}
+
+// Scroll #main-content until the button is reachable, then it must sit fully inside the 800 px viewport.
+async function reachable(page: Page, name: string) {
+  const b = page.getByRole("button", { name, exact: true });
+  await b.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const box = (await b.boundingBox())!;
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(800);
+}
+
 test.describe("/field at 360 px", () => {
+  test("the page does not scroll, Problem and Decline are reachable inside the screen", async ({ page }) => {
+    await modelDownDesk(page);
+    await page.goto("/field?task=task-9");
+    await expect(page.getByRole("heading", { name: "Your next task", level: 1 })).toBeVisible();
+    await pageDoesNotScroll(page);
+    await reachable(page, "Problem");
+    await reachable(page, "Decline");
+    await pageDoesNotScroll(page);
+  });
+
   test("the task card fits the screen and uses USWDS buttons @phone", async ({ page }, info) => {
     await modelDownDesk(page);
     await page.goto("/field");
@@ -150,6 +176,13 @@ test.describe("/field at 360 px", () => {
 });
 
 test.describe("/talk at 360 px", () => {
+  test("the page does not scroll", async ({ page }) => {
+    await modelDownDesk(page, "board");
+    await page.goto("/talk");
+    await expect(page.locator("main")).toBeVisible();
+    await pageDoesNotScroll(page);
+  });
+
   test("fits the screen, types to the agent, and says so when the model is down @phone", async ({ page }, info) => {
     const urls = watchNetwork(page);
     await modelDownDesk(page, "board");
