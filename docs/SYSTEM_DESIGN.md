@@ -51,9 +51,10 @@ Rebuilt from scratch by D-0017. Everything that fed the queue before (X agent, n
 | Component | Code | Status | What it does |
 |---|---|---|---|
 | Synthetic sources | `data/scenarios/antakya-demo/{x,instagram,facebook,ap}.jsonl` | not built | One track per source, shaped like the real platform. Each line is a `POST /api/events` body at a scenario time. Posts arrive already extracted; no LLM below the queue |
-| Cast | `data/scenarios/antakya-demo/cast.jsonl` | not built | Scripted taps by the seeded people (accept, on the way, done, problem, approve), only on a `demo: true` desk. A signed-in person takes over by acting first |
+| Cast | `data/scenarios/antakya-demo/cast.jsonl` | not built | Scripted taps by the seeded people (accept, on the way, done, problem, approve), acting as whoever the rules assigned. A signed-in person takes over by acting first |
 | Beats | `data/scenarios/antakya-demo/beats.json`, `docs/demo-scenario.md` | not built | 24 beats, each with the board state it must produce. Also the CI test |
-| Demo player | `workers/player.ts` | not built | Started by a signed-in person. Wipes the desk, reseeds users, posts due lines through `POST /api/events`, keeps the desk clock in `meta` |
+| Start demo | header button, `POST /api/demo/start` | not built | Global. Any signed-in person, in a demo deployment. The route wipes every desk's records, reseeds users and writes `meta` `demo` |
+| Demo player | `workers/player.ts` | not built | Stateless. Reads `meta` `demo` and posts due lines through `POST /api/events` |
 | Real connectors | — | later | One per source, emitting the same bodies as its synthetic track. Live mode returns with the first one |
 
 ### 3.2 Queue and Brain
@@ -66,7 +67,7 @@ Rebuilt from scratch by D-0017. Everything that fed the queue before (X agent, n
 | Memory keeper | `workers/memory-keeper.ts` | built | Handles all 11 event types (`HANDLED`) |
 | Dispatcher | `workers/dispatcher.ts`, `lib/rules/` | built | Tier, score, `pickPerson()`, approvals, `one_open_task` unique index |
 | Help desk playbook | `lib/rules/incidents.ts` | built | One rule per incident kind (§5.4) |
-| Sweeper | `workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts. Target: timers, keeper ages and dispatcher deadlines read `deskNow(deskId)` (D-0017) |
+| Sweeper | `workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts. Target: timers, keeper ages and dispatcher deadlines read `demoNow()` (D-0017) |
 
 ### 3.3 People, agents and screens
 
@@ -99,8 +100,7 @@ The TypeScript in `lib/types.ts` and the runtime checks in `lib/schemas.ts` are 
 | `sites`, `needs`, `roads`, `shelters`, `zones`, `incidents` | Memory keeper |
 | `tasks`, `inbox` | Dispatcher (playbook and sweeper are part of it) |
 | `users`, `messages` | The app's API (login, heartbeat, chat). Chat memory folds `messages` |
-| `meta` | Brain (lease, desk version, loop time). Demo player, only its `demo:<deskId>` documents (D-0017) |
-| `demo_requests` | `POST /api/desk/demo` only. The demo player reads it (D-0017 amendment) |
+| `meta` | Brain (lease, desk version, loop time). `POST /api/demo/start`, only the `demo` document (D-0017) |
 
 Every document carries `deskId`. Every record keeps a `history` (who, when, source, reason).
 
@@ -111,7 +111,7 @@ Every document carries `deskId`. Every record keeps a `history` (who, when, sour
 | `POST /api/events` | Signed-in person (as themselves, source `person`) or a worker with `x-agent-key` |
 | `GET /api/board`, `/api/inbox`, `/api/users`, `/api/events?since=` | Signed-in person by role, or agent key |
 | `POST /api/chat`, `GET /api/chat/token` | Signed-in person |
-| `POST /api/desk/demo` | Any signed-in person: start, pause, resume or stop the demo. Refused unless the desk is `demo: true` (D-0017) |
+| `POST /api/demo/start` | Any signed-in person, only in a demo deployment: wipe, reseed users, start the demo from zero (D-0017) |
 | `GET /api/health` | Open, counts only |
 | `/api/docs`, `/api/openapi.json` | Open spec (`lib/openapi.ts`) |
 

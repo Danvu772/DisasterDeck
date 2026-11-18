@@ -39,7 +39,7 @@ Wall time is at the default 30 min. Each beat shows one capability, and `beats.j
 
 | # | Scenario (local) | Wall | What happens | What it shows |
 |---|---|---|---|---|
-| 0 | — | 0:00 | Someone presses Start demo. The desk wipes, the cast signs in, the board is empty | Desk wipe, demo banner, desk clock |
+| 0 | — | 0:00 | Someone presses Start demo in the header. Mongo is prepped (records gone, users reseeded), the board is empty | Global start, demo clock in the header |
 | 1 | 04:17 | 0:00 | **AP URGENT:** powerful quake strikes southern Turkey | A wire item with no site stays in the feed and invents nothing |
 | 2 | 04:40–05:10 | 0:20–0:45 | Six X posts about Yıldız Apt.: the original, three identical reposts, and two other accounts in their own words | One site, six sources, three voices. Copies are one voice; the site is corroborated |
 | 3 | 05:30 | 1:00 | X: "teyzem enkaz altında, yardım edin" with no address | Danger to life with no place → a verify call task goes out at once, to whichever volunteer the rules pick |

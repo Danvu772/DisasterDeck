@@ -64,7 +64,7 @@ The synthetic posts arrive already extracted: the scenario author writes the pos
 
 ### 3. A fifth track: the cast
 
-The four sources only report. To show dispatch, approval and the help desk unattended, the scenario has a **cast** track: scripted taps by the seeded people (accept, on the way, done, problem, coordinator approve). Cast lines post through the same API with the agent key, naming the seeded user as actor. `lib/auth.ts` already lets a worker name itself, so this needs no new path. The cast only plays on a desk flagged `demo: true` in `data/pilot.json`.
+The four sources only report. To show dispatch, approval and the help desk unattended, the scenario has a **cast** track: scripted taps by the seeded people (accept, on the way, done, problem, coordinator approve). Cast lines post through the same API with the agent key, naming the seeded user as actor. `lib/auth.ts` already lets a worker name itself, so this needs no new path. The cast only plays while the deployment is in demo mode (`demo: true` in `data/pilot.json`).
 
 A cast line names its task by the beat that caused it (`"task": { "fromEvent": "x:1622018840000000101" }`). The player looks up the task built from that event at play time. If a signed-in person has already acted on that task, the cast line is skipped: a presenter can take over any person in the story at any time.
 
@@ -72,14 +72,14 @@ A cast line names its task by the beat that caused it (`"task": { "fromEvent": "
 
 `data/scenarios/antakya-demo/` holds one file per track: `x.jsonl`, `instagram.jsonl`, `facebook.jsonl`, `ap.jsonl`, `cast.jsonl`, plus `beats.json`. Each line is `{ "atS": <seconds after T0>, "body": <the POST /api/events body> }` (cast lines use `"as"`, `"do"`, `"task"` instead of `body`). The beats and posts are in [`docs/demo-scenario.md`](../demo-scenario.md).
 
-`workers/player.ts` is the only input worker:
+The demo is **global**: one deployment, one demo, one button. There is no per-desk demo state.
 
-1. A signed-in person presses **Start demo** (`POST /api/desk/demo {action: "start", durationS}`). Nothing starts it on its own. A desk not flagged `demo: true` refuses.
-2. The player wipes that desk (`wipeDesk()`), reseeds users only, and writes `meta` `demo:<deskId>` `{ runId, t0, wallStart, speed, state, cursor }`. The board is empty.
-3. Every second it merges the five tracks by `atS` and posts what is due through `POST /api/events`, the same door every client uses. `dedupeKey` gets `:<runId>` appended, so a rerun is fresh.
-4. Pause, resume and stop go through the same route. At the end the desk stays as it is.
+1. **Start demo** sits in the shared header on every screen while the deployment is in demo mode (`demo: true` in `data/pilot.json`). Any signed-in person can press it; pressing it again restarts the demo from zero.
+2. The button calls `POST /api/demo/start`. **The route preps Mongo itself:** it writes `meta` `demo` `{ state: "prepping" }`, waits up to 10 s for the Brain to finish any event it is working on, deletes every desk's records (events, sites, needs, roads, shelters, zones, incidents, tasks, inbox, messages, desk counters), reseeds the users from `data/seed.json`, then writes `meta` `demo` `{ state: "playing", runId, startedAt, durationS }`. Users' logins, the Brain lease and the audit log are untouched. The route is the only writer of the `demo` document.
+3. `workers/player.ts`, the only input worker, holds no state of its own. Once a second it reads the `demo` document, works out how far into the scenario it is, and posts every line whose `atS` is due through `POST /api/events`, the same door every client uses. `dedupeKey` gets `:<runId>` appended, so a restart is a fresh run and a player restart re-posts nothing new.
+4. While `state` is `prepping`, the Brain and the player do nothing.
 
-Default length 30 min for 36 h of scenario (72×). The desk clock `deskNow(deskId)` reads `meta`, and the sweeper, personal agents and screens use it. A banner on every screen shows `Demo · Antakya exercise · Day 1 06:40 · 09:15 of 30:00` with Pause and Stop.
+Default length 30 min for 36 h of scenario (72×). The demo clock `demoNow()` is `T0 + (now − startedAt) × speed`, or real time when there is no `demo` document. The Brain (keeper, dispatcher, sweeper), the personal agents and the screens all read it. The header shows `Demo · Antakya exercise · Day 1 06:40 · 09:15 of 30:00` beside the button.
 
 There is no live mode in this phase. It comes back with the first real connector.
 
@@ -109,9 +109,9 @@ Today the keeper gives `news` public trust, so an AP wire story counts the same 
 
 Planning found gaps. This amendment closes them.
 
-1. **The demo button writes to its own collection.** `POST /api/desk/demo` inserts into `demo_requests`, and the route is that collection's only writer. The player reads the requests and records the last one it handled in its own `demo:<deskId>` document, so `meta` keeps one writer per document. `wipeDesk()` never touches `demo_requests`.
+1. **Start is global and simple** (§4 rewritten, Dan's call). One header button, one `meta` `demo` document written only by the route, a stateless player, no pause. This replaces the per-desk demo state and the `POST /api/desk/demo` actions.
 2. **A cast line acts as whoever the rules picked.** `as: "assignee"` means the person the dispatcher assigned the task to. A person's own report, correction or approval names the seeded user. The rules keep choosing who goes where (invariant 3), and each beat asserts who got the task instead of scripting it.
-3. **The desk clock reaches the whole Brain.** Keeper scoring and age, dispatcher deadlines and ETAs, and sweeper timers all read `deskNow(deskId)`, not just the sweeper. On a desk with no demo document, `deskNow` is `Date.now()`, so live behaviour does not change. #52 grows to cover this.
+3. **The demo clock reaches the whole Brain.** Keeper scoring and age, dispatcher deadlines and ETAs, and sweeper timers all read `demoNow()`. With no `demo` document it is `Date.now()`, so live behaviour does not change. #52 grows to cover this.
 4. **Beats were rewritten to land on today's Brain** (`docs/demo-scenario.md`). Nothing routes placements, silence alone never escalates, hazards live on sites, and a coordinator cannot clear a hazard field. The beats now show what the rules really do. The seed suppliers stock insulin, tents and heaters.
-5. **Bug: a public `rescued` report lowers a site's `peopleTrapped`.** That lets one social post change a life-safety record, against §5.2 ("a social post alone can never approve, close or cancel anything"). Fix: only a trusted voice changes `peopleTrapped`. Beat 15 depends on it.
+5. **Bug: a public `rescued` report lowers a site's `peopleTrapped`.** That lets one social post change a life-safety record, against §5.2 ("a social post alone can never approve, close or cancel anything"). Fix: only a trusted voice changes `peopleTrapped`. Beat 15 depends on it (#56).
 6. **`check:scenario` runs on virtual time** (`V = T0 + atS`, Brain drained after each line, sweeper ticked about every 30 virtual seconds). This is the pattern `sweeper-check` already uses. The wall-clock player is tested separately by DEMO-3.

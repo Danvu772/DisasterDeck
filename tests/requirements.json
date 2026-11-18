@@ -312,29 +312,29 @@
     {
       "id": "DEMO-1",
       "section": "§3.1, §4.3 D-0017",
-      "requirement": "Only a signed-in person can start, pause, resume or stop the demo, through a demo_requests row the route alone writes; agent keys, timers and logged-out calls cannot; a desk not flagged demo refuses",
-      "check": "npm run api:check cases for POST /api/desk/demo",
+      "requirement": "Only a signed-in person, in a demo deployment, can start the demo (POST /api/demo/start); agent keys, timers and logged-out calls cannot; the route is the only writer of meta demo",
+      "check": "npm run api:check cases for POST /api/demo/start",
       "passes": null
     },
     {
       "id": "DEMO-2",
       "section": "§3.1 D-0017",
-      "requirement": "Starting the demo empties that desk's records, reseeds users only, and touches no other desk",
-      "check": "Mongo-backed check on two throwaway desks",
+      "requirement": "Starting the demo deletes every desk's records, reseeds users from seed.json, and leaves logins, the Brain lease and the audit log untouched; the Brain does nothing while prepping",
+      "check": "Mongo-backed check: records on two desks are gone, users reseeded, lease and audit rows unchanged",
       "passes": null
     },
     {
       "id": "DEMO-3",
       "section": "§3.1 D-0017",
-      "requirement": "The player posts every due line once through POST /api/events, in atS order; a rerun posts a fresh set; pause holds the desk clock",
+      "requirement": "The stateless player posts every due line once through POST /api/events, in atS order; a restart of the player posts nothing twice; pressing Start again posts a fresh run",
       "check": "Mongo-backed check at high speed",
       "passes": null
     },
     {
       "id": "DEMO-4",
       "section": "§3.2 D-0017",
-      "requirement": "Keeper scoring and ages, dispatcher deadlines and ETAs, sweeper timers and personal agents read deskNow(deskId); a desk with no demo document behaves exactly as before",
-      "check": "npm run sweeper:check and keeper:check with a 72x demo clock, plus a control desk on real time",
+      "requirement": "Keeper scoring and ages, dispatcher deadlines and ETAs, sweeper timers and personal agents read demoNow(); with no demo document they behave exactly as before",
+      "check": "npm run sweeper:check and keeper:check with a 72x demo clock, plus a control run on real time",
       "passes": null
     },
     {
@@ -354,7 +354,7 @@
     {
       "id": "DEMO-7",
       "section": "§3.3 D-0017",
-      "requirement": "Every screen shows the demo banner with scenario time and progress, and an empty desk renders the empty state",
+      "requirement": "Every screen's header shows the Start demo button and, during a run, scenario time and progress; an empty desk renders the empty state",
       "check": "e2e on an empty desk and during a run",
       "passes": null
     },
