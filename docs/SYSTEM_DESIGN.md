@@ -55,7 +55,7 @@ Status: **built** = works as designed in v2. **changed** = built, but differs fr
 | Quake watcher | `workers/quake-watcher.ts` | added | Replays the USGS catalog, posts aftershock warnings | Keep. Add NOAA/NWS and OpenFEMA feeds. Owner needed (upstream #17) |
 | Scenario player, synthetic feed | `workers/scenario-player.ts`, `workers/synthetic-feed.ts` | added | Demo cues sent through the real event API | Demo and tabletop exercises only |
 | Instagram, Facebook, Reddit agents | — | not built | APIs closed (FB Groups API removed 2024, Reddit blocks the crawler) | Cut |
-| Photo agent (shelter whiteboard photos) | — | not built | — | Deferred (D-0012) |
+| Photo agent (shelter whiteboard photos) | — | not built | — | Deferred (D-0012). The general photo path is a vision-model describe-to-text (D-0016) |
 | Evacuation planner | — | not built | The keeper accepts and stores a `plan` event and the coordinator can approve it, but nothing creates one | Deferred. The `plan` path stays (D-0011) |
 
 ### 3.2 Queue and Brain
@@ -75,6 +75,7 @@ Status: **built** = works as designed in v2. **changed** = built, but differs fr
 | Component | Code | Status | Today | Target |
 |---|---|---|---|---|
 | Personal agents | `agents/personal/turn.ts`, `tools.ts`, `prompts.ts` | changed | Claude Sonnet 5.5 through `modelFor()`. Tools per role (`ROLE_TOOLS`). No memory of their own | gpt-oss-120b via OpenRouter, US-only routing (D-0003) |
+| Photos | `agents/shared/llm.ts` `vision` purpose | added | gpt-oss is text-only, so a sent photo never reached a model | An open-weight vision model describes each photo into text behind the same port; the description rides with the attachment (D-0016) |
 | Chat memory | `agents/personal/memory.ts`, `agents/desk/chat-memory.ts` | added | Haiku folds old lines into a rolling summary stored in Mongo | Keep, on the small model |
 | Agent extras | `visualize_metric`, `show_on_map` | added | Numbers come from `components/metrics/compute/`, never the model | Keep |
 | Help-desk lookup | `web_search` in `toolsFor()` | changed | Claude web search, offered only with an open incident | A fixed per-desk directory of tow, tire, fuel and pharmacy contacts (D-0009) |
@@ -127,6 +128,7 @@ Every outside vendor gets a narrow interface so an agency can require a differen
 | Port | Today | Target default | Fallback |
 |---|---|---|---|
 | LLM (`modelFor()` / `send()` in `agents/shared/llm.ts`) | Anthropic SDK | OpenRouter, gpt-oss-120b, gpt-oss-20b for small jobs | Same open model on Bedrock |
+| Vision (`vision` purpose in `agents/shared/llm.ts`) | none | An open-weight vision model on OpenRouter, US-only, used only to describe a photo into text (D-0016) | Same open vision model on Bedrock |
 | Web search | Claude web search tool | None: official feeds and a contact directory (D-0009) | Brave Search API, when a real pilot needs it |
 | Speech to text | Web Speech, ElevenLabs Scribe | Chrome on-device (`processLocally: true`) for dictation, Amazon Transcribe on the server | Typing |
 | Text to speech | ElevenLabs | Amazon Polly | ElevenLabs for Government, if the agency approves it |
@@ -196,10 +198,11 @@ Decided by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reaso
 | 9 | Web search | Official feeds only for the pilot; Brave behind a search port later | Claude web search | [D-0009](decisions/0009-web-search-official-feeds.md) |
 | 10 | Queue | Keep polling MongoDB; change streams when load needs it | — | [D-0010](decisions/0010-queue-keep-polling.md) |
 | 11 | Evacuation planner | Deferred; the `plan` approval path stays | — | [D-0011](decisions/0011-evacuation-planner-deferred.md) |
-| 12 | Photo agent | Deferred until a pilot runs shelters | — | [D-0012](decisions/0012-photo-agent-deferred.md) |
+| 12 | Photo agent | Photos activate now: a vision model describes each photo into text (D-0016). The dedicated shelter-whiteboard agent stays deferred | — | [D-0012](decisions/0012-photo-agent-deferred.md), [D-0016](decisions/0016-photos-option2.md) |
 | 13 | SMS, offline | Deferred; 10DLC when a county signs on; IPAWS on the roadmap | — | [D-0013](decisions/0013-sms-offline-deferred.md) |
 | 14 | Observability | CloudTrail, CloudWatch, app audit log in MongoDB | Health scripts | [D-0014](decisions/0014-observability-audit.md) |
 | 15 | CI to AWS | GitHub Actions with OIDC, Secrets Manager, deploy by tag | Tailscale + rsync | [D-0015](decisions/0015-ci-github-oidc.md) |
+| 16 | Photos | A vision model describes each photo into text behind the same port, the description rides with the attachment | text-only gpt-oss (photos unreachable) | [D-0016](decisions/0016-photos-option2.md) |
 
 **First pilot:** an IU Emergency Management tabletop exercise (no real data, so no compliance paperwork). Monroe County and Maui are on hold.
 

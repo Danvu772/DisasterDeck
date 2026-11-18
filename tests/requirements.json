@@ -273,6 +273,13 @@
       "requirement": "An IU tabletop scenario runs end to end through the event API: a call, a dispatch with approval, a breakdown and its re-plan",
       "check": "scenario-player run on the IU scenario reaches the expected board state",
       "passes": false
+    },
+    {
+      "id": "PHO-1",
+      "section": "§6 D-0016, §3.3",
+      "requirement": "A photo sent through /api/chat is described into text by the vision model (a `vision` purpose behind modelFor()), and the description, not raw image bytes, is what the agent acts on and files; the photo still attaches to the event",
+      "check": "check:llm test: vision purpose routes to the vision model on the US host; a mocked image input yields a text description the agent files; photoUrl stays on the event",
+      "passes": false
     }
   ]
 }
