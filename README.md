@@ -6,7 +6,7 @@ Current pilot: **Antakya, Türkiye, February 2023**. The deterministic rehearsal
 
 ## Field voice
 
-The field phone (`/field`) has hold to talk. It only dictates: the phone's own speech recognition (Web Speech API) types what the person says into the prompt box, and no audio leaves the phone. **Send** asks the agent exactly as the agents tab does (`components/agent/askDesk.ts`), and the same chart space shows the metric cards and map answers at the bottom of the screen. Talking needs HTTPS or localhost and a browser with speech recognition. Typing works everywhere.
+The field phone (`/field`) has hold to talk. It only dictates: the phone's own speech recognition (Web Speech API with `processLocally: true`, so recognition runs on-device and no audio or text goes to Google) types what the person says into the prompt box. Where on-device recognition is unavailable the hold-to-talk button is off and typing is the fallback. **Send** asks the agent exactly as the agents tab does (`components/agent/askDesk.ts`), and the same chart space shows the metric cards and map answers at the bottom of the screen. Talking needs HTTPS or localhost and a browser with on-device speech recognition (Chrome). Typing works everywhere.
 
 ## Replay real historical posts
 

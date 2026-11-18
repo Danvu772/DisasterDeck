@@ -10,7 +10,7 @@ export type DictationState = "unsupported" | "idle" | "recording";
 type SpeechResult = { isFinal: boolean; 0: { transcript: string } };
 type SpeechEvent = { resultIndex: number; results: ArrayLike<SpeechResult> };
 type SpeechRec = {
-  lang: string; interimResults: boolean; continuous: boolean;
+  lang: string; interimResults: boolean; continuous: boolean; processLocally?: boolean;
   onresult: ((e: SpeechEvent) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
@@ -49,6 +49,9 @@ export function useDictation(onText: (text: string) => void) {
     r.lang = navigator.language || "en-US";
     r.interimResults = false;
     r.continuous = true;
+    // On-device only (D-0005 / VOX-1): audio and text stay on the phone, never Google's cloud path.
+    // Where the engine cannot recognise on-device, onerror fires and typing is the fallback.
+    r.processLocally = true;
     r.onresult = (e) => {
       for (let i = e.resultIndex; i < e.results.length; i += 1) {
         if (e.results[i].isFinal) heard.current += `${e.results[i][0].transcript} `;
