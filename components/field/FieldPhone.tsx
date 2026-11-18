@@ -1,22 +1,20 @@
 "use client";
 // The field team's phone. One task, big buttons, works with one thumb and a bad network.
-// Polls GET /api/board, falls back to the demo board and says so.
+// Polls GET /api/board, falls back to the demo board and says so. Rebuilt on USWDS (D-0001):
+// react-uswds components and usa-* tokens, no shadcn, no motion.
 import { useMemo, useRef, useState, type ComponentType } from "react";
 import { INCIDENT_ICON } from "@/components/icons/things";
 import {
-  Ambulance, ChevronDown, ChevronRight, CircleCheck, CircleAlert, Clock, CloudOff, HandHelping, LifeBuoy,
+  Ambulance, ChevronDown, ChevronRight, CircleCheck, CircleAlert, CircleX, Clock, CloudOff, HandHelping, LifeBuoy,
   MapPin, Megaphone, Mic, Navigation, Phone, Sparkles, TriangleAlert, Truck, Users, type LucideIcon,
 } from "lucide-react";
+import { Button, TextInput, Textarea } from "@trussworks/react-uswds";
 import type { IncidentKind, LatLng, Task } from "@/lib/types";
 import { usePolled } from "@/components/map/usePolled";
 import { History } from "@/components/History";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { plainDetail, statusWord, taskTitle, TIER_WORD } from "@/components/detail/fields";
-import { tierBadge, tierBar } from "@/components/encode";
+import { plainDetail, statusWord, taskTitle } from "@/components/detail/fields";
 import { cn } from "@/lib/utils";
 import { CaseNo } from "@/components/ScoreBreakdown";
-import { Input } from "@/components/ui/input";
 import { openTasksFor, type FieldBoard, type FieldTask } from "./pickTask";
 import { useOutbox, type FieldEvent } from "./useOutbox";
 import { useDictation } from "./useDictation";
@@ -24,18 +22,19 @@ import { askDesk } from "@/components/agent/askDesk";
 import { VizSpace, type Ask } from "@/components/agent/VizSpace";
 import { chatErrorText } from "@/components/chatError";
 import { fromBoard, type MapSource } from "@/components/map/mapItems";
+import { card, tierBar, TierTag } from "./parts";
 
 // The person's words on the right, the agent's answer on the left (same bubbles as /agent and /talk).
 function Said({ text }: { text: string }) {
   return (
-    <p className="ml-auto w-fit max-w-[85%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-4 py-3 text-base text-primary-foreground">
+    <p className="ml-auto w-fit max-w-[85%] whitespace-pre-line rounded-md bg-usa-primary px-4 py-3 text-base text-usa-white">
       <span className="sr-only">You:</span> {text}
     </p>
   );
 }
 function Reply({ text }: { text: string }) {
   return (
-    <p className="whitespace-pre-line rounded-2xl rounded-bl-md bg-info-soft px-4 py-3 text-base">
+    <p className="whitespace-pre-line rounded-md bg-usa-info px-4 py-3 text-base text-usa-ink">
       <span className="sr-only">Agent:</span> {text}
     </p>
   );
@@ -68,8 +67,8 @@ const STEPS = [
   { label: "Done", icon: CircleCheck },
 ] as const;
 
-const big = "h-14 w-full rounded-xl text-lg [&_svg:not([class*='size-'])]:size-5";
-const mid = "h-12 w-full rounded-xl text-base [&_svg:not([class*='size-'])]:size-5";
+const big = "h-14 w-full text-lg [&_svg:not([class*='size-'])]:size-5";
+const mid = "h-12 w-full text-base [&_svg:not([class*='size-'])]:size-5";
 
 // Where the phone is, if it answers within `ms`. Problems go out without it otherwise.
 function position(ms: number): Promise<LatLng | undefined> {
@@ -96,18 +95,18 @@ function OtherRow({ o, now, onPick }: { o: FieldTask; now: number; onPick: (id: 
   const Icon = KIND[t.type]?.icon ?? LifeBuoy;
   return (
     <button onClick={() => onPick(t._id)}
-      className="flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-xl border bg-card pr-3 text-left shadow-xs transition-colors hover:bg-accent">
+      className="flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-md border border-usa-base-lighter bg-usa-white pr-3 text-left shadow-xs transition-colors hover:bg-usa-base-lightest">
       <span className={`w-1.5 self-stretch ${tierBar(t.tier, late)}`} />
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-usa-secondary-lighter">
         <Icon className="size-4" />
       </span>
       <span className="min-w-0 flex-1 py-3">
-        <span className="block break-words text-base font-medium leading-tight">{taskTitle(t.title)}</span>
-        <span className={cn("mt-1 flex items-center gap-1 text-sm", late ? "font-medium text-destructive" : "text-muted-foreground")}>
+        <span className="block break-words text-base font-medium leading-tight text-usa-ink">{taskTitle(t.title)}</span>
+        <span className={cn("mt-1 flex items-center gap-1 text-sm", late ? "font-medium text-usa-error" : "text-usa-base-dark")}>
           <Clock className="size-3.5" />{timeLeft(min)}
         </span>
       </span>
-      <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+      <ChevronRight className="size-5 shrink-0 text-usa-base-dark" />
     </button>
   );
 }
@@ -217,8 +216,8 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
       : () => setPanel("done");
     const Icon = step > i ? CircleCheck : s.icon;
     return (
-      <Button key={s.label} variant={current ? "default" : step > i ? "secondary" : "outline"} disabled={busy}
-        className={cn(current ? big : mid, step > i && "text-muted-foreground")} onClick={onClick}>
+      <Button key={s.label} type="button" outline={!current} disabled={busy}
+        className={cn(current ? big : mid)} onClick={onClick}>
         <Icon />{s.label}
       </Button>
     );
@@ -230,138 +229,141 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-4 pb-10">
       <header className="flex items-center justify-between gap-3 pt-1">
-        <h1 className="text-xl font-semibold tracking-tight">{task ? "Your next task" : "No task right now"}</h1>
+        <h1 className="usa-heading m-0 text-xl text-usa-ink">{task ? "Your next task" : "No task right now"}</h1>
         {live
-          ? <Badge variant="outline"><span className="size-1.5 rounded-full bg-success" />Live</Badge>
-          : <Badge variant="outline" title="The desk is not answering, so this shows demo data">Demo data</Badge>}
+          ? <span className="usa-tag bg-usa-base-lightest text-usa-ink"><span className="size-1.5 rounded-full bg-usa-success" />Live</span>
+          : <span className="usa-tag" title="The desk is not answering, so this shows demo data">Demo data</span>}
       </header>
 
       {waiting > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-xs">
-          <CloudOff className="size-5 shrink-0 text-muted-foreground" />
-          <p className="text-base font-medium">
+        <div className="flex items-center gap-3 rounded-md border border-usa-base-lighter bg-usa-white p-3 shadow-xs">
+          <CloudOff className="size-5 shrink-0 text-usa-base-dark" />
+          <p className="text-base font-medium text-usa-ink">
             {waiting} {waiting === 1 ? "report" : "reports"} waiting to send
-            <span className="block text-sm font-normal text-muted-foreground">Retrying every 10 s</span>
+            <span className="block text-sm font-normal text-usa-base-dark">Retrying every 10 s</span>
           </p>
         </div>
       )}
       {said && (
-        <p role="status" className="flex items-start gap-2 rounded-xl border bg-card p-3 text-base shadow-xs">
-          {failed ? <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-            : <CircleCheck className="mt-0.5 size-5 shrink-0" />}
+        <p role="status" className="flex items-start gap-2 rounded-md border border-usa-base-lighter bg-usa-white p-3 text-base text-usa-ink shadow-xs">
+          {failed ? <CircleAlert className="mt-0.5 size-5 shrink-0 text-usa-error" />
+            : <CircleCheck className="mt-0.5 size-5 shrink-0 text-usa-success" />}
           {said}
         </p>
       )}
-      {closed && <p className="text-sm text-muted-foreground">That task is closed. Showing your next one.</p>}
+      {closed && <p className="text-sm text-usa-base-dark">That task is closed. Showing your next one.</p>}
 
       {!current || !task ? (
-        <section className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-8 text-center">
-          <CircleCheck className="size-8 text-muted-foreground" />
-          <p className="text-base text-muted-foreground">The desk sends your next task here.</p>
+        <section className="flex flex-col items-center gap-2 rounded-md border border-dashed border-usa-base-light p-8 text-center">
+          <CircleCheck className="size-8 text-usa-base-dark" />
+          <p className="text-base text-usa-base-dark">The desk sends your next task here.</p>
         </section>
       ) : (
-        <section className="overflow-hidden rounded-xl border bg-card shadow-xs">
+        <section className={cn(card, "overflow-hidden shadow-xs")}>
           <div className={`h-1.5 ${tierBar(task.tier, overdue)}`} />
           <div className="flex flex-col gap-4 p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium ${tierBadge(task.tier, overdue)}`}>
-                {TIER_WORD[task.tier]}
-              </span>
-              <Badge variant="outline" className="h-6"><Kind.icon />{Kind.word}</Badge>
+              <TierTag tier={task.tier} actNow={overdue} />
+              <span className="usa-tag bg-usa-base-lightest text-usa-ink"><Kind.icon />{Kind.word}</span>
               <span className={cn("ml-auto flex items-center gap-1 text-sm font-medium",
-                overdue ? "text-destructive" : "text-muted-foreground")}>
+                overdue ? "text-usa-error" : "text-usa-base-dark")}>
                 <Clock className="size-4" /><span className="font-mono">{timeLeft(minutesLeft)}</span>
               </span>
             </div>
 
             <div>
-              <h2 className="break-words text-2xl font-semibold leading-tight tracking-tight">{current.place}</h2>
-              <p className="mt-1.5 flex items-center gap-1.5 text-base text-muted-foreground">
+              <h2 className="break-words text-2xl font-semibold leading-tight tracking-tight text-usa-ink">{current.place}</h2>
+              <p className="mt-1.5 flex items-center gap-1.5 text-base text-usa-base-dark">
                 <Users className="size-4" />{current.people}
               </p>
               {address && (
-                <p className="mt-1.5 flex items-start gap-1.5 text-base text-muted-foreground">
+                <p className="mt-1.5 flex items-start gap-1.5 text-base text-usa-base-dark">
                   <MapPin className="mt-1 size-4 shrink-0" /><span className="break-words">{address}</span>
                 </p>
               )}
             </div>
             {mapsQuery && (
-              <Button asChild variant="outline" size="lg" className="w-full">
-                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`} target="_blank" rel="noreferrer">
-                  <Navigation />Directions
-                </a>
-              </Button>
+              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`} target="_blank" rel="noreferrer"
+                className="usa-button usa-button--outline w-full">
+                <Navigation />Directions
+              </a>
             )}
-            <p className="break-words text-base">
-              {caseNo !== undefined && <span className="mr-2 text-muted-foreground"><CaseNo kind={task.recordType} no={caseNo} /></span>}
+            <p className="break-words text-base text-usa-ink">
+              {caseNo !== undefined && <span className="mr-2 text-usa-base-dark"><CaseNo kind={task.recordType} no={caseNo} /></span>}
               {taskTitle(task.title)}
             </p>
 
             <button type="button" aria-expanded={details} onClick={() => setDetails(!details)}
-              className="-mx-1 flex min-h-11 items-center gap-1 rounded-md px-1 text-sm font-medium text-muted-foreground hover:text-foreground">
+              className="-mx-1 flex min-h-11 items-center gap-1 rounded-md px-1 text-sm font-medium text-usa-base-dark hover:text-usa-ink">
               <ChevronDown className={cn("size-4 transition-transform", details && "rotate-180")} />
               {details ? "Hide details" : "Details"}
             </button>
             {details && (
-              <div className="-mt-2 space-y-3 rounded-lg bg-secondary p-3 text-base">
+              <div className="-mt-2 space-y-3 rounded-md bg-usa-base-lightest p-3 text-base text-usa-ink">
                 {task.detail && <p>{plainDetail(task.detail)}</p>}
                 <p className="flex flex-wrap items-center gap-2 text-sm">
-                  <Badge variant="outline" className="bg-background">{statusWord(task.status)}</Badge>
-                  <span className="text-muted-foreground">{task.risk === "high" ? "High risk" : "Low risk"}</span>
+                  <span className="usa-tag bg-usa-white text-usa-ink">{statusWord(task.status)}</span>
+                  <span className="text-usa-base-dark">{task.risk === "high" ? "High risk" : "Low risk"}</span>
                 </p>
                 {task.history.length > 0 && <History entries={task.history} now={now} />}
               </div>
             )}
 
             {panel === "eta" && (
-              <section className="space-y-3 border-t pt-4">
-                <h2 className="text-lg font-semibold">How long until you get there?</h2>
+              <section className="space-y-3 border-t border-usa-base-lighter pt-4">
+                <h2 className="text-lg font-semibold text-usa-ink">How long until you get there?</h2>
                 <div className="grid grid-cols-2 gap-3">
                   {ETAS.map((m) => (
-                    <Button key={m} variant="outline" className={big} disabled={busy}
+                    <Button key={m} type="button" outline className={big} disabled={busy}
                       onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "accepted", etaMinutes: m, progress: "en_route" } },
                         `On our way, ${m} min`, 1)}>
                       <span className="font-mono">{m}</span> min
                     </Button>
                   ))}
                 </div>
-                <Button variant="ghost" className={mid} onClick={() => setPanel(null)}>Cancel</Button>
+                <Button type="button" unstyled className={mid} onClick={() => setPanel(null)}>Cancel</Button>
               </section>
             )}
 
             {panel === "done" && (
-              <section className="space-y-3 border-t pt-4">
-                <label className="block text-lg font-semibold" htmlFor="done-note">What happened? <span className="text-sm font-normal text-muted-foreground">Optional</span></label>
-                <textarea id="done-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
-                  className="w-full rounded-xl border border-input bg-background p-3 text-lg outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
-                <Button className={big} disabled={busy}
+              <section className="space-y-3 border-t border-usa-base-lighter pt-4">
+                <label className="block text-lg font-semibold text-usa-ink" htmlFor="done-note">What happened? <span className="text-sm font-normal text-usa-base-dark">Optional</span></label>
+                <Textarea id="done-note" name="done-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
+                  className="w-full text-lg" />
+                <Button type="button" className={big} disabled={busy}
                   onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "done", note: note.trim() || "Done" } },
                     "Done", 3)}>
                   <CircleCheck />Send done
                 </Button>
-                <Button variant="ghost" className={mid} onClick={() => setPanel(null)}>Cancel</Button>
+                <Button type="button" unstyled className={mid} onClick={() => setPanel(null)}>Cancel</Button>
               </section>
             )}
 
             {panel === "problem" && (
-              <section className="space-y-3 border-t pt-4">
-                <h2 className="text-lg font-semibold">What is the problem?</h2>
+              <section className="space-y-3 border-t border-usa-base-lighter pt-4">
+                <h2 className="text-lg font-semibold text-usa-ink">What is the problem?</h2>
                 <div className="grid grid-cols-2 gap-3">
                   {PROBLEMS.map((p) => (
-                    <Button key={p.kind} variant="outline" disabled={busy} onClick={() => problem(p)}
-                      className="h-20 flex-col gap-1.5 rounded-xl text-base [&_svg:not([class*='size-'])]:size-5">
+                    <Button key={p.kind} type="button" outline disabled={busy} onClick={() => problem(p)}
+                      className="h-20 flex-col gap-1.5 text-base [&_svg:not([class*='size-'])]:size-5">
                       <p.icon className="size-5" />{p.label}
                     </Button>
                   ))}
                 </div>
-                <Button variant="ghost" className={mid} onClick={() => setPanel(null)}>Cancel</Button>
+                <Button type="button" unstyled className={mid} onClick={() => setPanel(null)}>Cancel</Button>
               </section>
             )}
 
             {panel === null && (
-              <section className="flex flex-col gap-2 border-t pt-4">
+              <section className="flex flex-col gap-2 border-t border-usa-base-lighter pt-4">
                 {STEPS.map((_, i) => stepButton(i, task))}
-                <Button variant="destructive" className={cn(mid, "mt-2")} disabled={busy} onClick={() => setPanel("problem")}>
+                {step === 0 && (
+                  <Button type="button" outline className={mid} disabled={busy}
+                    onClick={() => report({ type: "answer", payload: { taskId: task._id, result: "declined" } }, "Declined")}>
+                    <CircleX />Decline
+                  </Button>
+                )}
+                <Button type="button" className={cn(mid, "mt-2 bg-usa-error text-usa-white hover:bg-usa-error-dark")} disabled={busy} onClick={() => setPanel("problem")}>
                   <TriangleAlert />Problem
                 </Button>
               </section>
@@ -372,20 +374,21 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
 
       {others.length > 0 && (
         <section className="space-y-2 pt-2">
-          <h2 className="text-sm font-semibold">Your other tasks ({others.length})</h2>
+          <h2 className="text-sm font-semibold text-usa-ink">Your other tasks ({others.length})</h2>
           {others.map((o) => <OtherRow key={o.task._id} o={o} now={now} onPick={choose} />)}
         </section>
       )}
 
       <section className="space-y-3 pt-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <span className="flex size-6 items-center justify-center rounded-full bg-info text-info-foreground"><Sparkles className="size-3.5" /></span>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-usa-ink">
+          <span className="flex size-6 items-center justify-center rounded-full bg-usa-info text-usa-ink"><Sparkles className="size-3.5" /></span>
           Your agent
         </h2>
 
         <Button
-          className={cn("h-20 w-full touch-none select-none rounded-2xl text-lg [-webkit-touch-callout:none] [&_svg:not([class*='size-'])]:size-6",
-            dictation.state === "recording" && "animate-pulse ring-4 ring-ring/50")}
+          type="button"
+          className={cn("h-20 w-full touch-none select-none text-lg [-webkit-touch-callout:none] [&_svg:not([class*='size-'])]:size-6",
+            dictation.state === "recording" && "animate-pulse ring-4 ring-usa-primary/50")}
           disabled={dictation.state === "unsupported"}
           onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); dictation.start(); }}
           onPointerUp={dictation.stop}
@@ -400,21 +403,21 @@ export function FieldPhone({ user, wanted, initial, initialLive = false }: {
           {dictation.state === "recording" ? "Listening, let go to stop" : "Hold to talk"}
         </Button>
         {dictation.state === "unsupported" && (
-          <p className="text-sm text-muted-foreground">Talking needs the phone&apos;s speech recognition on an HTTPS page. Type to your agent instead.</p>
+          <p className="text-sm text-usa-base-dark">Talking needs the phone&apos;s speech recognition on an HTTPS page. Type to your agent instead.</p>
         )}
-        {dictation.error && <p className="text-sm">{dictation.error}</p>}
+        {dictation.error && <p className="text-sm text-usa-ink">{dictation.error}</p>}
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void ask(); }}>
           <label htmlFor="agent-text" className="sr-only">Tell your agent</label>
-          <Input id="agent-text" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Hold to talk, or type to your agent"
+          <TextInput id="agent-text" name="agent-text" type="text" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Hold to talk, or type to your agent"
             className="h-12 min-w-0 flex-1 text-base" />
-          <Button type="submit" variant="outline" className="h-12 px-4"
+          <Button type="submit" outline className="h-12 px-4"
             disabled={!typed.trim() || asking || dictation.state === "recording"}>
             Send
           </Button>
         </form>
         <div aria-live="polite" className="space-y-2">
           {chat.map((m) => (m.from === "user" ? <Said key={m.id} text={m.text} /> : <Reply key={m.id} text={m.text} />))}
-          {asking && <p className="text-sm text-muted-foreground">Your agent is answering…</p>}
+          {asking && <p className="text-sm text-usa-base-dark">Your agent is answering…</p>}
         </div>
       </section>
 

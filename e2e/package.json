@@ -5,7 +5,8 @@
     "test": "playwright test",
     "test:smoke": "playwright test --grep @smoke",
     "report": "node -e \"console.log(require('path').resolve('report/index.html'))\"",
-    "test:a11y": "playwright test -c playwright.a11y.config.ts"
+    "test:a11y": "playwright test -c playwright.a11y.config.ts",
+    "test:phone": "playwright test -c playwright.phone.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
