@@ -1,0 +1,19 @@
+{
+  "name": "disasterdeck-infra",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DisasterDeck AWS runtime: VPC, Fargate web + Brain, secrets, CloudTrail, alarms. Self-contained, never touches the repo root package.json.",
+  "scripts": {
+    "synth": "cdk synth"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.160.0",
+    "constructs": "^10.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "aws-cdk": "^2.160.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  }
+}
