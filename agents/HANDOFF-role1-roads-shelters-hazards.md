@@ -35,11 +35,12 @@ A capacity is only sent when the post gives numbers ("full, 400 people" → 400/
 
 - `components/BoardCards.tsx`: shelter cards always say source `"instagram"`, road cards always `"person"`. Read it from the record's `history` instead.
 - `components/map/mapItems.ts`: road confidence comes from `state`, not from `Road.confidence`.
-- `components/map/ZoneLayer.tsx`: zone calls come from the static `zones.geojson`. `agents/research/zone-calls.ts` (`callsByZone`) counts them from the desk's sites if the map wants the live number.
+- `components/map/ZoneLayer.tsx`: zone calls come from the static `zones.geojson`. The live number would have to be counted from the desk's sites (the helper that did it was removed in D-0017).
 
 ## How to check
 
 ```bash
-npx tsx --env-file=.env.local workers/x-agent.ts --limit 5   # posts to the real desk (MONGODB_URI)
-npx tsx --env-file=.env.local agents/scripts/show-events.ts  # how the Brain handled them
+npx tsx --env-file=.env.local agents/scripts/show-events.ts  # how the Brain handled the events
 ```
+
+The input workers that posted these events were deleted in D-0017; post events to `POST /api/events` instead.

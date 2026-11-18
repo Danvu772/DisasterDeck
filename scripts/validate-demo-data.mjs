@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 const dataDirectory = process.argv[2]
   ? resolve(process.argv[2])
   : fileURLToPath(new URL("../data/", import.meta.url));
-const replay = JSON.parse(await readFile(resolve(dataDirectory, "tweets_replay.json"), "utf8"));
 const seed = JSON.parse(await readFile(resolve(dataDirectory, "seed.json"), "utf8"));
 
 function assertCoordinates(coords, label) {
@@ -24,15 +23,9 @@ function assertUniqueIds(rows, label, idField = "_id") {
   assert.equal(new Set(rows.map((row) => row[idField])).size, rows.length, `${label} IDs must be unique`);
 }
 
-function assertDate(value, label) {
-  assert(typeof value === "string" && Number.isFinite(Date.parse(value)), `${label} must be a date string`);
-}
-
 assert.equal(seed.deskId, "antakya-2023");
 assertUniqueIds(seed.regions, "Regions");
 assertUniqueIds(seed.users, "Users");
-assertUniqueIds(seed.shelters, "Shelters");
-assertUniqueIds(replay, "Replay", "id");
 const regionIds = new Set(seed.regions.map((region) => region._id));
 const roles = ["volunteer", "field", "supplier", "shelter", "coordinator", "public"];
 const trustLevels = ["official", "vetted", "public"];
@@ -80,41 +73,4 @@ const mechanic = seed.users.find((user) => user._id === "volunteer-mechanic");
 assert.equal(mechanic.profile.vehicle, "van");
 assert(mechanic.profile.skills.includes("mechanic"));
 
-assert.equal(seed.shelters.length, 3);
-for (const shelter of seed.shelters) {
-  assert.equal(shelter.deskId, seed.deskId);
-  assert(regionIds.has(shelter.region), `${shelter._id} has an unknown region`);
-  assert(typeof shelter.name === "string" && shelter.name.trim());
-  assertCoordinates(shelter.coords, shelter._id);
-  assert(Number.isInteger(shelter.bedsUsed) && shelter.bedsUsed >= 0);
-  assert(Number.isInteger(shelter.bedsTotal) && shelter.bedsTotal >= shelter.bedsUsed);
-  assertDate(shelter.observedAt, `${shelter._id}.observedAt`);
-  assertDate(shelter.updated, `${shelter._id}.updated`);
-  assert(Array.isArray(shelter.history) && shelter.history.length > 0);
-  for (const entry of shelter.history) {
-    assertDate(entry.ts, `${shelter._id}.history.ts`);
-    assert.equal(entry.source, "system");
-    assert(typeof entry.by === "string" && entry.by.trim());
-    assert(typeof entry.reason === "string" && entry.reason.trim());
-  }
-}
-
-assert.equal(replay.length, 5, "The CP1 fixture contains five posts");
-for (const [index, post] of replay.entries()) {
-  assert.equal(post.id, `demo-antakya-${String(index + 1).padStart(3, "0")}`);
-  assert(typeof post.text === "string" && post.text.trim());
-  assert.equal(post.ts_offset_seconds, index * 4);
-  assert(regionIds.has(post.region), `${post.id} has an unknown region`);
-  assertCoordinates(post.coords, post.id);
-}
-for (const post of replay.slice(0, 4)) {
-  assert.deepEqual(post.coords, [36.194, 36.157], "The first four posts share the primary scenario pin");
-  assert.equal(post.region, replay[0].region);
-  assert(post.text.includes("Ayşe") && post.text.includes("Turuncu Avlu"));
-}
-assert(replay[4].text.includes("Mor Avlu") && replay[4].text.includes("iki kişi"));
-const northMeters = (replay[4].coords[0] - replay[0].coords[0]) * 111000;
-const eastMeters = (replay[4].coords[1] - replay[0].coords[1]) * 111000 * Math.cos(replay[0].coords[0] * Math.PI / 180);
-assert(Math.hypot(northMeters, eastMeters) > 100, "The control report must stay outside the 100 m merge radius");
-
-console.log(`Validated ${replay.length} replay posts, ${seed.users.length} users and ${seed.shelters.length} shelters for ${seed.deskId}.`);
+console.log(`Validated ${seed.users.length} users and ${seed.regions.length} regions for ${seed.deskId}.`);

@@ -299,17 +299,6 @@ test("summary: the shift handoff goes to gpt-oss-120b at medium effort", async (
   assert.deepEqual(modelCalls()[0].body.reasoning, { effort: "medium" });
 });
 
-// ── news feeds (WS-1/WS-2) ──────────────────────────────────────────────────────────────────────
-test("official feeds parse from saved fixtures with no model or search-API call", async () => {
-  const { readFeedFixture, parseFeed, FEED_KINDS } = await import("../agents/research/news-search.ts");
-  const events = FEED_KINDS.flatMap((kind) => parseFeed(kind, readFeedFixture(kind), "antakya-2023"));
-  assert.ok(events.length >= 8, `fixtures → ${events.length} events (nws + fema + usgs)`);
-  assert.ok(events.some((e) => e.type === "need"), "FEMA boiler-water → a need event");
-  assert.ok(events.some((e) => e.type === "report"), "NWS/USGS advisories → report events");
-  assert(events.every((e) => e.source === "news" && e.actor && /^(nws|fema|usgs):/.test(e.dedupeKey)), "every event is a news event with a feed dedupeKey");
-  assert.equal(calls.length, 0, "feeds make no model call");
-});
-
 // ── LLM-2 and invariant 3: static checks of the tree ──────────────────────────────────────────
 function files(d, out = []) {
   for (const n of readdirSync(d)) {

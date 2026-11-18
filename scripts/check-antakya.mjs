@@ -7,11 +7,11 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const json = async name => JSON.parse(await readFile(resolve(root, name), "utf8"));
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
-const [pilot, imagery, atlas, seed, scenario, config] = await Promise.all([
+const [pilot, imagery, atlas, seed, config] = await Promise.all([
   "data/pilot.json", "public/data/antakya/imagery.json", "public/data/nasa-atlas/atlas.json",
-  "data/seed.json", "data/scenarios/antakya.json", "data/nasa/analysis-config.json",
+  "data/seed.json", "data/nasa/analysis-config.json",
 ].map(json));
-for (const desk of [seed.deskId, scenario.deskId, config.deskId]) assert.equal(desk, pilot.id);
+for (const desk of [seed.deskId, config.deskId]) assert.equal(desk, pilot.id);
 assert.deepEqual(atlas.bbox, pilot.bbox);
 assert.equal((await json("data/nasa/manifest.json")).configurationSha256, sha(await readFile(resolve(root, "data/nasa/analysis-config.json"))));
 let bytes = 0, count = 0;

@@ -4,7 +4,7 @@
 // Deletes that desk's documents in events, sites, needs, roads, shelters, zones, incidents,
 // tasks and users, the inbox items and chat messages of those users, and the desk's counters in
 // meta (cases, version). Never drops a collection or an index, never touches another desk or the
-// Brain's heartbeat and lease. Then reseeds users and shelters from data/seed.json.
+// Brain's heartbeat and lease. Then reseeds the users from data/seed.json.
 import { closeDb, cols, deskId } from "./db";
 import { seed } from "./seed";
 
@@ -53,7 +53,7 @@ async function main() {
   if (dryRun) return console.log("Dry run: nothing deleted.");
   await wipeDesk(desk);
   const r = await seed(desk);
-  console.log(`Reseeded desk ${desk}: ${r.users} users, ${r.shelters} shelters.`);
+  console.log(`Reseeded desk ${desk}: ${r.users} users.`);
 }
 
 if (process.argv[1] && /[\\/]reset\.ts$/.test(process.argv[1])) {

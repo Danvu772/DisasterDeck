@@ -1,11 +1,11 @@
-// Load Role 4's data/seed.json into the database: users and shelters.
+// Load Role 4's data/seed.json into the database: users only. Shelters arrive through the event queue (D-0017).
 // Run: npm run db:seed. Safe to run again: each document is replaced by its _id.
 // It does not touch events, tasks or any other record.
 // The desk defaults to seed.json's own; pass --desk <id> or DESK_ID to seed a throwaway desk
 // (ids get prefixed with the desk, so they never collide with the shared desk's).
 import { readFile } from "node:fs/promises";
 import { bumpDeskVersion, closeDb, cols } from "./db";
-import type { Shelter, User } from "./types";
+import type { User } from "./types";
 
 type Json = Record<string, unknown>;
 
@@ -20,24 +20,20 @@ function withDates<T>(doc: Json, fields: string[]): T {
 }
 
 /** The ids are global, so a seed for any other desk gets its ids prefixed with the desk id. */
-export async function seed(desk?: string): Promise<{ deskId: string; users: number; shelters: number }> {
+export async function seed(desk?: string): Promise<{ deskId: string; users: number }> {
   const file = JSON.parse(await readFile(new URL("../data/seed.json", import.meta.url), "utf8")) as {
-    deskId: string; users: Json[]; shelters: Json[];
+    deskId: string; users: Json[];
   };
   const target = desk ?? file.deskId;
   const id = (raw: unknown) => (target === file.deskId ? String(raw) : `${target}:${raw}`);
-  const { users, shelters } = await cols();
+  const { users } = await cols();
 
   for (const u of file.users) {
     const user = { ...withDates<User>(u, ["lastSeen"]), _id: id(u._id), deskId: target };
     await users.replaceOne({ _id: user._id }, user, { upsert: true });
   }
-  for (const s of file.shelters) {
-    const shelter = { ...withDates<Shelter>(s, ["observedAt", "updated"]), _id: id(s._id), deskId: target };
-    await shelters.replaceOne({ _id: shelter._id }, shelter, { upsert: true });
-  }
   await bumpDeskVersion(target);
-  return { deskId: target, users: file.users.length, shelters: file.shelters.length };
+  return { deskId: target, users: file.users.length };
 }
 
 async function main() {
@@ -46,7 +42,7 @@ async function main() {
   const desk = (i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : undefined)
     ?? process.env.DESK_ID;
   const r = await seed(desk);
-  console.log(`Seeded desk ${r.deskId}: ${r.users} users, ${r.shelters} shelters.`);
+  console.log(`Seeded desk ${r.deskId}: ${r.users} users.`);
 }
 
 // Only when run as a script (npm run db:seed), not when reset.ts imports seed().

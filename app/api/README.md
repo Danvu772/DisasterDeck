@@ -26,8 +26,8 @@ On a tunnel or a deployed server, use the same paths on that host.
 ## Call an endpoint from the page
 
 1. Click **Authorize** (top right) and fill in **one** of these:
-   - **`agentKey`**: the `AGENT_KEY` from `.env.local`. You act as a worker, like the X agent or
-     the satellite watcher.
+   - **`agentKey`**: the `AGENT_KEY` from `.env.local`. You act as a worker or any other API client
+     that posts events.
    - **`demoUser`**: a seeded user id. Only works when the server runs with `DEMO_MODE=1`. Try
      `coordinator-duty`, `field-alpha`, `supplier-primary` or `volunteer-callback`; the full
      list is in `data/seed.json`.

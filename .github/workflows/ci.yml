@@ -34,10 +34,8 @@ jobs:
       - run: npm ci
       - name: Typecheck
         run: npx tsc --noEmit
-      - name: Historical replay integrity and worker tests
-        run: npm run check:replay
-      - name: Official-feed replay and help directory (WS-1/2/3)
-        run: npm run check:feeds
+      - name: Help directory (WS-3)
+        run: npm run check:contacts
       - name: Model adapter (OpenRouter, mocked; no key)
         run: npm run check:llm
       - name: Lint
@@ -139,7 +137,7 @@ jobs:
           done
           echo "Mongo did not become ready" >&2
           exit 1
-      - name: Seed users and shelters
+      - name: Seed users
         run: npm run db:seed
       - name: Memory keeper check
         run: npm run keeper:check

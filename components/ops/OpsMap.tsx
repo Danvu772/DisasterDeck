@@ -1,6 +1,6 @@
 "use client";
-// The /ops map: what the stream built so far (sites, needs, roads, shelters) and the real USGS
-// aftershocks up to the scenario time, on the desk's MapLibre basemap (same look as /map).
+// The /ops map: what the stream built so far (sites, needs, roads, shelters) and any
+// earthquakes it is given, on the desk's MapLibre basemap (same look as /map).
 // Hover a pin for its one-line label. Browser only: OpsRoom loads this with next/dynamic.
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useMemo } from "react";

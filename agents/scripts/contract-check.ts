@@ -3,12 +3,11 @@
 // (nothing is written to MongoDB, no model call), and checks each one against lib/schemas.ts eventBody.
 //   DESK_BACKEND=fixture npx tsx agents/scripts/contract-check.ts
 
-import { pilot, pilotCenter } from "@/lib/pilot";
+import { pilot } from "@/lib/pilot";
 import { eventBody } from "../../lib/schemas";
 import { desk } from "../desk";
 import type { NewEvent } from "../desk/port";
 import { runTool } from "../personal/tools";
-import { extractTweet } from "../research/x-extract";
 
 async function main() {
   if (desk().name !== "fixture") throw new Error("run with DESK_BACKEND=fixture: this check must not write to the real desk");
@@ -37,23 +36,11 @@ async function main() {
   await call("public-demo", "file_need", { item: "tent", quantity: 1, life_threatening: true, site_id: null, region: null });
   await call("coordinator-duty", "decide_approval", { task_id: cctx.approvals[0]?._id, approved: true, reason: "nearest free team" });
 
-  // X agent (plain-rules path, no model): a call for help and a supply request.
-  for (const t of [
-    { id: "c1", text: "Annem enkaz altında, Örnek Sk. 12, 2 kişi. Tel 0532 000 00 22", ts_offset_seconds: 0, coords: pilotCenter, region: pilot.region },
-    { id: "c2", text: "Çadır kentte battaniye ve mama yok, gece -10 derece", ts_offset_seconds: 0, region: pilot.region },
-  ]) {
-    const x = await extractTweet(t, { mock: true });
-    const base = { deskId: pilot.id, source: "x" as const, actor: "x-agent", observedAt: new Date().toISOString() };
-    if (x.report) captured.push({ ...base, type: "report", dedupeKey: `x:${t.id}`, payload: x.report });
-    x.needs.forEach((n, i) => captured.push({ ...base, type: "need", dedupeKey: `x:${t.id}:need:${i}`, payload: n }));
-  }
-  // News agent, sheet sync and quake watcher: the shapes their workers post.
+  // Inline shapes an API client posts for a news closure and a shelter capacity.
   captured.push({ deskId: pilot.id, type: "closure", source: "news", actor: "official-agent", dedupeKey: "official:abc",
     observedAt: "2023-02-07T00:00:00.000Z", payload: { road: "Antakya ring road", state: "closed", reason: "landslide (news)" } });
   captured.push({ deskId: pilot.id, type: "capacity", source: "sheet", actor: "sheet-agent", dedupeKey: "sheet:demo b:31/40:t",
     observedAt: new Date().toISOString(), payload: { shelter: "Demo Barınak B", bedsUsed: 31, bedsTotal: 40 } });
-  captured.push({ deskId: pilot.id, type: "alert", source: "system", actor: "quake-watcher", dedupeKey: "quake:us6000jm1y",
-    observedAt: "2023-02-06T10:26:46Z", payload: { zoneId: pilot.id, kind: "quake", evidence: { magnitude: 6 } } });
 
   let ok = 0;
   console.log(`\nchecked ${captured.length} events against eventBody:`);
