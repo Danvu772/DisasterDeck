@@ -4,8 +4,7 @@
 // the CPU busy and page loads waited in line. Now the first request in a window reads, requests
 // that arrive while it runs share that read, and the rest get the copy until it is ttlMs old.
 // A failed read is dropped at once, so the next request tries again.
-import type { Document } from "mongodb";
-import { cols, getHealth, listUsers } from "./db";
+import { cols, getHealth, listUsers, type Document } from "./db";
 
 type Entry<T> = { at: number; value: Promise<T>; done?: boolean; last?: T; next?: Promise<T> };
 const g = globalThis as typeof globalThis & { __deskShared?: Map<string, Entry<unknown>> };

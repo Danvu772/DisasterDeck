@@ -6,11 +6,18 @@
 //   the memory keeper does, later, inside the Brain loop.
 // - Relative imports only, so the Node workers (run with tsx) can load this file too.
 import { configuredDeskId as deskId } from "./pilot";
-import { MongoClient, MongoServerError, ObjectId, type Db, type Document } from "mongodb";
+import { MongoClient, MongoServerError, ObjectId, type Db, type Document, type Filter } from "mongodb";
 import type {
   Board, Event, Health, InboxItem, Incident, Message, Need, NewEvent, RecordType, Road,
   SearchCollection, SearchHit, SearchQuery, Shelter, Site, Task, User, UserContext, Zone,
 } from "./types";
+
+// Re-export the three things other files still need, so no module but this one imports
+// "mongodb" directly (issue #8): a DocumentDB swap stays a change to this one file.
+// Filter (query guards) and Document (generic bounds) are types, MongoServerError is the
+// one class callers catch (dup-key handling in the dispatcher and the memory keeper).
+export type { Document, Filter };
+export { MongoServerError };
 
 // ---------- connection ----------
 

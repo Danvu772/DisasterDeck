@@ -1,6 +1,8 @@
 // Load Role 4's data/seed.json into the database: users and shelters.
 // Run: npm run db:seed. Safe to run again: each document is replaced by its _id.
 // It does not touch events, tasks or any other record.
+// The desk defaults to seed.json's own; pass --desk <id> or DESK_ID to seed a throwaway desk
+// (ids get prefixed with the desk, so they never collide with the shared desk's).
 import { readFile } from "node:fs/promises";
 import { bumpDeskVersion, closeDb, cols } from "./db";
 import type { Shelter, User } from "./types";
@@ -39,7 +41,11 @@ export async function seed(desk?: string): Promise<{ deskId: string; users: numb
 }
 
 async function main() {
-  const r = await seed();
+  const args = process.argv.slice(2);
+  const i = args.indexOf("--desk");
+  const desk = (i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : undefined)
+    ?? process.env.DESK_ID;
+  const r = await seed(desk);
   console.log(`Seeded desk ${r.deskId}: ${r.users} users, ${r.shelters} shelters.`);
 }
 
