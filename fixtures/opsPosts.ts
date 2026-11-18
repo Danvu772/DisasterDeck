@@ -6,7 +6,6 @@
 //   The second main shock (M7.5 Elbistan, 13:24 local) brings a new wave of collapse reports.
 // Every person, building, phone and handle is invented. Locations are approximate exercise pins in Antakya. Phones are masked the way encode.ts masks them.
 // Deterministic: the same posts every run (seeded random).
-import seed from "@/data/seed.json";
 import { pilot, pilotCenter } from "@/lib/pilot";
 import type { LatLng } from "@/lib/types";
 
@@ -65,9 +64,11 @@ const PLACES: [string, string][] = [
   ["eski hastane yolu", "on the old hospital road"], ["park karşısı", "across from the park"],
   ["fırının üstü", "above the bakery"], ["köprü başı", "at the bridge"],
 ];
-const SHELTERS = seed.shelters.map((s) => ({
-  name: s.name, total: s.bedsTotal, coords: [s.coords[0], s.coords[1]] as LatLng,
-}));
+const SHELTERS: { name: string; total: number; coords: LatLng }[] = [
+  { name: "Demo Barınak A", total: 50, coords: [36.196, 36.16] },
+  { name: "Demo Barınak B", total: 40, coords: [36.2, 36.162] },
+  { name: "Demo Barınak C", total: 30, coords: [36.204, 36.178] },
+];
 const ROADS: { road: string; at: LatLng }[] = [
   { road: "İnönü Ave, north", at: [36.226, 36.159] },
   { road: "Ring road exit 3", at: [36.202, 36.185] },

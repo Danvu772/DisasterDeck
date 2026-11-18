@@ -1,6 +1,6 @@
 // WS-3: a supplier or field team with an open incident gets matching contacts from the desk's
 // directory (D-0009). Offline: the directory is static data, and the API is exercised with the
-// agent key (no database).   npm run check:feeds
+// agent key (no database).   npm run check:contacts
 import assert from "node:assert/strict";
 import test from "node:test";
 

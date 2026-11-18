@@ -7,7 +7,6 @@ import { desk, type UserContext } from "../desk";
 import {
   age, countBy, incidentLine, NEAR_ROAD_METERS, needLine, roadLine, roadsNear, shelterLine, sheltersFor, siteLine, taskLine, type Place,
 } from "../desk/view";
-import { quakeLine, recentQuakesNear, type NearbyQuake } from "../research/quakes";
 import { BudgetError } from "../shared/cost";
 import { checkSchema, modelFor, send, sendStream, type ChatMessage, type ChatParams } from "../shared/llm";
 import { maskPhones } from "../shared/privacy";
@@ -55,13 +54,11 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
   if (input.confirm) holdWrites(ctx);
   const held: (PendingCall & { summary: string })[] = [];
   const tools = toolsFor(ctx);
-  // Aftershocks near this person (scenario clock during a replay). Plain code, no model call.
-  const quakes = await recentQuakesNear(ctx.user.coords, 60).catch(() => undefined);
   // System prompt first, stable per role: providers cache the shared prefix automatically.
   const messages: Msg[] = [
     { role: "system", content: systemPrompt(ctx.user.role) },
     ...history(ctx),
-    { role: "user", content: userContent(ctx, said, input.image, quakes) },
+    { role: "user", content: userContent(ctx, said, input.image) },
   ];
 
   const eventIds: string[] = [];
@@ -198,7 +195,6 @@ function history(ctx: UserContext): Msg[] {
   return out;
 }
 
-type Quakes = { quakes: NearbyQuake[]; now: Date; replay: boolean } | undefined;
 
 /** Arguments of a tool call: a JSON object, or undefined when the text is not one. */
 function parseArgs(raw: string): Record<string, unknown> | undefined {
@@ -215,9 +211,9 @@ export const CUT_OFF_NOTE = "(My answer was cut off before the end. Ask again, o
 // so it can ask the person to say what it shows.
 export const PHOTO_NOTE = "(The person attached a photo. You cannot see photos: ask them to say in words what it shows.)";
 
-function userContent(ctx: UserContext, said: string, image: TurnInput["image"], quakes: Quakes): string {
+function userContent(ctx: UserContext, said: string, image: TurnInput["image"]): string {
   return [
-    contextBlock(ctx, quakes),
+    contextBlock(ctx),
     ...(image ? [PHOTO_NOTE] : []),
     `${ctx.user.name} says: ${said || "(sent a photo, no text)"}`,
   ].join("\n\n");
@@ -246,7 +242,7 @@ function taskPlaces(ctx: UserContext): Place[] {
 }
 
 /** The volatile part of the prompt: this person's slice of the desk, right now. */
-export function contextBlock(ctx: UserContext, quakes?: Quakes): string {
+export function contextBlock(ctx: UserContext): string {
   const { user: u, now } = ctx;
   const p = u.profile ?? {};
   const lines: string[] = [
@@ -319,10 +315,6 @@ export function contextBlock(ctx: UserContext, quakes?: Quakes): string {
   if (places.length) {
     section(`Roads not open within ${NEAR_KM} km of ${u.role === "public" ? "those shelters" : "their task places"}`,
       roadsNear(ctx.records.roads, places, now), (x) => x, 5);
-  }
-  if (quakes) {
-    lines.push(quakes.replay ? `Scenario time (replay): ${quakes.now.toISOString().slice(0, 16)} UTC` : "Earthquake feed: live (AFAD, USGS)");
-    section("Earthquakes worth a warning near this person, last 60 min, newest first", quakes.quakes, quakeLine, 5);
   }
   section("Unread inbox", ctx.inbox, (i) => `${i.kind} · ${i.message}${i.taskId ? ` (task ${i.taskId})` : ""} · ${age(i.ts, now)}`, 8,
     (more) => countBy(more, (i) => i.kind));

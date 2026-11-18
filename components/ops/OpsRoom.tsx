@@ -12,7 +12,6 @@ import {
   CircleSlash, Clock, FileCheck2, HeartHandshake, Inbox, MapPin, Merge, Pause, PhoneCall, Play,
   RotateCcw, Sparkles, TriangleAlert, Users,
 } from "lucide-react";
-import usgs from "../../agents/fixtures/usgs-kahramanmaras-2023.json";
 import { makeOpsPosts, SECOND_QUAKE_MIN, type OpsPost } from "@/fixtures/opsPosts";
 import { cn } from "@/lib/utils";
 import { Button, Tag } from "@trussworks/react-uswds";
@@ -30,7 +29,8 @@ const OpsMap = dynamic(() => import("./OpsMap"), {
   loading: () => <div className="h-full w-full animate-pulse bg-secondary" />,
 });
 
-const QUAKES: Quake[] = usgs.events.map((e) => ({ id: e.id, time: e.time, mag: e.mag, place: e.place, lat: e.lat, lon: e.lon }));
+// No earthquake feed below the queue yet (D-0017): the quake bits of this screen stay hidden while this is empty.
+const QUAKES: Quake[] = [];
 const card = "rounded-xl border bg-card shadow-xs";
 const spring = { type: "spring", stiffness: 350, damping: 35 } as const;
 
@@ -119,11 +119,11 @@ function PostLine({ p, fresh }: { p: OpsPost; fresh: boolean }) {
   );
 }
 
-function PerHour({ rows, replay }: { rows: OpsSummary["perHour"]; replay: boolean }) {
+function PerHour({ rows }: { rows: OpsSummary["perHour"] }) {
   const max = Math.max(1, ...rows.map((r) => r.posts));
   return (
     <div>
-      <p className="sr-only">{rows.map((r) => `${r.label}:00, ${r.posts} posts${replay ? `, ${r.quakes} earthquakes of M5 or more` : ""}`).join(". ")}</p>
+      <p className="sr-only">{rows.map((r) => `${r.label}:00, ${r.posts} posts${r.quakes > 0 ? `, ${r.quakes} earthquakes of M5 or more` : ""}`).join(". ")}</p>
       <div aria-hidden className="flex h-28 items-end gap-1">
         {rows.map((r, i) => (
           <div key={r.label} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
@@ -139,7 +139,7 @@ function PerHour({ rows, replay }: { rows: OpsSummary["perHour"]; replay: boolea
       <div aria-hidden className="mt-1 flex gap-1 border-t pt-1.5 text-[11px] text-muted-foreground">
         {rows.map((r) => <span key={r.label} className="flex-1 text-center font-mono">{r.label}</span>)}
       </div>
-      <div aria-hidden className="mt-1 flex gap-1">
+      {rows.some((r) => r.quakes > 0) && <div aria-hidden className="mt-1 flex gap-1">
         {rows.map((r) => (
           <span key={r.label} className="flex flex-1 justify-center">
             {r.quakes > 0 && (
@@ -149,10 +149,10 @@ function PerHour({ rows, replay }: { rows: OpsSummary["perHour"]; replay: boolea
             )}
           </span>
         ))}
-      </div>
+      </div>}
       <p aria-hidden className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-foreground/25" />Posts, local hour</span>
-        {replay && <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-warning" />M5+ earthquakes</span>}
+        {rows.some((r) => r.quakes > 0) && <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-warning" />M5+ earthquakes</span>}
       </p>
     </div>
   );
@@ -220,7 +220,7 @@ export function OpsRoom({ deskId }: { deskId: string }) {
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              {feed.isLive && deskId !== pilot.id ? deskId : pilot.name}{feed.isLive ? " · live desk events" : " · 6 Feb 2023 · synthetic posts, real USGS earthquakes"}
+              {feed.isLive && deskId !== pilot.id ? deskId : pilot.name}{feed.isLive ? " · live desk events" : " · 6 Feb 2023 · synthetic posts"}
             </p>
           </div>
 
@@ -325,7 +325,7 @@ export function OpsRoom({ deskId }: { deskId: string }) {
 
           <section aria-label="Numbers" className="relative space-y-4 lg:col-span-2 xl:col-span-1 xl:h-full xl:min-h-0 xl:overflow-y-auto">
             <Panel title="Posts per hour">
-              <PerHour rows={s.perHour} replay={!feed.isLive} />
+              <PerHour rows={s.perHour} />
             </Panel>
             <Panel title="What the posts became" aside={<><span className="font-mono">{s.read}</span> posts</>}>
               <Bars points={s.byOutcome} />

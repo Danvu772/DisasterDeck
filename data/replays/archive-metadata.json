@@ -1,7 +1,0 @@
-{
-  "title": "Turkey Earthquake Tweets",
-  "description": "## Context\nTweets about the massive earthquake in Turkey.\n\n## Content\nThis dataset is collected daily using tweepy and Twitter API.\nThe source of the dataset is: public tweets about the massive earthquake in Turkey.\n\n## Data columns\nThe following columns are included:\n\n- ID\n- User name\n- User location\n- User description\n- User created\n- User followers\n- User friends\n- User favorites\n- User verified\n- Date\n- Text\n- Hashtags\n- Source\n- Retweets\n- Is retweet\n\n# Ideas for analysis\n\nYou can use this dataset to follow the trends about the news related to this unfortunate event. Use your NLP and data analysis skills to extract relevant information.",
-  "licenseName": "CC0: Public Domain",
-  "currentVersionNumber": 24,
-  "lastUpdated": "2023-02-26T17:42:07.04Z"
-}
