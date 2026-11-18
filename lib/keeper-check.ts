@@ -322,13 +322,22 @@ async function main() {
 
   // --- PHO-1: a photo that came through /api/chat is a data URL of a megabyte or more ---
   const bigPhoto = `data:image/jpeg;base64,${"A".repeat(1_100_000)}`;
-  ev = await say("photo-report", "report", U.field1, { kind: "site_update", text: "duvar yıkıldı", textEn: "A wall collapsed", region: "antakya-merkez", photoUrl: bigPhoto });
-  assert.notEqual(ev.status, "rejected", `report with a 1 MB photo: ${ev.result?.reason}`);
-  ev = await say("photo-incident", "incident", U.field1, { kind: "unsafe", text: "tehlike", textEn: "Unsafe wall", canContinue: true, photoUrl: bigPhoto });
-  assert.notEqual(ev.status, "rejected", `incident with a 1 MB photo: ${ev.result?.reason}`);
-  ev = await say("photo-capacity", "capacity", U.field1, { shelter: "Check photo shelter", bedsUsed: 10, bedsTotal: 20, region: "antakya-merkez", photoUrl: bigPhoto });
-  assert.notEqual(ev.status, "rejected", `capacity with a 1 MB photo: ${ev.result?.reason}`);
-  ok("PHO-1: report, incident and capacity events carrying a 1.1 MB photo data URL are applied, not rejected");
+  // Each case runs twice: a control without the photo must be applied first, so a rejection of the
+  // photo version can only be the photo's fault. Every case runs; failures are collected, not thrown.
+  const photoCases: [EventType, Record<string, unknown>][] = [
+    ["report", { kind: "trapped", text: "duvar yıkıldı, 1 kişi", textEn: "A wall collapsed, 1 person", coords: [36.2041, 36.1601], region: "antakya-merkez", peopleCount: 1 }],
+    ["incident", { kind: "unsafe", text: "tehlike", textEn: "Unsafe wall", canContinue: true }],
+    ["capacity", { shelter: "Check photo shelter", bedsUsed: 10, bedsTotal: 20, region: "antakya-merkez" }],
+  ];
+  const photoFails: string[] = [];
+  for (const [type, payload] of photoCases) {
+    const control = await say(`photo-control-${type}`, type, U.field1, payload);
+    if (control.status === "rejected") { photoFails.push(`${type} control (no photo) rejected: ${control.result?.reason}`); continue; }
+    const withPhoto = await say(`photo-${type}`, type, U.field1, { ...payload, photoUrl: bigPhoto });
+    if (withPhoto.status === "rejected") photoFails.push(`${type} with a 1 MB photo rejected: ${withPhoto.result?.reason}`);
+  }
+  assert.deepEqual(photoFails, [], `PHO-1: ${photoFails.join("; ")}`);
+  ok("PHO-1: report, incident and capacity events carrying a 1.1 MB photo data URL are applied, not rejected (controls applied too)");
 
   const pending = await c.events.countDocuments({ deskId: DESK, status: { $in: ["pending", "working"] } });
   assert.equal(pending, 0, "nothing left pending");
