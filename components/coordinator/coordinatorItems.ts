@@ -1,5 +1,6 @@
-// Pure adapter: a board in, the three coordinator lists out. No fetching, no React.
-import type { Board, Confidence, Incident, Source, Task, User, Zone } from "@/lib/types";
+// Pure adapter: a board in, the four coordinator lists out. No fetching, no React.
+import type { Board, Confidence, Incident, Need, Pin, Site, Source, Task, Tier, User, Zone } from "@/lib/types";
+import { CALL_WORD, plural } from "../detail/fields";
 
 // Zones are optional so the fixture board (which has none) fits too.
 export type CoordinatorSource = Pick<Board, "sites" | "needs" | "roads" | "shelters" | "incidents" | "tasks"> & { zones?: Zone[] };
@@ -91,4 +92,35 @@ const ROLE_FOR: Partial<Record<Task["type"], User["role"]>> = { rescue: "field",
 export function peopleFor(type: Task["type"], users: User[]): User[] {
   const role = ROLE_FOR[type];
   return users.filter((u) => (role ? u.role === role : u.role !== "coordinator" && u.role !== "public"));
+}
+
+// A site or need a coordinator can pin or push down (§5.1). The keeper refuses a pin on a record
+// that is already closed, so those are left out here. Sorted the way the board ranks them.
+export type Rankable = {
+  kind: "site" | "need";
+  id: string;
+  title: string;
+  detail?: string;
+  tier: Tier;
+  priority: number;
+  status: string;
+  pin?: Pin;
+};
+
+export function rankable(b: CoordinatorSource): Rankable[] {
+  const sites: Rankable[] = (b.sites ?? [])
+    .filter((s) => s.status !== "closed" && s.status !== "retracted")
+    .map((s: Site) => ({
+      kind: "site", id: s._id, title: s.address, tier: s.tier, priority: s.priority,
+      detail: s.peopleTrapped > 0 ? plural(s.peopleTrapped, "person", "people") + " trapped" : CALL_WORD[s.callStatus] ?? undefined,
+      status: s.status, pin: s.pin,
+    }));
+  const needs: Rankable[] = (b.needs ?? [])
+    .filter((n) => n.status !== "delivered" && n.status !== "cancelled")
+    .map((n: Need) => ({
+      kind: "need", id: n._id, title: `${n.quantity} ${n.item}`, tier: n.tier, priority: n.priority,
+      detail: n.lifeThreatening ? "Danger to life" : undefined,
+      status: n.status, pin: n.pin,
+    }));
+  return [...sites, ...needs].sort((x, y) => x.tier - y.tier || y.priority - x.priority);
 }
