@@ -112,3 +112,21 @@ export function recordUsage(label: string, requested: string, u: UsageLike, serv
   }
   return usd;
 }
+
+/**
+ * A response that came without a usage block (a provider or stream that left it out). Never record
+ * $0 for it: assume the worst, max_tokens of output at the most expensive rate, and say so.
+ */
+export function recordMissingUsage(label: string, served: string, maxTokens: number): number {
+  const usd = maxTokens * MOST_EXPENSIVE.output / 1_000_000;
+  console.warn(`[cost] ${label}: no usage in the response from ${served}; recording a pessimistic $${usd.toFixed(4)} (${maxTokens} tokens at $${MOST_EXPENSIVE.output}/M)`);
+  const row = JSON.stringify({ ts: new Date().toISOString(), label, model: served, in: 0, out: 0, cacheR: 0,
+    priced: "estimate", usd: Number(usd.toFixed(6)) }) + "\n";
+  try {
+    mkdirSync(path.dirname(FILE), { recursive: true });
+    appendFileSync(FILE, row);
+  } catch {
+    unwritten += usd;
+  }
+  return usd;
+}

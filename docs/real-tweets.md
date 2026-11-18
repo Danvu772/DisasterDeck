@@ -24,7 +24,7 @@ For actual language extraction, use the configured model key. News, commentary a
 
 ## Send to the running pipeline
 
-In `.env.local`, supply the existing `ANTHROPIC_API_KEY` and extraction-model configuration, then configure a real destination. The HTTP option uses the team's normal event endpoint and authentication:
+In `.env.local`, supply `OPENROUTER_API_KEY` (and optionally `OPENROUTER_MODEL_EXTRACT`; see `.env.example`), then configure a real destination. The HTTP option uses the team's normal event endpoint and authentication:
 
 ```dotenv
 DESK_BACKEND=http

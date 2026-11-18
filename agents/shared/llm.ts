@@ -15,7 +15,7 @@
 //                                         larger model with more reasoning (it was Opus, the top tier)
 //   digest   gpt-oss-20b,  effort low     folding old chat lines into a short memo, after the turn
 
-import { assertBudget, recordUsage, type UsageLike } from "./cost";
+import { assertBudget, recordMissingUsage, recordUsage, type UsageLike } from "./cost";
 
 export type Effort = "low" | "medium" | "high";
 export type Purpose = "chat" | "extract" | "summary" | "digest";
@@ -55,7 +55,7 @@ export type ContentPart = { type: "text"; text: string };
 export type ChatMessage =
   | { role: "system"; content: string }
   | { role: "user"; content: string | ContentPart[] }
-  | { role: "assistant"; content: string | null; tool_calls?: ToolCall[] }
+  | { role: "assistant"; content: string | null; tool_calls?: ToolCall[]; reasoning?: string; reasoning_details?: unknown[] }
   | { role: "tool"; tool_call_id: string; content: string };
 
 export interface ChatParams {
@@ -77,7 +77,8 @@ export interface ChatResult {
   finishReason: string;
   /** The model that answered (OpenRouter's id). */
   model: string;
-  usage: UsageLike;
+  /** Undefined when the response had no usage block (recorded as a pessimistic estimate). */
+  usage?: UsageLike;
 }
 
 export class LlmError extends Error {
@@ -103,12 +104,14 @@ function body(params: ChatParams, stream: boolean): string {
   });
 }
 
-const RETRY_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+const retryStatus = (s: number) => s === 408 || s === 429 || (s >= 500 && s <= 599);
 export const MAX_RETRIES = 2;
+/** max_tokens assumed when pricing a response with no usage and no max_tokens in the request. */
+const DEFAULT_MAX_TOKENS = 16_000;
 const TIMEOUT_MS = 120_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** POST with a timeout, retrying 429, 5xx and network errors (2 retries, Retry-After honoured, at most 10 s). */
+/** POST with a timeout, retrying 408, 429, any 5xx and network errors (2 retries, Retry-After honoured, at most 10 s). */
 async function post(params: ChatParams, stream: boolean): Promise<Response> {
   const url = `${baseUrl()}/chat/completions`;
   const init = {
@@ -123,7 +126,7 @@ async function post(params: ChatParams, stream: boolean): Promise<Response> {
       res = await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
     } catch (e) { err = e; }
     if (res?.ok) return res;
-    const retryable = !res || RETRY_STATUS.has(res.status);
+    const retryable = !res || retryStatus(res.status);
     if (!retryable || attempt >= MAX_RETRIES) {
       if (!res) throw new LlmError(`OpenRouter unreachable: ${(err as Error)?.message ?? err}`);
       throw new LlmError(`OpenRouter ${res.status}: ${(await res.text().catch(() => "")).slice(0, 300)}`, res.status);
@@ -136,35 +139,55 @@ async function post(params: ChatParams, stream: boolean): Promise<Response> {
 
 interface WireChoice {
   finish_reason?: string | null;
-  message?: { content?: string | null; refusal?: string | null; tool_calls?: ToolCall[] | null };
+  message?: { content?: string | null; refusal?: string | null; tool_calls?: ToolCall[] | null;
+    reasoning?: string | null; reasoning_details?: unknown[] | null };
 }
 interface WireResponse { model?: string; choices?: WireChoice[]; usage?: UsageLike; error?: { message?: string; code?: number } }
 
 function result(model: string, choice: WireChoice | undefined, usage: UsageLike | undefined, served?: string): ChatResult {
-  const toolCalls = (choice?.message?.tool_calls ?? []).map((c) => ({
-    id: c.id, type: "function" as const, function: { name: c.function.name, arguments: c.function.arguments ?? "" },
+  const toolCalls = (choice?.message?.tool_calls ?? []).map((c, i) => ({
+    id: c.id || `call_${i}`, type: "function" as const, function: { name: c.function.name, arguments: c.function.arguments ?? "" },
   }));
   const text = choice?.message?.content ?? "";
   const refused = !!choice?.message?.refusal;
+  // Reasoning goes back on the assistant message so the model keeps its thread across tool rounds.
+  // OpenRouter's reasoning-tokens guide: pass reasoning_details unmodified, or the plaintext as `reasoning`
+  // ("Preserving reasoning blocks is useful specifically for tool calling"). It names no gpt-oss specifics:
+  // confirm with the live smoke run (issue #5).
+  const details = choice?.message?.reasoning_details;
+  const reasoning = choice?.message?.reasoning;
   return {
-    message: { role: "assistant", content: text || null, ...(toolCalls.length ? { tool_calls: toolCalls } : {}) },
+    message: {
+      role: "assistant", content: text || null, ...(toolCalls.length ? { tool_calls: toolCalls } : {}),
+      ...(details?.length ? { reasoning_details: details } : reasoning ? { reasoning } : {}),
+    },
     text,
     toolCalls,
     finishReason: refused ? "content_filter" : choice?.finish_reason ?? "stop",
     model: served ?? model,
-    usage: usage ?? { prompt_tokens: 0, completion_tokens: 0 },
+    usage,
   };
+}
+
+/** Record the cost; a response without usage is priced pessimistically. A finish_reason "error" throws. */
+function settle(label: string, params: ChatParams, out: ChatResult): ChatResult {
+  if (out.usage) recordUsage(label, params.model, out.usage, out.model);
+  else recordMissingUsage(label, out.model, params.max_tokens ?? DEFAULT_MAX_TOKENS);
+  if (out.finishReason === "error") throw new LlmError(`${label}: the provider ended the response with an error`);
+  return out;
 }
 
 /** Check the budget, send, record the cost. Every model call in agents/ goes through here. */
 export async function send(label: string, params: ChatParams): Promise<ChatResult> {
   assertBudget(label);
   const res = await post(params, false);
-  const json = (await res.json()) as WireResponse;
+  const raw = await res.text();
+  let json: WireResponse;
+  try { json = JSON.parse(raw) as WireResponse; } catch {
+    throw new LlmError(`OpenRouter: response is not JSON (${raw.slice(0, 120)})`, res.status);
+  }
   if (json.error) throw new LlmError(`OpenRouter: ${json.error.message ?? "error"}`, json.error.code);
-  const out = result(params.model, json.choices?.[0], json.usage, json.model);
-  recordUsage(label, params.model, out.usage, out.model);
-  return out;
+  return settle(label, params, result(params.model, json.choices?.[0], json.usage, json.model));
 }
 
 /**
@@ -178,6 +201,7 @@ export async function sendStream(label: string, params: ChatParams, onText: (del
   if (!res.body) throw new LlmError("OpenRouter: empty stream");
   let text = "";
   let refusal = "";
+  let reasoning = "";
   let finish: string | undefined;
   let served: string | undefined;
   let usage: UsageLike | undefined;
@@ -186,7 +210,7 @@ export async function sendStream(label: string, params: ChatParams, onText: (del
   const onEvent = (data: string) => {
     if (data === "[DONE]") return;
     let chunk: WireResponse & { choices?: (WireChoice & { delta?: {
-      content?: string | null; refusal?: string | null;
+      content?: string | null; refusal?: string | null; reasoning?: string | null;
       tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[];
     } })[] };
     try { chunk = JSON.parse(data); } catch { return; }
@@ -198,6 +222,7 @@ export async function sendStream(label: string, params: ChatParams, onText: (del
     const d = c.delta;
     if (d?.content) { text += d.content; onText(d.content); }
     if (d?.refusal) refusal += d.refusal;
+    if (d?.reasoning) reasoning += d.reasoning;
     for (const t of d?.tool_calls ?? []) {
       const slot = (calls[t.index] ??= { id: "", name: "", args: "" });
       if (t.id) slot.id = t.id;
@@ -210,26 +235,32 @@ export async function sendStream(label: string, params: ChatParams, onText: (del
   // Server-sent events: "data: {...}" lines; lines starting with ":" are keep-alive comments.
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
   let buf = "";
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (value) buf += value;
-    let nl: number;
-    while ((nl = buf.indexOf("\n")) >= 0) {
-      const line = buf.slice(0, nl).replace(/\r$/, "");
-      buf = buf.slice(nl + 1);
-      if (line.startsWith("data:")) onEvent(line.slice(5).trim());
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (value) buf += value;
+      let nl: number;
+      while ((nl = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, nl).replace(/\r$/, "");
+        buf = buf.slice(nl + 1);
+        if (line.startsWith("data:")) onEvent(line.slice(5).trim());
+      }
+      if (done) break;
     }
-    if (done) break;
+    if (buf.startsWith("data:")) onEvent(buf.slice(5).trim());
+  } catch (e) {
+    await reader.cancel().catch(() => undefined);   // free the connection
+    throw e;
   }
-  if (buf.startsWith("data:")) onEvent(buf.slice(5).trim());
 
-  const toolCalls = calls.filter(Boolean).map((c) => ({ id: c.id, type: "function" as const, function: { name: c.name, arguments: c.args } }));
-  const out = result(params.model, {
+  // A streamed call without an id (some providers omit it) gets call_<index>, so its tool message matches.
+  const toolCalls = calls.flatMap((c, i) => (c ? [{ id: c.id || `call_${i}`, type: "function" as const,
+    function: { name: c.name, arguments: c.args } }] : []));
+  // Streamed reasoning_details come in fragments; the plaintext `reasoning` is what we send back.
+  return settle(label, params, result(params.model, {
     finish_reason: finish ?? (toolCalls.length ? "tool_calls" : "stop"),
-    message: { content: text, refusal: refusal || null, tool_calls: toolCalls },
-  }, usage, served);
-  recordUsage(label, params.model, out.usage, out.model);
-  return out;
+    message: { content: text, refusal: refusal || null, tool_calls: toolCalls, reasoning: reasoning || null },
+  }, usage, served));
 }
 
 // ── Structured output ─────────────────────────────────────────────────────────────────────────

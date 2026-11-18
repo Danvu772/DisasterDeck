@@ -88,6 +88,13 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
         reply = "I can't help with that one here. If someone is in danger, call 112.";
         break;
       }
+      // Cut off at max_tokens: what came is incomplete (and any tool call in it may be too). Say so,
+      // on screen and in speech, and stop: nothing half-written is run.
+      if (res.finishReason === "length") {
+        input.onText?.(` ${CUT_OFF_NOTE}`);
+        reply = [reply, CUT_OFF_NOTE].filter(Boolean).join(" ");
+        break;
+      }
       const calls = res.toolCalls;
       if (calls.length === 0) break;
 
@@ -198,6 +205,9 @@ function parseArgs(raw: string): Record<string, unknown> | undefined {
     return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined;
   } catch { return undefined; }
 }
+
+/** Added to a reply the model did not finish (finish_reason "length"). */
+export const CUT_OFF_NOTE = "(My answer was cut off before the end. Ask again, or ask for less at once.)";
 
 // gpt-oss reads text only (D-0003): a photo is not sent to the model. The agent is told one came,
 // so it can ask the person to say what it shows.

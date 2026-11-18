@@ -327,13 +327,24 @@ test("LLM-2: no @anthropic-ai/sdk in package.json or any import; no ANTHROPIC_ k
   assert.ok(!/^\s*ANTHROPIC_/m.test(env));
   assert.match(env, /^OPENROUTER_API_KEY=/m);
   assert.match(env, /^OPENROUTER_BASE_URL=https:\/\/us\.openrouter\.ai\/api\/v1$/m);
+  assert.ok(!/anthropic/i.test(readFileSync(join(root, "package-lock.json"), "utf8")), "package-lock.json mentions anthropic");
 });
 
-test("LLM-1: model HTTP calls live only in agents/shared/llm.ts", () => {
+test("LLM-1: no other model host or model SDK anywhere outside agents/shared/llm.ts", () => {
+  const deny = [
+    /https?:\/\/[a-z.]*openrouter\.ai/i, /\/chat\/completions/, /api\.openai\.com/i, /anthropic\.com/i, /api\.groq\.com/i,
+    /api\.together\.(xyz|ai)/i, /api\.mistral\.ai/i, /bedrock-runtime/i, /generativelanguage\.googleapis/i,
+    /from\s+["'](openai|@anthropic-ai\/[^"']*|@ai-sdk\/[^"']*|ai|groq-sdk|together-ai|@mistralai\/[^"']*|@aws-sdk\/client-bedrock[^"']*|@openrouter\/[^"']*)["']/,
+    /require\(["'](openai|@anthropic-ai\/[^"']*|@ai-sdk\/[^"']*|groq-sdk|together-ai|@mistralai\/[^"']*)["']\)/,
+  ];
   for (const f of code) {
     if (f.endsWith(join("agents", "shared", "llm.ts")) || f.endsWith("llm-adapter.test.mjs")) continue;
-    assert.ok(!/https?:\/\/[a-z.]*openrouter\.ai|\/chat\/completions/.test(readFileSync(f, "utf8")), f);
+    const text = readFileSync(f, "utf8");
+    for (const re of deny) assert.ok(!re.test(text), `${f} matches ${re}`);
   }
+  const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
+  for (const d of deps) assert.ok(!/^(openai|@anthropic-ai\/|@ai-sdk\/|ai$|groq-sdk|together-ai|@mistralai\/|@aws-sdk\/client-bedrock|@openrouter\/)/.test(d), d);
 });
 
 test("INV-3: no LLM import in lib/rules/, dispatcher, sweeper or memory keeper", () => {
@@ -342,4 +353,116 @@ test("INV-3: no LLM import in lib/rules/, dispatcher, sweeper or memory keeper",
     join(root, "workers", "dispatcher.ts"), join(root, "workers", "sweeper.ts"), join(root, "workers", "memory-keeper.ts"),
   ];
   for (const f of ruled) assert.ok(!/shared\/llm|@anthropic-ai|openrouter/i.test(readFileSync(f, "utf8")), f);
+});
+
+// ── Evaluation round 1 fixes ──────────────────────────────────────────────────────────────────
+test("prompts: no role prompt tells the agent to search the web while no search tool is defined", async () => {
+  const { systemPrompt } = await import("../agents/personal/prompts.ts");
+  for (const role of ["volunteer", "field", "supplier", "shelter", "coordinator", "public"]) {
+    const hasSearch = toolsFor(ctxFor(role)).some((t) => /search/i.test(t.function.name));
+    if (hasSearch) continue;
+    const p = systemPrompt(role);
+    assert.ok(!/search (the )?(web|internet|online)|web search|look (it )?up online|google/i.test(p), `${role} prompt mentions web search`);
+  }
+  const { systemPrompt: sp } = await import("../agents/personal/prompts.ts");
+  assert.match(sp("supplier"), /no directory/i);
+  assert.match(sp("supplier"), /report_problem/);
+});
+
+test("cost: a response with no usage records a pessimistic estimate (max_tokens at the top output rate) and warns", async (t) => {
+  const warn = t.mock.method(console, "warn", () => {});
+  answers.push(json({ model: "openai/gpt-oss-120b", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "x" } }] }));
+  await llm.send("no-usage", { model: "openai/gpt-oss-120b", max_tokens: 8000, messages: [] });
+  const row = JSON.parse(readFileSync(ledger, "utf8").trim());
+  assert.equal(row.priced, "estimate");
+  assert.equal(row.usd, 8000 * 50 / 1e6);
+  assert.ok(warn.mock.calls.some((c) => /no usage/i.test(String(c.arguments[0]))));
+
+  writeFileSync(ledger, "");
+  answers.push(sse([{ choices: [{ index: 0, delta: { content: "hi" }, finish_reason: "stop" }] }, "data: [DONE]\n\n"]));
+  await llm.sendStream("no-usage-stream", { model: "openai/gpt-oss-120b", max_tokens: 2000, messages: [] }, () => {});
+  const row2 = JSON.parse(readFileSync(ledger, "utf8").trim());
+  assert.equal(row2.priced, "estimate");
+  assert.equal(row2.usd, 2000 * 50 / 1e6);
+  assert.ok(row2.usd > 0);
+});
+
+test("send(): finish_reason error throws LlmError (non-streamed and streamed)", async () => {
+  answers.push(completion({ content: "partial" }, "error"));
+  await assert.rejects(llm.send("t", { model: "m", messages: [] }), llm.LlmError);
+  answers.push(sse([{ choices: [{ index: 0, delta: { content: "par" } }] }, { choices: [{ index: 0, delta: {}, finish_reason: "error" }], usage: { prompt_tokens: 1, completion_tokens: 1, cost: 0 } }]));
+  await assert.rejects(llm.sendStream("t", { model: "m", messages: [] }, () => {}), llm.LlmError);
+});
+
+for (const streamed of [false, true]) {
+  const how = streamed ? "streamed" : "non-streamed";
+  test(`runTurn() ${how}: finish_reason error is a failure, not an answer`, async () => {
+    const { runTurn } = await import("../agents/personal/turn.ts");
+    answers.push(streamed
+      ? sse([{ choices: [{ index: 0, delta: { content: "Half an ans" } }] }, { choices: [{ index: 0, delta: {}, finish_reason: "error" }] }])
+      : completion({ content: "Half an ans" }, "error"));
+    await assert.rejects(runTurn({ userId: "field-alpha", text: "hi", ...(streamed ? { onText: () => {} } : {}) }), llm.LlmError);
+  });
+
+  test(`runTurn() ${how}: a length cut-off is said to be cut off, not saved as complete`, async () => {
+    const { runTurn, CUT_OFF_NOTE } = await import("../agents/personal/turn.ts");
+    const spoken = [];
+    answers.push(streamed
+      ? sse([{ choices: [{ index: 0, delta: { content: "The nearest shelter is" } }] }, { choices: [{ index: 0, delta: {}, finish_reason: "length" }], usage: { prompt_tokens: 1, completion_tokens: 1, cost: 0 } }])
+      : completion({ content: "The nearest shelter is" }, "length"));
+    const r = await runTurn({ userId: "field-alpha", text: "where?", ...(streamed ? { onText: (d) => spoken.push(d) } : {}) });
+    assert.ok(r.reply.endsWith(CUT_OFF_NOTE), r.reply);
+    assert.equal(modelCalls().length, 1, "no further round after a cut-off");
+    if (streamed) assert.ok(spoken.join("").includes(CUT_OFF_NOTE), "the cut-off note is spoken too");
+  });
+}
+
+test("sendStream(): a streamed tool call with no id gets call_<index>", async () => {
+  answers.push(sse([
+    { choices: [{ index: 0, delta: { tool_calls: [{ index: 0, function: { name: "ask_desk", arguments: "{}" } }, { index: 1, function: { name: "ask_desk", arguments: "{}" } }] } }] },
+    { choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }], usage: { prompt_tokens: 1, completion_tokens: 1, cost: 0 } },
+  ]));
+  const r = await llm.sendStream("t", { model: "m", messages: [] }, () => {});
+  assert.deepEqual(r.toolCalls.map((c) => c.id), ["call_0", "call_1"]);
+});
+
+test("send(): retries any 5xx (e.g. 520), 408 and 429; a 200 with a non-JSON body is an LlmError", async () => {
+  answers.push(json({}, 520), json({}, 408), completion({ content: "ok" }));
+  assert.equal((await llm.send("t", { model: "m", messages: [] })).text, "ok");
+  assert.equal(calls.length, 3);
+  answers.push(new Response("<html>gateway</html>", { status: 200 }));
+  await assert.rejects(llm.send("t", { model: "m", messages: [] }), (e) => e instanceof llm.LlmError && /not JSON/.test(e.message));
+});
+
+test("sendStream(): a mid-stream error cancels the reader", async () => {
+  let cancelled = false;
+  const enc = new TextEncoder();
+  const body = new ReadableStream({
+    start(c) {
+      c.enqueue(enc.encode(`data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: "a" } }] })}\n\n`));
+      c.enqueue(enc.encode(`data: ${JSON.stringify({ error: { message: "provider died", code: 502 } })}\n\n`));
+    },
+    cancel() { cancelled = true; },
+  });
+  answers.push(new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } }));
+  await assert.rejects(llm.sendStream("t", { model: "m", messages: [] }, () => {}), /provider died/);
+  await new Promise((r) => setTimeout(r, 10));
+  assert.equal(cancelled, true);
+});
+
+test("reasoning is sent back between tool rounds: reasoning_details (non-streamed), reasoning text (streamed)", async () => {
+  const details = [{ type: "reasoning.text", text: "think", format: "unknown", index: 0 }];
+  answers.push(completion({ content: null, reasoning: "think", reasoning_details: details,
+    tool_calls: [{ id: "c1", type: "function", function: { name: "ask_desk", arguments: "{}" } }] }, "tool_calls"));
+  const r = await llm.send("t", { model: "m", messages: [] });
+  assert.deepEqual(r.message.reasoning_details, details);
+
+  answers.push(sse([
+    { choices: [{ index: 0, delta: { reasoning: "thi" } }] },
+    { choices: [{ index: 0, delta: { reasoning: "nk", tool_calls: [{ index: 0, id: "c1", function: { name: "ask_desk", arguments: "{}" } }] } }] },
+    { choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }], usage: { prompt_tokens: 1, completion_tokens: 1, cost: 0 } },
+  ]));
+  const s = await llm.sendStream("t", { model: "m", messages: [] }, () => {});
+  assert.equal(s.message.reasoning, "think");
+  assert.equal(s.message.reasoning_details, undefined);
 });
