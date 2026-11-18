@@ -299,6 +299,49 @@ test("runTurn(): a photo is described into text by the vision model first, and t
   assert.ok(!chat.body.messages.at(-1).content.includes("iVBORw0KGgo"), "the chat model gets text, not the image bytes");
 });
 
+test("PHO-1: a filed event from a photo turn carries the vision description and the photoUrl (server attaches it, not the model)", async () => {
+  const { runTurn } = await import("../agents/personal/turn.ts");
+  const description = "A collapsed wall with two people nearby.";
+  answers.push(json({ id: "gen-v", model: "nvidia/nemotron-3.5-super-vl", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(completion({ content: null, tool_calls: [{ id: "call_fr", type: "function", function: { name: "file_report", arguments: JSON.stringify({ kind: "trapped", text: description, text_en: description, address: null, region: null, people_count: 2, site_id: null }) } }] }, "tool_calls"));
+  answers.push(completion({ content: "Filed it." }));
+  const r = await runTurn({ userId: "field-alpha", text: "look at this", image: { mediaType: "image/png", base64: "iVBORw0KGgo=" } });
+  // The chat model never sees or supplies the raw bytes: its prompt carries only the description.
+  const chat = modelCalls()[1];
+  assert.ok(!JSON.stringify(chat.body).includes("iVBORw0KGgo"), "the chat model gets text, not the image bytes");
+  // What the agent filed carries both the description (as text the agent wrote) and the photo.
+  const filed = globalThis.__deskStore.events.filter((e) => r.eventIds.includes(e._id));
+  const report = filed.find((e) => e.type === "report");
+  assert.ok(report, `filed a report, got ${filed.map((e) => e.type).join(", ") || "nothing"}`);
+  assert.ok(report.payload.text.includes(description), "the event carries the vision description as text");
+  assert.equal(report.payload.photoUrl, "data:image/png;base64,iVBORw0KGgo=", "the server attaches the photo as a data URL");
+});
+
+test("PHO-1: report_problem (incident) carries the photoUrl the turn attached", async () => {
+  const { runTurn } = await import("../agents/personal/turn.ts");
+  const description = "A van tipped over on the road, the driver is hurt.";
+  answers.push(json({ id: "gen-v", model: "nvidia/nemotron-3.5-super-vl", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(completion({ content: null, tool_calls: [{ id: "call_rp", type: "function", function: { name: "report_problem", arguments: JSON.stringify({ kind: "injury", text: description, text_en: description, task_id: null, can_continue: false, can_deliver: null, resolved: false, incident_id: null }) } }] }, "tool_calls"));
+  answers.push(completion({ content: "Filed it." }));
+  const r = await runTurn({ userId: "field-alpha", text: "van crash", image: { mediaType: "image/webp", base64: "UklGRgAA" } });
+  const incident = globalThis.__deskStore.events.filter((e) => r.eventIds.includes(e._id)).find((e) => e.type === "incident");
+  assert.ok(incident, "an incident event was filed");
+  assert.ok(incident.payload.text.includes(description), "the incident carries the vision description as text");
+  assert.equal(incident.payload.photoUrl, "data:image/webp;base64,UklGRgAA", "incident carries the photoUrl");
+});
+
+test("PHO-1: file_capacity carries the photoUrl the turn attached", async () => {
+  const { runTurn } = await import("../agents/personal/turn.ts");
+  const description = "The hall is full, every mat has two people on it.";
+  answers.push(json({ id: "gen-v", model: "nvidia/nemotron-3.5-super-vl", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(completion({ content: null, tool_calls: [{ id: "call_fc", type: "function", function: { name: "file_capacity", arguments: JSON.stringify({ shelter: "Mosque Hall", beds_used: 120, beds_total: 80 }) } }] }, "tool_calls"));
+  answers.push(completion({ content: "Filed it." }));
+  const r = await runTurn({ userId: "shelter-b-staff", text: "whiteboard", image: { mediaType: "image/jpeg", base64: "/9j/AAAA" } });
+  const capacity = globalThis.__deskStore.events.filter((e) => r.eventIds.includes(e._id)).find((e) => e.type === "capacity");
+  assert.ok(capacity, "a capacity event was filed");
+  assert.equal(capacity.payload.photoUrl, "data:image/jpeg;base64,/9j/AAAA", "capacity carries the photoUrl");
+});
+
 test("summary: the shift handoff goes to gpt-oss-120b at medium effort", async () => {
   const { writeHandoff } = await import("../agents/personal/handoff.ts");
   answers.push(completion({ content: "1. Nothing on the desk." }));

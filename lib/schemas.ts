@@ -33,6 +33,7 @@ export const reportPayload = z.object({
   address: text.optional(), coords: latLng.optional(), region: id.optional(),
   peopleCount: count.optional(), phoneMasked: z.string().max(40).optional(), siteId: id.optional(),
   hazard: z.string().min(1).max(500).optional(),
+  photoUrl: z.url().max(2000).optional(),
 }) satisfies z.ZodType<ReportPayload>;
 
 export const needPayload = z.object({
@@ -73,6 +74,7 @@ export const incidentPayload = z.object({
   incidentId: id.optional(), kind: z.enum(incidentKinds),
   text, textEn: text, taskId: id.optional(), canContinue: z.boolean(),
   coords: latLng.optional(), canDeliver: count.optional(), resolved: z.boolean().optional(),
+  photoUrl: z.url().max(2000).optional(),
 }) satisfies z.ZodType<IncidentPayload>;
 
 export const claimPayload = z.object({

@@ -13,7 +13,7 @@ import { checkSchema, describeImage, modelFor, send, sendStream, type ChatMessag
 import { maskPhones } from "../shared/privacy";
 import { stashPending, takePending, type PendingCall } from "./pending";
 import { systemPrompt } from "./prompts";
-import { holdWrites, runTool, toolSchema, toolsFor, type ToolOutcome } from "./tools";
+import { attachPhoto, holdWrites, runTool, toolSchema, toolsFor, type ToolOutcome } from "./tools";
 import { contactsForIncident, contactsLine } from "@/lib/contacts";
 import type { IncidentKind } from "@/lib/types";
 
@@ -53,6 +53,9 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
 
   const { model, effort } = modelFor("chat");
   if (input.confirm) holdWrites(ctx);
+  // D-0016: the photo the person attached rides onto whatever event the agent files this turn.
+  // It is a data URL here; the model only ever sees the vision model's text description of it.
+  if (input.image) attachPhoto(ctx, `data:${input.image.mediaType};base64,${input.image.base64}`);
   const held: (PendingCall & { summary: string })[] = [];
   const tools = toolsFor(ctx);
   // Aftershocks near this person (scenario clock during a replay). Plain code, no model call.

@@ -203,6 +203,12 @@ export interface ToolOutcome { content: string; eventId?: string; isError?: bool
 // show_map calls per turn: a turn builds one context, so this caps the map at 1 per turn.
 const mapCalls = new WeakMap<UserContext, number>();
 
+// The photo the person attached this turn, as a data URL. The turn sets it before the tools run,
+// and the filing tools copy it onto the event they post. The model never sees or supplies the bytes:
+// it works from the vision model's text description (D-0016).
+const photoOf = new WeakMap<UserContext, string>();
+export function attachPhoto(ctx: UserContext, url: string): void { photoOf.set(ctx, url); }
+
 class ToolInputError extends Error {}
 
 // Writes held for the person's OK (the /talk screen asks "send this?"). A held tool call runs all its
@@ -278,7 +284,8 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       const p: ReportPayload = { kind: i.kind as ReportPayload["kind"], text: needId(masked(i.text), "text"),
         textEn: masked(i.text_en) ?? "", address: s(i.address), region: s(i.region) ?? u.region,
         peopleCount: n(i.people_count),
-        siteId: u.role !== "public" && siteId && ctx.records.sites.some((x) => x._id === siteId) ? siteId : undefined };
+        siteId: u.role !== "public" && siteId && ctx.records.sites.some((x) => x._id === siteId) ? siteId : undefined,
+        photoUrl: photoOf.get(ctx) };
       return post(ctx, "report", p, `Report: ${p.kind}${p.address ? ` at ${p.address}` : ""}`);
     }
 
@@ -291,7 +298,8 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
     case "file_capacity": {
       const used = needId(n(i.beds_used), "beds_used"), total = needId(n(i.beds_total), "beds_total");
       if (used < 0 || total <= 0) throw new ToolInputError("beds_used must be ≥ 0 and beds_total > 0.");
-      const p: CapacityPayload = { shelter: needId(s(i.shelter), "shelter"), bedsUsed: used, bedsTotal: total };
+      const p: CapacityPayload = { shelter: needId(s(i.shelter), "shelter"), bedsUsed: used, bedsTotal: total,
+        photoUrl: photoOf.get(ctx) };
       return post(ctx, "capacity", p, `Shelter ${p.shelter}: ${used}/${total}`);
     }
 
@@ -316,7 +324,8 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       const p: IncidentPayload = { kind: i.kind as IncidentKind, text: needId(masked(i.text), "text"),
         textEn: masked(i.text_en) ?? "", taskId: forTask,
         canContinue: i.can_continue === true, coords: u.coords, canDeliver: n(i.can_deliver),
-        resolved: i.resolved === true ? true : undefined, incidentId };
+        resolved: i.resolved === true ? true : undefined, incidentId,
+        photoUrl: photoOf.get(ctx) };
       return post(ctx, "incident", p, p.resolved ? `Problem ${incidentId} resolved` : `Problem: ${p.kind}${p.taskId ? ` on task ${p.taskId}` : ""}`);
     }
 
