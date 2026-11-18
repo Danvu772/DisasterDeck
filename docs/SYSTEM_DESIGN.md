@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 3.1, 17 Nov 2026 (v3 plus D-0009 to D-0015: every open call decided) |
+| Version | 3.2, 18 Nov 2026 (v3.1 plus D-0016 photos and D-0017 synthetic sources) |
 | Status | **Locked.** v3 merged 17 Nov (#2). Dan is the only voter |
 | Owner | Dan Vu. He owns the fork and decides alone |
 | Replaces | Multiplayer Disaster Deck v2 (14 Nov) |
@@ -19,7 +19,7 @@ Everyone talks only to their own agent. Agents never talk to each other. Every f
 
 ```mermaid
 flowchart LR
-    IN["Inputs<br/>official feeds, sheet,<br/>social archive, people"] --> RES["Research agents<br/>+ watchers"]
+    IN["Synthetic sources<br/>X, Instagram, Facebook, AP"] --> RES["Demo player"]
     RES -- events --> Q[["Event queue"]]
     PEOPLE["People<br/>personal agent, buttons,<br/>board"] -- events --> Q
     Q --> BRAIN["Brain, one loop<br/>keeper → dispatcher<br/>sweeper on a timer"]
@@ -44,19 +44,17 @@ flowchart LR
 
 Status: **built** = works as designed in v2. **changed** = built, but differs from v2. **not built** = designed in v2, missing from the code. **added** = built, but not in v2. **Target** is where the redesign takes it (§6).
 
-### 3.1 Inputs and research agents
+### 3.1 Inputs
 
-| Component | Code | Status | Today | Target |
-|---|---|---|---|---|
-| X agent | `workers/x-agent.ts`, `agents/research/x-extract.ts` | changed | Replays the 43-post real archive (`data/replays/`) or the synthetic file. No live search | Optional feed with a written agency policy. Archive replay for demos |
-| News agent | `workers/news-agent.ts`, `agents/research/news-search.ts` | changed | Claude web search tool (not Exa), `news` and `official` channels | Official feeds only: NWS, FEMA, USGS, agency announcements. Open-web search later behind a port (D-0009) |
-| Sheet sync | `workers/sheet-sync.ts` | built | Two-way shelter sheet, no LLM, never overwrites a row a person changed in the last 5 min | Keep as an integration, not a dependency |
-| Satellite watcher | `workers/satellite-watcher.ts` | built | Cached NASA Black Marble + POWER → silent-zone and cold `alert` events | Keep |
-| Quake watcher | `workers/quake-watcher.ts` | added | Replays the USGS catalog, posts aftershock warnings | Keep. Add NOAA/NWS and OpenFEMA feeds. Owner needed (upstream #17) |
-| Scenario player, synthetic feed | `workers/scenario-player.ts`, `workers/synthetic-feed.ts` | added | Demo cues sent through the real event API | Demo and tabletop exercises only |
-| Instagram, Facebook, Reddit agents | — | not built | APIs closed (FB Groups API removed 2024, Reddit blocks the crawler) | Cut |
-| Photo agent (shelter whiteboard photos) | — | not built | — | Deferred (D-0012). The general photo path is a vision-model describe-to-text (D-0016) |
-| Evacuation planner | — | not built | The keeper accepts and stores a `plan` event and the coordinator can approve it, but nothing creates one | Deferred. The `plan` path stays (D-0011) |
+Rebuilt from scratch by D-0017. Everything that fed the queue before (X agent, news agent, quake and satellite watchers, sheet sync, scenario player, synthetic feed, `agents/research/`, their data files and the screen fixture fallbacks) is deleted. For this phase every input is synthetic.
+
+| Component | Code | Status | What it does |
+|---|---|---|---|
+| Synthetic sources | `data/scenarios/antakya-demo/{x,instagram,facebook,ap}.jsonl` | not built | One track per source, shaped like the real platform. Each line is a `POST /api/events` body at a scenario time. Posts arrive already extracted; no LLM below the queue |
+| Cast | `data/scenarios/antakya-demo/cast.jsonl` | not built | Scripted taps by the seeded people (accept, on the way, done, problem, approve), only on a `demo: true` desk. A signed-in person takes over by acting first |
+| Beats | `data/scenarios/antakya-demo/beats.json`, `docs/demo-scenario.md` | not built | 24 beats, each with the board state it must produce. Also the CI test |
+| Demo player | `workers/player.ts` | not built | Started by a signed-in person. Wipes the desk, reseeds users, posts due lines through `POST /api/events`, keeps the desk clock in `meta` |
+| Real connectors | — | later | One per source, emitting the same bodies as its synthetic track. Live mode returns with the first one |
 
 ### 3.2 Queue and Brain
 
@@ -68,7 +66,7 @@ Status: **built** = works as designed in v2. **changed** = built, but differs fr
 | Memory keeper | `workers/memory-keeper.ts` | built | Handles all 11 event types (`HANDLED`) |
 | Dispatcher | `workers/dispatcher.ts`, `lib/rules/` | built | Tier, score, `pickPerson()`, approvals, `one_open_task` unique index |
 | Help desk playbook | `lib/rules/incidents.ts` | built | One rule per incident kind (§5.4) |
-| Sweeper | `workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts |
+| Sweeper | `workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts. Target: timers read `deskNow(deskId)` (D-0017) |
 
 ### 3.3 People, agents and screens
 
@@ -91,7 +89,7 @@ The TypeScript in `lib/types.ts` and the runtime checks in `lib/schemas.ts` are 
 
 ### 4.1 Events
 
-`postEvent()` is the only way in. Types: `report`, `need`, `closure`, `capacity`, `answer`, `approval`, `alert`, `incident`, `claim`, `correction`, `plan`. Sources: `x`, `news`, `sheet`, `nasa`, `person`, `system` (and whatever new feeds add). Status: `pending → working → done | merged | rejected | failed`.
+`postEvent()` is the only way in. Types: `report`, `need`, `closure`, `capacity`, `answer`, `approval`, `alert`, `incident`, `claim`, `correction`, `plan`. Sources in use: `x`, `instagram`, `facebook`, `news` (AP), `person`, `system`. An event may carry an `origin` block (`postId`, `author`, `kind`, `url`, `metrics`, `media`, `slug`, `urgency`) saying where a post came from; rules never read it (D-0017). Status: `pending → working → done | merged | rejected | failed`.
 
 ### 4.2 Collections and their only writer
 
@@ -101,7 +99,7 @@ The TypeScript in `lib/types.ts` and the runtime checks in `lib/schemas.ts` are 
 | `sites`, `needs`, `roads`, `shelters`, `zones`, `incidents` | Memory keeper |
 | `tasks`, `inbox` | Dispatcher (playbook and sweeper are part of it) |
 | `users`, `messages` | The app's API (login, heartbeat, chat). Chat memory folds `messages` |
-| `meta` | Brain (lease, desk version, loop time) |
+| `meta` | Brain (lease, desk version, loop time). Demo player, only its `demo:<deskId>` documents (D-0017) |
 
 Every document carries `deskId`. Every record keeps a `history` (who, when, source, reason).
 
@@ -112,6 +110,7 @@ Every document carries `deskId`. Every record keeps a `history` (who, when, sour
 | `POST /api/events` | Signed-in person (as themselves, source `person`) or a worker with `x-agent-key` |
 | `GET /api/board`, `/api/inbox`, `/api/users`, `/api/events?since=` | Signed-in person by role, or agent key |
 | `POST /api/chat`, `GET /api/chat/token` | Signed-in person |
+| `POST /api/desk/demo` | Any signed-in person: start, pause, resume or stop the demo. Refused unless the desk is `demo: true` (D-0017) |
 | `GET /api/health` | Open, counts only |
 | `/api/docs`, `/api/openapi.json` | Open spec (`lib/openapi.ts`) |
 
@@ -154,7 +153,7 @@ Copies don't count. Satellite data only raises a score. A coordinator can pin or
 
 | Reporter | Need starts as |
 |---|---|
-| `official` or `vetted` | `open` |
+| `official` or `vetted` (AP wire copy is vetted, D-0017) | `open` |
 | `public`, no danger to life | `proposed`. Opens at 3 distinct reporters or one trusted confirmation |
 | Anyone, danger to life | Never waits: a call task to verify goes out at once |
 
@@ -203,6 +202,7 @@ Decided by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reaso
 | 14 | Observability | CloudTrail, CloudWatch, app audit log in MongoDB | Health scripts | [D-0014](decisions/0014-observability-audit.md) |
 | 15 | CI to AWS | GitHub Actions with OIDC, Secrets Manager, deploy by tag | Tailscale + rsync | [D-0015](decisions/0015-ci-github-oidc.md) |
 | 16 | Photos | A vision model describes each photo into text behind the same port, the description rides with the attachment | text-only gpt-oss (photos unreachable) | [D-0016](decisions/0016-photos-option2.md) |
+| 17 | Inputs | Everything below the queue rebuilt: four synthetic sources, one demo scenario with tested beats, one player. Real connectors later, one per source | Seven input workers, research agents, screen fixtures | [D-0017](decisions/0017-synthetic-sources-demo-scenario.md) |
 
 **First pilot:** an IU Emergency Management tabletop exercise (no real data, so no compliance paperwork). Monroe County and Maui are on hold.
 
@@ -236,6 +236,7 @@ None. The seven calls left open in v3 were decided on 17 Nov as D-0009 to D-0015
 - Rate limits are in memory per process. The Mongo-backed checks don't run in CI.
 - `agent_fidelity` and `triage_order` have no ground truth (upstream #28).
 - Personal agents read a cached board, so they can be one event behind.
+- Every input is synthetic (D-0017). No live source, no LLM extraction of raw posts, no satellite or quake alerts until real connectors return.
 
 ## 10. Upstream issues this design settles
 
