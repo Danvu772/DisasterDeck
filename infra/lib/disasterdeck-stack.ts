@@ -84,6 +84,14 @@ export class DisasterDeckStack extends Stack {
       `arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret:disasterdeck/openrouter/api-key`,
     );
 
+    // Web-only secrets: Auth.js session secret and the SSOJet OIDC client. The Brain never reads them.
+    const secretArn = (name: string) =>
+      `arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret:${name}`;
+    const authSecret = secretsmanager.Secret.fromSecretPartialArn(this, "AuthSecret", secretArn("disasterdeck/auth/secret"));
+    const ssojetClientId = secretsmanager.Secret.fromSecretPartialArn(this, "SsojetClientId", secretArn("disasterdeck/ssojet/client-id"));
+    const ssojetClientSecret = secretsmanager.Secret.fromSecretPartialArn(this, "SsojetClientSecret", secretArn("disasterdeck/ssojet/client-secret"));
+    const ssojetIssuerUrl = secretsmanager.Secret.fromSecretPartialArn(this, "SsojetIssuerUrl", secretArn("disasterdeck/ssojet/issuer-url"));
+
     // ----- Container image (built and pushed by #7's GitHub Actions) -----
     const repo = new ecr.Repository(this, "Repo", {
       repositoryName: "disasterdeck",
@@ -117,12 +125,13 @@ export class DisasterDeckStack extends Stack {
 
     const cluster = new ecs.Cluster(this, "Cluster", { vpc });
 
-    // One shared execution role (pulls the ECR image, reads the two secrets).
+    // One shared execution role (pulls the ECR image, reads the runtime secrets).
     const executionRole = new iam.Role(this, "ExecutionRole", {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
     });
     mongoUri.grantRead(executionRole);
     openRouterKey.grantRead(executionRole);
+    for (const s of [authSecret, ssojetClientId, ssojetClientSecret, ssojetIssuerUrl]) s.grantRead(executionRole);
 
     const webLogs = new logs.LogGroup(this, "WebLogs", {
       retention: logs.RetentionDays.TWO_WEEKS,
@@ -146,6 +155,10 @@ export class DisasterDeckStack extends Stack {
     });
     webContainer.addSecret("MONGODB_URI", ecs.Secret.fromSecretsManager(mongoUri));
     webContainer.addSecret("OPENROUTER_API_KEY", ecs.Secret.fromSecretsManager(openRouterKey));
+    webContainer.addSecret("AUTH_SECRET", ecs.Secret.fromSecretsManager(authSecret));
+    webContainer.addSecret("SSOJET_CLIENT_ID", ecs.Secret.fromSecretsManager(ssojetClientId));
+    webContainer.addSecret("SSOJET_CLIENT_SECRET", ecs.Secret.fromSecretsManager(ssojetClientSecret));
+    webContainer.addSecret("SSOJET_ISSUER_URL", ecs.Secret.fromSecretsManager(ssojetIssuerUrl));
 
     const webSg = new ec2.SecurityGroup(this, "WebSg", {
       vpc,
@@ -160,8 +173,8 @@ export class DisasterDeckStack extends Stack {
       securityGroups: [webSg],
       // A deploy whose tasks never pass the ALB health check on /login rolls back automatically:
       // ECS's circuit breaker stops the rollout and reverts to the previous, healthy revision
-      // (CD-2). The workflow pushes a new image and wait services-stable; it does not roll back
-      // itself.
+      // (CD-2). The workflow pushes a new image and waits for services-stable; it does not roll
+      // back itself.
       circuitBreaker: { rollback: true },
     });
 
@@ -211,17 +224,25 @@ export class DisasterDeckStack extends Stack {
 
     // ----- Deploy role permissions: push the image and roll out both services -----
     repo.grantPullPush(deployRole);
+    // Read-only describes stay on *. The write (UpdateService) is pinned to the two services, and
+    // ListTasks/DescribeTasks to this cluster.
     deployRole.addToPrincipalPolicy(
       new iam.PolicyStatement({
-        actions: [
-          "cloudformation:DescribeStacks",
-          "ecs:DescribeClusters",
-          "ecs:DescribeServices",
-          "ecs:DescribeTasks",
-          "ecs:ListTasks",
-          "ecs:UpdateService",
-        ],
+        actions: ["cloudformation:DescribeStacks", "ecs:DescribeServices", "ecs:DescribeClusters"],
         resources: ["*"],
+      }),
+    );
+    deployRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ["ecs:UpdateService"],
+        resources: [webService.serviceArn, brainService.serviceArn],
+      }),
+    );
+    deployRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ["ecs:ListTasks", "ecs:DescribeTasks"],
+        resources: ["*"],
+        conditions: { ArnEquals: { "ecs:cluster": cluster.clusterArn } },
       }),
     );
 

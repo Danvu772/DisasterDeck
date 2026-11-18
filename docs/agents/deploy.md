@@ -31,15 +31,19 @@ rolls back on task-start failure the same way.
 ## Secrets
 
 No secrets live in the repo or in GitHub. The deploy role is assumed via OIDC from `vars`, and every
-runtime secret (`MONGODB_URI`, `OPENROUTER_API_KEY`, `AUTH_SECRET`) is injected into the task by ECS
-from AWS Secrets Manager. The build uses a placeholder `AUTH_SECRET` (as `ci.yml` does); the real one
-arrives at run time.
+runtime secret is injected into the task by ECS from AWS Secrets Manager: the web task gets
+`MONGODB_URI`, `OPENROUTER_API_KEY`, `AUTH_SECRET`, `SSOJET_CLIENT_ID`, `SSOJET_CLIENT_SECRET` and
+`SSOJET_ISSUER_URL`, the Brain gets the first two. The Secrets Manager names are
+`disasterdeck/mongo/uri`, `disasterdeck/openrouter/api-key`, `disasterdeck/auth/secret`,
+`disasterdeck/ssojet/client-id`, `disasterdeck/ssojet/client-secret` and `disasterdeck/ssojet/issuer-url`,
+and they must exist before `cdk deploy`. The image never contains `AUTH_SECRET`: `next build` gets a
+placeholder set inline on that one `RUN`, not an `ENV`. `npm run check:deploy` fails if any of this regresses.
 
 GitHub Actions `vars` the orchestrator set once after `cdk deploy` (these are not secrets):
 
-- `AWS_DEPLOY_ROLE_ARN` — the OIDC-trusted deploy role ARN.
-- `AWS_REGION` — e.g. `us-east-2`.
-- `AWS_STACK_NAME` — e.g. `DisasterDeckStack`.
+- `AWS_DEPLOY_ROLE_ARN`: the OIDC-trusted deploy role ARN.
+- `AWS_REGION`: e.g. `us-east-2`.
+- `AWS_STACK_NAME`: e.g. `DisasterDeckStack`.
 
 The UX ("runtime env.file") concept that Vultr used (`/etc/desk/env.local`, `npm run env:push`) is
 gone. Server values live in Secrets Manager.

@@ -334,7 +334,7 @@ test("LLM-2: no @anthropic-ai/sdk in package.json or any import; no ANTHROPIC_ k
   assert.match(env, /^OPENROUTER_BASE_URL=https:\/\/us\.openrouter\.ai\/api\/v1$/m);
   assert.ok(!/anthropic/i.test(readFileSync(join(root, "package-lock.json"), "utf8")), "package-lock.json mentions anthropic");
   // ...and no code, script or deploy file reads an ANTHROPIC_ variable.
-  const deploy = readdirSync(join(root, "deploy"), { recursive: true }).map((n) => join(root, "deploy", String(n))).filter((p) => /\.(sh|mjs|js|ts|ya?ml)$/.test(p));
+  const deploy = !existsSync(join(root, "deploy")) ? [] : readdirSync(join(root, "deploy"), { recursive: true }).map((n) => join(root, "deploy", String(n))).filter((p) => /\.(sh|mjs|js|ts|ya?ml)$/.test(p));
   for (const f of [...code, ...deploy, join(root, ".github", "workflows", "ci.yml"), join(root, ".github", "workflows", "deploy.yml")].filter((f) => existsSync(f))) {
     if (f.endsWith("llm-adapter.test.mjs")) continue;
     assert.ok(!/ANTHROPIC_/.test(readFileSync(f, "utf8")), `${f} reads an ANTHROPIC_ variable`);
