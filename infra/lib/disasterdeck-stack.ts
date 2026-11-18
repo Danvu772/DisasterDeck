@@ -67,6 +67,9 @@ export class DisasterDeckStack extends Stack {
     super(scope, id, props);
     const IMAGE_TAG = String(this.node.tryGetContext("imageTag") ?? DEFAULT_IMAGE_TAG);
     if (IMAGE_TAG === "latest") throw new Error("imageTag must be immutable, not latest");
+    // First install: the bootstrap image is not in ECR yet, so the services start empty (desired 0)
+    // and the first tagged deploy workflow sets web 2 / Brain 1 with the first real revision.
+    const firstInstall = IMAGE_TAG === DEFAULT_IMAGE_TAG || String(this.node.tryGetContext("firstInstall")) === "true";
 
     // ----- VPC: two AZs, one public tier (ALB) + one private tier (Fargate) -----
     const vpc = new ec2.Vpc(this, "Vpc", {
@@ -174,7 +177,7 @@ export class DisasterDeckStack extends Stack {
     const webService = new ecs.FargateService(this, "WebService", {
       cluster,
       taskDefinition: webTask,
-      desiredCount: 2,
+      desiredCount: firstInstall ? 0 : 2,
       assignPublicIp: false,
       securityGroups: [webSg],
       // A deploy whose tasks never pass the ALB health check on /login rolls back automatically:
@@ -205,7 +208,7 @@ export class DisasterDeckStack extends Stack {
     const brainService = new ecs.FargateService(this, "BrainService", {
       cluster,
       taskDefinition: brainTask,
-      desiredCount: 1,
+      desiredCount: firstInstall ? 0 : 1, // the Brain is never above 1: one per database
       assignPublicIp: false,
       securityGroups: [new ec2.SecurityGroup(this, "BrainSg", { vpc, allowAllOutbound: true, description: "Brain worker" })],
       // Roll back a deploy whose tasks never reach RUNNING (no ALB here, so no /login signal;

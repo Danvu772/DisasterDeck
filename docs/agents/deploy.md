@@ -50,10 +50,15 @@ carry over from whatever CDK last wrote.
 The hazard: a `cdk deploy` that changes a task definition makes CloudFormation register a revision
 with CDK's tag and move the service to it. Run those with `-c imageTag=<sha currently live>` (the
 image in the service's active task definition), or the service drops back to `bootstrap`. A
-`cdk deploy` that leaves the task definitions alone does not touch the running revision. First
-install: the `bootstrap` image does not exist yet, so deploy the stack, push the first tag, and the
-workflow's revision brings the services up. The deploy role may register revisions and pass only the
-execution and task roles to ECS tasks (`iam:PassRole`), nothing broader.
+`cdk deploy` that leaves the task definitions alone does not touch the running revision.
+
+First install: with the default `imageTag` (`bootstrap`), or `-c firstInstall=true`, both services
+are created with `desiredCount` 0, because the `bootstrap` image is not in ECR. Run `cdk deploy`,
+set the Actions vars, then push the first `v*` tag. That run's deploy steps register the first real
+revisions and set the desired counts (web 2, Brain 1; the Brain is never above 1). Later cdk deploys
+should pass `-c imageTag=<live sha>` so the template says web 2 / Brain 1 too. `npm run check:deploy`
+asserts both synths. The deploy role may register revisions and pass only the execution and task
+roles to ECS tasks (`iam:PassRole`, ecs-tasks only), nothing broader.
 
 ## Secrets
 

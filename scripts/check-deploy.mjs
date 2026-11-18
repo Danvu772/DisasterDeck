@@ -64,6 +64,7 @@ export function audit({ workflow, dockerfile, template, allWorkflows = workflow 
   else {
     if (!/fetch-depth:\s*0\b/.test(steps[co])) errors.push("deploy.yml checkout is not fetch-depth: 0 (the main ancestry check needs history)");
     const g = steps[co + 1] ?? "";
+    if (/\|\|\s*true|continue-on-error/.test(g)) errors.push("the tag-on-main guard can fail open (|| true or continue-on-error)");
     if (!/git merge-base --is-ancestor\s+"?\$\{?GITHUB_SHA\}?"?\s+origin\/main/.test(g)) errors.push("the first step after checkout is not the tag-on-main guard (git merge-base --is-ancestor $GITHUB_SHA origin/main)");
   }
   if (!/docker push\s+"\$IMAGE:\$GITHUB_SHA"/.test(workflow)) errors.push("deploy.yml does not push the image tagged with $GITHUB_SHA");
@@ -74,8 +75,13 @@ export function audit({ workflow, dockerfile, template, allWorkflows = workflow 
     else if (!/image:[^\n]*github\.sha/.test(render) || /image:[^\n]*latest/.test(render)) errors.push(`the ${c} task definition image is not pinned to \${{ github.sha }}`);
     const dep = steps.find((x) => /amazon-ecs-deploy-task-definition@/.test(x) && x.includes(`steps.render-${c}.outputs.task-definition`));
     if (!dep) errors.push(`deploy.yml does not register and deploy the rendered ${c} task definition (amazon-ecs-deploy-task-definition)`);
-    else if (!/wait-for-service-stability:\s*true/.test(dep)) errors.push(`deploy of ${c} does not wait for service stability`);
+    else if (!dep.includes(`service: \${{ steps.stack.outputs.${c} }}`)) errors.push(`the ${c} task definition is deployed to the wrong service`);
+    if (dep && !/wait-for-service-stability:\s*true/.test(dep)) errors.push(`deploy of ${c} does not wait for service stability`);
   }
+  if (/continue-on-error/.test(workflow)) errors.push("deploy.yml uses continue-on-error, a failed step must fail the run");
+  if (/wait-for-minutes:\s*0\b/.test(workflow)) errors.push("deploy.yml sets wait-for-minutes: 0 (no stability wait)");
+  if (!/desired-count:\s*2\b/.test(steps.find((x) => x.includes("steps.render-web.outputs") && /deploy-task-definition@/.test(x)) ?? "")) errors.push("web deploy does not set desired-count: 2");
+  if (!/desired-count:\s*1\s*$/m.test(steps.find((x) => x.includes("steps.render-brain.outputs") && /deploy-task-definition@/.test(x)) ?? "")) errors.push("Brain deploy does not set desired-count: 1 (Brain is never above 1)");
   if (/force-new-deployment/.test(workflow)) errors.push("deploy.yml uses --force-new-deployment (rolls back to the same task definition)");
 
   // --- Dockerfile ---
@@ -122,6 +128,18 @@ export function audit({ workflow, dockerfile, template, allWorkflows = workflow 
         }
       }
     }
+    const sts = ofType("AWS::IAM::Policy").filter(([, pol]) => JSON.stringify(pol.Properties.Roles ?? []).includes(`"${rid}"`)).flatMap(([, pol]) => [pol.Properties.PolicyDocument?.Statement ?? []].flat());
+    const withAction = (a) => sts.filter((st) => [st.Action ?? []].flat().includes(a));
+    const star = (st) => [st.Resource ?? []].flat().some((x) => x === "*");
+    const pass = withAction("iam:PassRole");
+    if (!pass.length) errors.push("deploy role has no iam:PassRole statement");
+    for (const st of pass) {
+      if (star(st)) errors.push("deploy role iam:PassRole is on Resource *");
+      if (st.Condition?.StringEquals?.["iam:PassedToService"] !== "ecs-tasks.amazonaws.com") errors.push("deploy role iam:PassRole lacks the iam:PassedToService ecs-tasks.amazonaws.com condition");
+    }
+    const upd = withAction("ecs:UpdateService");
+    if (!upd.length || upd.some(star)) errors.push("deploy role ecs:UpdateService is missing or on Resource *");
+    if (!withAction("ecs:RegisterTaskDefinition").length) errors.push("deploy role has no ecs:RegisterTaskDefinition statement");
     if ((r.Properties.ManagedPolicyArns ?? []).length) errors.push(`deploy role ${id} attaches managed policies; grant scoped statements instead`);
     for (const sub of subs) {
       if (!(typeof sub === "string" && sub.startsWith(REPO + ":") && sub.endsWith("ref:refs/tags/*"))) errors.push(`OIDC trust ${JSON.stringify(sub)} on ${id} is not ${REPO}:ref:refs/tags/*`);
@@ -135,6 +153,13 @@ export function audit({ workflow, dockerfile, template, allWorkflows = workflow 
     if (!cb || cb.Enable !== true || cb.Rollback !== true) errors.push(`${name} lacks DeploymentCircuitBreaker {Enable:true, Rollback:true}`);
   }
 
+  const bootstrap = ofType("AWS::ECS::TaskDefinition").some(([, t]) => JSON.stringify(t.Properties?.ContainerDefinitions ?? []).includes(":bootstrap"));
+  for (const [name, n] of [["WebService", 2], ["BrainService", 1]]) {
+    const hit = ofType("AWS::ECS::Service").find(([id]) => id.startsWith(name));
+    const d = hit?.[1].Properties?.DesiredCount;
+    if (name === "BrainService" && !(d <= 1)) errors.push(`Brain desiredCount is ${d}, it must never be above 1`);
+    if (hit && d !== (bootstrap ? 0 : n)) errors.push(`${name} desiredCount is ${d}, expected ${bootstrap ? "0 on a bootstrap (first install) synth" : n}`);
+  }
   const tgs = ofType("AWS::ElasticLoadBalancingV2::TargetGroup");
   if (!tgs.length || tgs.some(([, g]) => g.Properties?.HealthCheckPath !== "/login")) errors.push("a target group health check path is not /login (the circuit breaker keys off it)");
 
@@ -254,6 +279,23 @@ function mutations(template, workflow, dockerfile, allWorkflows) {
   }
   add("workflow deploys the mutable :latest image", { workflow: workflow.replace(/image: \$\{\{ steps.stack.outputs.repo \}\}:\$\{\{ github.sha \}\}/g, "image: ${{ steps.stack.outputs.repo }}:latest") });
   add("workflow falls back to force-new-deployment", { workflow: workflow + "\n          aws ecs update-service --force-new-deployment\n" });
+  {
+    const stmts = (t) => t.Resources.DeployRoleDefaultPolicyDC930F96.Properties.PolicyDocument.Statement;
+    const find = (t, a) => stmts(t).find((x) => [x.Action].flat().includes(a));
+    let t = clone(); find(t, "iam:PassRole").Resource = "*"; add("PassRole on Resource *", { template: t });
+    t = clone(); delete find(t, "iam:PassRole").Condition; add("PassRole without the PassedToService condition", { template: t });
+    t = clone(); find(t, "ecs:UpdateService").Resource = "*"; add("UpdateService on Resource *", { template: t });
+    t = clone(); t.Resources.DeployRoleDefaultPolicyDC930F96.Properties.PolicyDocument.Statement = stmts(t).filter((x) => ![x.Action].flat().includes("ecs:RegisterTaskDefinition")); add("RegisterTaskDefinition statement missing", { template: t });
+    t = clone(); svc(t, "WebService").Properties.DesiredCount = 2; add("bootstrap synth with web desiredCount 2", { template: t });
+    t = clone(); svc(t, "BrainService").Properties.DesiredCount = 2; add("Brain desiredCount 2", { template: t });
+  }
+  add("guard step with || true", { workflow: workflow.replace(/(is-ancestor "\$GITHUB_SHA" origin\/main)\n/, "$1 || true\n") });
+  add("guard step with continue-on-error", { workflow: workflow.replace("      - name: Tag is on main\n", "      - name: Tag is on main\n        continue-on-error: true\n") });
+  add("stability wait of 0 minutes", { workflow: workflow.replace("wait-for-minutes: 20", "wait-for-minutes: 0") });
+  add("web desired-count missing", { workflow: workflow.replace("desired-count: 2\n", "") });
+  add("Brain desired-count 2", { workflow: workflow.replace("desired-count: 1\n", "desired-count: 2\n") });
+  add("web task def deployed to the Brain service", { workflow: workflow.replace(/(render-web.outputs.task-definition \}\}\n\s+service: \$\{\{ steps.stack.outputs.)web/, "$1brain") });
+  add("Brain task def deployed to the web service", { workflow: workflow.replace(/(render-brain.outputs.task-definition \}\}\n\s+service: \$\{\{ steps.stack.outputs.)brain/, "$1web") });
   add("tag-on-main guard missing", { workflow: workflow.replace(/git merge-base --is-ancestor "\$GITHUB_SHA" origin\/main/, "true") });
   add("tag-on-main guard not first after checkout", { workflow: workflow.replace(/(      - name: Tag is on main[^]*?)(      # No AWS)/, "$2$1").replace("      # No AWS access keys. This step asks GitHub's IdP for a token and assumes the deploy role.\n      - name: Authenticate to AWS with OIDC", "      - name: Authenticate to AWS with OIDC") });
   add("checkout is shallow", { workflow: workflow.replace("fetch-depth: 0", "fetch-depth: 1") });
@@ -287,6 +329,17 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1);
   }
   console.log("OK: real inputs pass (OIDC on tags, rollback on both services, secrets from Secrets Manager, dev deps in image).");
+
+  // With a real tag the services run at full size; the Brain stays at 1.
+  let live;
+  try {
+    live = JSON.parse(execFileSync("npx", ["cdk", "synth", "--json", "-c", "imageTag=abc123"], { cwd: infraDir, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
+  } finally {
+    rmSync(path.join(infraDir, "cdk.out"), { recursive: true, force: true });
+  }
+  const liveErrors = audit({ workflow, dockerfile, template: live, allWorkflows });
+  if (liveErrors.length) { console.error("FAIL (synth with imageTag):\n  " + liveErrors.join("\n  ")); process.exit(1); }
+  console.log("OK: bootstrap synth has desiredCount 0; imageTag synth has web 2 / Brain 1.");
 
   const cases = mutations(template, workflow, dockerfile, allWorkflows);
   const missed = cases.filter((c) => audit(c.input).length === 0).map((c) => c.label);
