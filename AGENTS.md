@@ -9,11 +9,11 @@ Every agent reads this first, whatever tool it runs in. The workflow is Dan's: [
 | Tier | **2 Product.** Real agencies, a startup. Full loop on every issue, CI on every merge |
 | Design | [`docs/SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md). Locked when Dan merges it. Decisions: [`docs/decisions/`](docs/decisions/) |
 | Voters | Dan only. He owns the fork. No tie-break needed |
-| People and lanes | Dan (`Danvu772`). No other people, no role lanes |
-| Orchestrator | The agent session Dan starts as orchestrator. It is the single point of entry for design questions, cuts issues from the design, and assigns builders and evaluators |
+| People and lanes | Dan (`Danvu772`). No role lanes. The workstream lanes are in [`ORCHESTRATORS.md`](ORCHESTRATORS.md) |
+| Orchestrator | Every session Dan opens is one. It feeds Dan a constant desk of tasks and decisions, then delegates the work to builder and evaluator agents, picking the model per task to stay token-efficient. It reads [`ORCHESTRATORS.md`](ORCHESTRATORS.md) and git before taking work so two orchestrators never step on each other (SKILL R6) |
 | Tracker | GitHub Issues on `Danvu772/DisasterDeck`. Always pass `--repo Danvu772/DisasterDeck` (`gh` defaults to the upstream parent on a fork) |
 | Requirements | [`tests/requirements.json`](tests/requirements.json): requirement ID, design section, check, `passes` |
-| State | [`PROGRESS.md`](PROGRESS.md), so any agent can pick up |
+| State | [`PROGRESS.md`](PROGRESS.md), plus the live [`ORCHESTRATORS.md`](ORCHESTRATORS.md) lanes. Re-read both fresh at session start |
 | Deploy | Promote from `main` only when Dan asks. Today: `git push origin main:prod` to Vultr. After D-0002: AWS, by tag |
 
 ### Done check (every issue)

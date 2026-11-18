@@ -2,33 +2,30 @@
 
 Current state, so any agent or person can pick up. The orchestrator updates this at the end of every session.
 
-**Phase:** Build. The design is locked (`docs/SYSTEM_DESIGN.md` v3.1, decisions D-0001 to D-0015). The build is cut into issues on the fork, in dependency order.
+**Phase:** Build. The design is locked (`docs/SYSTEM_DESIGN.md` v3.1, decisions D-0001 to D-0015). The build is cut into issues on the fork, in dependency order. Hackathon-era docs and role lanes are gone (18 Nov).
 
-## Waiting on Dan
+## Open work
 
-- #4: turn on Actions and branch protection, delete merged branches. Agents can't change repo settings.
-- #5: open the AWS account, create your Atlas cluster, get an OpenRouter key. #6, #8 and #12 wait on it.
+| Issue | What | Blocks / blocked by | Owner |
+|---|---|---|---|
+| #22 | Photos: gpt-oss is text-only, so photo reports no longer reach a model | Dan's decision (option 2, photo functionality now) | Dan |
+| #23 | Live model check: LLM-1 network log + LLM-3b smoke on gpt-oss-120b | needs the OpenRouter key | |
+| #6 | AWS infra as code (VPC, Fargate web + Brain, Secrets Manager, CloudTrail, alarms) | needs the AWS account | Dan |
+| #8 | Atlas cluster behind one repository module | needs the Atlas cluster; work on `origin/feat/8-atlas-module` | Dan |
+| #7 | Deploy from GitHub Actions with OIDC; retire Vultr | after #6 | |
+| #10 | Official feeds + help-desk directory replace web search | | Dan |
+| #11 | Mongo-backed checks in CI | | Dan |
+| #12 | Identity: Cognito federation, no-login reports, roles in the database | after #6 | |
+| #13 | App audit log | after #12 | |
+| #14 | Voice port (on-device dictation, Transcribe, Polly) | after #6 | |
+| #16 | USWDS field phone and Talk screens | after #15 + #14 | |
+| #17 | USWDS coordinator screen | after #15 | Dan |
+| #18 | USWDS desk board, map and ops room | after #15 | Dan |
+| #19 | IU tabletop scenario end to end | after #10, #12, #16, #17, #18 | |
 
-## Build order (issues on the fork)
-
-| Wave | Issues | Can start |
-|---|---|---|
-| 1 | #9 model adapter | Now (build on fixtures; live test needs #5) |
-| 1 | #15 USWDS foundation, #11 Mongo checks in CI | After #4 |
-| 1 | #6 AWS infrastructure, #8 Atlas cluster | After #5 |
-| 2 | #10 official feeds, #7 deploy via OIDC, #12 identity, #14 voice | After #9, #4 + #6, #6, #6 |
-| 3 | #13 audit log, #16 field + Talk, #17 coordinator, #18 desk + map + ops | After #12, #15 + #14, #15, #15 |
-| 4 | #19 IU tabletop end to end | After #10, #12, #16, #17, #18 |
-
-Parallel builders only on issues whose files don't overlap (#9 and #15 don't).
-
-## In flight
-
-- #21 (#9 model adapter): evaluator says MERGE after #20, round 3 of 3. LLM-1's live half and LLM-3b wait on #23.
-- #24 (#15 USWDS foundation): failed round 1 on dark mode; builder on round 2.
-- #22: photos, Dan's decision. #23: live model check, blocked on #5.
+Parallel builders only on issues whose files don't overlap.
 
 ## Done
 
-- 17 Nov: system design v3 and D-0001 to D-0008 (#2); Dan's workflow in the repo (#3); planning snapshot (#1).
-- 17 Nov: the seven open calls decided as D-0009 to D-0015; design v3.1; requirement IDs for the whole build; issues cut.
+- 17 Nov: system design v3 and D-0001 to D-0008; the seven open calls decided (D-0009 to D-0015); design v3.1; requirement IDs for the whole build; issues cut.
+- 18 Nov: #15 USWDS foundation (PR #24); #9 model adapter, drop Anthropic SDK (PR #21); role lanes and hackathon docs swept (PR #26, #28).
