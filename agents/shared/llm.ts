@@ -30,8 +30,8 @@ const DEFAULTS: Record<Purpose, { model: string; effort: Effort }> = {
   summary: { model: "openai/gpt-oss-120b", effort: "medium" },
   digest: { model: "openai/gpt-oss-20b", effort: "low" },
   // D-0016: one open-weight vision model, used only to describe a photo into text.
-  // Provisional id: confirm the US-region endpoint + live price on the smoke run (issue #39).
-  vision: { model: "nvidia/nemotron-3.5-super-vl", effort: "low" },
+  // Dan's pick (18 Nov, #39): open-weight, US-origin, served on the US endpoint by 15 providers.
+  vision: { model: "google/gemma-4-31b-it", effort: "low" },
 };
 
 const EFFORTS: readonly Effort[] = ["low", "medium", "high"];

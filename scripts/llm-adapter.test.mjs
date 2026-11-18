@@ -55,7 +55,7 @@ test("LLM-1 modelFor: gpt-oss-120b for chat, extract and summary; gpt-oss-20b fo
   assert.deepEqual(llm.modelFor("extract"), { model: "openai/gpt-oss-120b", effort: "low" });
   assert.deepEqual(llm.modelFor("summary"), { model: "openai/gpt-oss-120b", effort: "medium" });
   assert.deepEqual(llm.modelFor("digest"), { model: "openai/gpt-oss-20b", effort: "low" });
-  assert.deepEqual(llm.modelFor("vision"), { model: "nvidia/nemotron-3.5-super-vl", effort: "low" });
+  assert.deepEqual(llm.modelFor("vision"), { model: "google/gemma-4-31b-it", effort: "low" });
 });
 
 test("LLM-1 modelFor: OPENROUTER_MODEL_* and OPENROUTER_EFFORT_* override; a bad effort is ignored", () => {
@@ -283,14 +283,14 @@ test("LLM-3 runTurn(): a tool outside the role's allowlist is refused, not run",
 
 test("runTurn(): a photo is described into text by the vision model first, and that description reaches the chat model", async () => {
   const { runTurn } = await import("../agents/personal/turn.ts");
-  answers.push(json({ id: "gen-v", model: "nvidia/nemotron-3.5-super-vl", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "A collapsed wall with two people nearby." } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(json({ id: "gen-v", model: "google/gemma-4-31b-it", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "A collapsed wall with two people nearby." } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
   answers.push(completion({ content: "I'll file the report from the photo." }));
   await runTurn({ userId: "field-alpha", text: "look", image: { mediaType: "image/png", base64: "iVBORw0KGgo=" } });
   const calls = modelCalls();
   const vision = calls[0];
   const chat = calls[1];
   // The vision call goes to the vision model with an image_url content part.
-  assert.equal(vision.body.model, "nvidia/nemotron-3.5-super-vl");
+  assert.equal(vision.body.model, "google/gemma-4-31b-it");
   assert.equal(vision.body.messages.at(-1).content[0].type, "image_url");
   assert.ok(vision.body.messages.at(-1).content[0].image_url.url.includes("data:image/png;base64,iVBORw0KGgo="));
   // The chat call is text-only and carries the vision description, not the base64.
@@ -302,7 +302,7 @@ test("runTurn(): a photo is described into text by the vision model first, and t
 test("PHO-1: a filed event from a photo turn carries the vision description and the photoUrl (server attaches it, not the model)", async () => {
   const { runTurn } = await import("../agents/personal/turn.ts");
   const description = "A collapsed wall with two people nearby.";
-  answers.push(json({ id: "gen-v", model: "nvidia/nemotron-3.5-super-vl", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(json({ id: "gen-v", model: "google/gemma-4-31b-it", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
   answers.push(completion({ content: null, tool_calls: [{ id: "call_fr", type: "function", function: { name: "file_report", arguments: JSON.stringify({ kind: "trapped", text: description, text_en: description, address: null, region: null, people_count: 2, site_id: null }) } }] }, "tool_calls"));
   answers.push(completion({ content: "Filed it." }));
   const r = await runTurn({ userId: "field-alpha", text: "look at this", image: { mediaType: "image/png", base64: "iVBORw0KGgo=" } });
@@ -320,7 +320,7 @@ test("PHO-1: a filed event from a photo turn carries the vision description and 
 test("PHO-1: report_problem (incident) carries the photoUrl the turn attached", async () => {
   const { runTurn } = await import("../agents/personal/turn.ts");
   const description = "A van tipped over on the road, the driver is hurt.";
-  answers.push(json({ id: "gen-v", model: "nvidia/nemotron-3.5-super-vl", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(json({ id: "gen-v", model: "google/gemma-4-31b-it", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
   answers.push(completion({ content: null, tool_calls: [{ id: "call_rp", type: "function", function: { name: "report_problem", arguments: JSON.stringify({ kind: "injury", text: description, text_en: description, task_id: null, can_continue: false, can_deliver: null, resolved: false, incident_id: null }) } }] }, "tool_calls"));
   answers.push(completion({ content: "Filed it." }));
   const r = await runTurn({ userId: "field-alpha", text: "van crash", image: { mediaType: "image/webp", base64: "UklGRgAA" } });
@@ -333,7 +333,7 @@ test("PHO-1: report_problem (incident) carries the photoUrl the turn attached", 
 test("PHO-1: file_capacity carries the photoUrl the turn attached", async () => {
   const { runTurn } = await import("../agents/personal/turn.ts");
   const description = "The hall is full, every mat has two people on it.";
-  answers.push(json({ id: "gen-v", model: "nvidia/nemotron-3.5-super-vl", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(json({ id: "gen-v", model: "google/gemma-4-31b-it", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
   answers.push(completion({ content: null, tool_calls: [{ id: "call_fc", type: "function", function: { name: "file_capacity", arguments: JSON.stringify({ shelter: "Mosque Hall", beds_used: 120, beds_total: 80 }) } }] }, "tool_calls"));
   answers.push(completion({ content: "Filed it." }));
   const r = await runTurn({ userId: "shelter-b-staff", text: "whiteboard", image: { mediaType: "image/jpeg", base64: "/9j/AAAA" } });
@@ -345,7 +345,7 @@ test("PHO-1: file_capacity carries the photoUrl the turn attached", async () => 
 test("PHO-1: on the confirm path the photo rides with the pending batch and lands on the event after settlePending approve", async () => {
   const { runTurn, settlePending } = await import("../agents/personal/turn.ts");
   const description = "A collapsed wall with two people nearby.";
-  answers.push(json({ id: "gen-v", model: "nvidia/nemotron-3.5-super-vl", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
+  answers.push(json({ id: "gen-v", model: "google/gemma-4-31b-it", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
   answers.push(completion({ content: null, tool_calls: [{ id: "call_fr", type: "function", function: { name: "file_report", arguments: JSON.stringify({ kind: "trapped", text: description, text_en: description, address: null, region: null, people_count: 2, site_id: null }) } }] }, "tool_calls"));
   answers.push(completion({ content: "Ready." }));
   const r = await runTurn({ userId: "field-alpha", text: "look at this", confirm: true, image: { mediaType: "image/png", base64: "iVBORw0KGgo=" } });
@@ -724,7 +724,7 @@ test("LLM-1: modelInfo() for /api/health reports the host and the model ids, and
     const info = llm.modelInfo();
     assert.deepEqual(info, {
       host: "us.openrouter.ai", usOnly: true,
-      models: { chat: "openai/gpt-oss-120b", extract: "openai/gpt-oss-120b", summary: "openai/gpt-oss-120b", digest: "openai/gpt-oss-20b", vision: "nvidia/nemotron-3.5-super-vl" },
+      models: { chat: "openai/gpt-oss-120b", extract: "openai/gpt-oss-120b", summary: "openai/gpt-oss-120b", digest: "openai/gpt-oss-20b", vision: "google/gemma-4-31b-it" },
     });
     assert.ok(!JSON.stringify(info).includes("secret"));
     process.env.OPENROUTER_BASE_URL = "https://user:pw@gateway.example.test/v1?key=abc";
