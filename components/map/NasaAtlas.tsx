@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleMarker, ImageOverlay, Popup } from "react-leaflet";
 import type { LatLng } from "@/lib/types";
-import { BuildingReferences, ExportBuildingReviews, HighResolution, RadiancePairs } from "./HighResolution";
+import { exportReviews } from "./buildingReview";
 
 export interface AtlasFrame {
   id: string; kind: string; title: string; date: string; image: string;
@@ -51,23 +50,6 @@ function useBeforeCoverage() {
     return () => controller.abort();
   }, []);
   return fraction;
-}
-
-export function NasaAtlasOverlay({ atlas, selection }: { atlas: NasaAtlas; selection: AtlasSelection }) {
-  const frame = atlas.frames.find((item) => item.id === selection.frameId);
-  const highres = frame?.tileURL ? (selection.compare ? atlas.frames.filter(item => item.tileURL) : [frame]) : [];
-  const beforeFill = highres.some(item => item.kind === "highres-before") ? atlas.frames.find(item => item.id === "hls-before-2023-02-01") : undefined;
-  const events = selection.eventScope === "off" ? [] : atlas.events.filter((event) => selection.eventScope === "global" || event.regional);
-  return <>
-    {frame && !frame.tileURL && <ImageOverlay key={frame.id} url={frame.image} bounds={frame.bounds} opacity={frame.kind.startsWith("hls") ? 1 : 0.75} zIndex={210} />}
-    {highres.length > 0 && <HighResolution key={highres.map(f => f.id).join()} frames={highres} split={selection.compare ? selection.split ?? 50 : undefined} fill={beforeFill} />}
-    <BuildingReferences visible={!!selection.showBuildings && highres.length > 0} />
-    {frame?.kind === "radiance-change" && <RadiancePairs />}
-    {frame && selection.showLimits && frame.limitation && <ImageOverlay key={frame.id + "-limits"} url={frame.limitsImage} bounds={frame.bounds} opacity={0.85} zIndex={220} />}
-    {events.map((event) => <CircleMarker key={event.id} center={event.coords} radius={7} pathOptions={{ className: "stroke-primary fill-primary", fillOpacity: 0.8 }} pane="markerPane">
-      <Popup><strong>{event.title}</strong><br />{event.categories.join(", ")}<br />Observation: {event.date}<br /><a href={event.sourceURL} target="_blank" rel="noreferrer">NASA EONET record</a></Popup>
-    </CircleMarker>)}
-  </>;
 }
 
 const PRIMARY_LAYERS = [
@@ -187,4 +169,9 @@ export function NasaAtlasControls({ atlas, selection, onChange, onLocate, onCity
       </div>}
     </details>
   </div>;
+}
+
+/** Download the browser's building review notes. */
+export function ExportBuildingReviews() {
+  return <button type="button" className="mt-2 text-xs text-primary underline" onClick={exportReviews}>Export reviews</button>;
 }

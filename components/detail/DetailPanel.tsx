@@ -6,7 +6,7 @@ import { ChevronRight, Clock, Flame, Map as MapIcon, MapPin, X } from "lucide-re
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import type { Incident, Need, Road, Shelter, Site, Task } from "@/lib/types";
-import { Button } from "@/components/ui/button";
+import { Button } from "@trussworks/react-uswds";
 import { type Board, LoopDots } from "../BoardCards";
 import { History } from "../History";
 import { KindIcon, TierBadge } from "../RecordCard";
@@ -153,7 +153,7 @@ export function DetailPanel({ board, now, live, openKey, onOpen, onClose }: {
       <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2 md:hidden">
         <p className="text-sm font-medium">{ref ? KIND_WORD[ref.kind] : "Record"}</p>
         {!live && <span className="rounded-full border px-2 text-xs text-muted-foreground">Demo data</span>}
-        <Button variant="ghost" size="sm" onClick={onClose} className="ml-auto"><X aria-hidden />Close</Button>
+        <Button type="button" outline onClick={onClose} className="ml-auto"><X aria-hidden />Close</Button>
       </div>
       {content}
     </div>
@@ -291,9 +291,9 @@ export function DetailPanel({ board, now, live, openKey, onOpen, onClose }: {
           {(loc || history.length > 0) && (
             <footer className="flex flex-col items-start gap-1 border-t pt-4">
               {loc && (
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/map?focus=${encodeURIComponent(loc.key)}`}><MapIcon aria-hidden />Open on the full map</Link>
-                </Button>
+                <Link href={`/map?focus=${encodeURIComponent(loc.key)}`} className="usa-button usa-button--outline inline-flex items-center gap-1.5">
+                  <MapIcon aria-hidden />Open on the full map
+                </Link>
               )}
               {history.length > 0 && <History entries={history} now={now} />}
             </footer>

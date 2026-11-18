@@ -1,6 +1,6 @@
 "use client";
-// The desk's map, on MapLibre GL: vector basemap (CARTO Positron / Dark Matter, follows the theme)
-// or satellite, smooth zoom and tilt. On top, in this order:
+// The desk's map, on MapLibre GL (D-0006): Esri vector/raster basemap (gray light or dark, follows
+// the theme) or satellite, with OSM as the fallback (BaseTileFallback). On top, in this order:
 //   destroyed buildings  OSM / HOT reference polygons, a heat glow when zoomed out, 3D blocks up close
 //   quakes               USGS events, ring size by magnitude
 //   records              sites, field problems, shelters, closed roads, as HTML markers
@@ -15,13 +15,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import MapGL, {
   Layer, Marker, NavigationControl, Popup, ScaleControl, Source, type MapRef,
 } from "react-map-gl/maplibre";
-import type { StyleSpecification } from "maplibre-gl";
 import type { Incident, LatLng, Road, Shelter, Site } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ageText, isStale, markerSize, tierText } from "../../encode";
 import { useIsDark } from "../../theme/theme";
 import type { MapItem } from "../mapItems";
 import type { WorkLine, WorkState } from "../siteWork";
+import { baseStyle } from "../basemaps";
+import BasemapFallback from "./BasemapFallback";
 import { tokenColor } from "./tokens";
 import { KCollapse, KCone, KDanger, KFire, KQuake, KRoadblock, KTent } from "../../icons/koboyo";
 import { HAZARD_LEGEND, hazardType, INCIDENT_ICON } from "../../icons/things";
@@ -30,23 +31,6 @@ export interface GlQuake { id: string; lat: number; lon: number; mag: number; ti
 
 export interface GlLayers { records: boolean; hazards: boolean; buildings: boolean; quakes: boolean; tilt: boolean }
 const DEFAULT_LAYERS: GlLayers = { records: true, hazards: true, buildings: true, quakes: true, tilt: false };
-
-const CARTO = {
-  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-};
-const SATELLITE: StyleSpecification = {
-  version: 8,
-  glyphs: "https://basemaps.cartocdn.com/fonts/{fontstack}/{range}.pbf",
-  sources: {
-    esri: {
-      type: "raster", tileSize: 256, maxzoom: 19,
-      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
-      attribution: "Imagery © Esri, Maxar, Earthstar Geographics",
-    },
-  },
-  layers: [{ id: "esri", type: "raster", source: "esri" }],
-};
 
 const PILOT_VIEW = { longitude: pilotCenter[1], latitude: pilotCenter[0], zoom: 13 };
 const ll = (c: LatLng): [number, number] => [c[1], c[0]];
@@ -432,7 +416,7 @@ export default function DeskGlMap({
   }), [placed]);
 
   const pick = useCallback((key: string | null) => onPick?.(key), [onPick]);
-  const style = sat ? SATELLITE : dark ? CARTO.dark : CARTO.light;
+  const style = baseStyle(dark, sat);
 
   return (
     <div className={cn("relative h-full w-full overflow-hidden", className)}>
@@ -449,6 +433,7 @@ export default function DeskGlMap({
       >
         <NavigationControl position="bottom-right" visualizePitch />
         <ScaleControl position="bottom-left" />
+        <BasemapFallback />
 
         {layers.buildings && buildings && (
           <>

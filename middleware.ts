@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isLocalDemo } from "@/lib/localDemo";
 
-const OPEN = ["/login", "/lab"];
+const OPEN = ["/login"];
 
 export default auth((req) => {
   if (req.auth || isLocalDemo(req)) return NextResponse.next();

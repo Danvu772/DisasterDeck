@@ -4,7 +4,7 @@
 import { ArrowUp, LoaderCircle, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@trussworks/react-uswds";
 import { ChatLine } from "./ChatLine";
 import { chatErrorText } from "./chatError";
 import { ChatMetrics } from "./metrics/ChatMetrics";
@@ -57,7 +57,7 @@ export function AskDesk() {
         <input id="ask-desk" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off"
           placeholder="Ask the desk anything…"
           className="h-10 w-full rounded-xl border border-input bg-background pl-9 pr-11 text-sm shadow-xs outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
-        <Button type="submit" size="icon-sm" disabled={asking || !text.trim()} aria-label="Ask"
+        <Button type="submit" disabled={asking || !text.trim()} aria-label="Ask"
           className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg">
           {asking ? <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden /> : <ArrowUp aria-hidden />}
         </Button>
@@ -69,8 +69,8 @@ export function AskDesk() {
             {/* Capped, so two cards do not push the list below off the screen. */}
             <div className="relative mt-2 flex max-h-[60vh] flex-col gap-2 overflow-y-auto text-sm" aria-live="polite">
               {!asking && (
-                <Button variant="ghost" size="icon-xs" aria-label="Clear the answer" onClick={clear}
-                  className="absolute right-0 top-0 z-10 text-muted-foreground">
+                <Button type="button" unstyled aria-label="Clear the answer" onClick={clear}
+                  className="absolute right-0 top-0 z-10 inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
                   <X aria-hidden />
                 </Button>
               )}

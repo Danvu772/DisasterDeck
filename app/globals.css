@@ -280,13 +280,6 @@
   outline-offset: 2px;
 }
 
-/* Leaflet ships Helvetica on the map and Lucida Console (mono) on the zoom buttons. Same face as everything else. */
-body .leaflet-container,
-body .leaflet-container .leaflet-control-zoom-in,
-body .leaflet-container .leaflet-control-zoom-out {
-  font-family: var(--font-sans);
-}
-
 /* Map motion (docs/frontend/research/emergency-map-animation.md). Every one is a single pass,
    never a loop. Reduced motion turns all of them off, and the state they show stays on screen. */
 @keyframes desk-ring {

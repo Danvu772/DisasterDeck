@@ -8,15 +8,12 @@ import MapGL, { Layer, Marker, NavigationControl, Source } from "react-map-gl/ma
 import { pilotCenter } from "@/lib/pilot";
 import { cn } from "@/lib/utils";
 import { markerSize } from "../encode";
+import { baseStyle } from "../map/basemaps";
+import BasemapFallback from "../map/gl/BasemapFallback";
 import { tokenColor } from "../map/gl/tokens";
 import { useIsDark } from "../theme/theme";
 import { KCone, KPackage, KRoadblock, KTent } from "../icons/koboyo";
 import type { OpsPin, Quake } from "./opsModel";
-
-const CARTO = {
-  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-};
 
 function Pin({ p, fresh }: { p: OpsPin; fresh: boolean }) {
   const tone = p.closed ? "bg-calm text-primary-foreground" : p.actNow || p.tier === 0 ? "bg-destructive text-destructive-foreground"
@@ -59,9 +56,10 @@ export default function OpsMap({ pins, quakes, freshKey }: { pins: OpsPin[]; qua
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <MapGL initialViewState={{ longitude: pilotCenter[1], latitude: pilotCenter[0], zoom: 12 }} mapStyle={dark ? CARTO.dark : CARTO.light}
+      <MapGL initialViewState={{ longitude: pilotCenter[1], latitude: pilotCenter[0], zoom: 12 }} mapStyle={baseStyle(dark, false)}
         attributionControl={{ compact: true }} style={{ width: "100%", height: "100%" }}>
         <NavigationControl position="bottom-right" showCompass={false} />
+        <BasemapFallback />
         {quakes.length > 0 && (
           <Source id="ops-quakes" type="geojson" data={quakeFC}>
             <Layer id="ops-quake-halo" type="circle" paint={{

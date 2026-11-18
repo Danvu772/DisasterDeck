@@ -1,6 +1,6 @@
 "use client";
 import { ExternalLink } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Tag } from "@trussworks/react-uswds";
 import type { MetricResult } from "../types";
 import { Bars } from "./Bars";
 import { Gauge } from "./Gauge";
@@ -25,10 +25,10 @@ export function MetricCard({ result: r }: { result: MetricResult }) {
     <article className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-xs" aria-label={r.title}>
       <header className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold leading-snug">{r.title}</h3>
-        <Badge variant="outline" className="shrink-0 font-normal">
+        <Tag className="shrink-0 font-normal">
           <span aria-hidden className={`size-1.5 rounded-full ${st.dot}`} />
           {st.word}
-        </Badge>
+        </Tag>
       </header>
       {unknown
         ? <p className="rounded-lg bg-secondary px-3 py-2 text-sm text-muted-foreground">{r.unknownReason ?? r.headline}</p>

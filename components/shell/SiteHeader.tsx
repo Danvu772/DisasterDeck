@@ -43,9 +43,6 @@ export function SiteHeader({ account }: { account?: React.ReactNode }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // The redesign under /v2 draws its own header.
-  if (path.startsWith("/v2")) return null;
-
   const items = SCREENS.map((s) => {
     const on = isCurrent(s.href, path);
     return (
