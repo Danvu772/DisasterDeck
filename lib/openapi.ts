@@ -147,6 +147,15 @@ export function buildSpec() {
             lastSeen: { type: "string", format: "date-time", description: "Last time this person's screen read their inbox" },
           },
         },
+        Contact: {
+          type: "object", description: "One entry in the desk's help directory (D-0009)",
+          required: ["id", "name", "category", "phone"],
+          properties: {
+            id: { type: "string" }, name: { type: "string" },
+            category: { type: "string", enum: ["tow", "tire", "fuel", "pharmacy"] },
+            phone: { type: "string" }, region: { type: "string" }, notes: { type: "string" },
+          },
+        },
         Id: { type: "object", required: ["id"], properties: { id: { type: "string" } } },
         Error: {
           type: "object", required: ["error"],
@@ -293,6 +302,30 @@ export function buildSpec() {
             },
             401: errorResponse("Not signed in, unknown demo user, or wrong x-agent-key"),
             403: errorResponse("Citizens do not see the people list"),
+          },
+        },
+      },
+      "/api/contacts": {
+        get: {
+          tags: ["desk"],
+          summary: "The desk's help directory",
+          description: [
+            "Tow, tire, fuel and pharmacy contacts for this desk (D-0009). Without `kind`: the whole",
+            "directory. With `kind` `vehicle_breakdown` or `short_supply`: only the entries an incident",
+            "of that kind needs (a breakdown returns tow, tire and fuel). `text` helps `short_supply`",
+            "match what is short. Any signed-in person or the agent key may read it.",
+          ].join("\n"),
+          security: [{ agentKey: [] }, { session: [] }, { demoUser: [] }],
+          parameters: [deskParam,
+            { name: "kind", in: "query", required: false, schema: { type: "string", enum: ["vehicle_breakdown", "short_supply"] } },
+            { name: "text", in: "query", required: false, description: "The incident text, to match what is short", schema: { type: "string" } },
+          ],
+          responses: {
+            200: {
+              description: "The matching contacts",
+              content: { "application/json": { schema: { type: "object", required: ["desk", "contacts"], properties: { desk: { type: "string" }, contacts: { type: "array", items: { $ref: "#/components/schemas/Contact" } } } } } },
+            },
+            401: errorResponse("Not signed in, unknown demo user, or wrong x-agent-key"),
           },
         },
       },

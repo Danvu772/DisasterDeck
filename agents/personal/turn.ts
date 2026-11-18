@@ -14,6 +14,8 @@ import { maskPhones } from "../shared/privacy";
 import { stashPending, takePending, type PendingCall } from "./pending";
 import { systemPrompt } from "./prompts";
 import { holdWrites, runTool, toolSchema, toolsFor, type ToolOutcome } from "./tools";
+import { contactsForIncident, contactsLine } from "@/lib/contacts";
+import type { IncidentKind } from "@/lib/types";
 
 export interface TurnInput {
   userId: string;
@@ -282,6 +284,17 @@ export function contextBlock(ctx: UserContext, quakes?: Quakes): string {
   }
   section("Needs they filed", ctx.myNeeds, (n) => needLine(n, now), 6, (more) => countBy(more, (n) => n.item), "mine");
   section("Their open problems", ctx.myIncidents, (i) => incidentLine(i, now), 6, (more) => countBy(more, (i) => i.status), "mine");
+  // The help directory (D-0009): a breakdown or a short supply gets the desk's matching contacts,
+  // so the person on the ground can dial tow, tire, fuel or pharmacy instead of the desk guessing.
+  const CONTACT_KINDS: IncidentKind[] = ["vehicle_breakdown", "short_supply"];
+  const helpIncidents = ctx.myIncidents.filter((i) => CONTACT_KINDS.includes(i.kind));
+  if (helpIncidents.length) {
+    const contacts = helpIncidents.flatMap((i) => contactsForIncident(u.deskId, i.kind, i.textEn || i.text));
+    if (contacts.length) {
+      section("Directory contacts for their open problem", [...new Set(contacts.map(contactsLine))], (x) => x, 6,
+        (more) => `${more.length} more`, undefined);
+    }
+  }
   if (u.role !== "public") {
     const touched: string[] = [
       ...ctx.records.sites.map((s) => siteLine(s, now, u.role)),
