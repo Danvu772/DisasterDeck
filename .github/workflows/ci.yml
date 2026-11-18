@@ -40,6 +40,8 @@ jobs:
         run: npm run check:feeds
       - name: Model adapter (OpenRouter, mocked; no key)
         run: npm run check:llm
+      - name: Voice port (Transcribe + Polly, mocked; no key)
+        run: npm run check:voice
       - name: Lint
         run: npx eslint
       - name: Product name is Disaster Deck
