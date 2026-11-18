@@ -17,7 +17,11 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 
-const IMAGE_TAG = "latest";
+// The CDK-owned task definitions point at an immutable tag, never `latest`. The deploy workflow
+// registers a new revision per release pointing at the commit SHA (docs/agents/deploy.md). Set the
+// tag with `cdk deploy -c imageTag=<sha>`: use the SHA that is live whenever a cdk deploy changes
+// a task definition, or the service falls back to this tag.
+const DEFAULT_IMAGE_TAG = "bootstrap";
 const MONGO_DB = "disaster_desk";
 // Docs/agents/deploy.md: prod data lives under malatya-2023. Override at deploy.
 const DESK_ID = process.env.DESK_ID ?? "malatya-2023";
@@ -61,6 +65,8 @@ exports.handler = async () => {
 export class DisasterDeckStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
+    const IMAGE_TAG = String(this.node.tryGetContext("imageTag") ?? DEFAULT_IMAGE_TAG);
+    if (IMAGE_TAG === "latest") throw new Error("imageTag must be immutable, not latest");
 
     // ----- VPC: two AZs, one public tier (ALB) + one private tier (Fargate) -----
     const vpc = new ec2.Vpc(this, "Vpc", {
@@ -222,13 +228,13 @@ export class DisasterDeckStack extends Stack {
       healthCheck: { path: "/login", interval: Duration.seconds(30) },
     });
 
-    // ----- Deploy role permissions: push the image and roll out both services -----
+    // ----- Deploy role permissions: push the image, register task def revisions, roll out both services -----
     repo.grantPullPush(deployRole);
     // Read-only describes stay on *. The write (UpdateService) is pinned to the two services, and
     // ListTasks/DescribeTasks to this cluster.
     deployRole.addToPrincipalPolicy(
       new iam.PolicyStatement({
-        actions: ["cloudformation:DescribeStacks", "ecs:DescribeServices", "ecs:DescribeClusters"],
+        actions: ["cloudformation:DescribeStacks", "ecs:DescribeServices", "ecs:DescribeClusters", "ecs:DescribeTaskDefinition"],
         resources: ["*"],
       }),
     );
@@ -236,6 +242,18 @@ export class DisasterDeckStack extends Stack {
       new iam.PolicyStatement({
         actions: ["ecs:UpdateService"],
         resources: [webService.serviceArn, brainService.serviceArn],
+      }),
+    );
+    // Registering a revision has no resource-level scoping in IAM, so it is "*". PassRole is pinned to
+    // the three roles the task definitions use, and only to ECS tasks.
+    deployRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({ actions: ["ecs:RegisterTaskDefinition"], resources: ["*"] }),
+    );
+    deployRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ["iam:PassRole"],
+        resources: [executionRole.roleArn, webTask.taskRole.roleArn, brainTask.taskRole.roleArn],
+        conditions: { StringEquals: { "iam:PassedToService": "ecs-tasks.amazonaws.com" } },
       }),
     );
     deployRole.addToPrincipalPolicy(

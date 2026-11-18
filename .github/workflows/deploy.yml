@@ -1,10 +1,12 @@
 # Deploy (#7): a version tag on main goes live on ECS Fargate. Retires the Vultr prod-branch path.
 # Promote what is on main with a tag:
 #   git tag -a v1.2.3 -m "release v1.2.3" && git push origin v1.2.3
-# The workflow authenticates to AWS with GitHub OIDC (no long-lived keys), builds the image, pushes
-# it to the ECR repo the CDK stack defines, then rolls out both the web and Brain services and waits
-# for them to stabilize. A service whose tasks never pass the ALB health check on /login is rolled
-# back by ECS's deployment circuit breaker, which the CDK stack keeps enabled.
+# The tag must point at a commit that is on main. The workflow authenticates to AWS with GitHub OIDC
+# (no long-lived keys), builds the image, pushes it to the ECR repo the CDK stack defines tagged with
+# the commit SHA (and `latest` as a convenience, never deployed), then registers a NEW task
+# definition revision for web and for the Brain pointing at the SHA image, updates each service to
+# it and waits for stability. A service whose tasks never pass the ALB health check on /login is
+# rolled back by ECS's circuit breaker to the previous revision, which points at the previous SHA.
 #
 # AWS is selected through Actions `vars`, not secrets (a role ARN and region are not secrets). The
 # orchestrator sets them once after `cdk deploy`:
@@ -29,17 +31,20 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_STACK_NAME: ${{ vars.AWS_STACK_NAME }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
+          fetch-depth: 0
+      # Only commits that reached main deploy. A tag on a side branch fails here, before AWS.
+      - name: Tag is on main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       # No AWS access keys. This step asks GitHub's IdP for a token and assumes the deploy role.
       - name: Authenticate to AWS with OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -64,21 +69,51 @@ jobs:
           aws ecr get-login-password --region "$AWS_REGION" \
             | docker login --username AWS --password-stdin "${{ steps.stack.outputs.repo }}"
       - name: Build and push the image
+        env:
+          IMAGE: ${{ steps.stack.outputs.repo }}
         run: |
-          IMAGE="${{ steps.stack.outputs.repo }}"
           docker build -t "$IMAGE:$GITHUB_SHA" -t "$IMAGE:latest" .
           docker push "$IMAGE:$GITHUB_SHA"
           docker push "$IMAGE:latest"
-      - name: Roll out web and Brain, wait for stability
-        # The task definitions pin the `latest` tag. A force-new-deployment relabels the tasks so
-        # ECS pulls the freshly pushed image. The web service's circuit breaker rolls back when
-        # /login never goes healthy; this step's wait then fails the run.
+      # Start from each service's CURRENT task definition (CDK's, or the last release's) so env,
+      # secrets and roles carry over, and swap only the image.
+      - name: Fetch the current task definitions
         env:
           AWS_EC2_METADATA_DISABLED: "true"
         run: |
-          CLUSTER="${{ steps.stack.outputs.cluster }}"
-          WEB="${{ steps.stack.outputs.web }}"
-          BRAIN="${{ steps.stack.outputs.brain }}"
-          aws ecs update-service --cluster "$CLUSTER" --service "$WEB" --force-new-deployment --no-cli-pager
-          aws ecs update-service --cluster "$CLUSTER" --service "$BRAIN" --force-new-deployment --no-cli-pager
-          aws ecs wait services-stable --cluster "$CLUSTER" --services "$WEB" "$BRAIN"
+          for pair in "web:${{ steps.stack.outputs.web }}" "brain:${{ steps.stack.outputs.brain }}"; do
+            name="${pair%%:*}"; svc="${pair#*:}"
+            td=$(aws ecs describe-services --cluster "${{ steps.stack.outputs.cluster }}" --services "$svc" \
+              --query "services[0].taskDefinition" --output text)
+            aws ecs describe-task-definition --task-definition "$td" --query taskDefinition > "$name-taskdef.json"
+          done
+      - name: Render the web task definition
+        id: render-web
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: web-taskdef.json
+          container-name: web
+          image: ${{ steps.stack.outputs.repo }}:${{ github.sha }}
+      - name: Deploy web (new revision, wait for stability)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-web.outputs.task-definition }}
+          service: ${{ steps.stack.outputs.web }}
+          cluster: ${{ steps.stack.outputs.cluster }}
+          wait-for-service-stability: true
+          wait-for-minutes: 20
+      - name: Render the Brain task definition
+        id: render-brain
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: brain-taskdef.json
+          container-name: brain
+          image: ${{ steps.stack.outputs.repo }}:${{ github.sha }}
+      - name: Deploy Brain (new revision, wait for stability)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-brain.outputs.task-definition }}
+          service: ${{ steps.stack.outputs.brain }}
+          cluster: ${{ steps.stack.outputs.cluster }}
+          wait-for-service-stability: true
+          wait-for-minutes: 20
