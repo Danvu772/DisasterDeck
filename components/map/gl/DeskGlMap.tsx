@@ -306,7 +306,7 @@ function LayerPanel({ layers, setLayers, sat, setSat, counts }: {
             {row("records", "Reports from the desk", <Users />)}
             {row("hazards", "Fires and hazards", <KFire />, counts.hazards)}
             {row("buildings", "Destroyed buildings", <KCollapse />, counts.buildings || undefined)}
-            {row("quakes", "Earthquakes (USGS)", <KQuake />, counts.quakes || undefined)}
+            {counts.quakes > 0 && row("quakes", "Earthquakes (USGS)", <KQuake />, counts.quakes)}
             {row("tilt", "3D view", <Layers />)}
             <div className="mt-1 space-y-1 border-t px-2 pt-2 pb-1 text-[11px] text-muted-foreground">
               <p className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-destructive" />Life-threatening</p>

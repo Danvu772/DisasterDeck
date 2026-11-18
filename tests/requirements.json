@@ -180,7 +180,7 @@
       "id": "WS-3",
       "section": "§6 D-0009, §5.4",
       "requirement": "A supplier or field team with an open incident gets matching contacts from the desk's directory",
-      "check": "API test: vehicle_breakdown incident returns tow and tire contacts for that desk (npm run check:feeds)",
+      "check": "API test: vehicle_breakdown incident returns tow and tire contacts for that desk (npm run check:contacts)",
       "passes": true
     },
     {
