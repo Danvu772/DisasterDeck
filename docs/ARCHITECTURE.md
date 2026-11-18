@@ -1,5 +1,7 @@
 # Architecture
 
+> How the code works today. The design it is moving to, and the locked decisions, are in [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md).
+
 ## The problem
 
 After an earthquake, the same call for help arrives as ten tweets, a phone call and a news line, and a coordinator has to decide who goes where before the next aftershock. The desk merges those voices into one record per site, ranks the records by rules, sends the next step to the right person, and asks a human before anything risky happens.
@@ -89,7 +91,7 @@ Synthetic: every user in `data/seed.json`, the shelters and their bed counts, th
 
 ## Known limits
 
-- The keeper handles six event types: `report`, `answer`, `approval`, `incident`, `need` and `claim` (`HANDLED` in `workers/memory-keeper.ts`). `closure`, `capacity`, `alert`, `correction` and `plan` events are accepted and stored, then stay `pending`. No code writes roads or zones, and shelters come from `npm run db:seed`. The `file_closure`, `file_capacity` and `correct_record` tools and the sheet and satellite workers post events that wait for those handlers. The sheet, road and shelter numbers on screen are seed data until they land.
+- The keeper handles all 11 event types (`HANDLED` in `workers/memory-keeper.ts`). Nothing creates `plan` events yet: the evacuation planner was never built.
 - One Brain, one process. A crash costs a few seconds before the lease expires. It does not scale across machines.
 - The rate limits are in memory per server process, so a restart clears them.
 - The personal agents read a copy of the board that refreshes when `bumpDeskVersion()` changes, so an agent can be one event behind.

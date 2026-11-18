@@ -1,51 +1,20 @@
-# Domain Docs
+# Design and domain docs
 
-How the engineering skills should consume this repo's domain documentation when exploring the codebase.
+Before exploring the code for a change, read:
 
-## Before exploring, read these
+- **`docs/SYSTEM_DESIGN.md`**: the one design. Components, contracts, invariants, the target stack, open decisions, glossary (§11).
+- **`docs/decisions/`**: one record per design decision. Read the ones that touch the area you're working in.
 
-- **`GLOSSARY.md`** at the repo root, or
-- **`GLOSSARY-MAP.md`** at the repo root if it exists: it points at one `GLOSSARY.md` per context. Read each one relevant to the topic.
-- **`docs/adr/`**: read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
+There is no `docs/adr/` and no `GLOSSARY.md`. Don't create them.
 
-If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
+## Use the glossary's words
 
-## File structure
+When you name a domain concept in an issue title, a test name or a proposal, use the term as `SYSTEM_DESIGN.md` §11 defines it. If the concept you need isn't there, either you're inventing language the project doesn't use or there's a real gap. Note the gap in your PR.
 
-Single-context repo (most repos):
+## Flag decision conflicts
 
-```
-/
-├── GLOSSARY.md
-├── docs/adr/
-│   ├── 0001-event-sourced-orders.md
-│   └── 0002-postgres-for-write-model.md
-└── src/
-```
+If your work contradicts a record in `docs/decisions/`, say so in the PR instead of overriding it quietly:
 
-Multi-context repo (presence of `GLOSSARY-MAP.md` at the root):
+> _Contradicts D-0003 (gpt-oss on OpenRouter), but worth reopening because…_
 
-```
-/
-├── GLOSSARY-MAP.md
-├── docs/adr/                          ← system-wide decisions
-└── src/
-    ├── ordering/
-    │   ├── GLOSSARY.md
-    │   └── docs/adr/                  ← context-specific decisions
-    └── billing/
-        ├── GLOSSARY.md
-        └── docs/adr/
-```
-
-## Use the glossary's vocabulary
-
-When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `GLOSSARY.md`. Don't drift to synonyms the glossary explicitly avoids.
-
-If the concept you need isn't in the glossary yet, that's a signal: either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/domain-modeling`).
-
-## Flag ADR conflicts
-
-If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
-
-> _Contradicts ADR-0007 (event-sourced orders), but worth reopening because…_
+Reopening a decision means a `design/` PR with a new record that supersedes the old one.

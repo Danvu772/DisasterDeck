@@ -5,6 +5,9 @@ version: 2
 ---
 # Final system design
 
+> [!warning] Superseded on 17 Nov 2026
+> This is the hackathon design (v2), kept as a record. The current design is [`docs/SYSTEM_DESIGN.md`](../SYSTEM_DESIGN.md).
+
 > [!abstract] In one sentence
 > Every person talks only to **their own agent**. Agents never talk to each other: every fact goes into **one collective memory** (MongoDB). The **Brain** keeps that memory clean, ranks the work, and sends each new fact to the people who need it. When something goes wrong on the ground, the person tells their agent and the Brain **re-plans**: that is the help desk.
 
