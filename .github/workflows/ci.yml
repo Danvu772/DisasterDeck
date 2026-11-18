@@ -160,3 +160,30 @@ jobs:
           done
           curl -fsS http://127.0.0.1:3000/login >/dev/null || { cat /tmp/next.log; exit 1; }
           npm run security:check
+
+  # CD-2: the deploy image builds and carries what the services run (tsx for the Brain, typescript
+  # for `next build`). Local docker is not always up, so CI is the evidence. Pull requests only, and
+  # only when a file that can change the image or the deploy path changed. No secrets, no registry.
+  image:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Did the image inputs change?
+        id: changed
+        run: |
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qE '^(Dockerfile|package(-lock)?\.json|infra/|\.github/workflows/)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build the image
+        if: steps.changed.outputs.run == 'true'
+        run: docker build -t dd-ci .
+      - name: tsx is in the image (Brain entrypoint)
+        if: steps.changed.outputs.run == 'true'
+        run: docker run --rm dd-ci npx tsx --version
+      - name: typescript is in the image (dev deps survived npm ci)
+        if: steps.changed.outputs.run == 'true'
+        run: docker run --rm dd-ci node -e "require.resolve('typescript')"
