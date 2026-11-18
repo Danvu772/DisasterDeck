@@ -21,6 +21,10 @@ description: Dan's multi-agent workflow: kick off each repo with a workflow revi
 
 **Collaborators** can use any agent tool, as long as their work goes through the shared artifacts (R3).
 
+**Every session Dan opens is an orchestrator.** It is the single point of entry for design questions. Its steady job: (1) keep Dan's desk fed — hand him tasks and decisions to make; (2) after a decision, delegate the work to builder and evaluator agents, choosing the model per task to stay token-efficient; (3) keep the lane registry honest so a second orchestrator never steps on its toes. Orchestrators coordinate only through the shared artifacts; there is no side-channel.
+
+**A change reaches every future session the moment it lands in a shared artifact.** There is no in-memory or chat state to inherit. All a change has to do is make it into `AGENTS.md`, the SKILL, `docs/SYSTEM_DESIGN.md`, a `docs/decisions/` record, `tests/requirements.json`, `PROGRESS.md`, or `ORCHESTRATORS.md`, by the usual branch → PR → merge. On session start an orchestrator re-reads those files fresh, so the fork's newest state is what it operates from.
+
 ---
 
 ## R1. Tiers and the issue loop
@@ -64,9 +68,7 @@ description: Dan's multi-agent workflow: kick off each repo with a workflow revi
 
 Personal skills and settings stay personal (`CLAUDE.local.md`, `.claude/settings.local.json`, the person's own tool config).
 
-## R4. Git flow (GitHub flow)
-
-- **`main` always works.** Nobody, human or agent, commits to it directly. Turn on branch protection.
+## R4. Git flow (GitHub flow)- **`main` always works.** Nobody, human or agent, commits to it directly. Turn on branch protection.
 - **One issue → one short-lived branch → one PR.** Branch names: `feat/<issue#>-slug`, `fix/…`, `design/…`, `chore/…`. Keep branches small and merge them within hours to a day.
 - **Parallel agents** each work in their own git worktree on their own branch, so they never share a checkout.
 - **The PR** links its issue (`Closes #N`), lists the requirement IDs it satisfies (Tier 1+), and says what was checked.
@@ -75,6 +77,21 @@ Personal skills and settings stay personal (`CLAUDE.local.md`, `.claude/settings
 - **Fixes:** bug → issue → `fix/` branch. At Tier 1+, first write a test that reproduces the bug and fails, then fix it.
 - **Design changes get their own `design/` PR:** `SYSTEM_DESIGN.md` + the decision record + updated requirements. It merges **before** any code that depends on it. A code PR never quietly changes the design; if it has to, stop and run R2.
 - **Deploys:** promote from `main` by a tag or a release branch, however Kickoff decided.
+
+## R6. Orchestrators and lanes (who is doing what, right now)
+
+Multiple orchestrators can run at once (different repos, or different workstreams in one repo). They must not step on each other. The single source of truth for "who is doing what" is `ORCHESTRATORS.md` at the repo root, because a file is visible to every session, while a live conversation is visible to none.
+
+**On session start, before any work:**
+
+1. Re-read the shared artifacts fresh (`AGENTS.md`, `docs/SYSTEM_DESIGN.md`, `docs/decisions/`, `tests/requirements.json`, `PROGRESS.md`, `ORCHESTRATORS.md`). This is how a change propagates.
+2. Claim or check your lane in `ORCHESTRATORS.md`. Record what you are orchestrating, the branch(es) and issue(s), and a `lastTouch` heartbeat. If another orchestrator already owns what you were about to take, don't silently double-up: put the overlap in front of Dan.
+
+**While working:** update the heartbeat and any new branch/issue before and after each significant action.
+
+**On exit:** strike your lane. A stale lane without a recent heartbeat is a dead session; treat it as unowned and confirm with Dan before taking it.
+
+**Conflict rule:** two orchestrators must not drive the same issue or touch the same files. Read git too (branches, PRs, uncommitted work in any checkout) as the corroborating source of truth. The lane file says intent; git says what actually happened.
 
 ## R5. Evaluator contract
 
