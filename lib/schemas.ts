@@ -14,6 +14,11 @@ import type {
 
 const text = z.string().max(5000);
 const id = z.string().min(1).max(200);
+// D-0016: a photo a person sent. A data URL for the pilot (no S3 yet), or an https URL once S3 lands.
+// The chat route caps the base64 at 5 MB, so a data URL fits this comfortably.
+const photoUrl = z.string().min(1).max(10 * 1024 * 1024)
+  .refine((s) => /^data:image\//.test(s) || /^https?:\/\//.test(s),
+    "photoUrl must be a data:image data URL or an http(s) URL").optional();
 const latLng = z.tuple([z.number().min(-90).max(90), z.number().min(-180).max(180)]) satisfies z.ZodType<LatLng>;
 const count = z.number().int().min(0).max(1_000_000);
 
@@ -32,7 +37,7 @@ export const reportPayload = z.object({
   text, textEn: text,
   address: text.optional(), coords: latLng.optional(), region: id.optional(),
   peopleCount: count.optional(), phoneMasked: z.string().max(40).optional(), siteId: id.optional(),
-  hazard: z.string().min(1).max(500).optional(),
+  hazard: z.string().min(1).max(500).optional(), photoUrl,
 }) satisfies z.ZodType<ReportPayload>;
 
 export const needPayload = z.object({
@@ -47,7 +52,7 @@ export const closurePayload = z.object({
 
 export const capacityPayload = z.object({
   shelter: z.string().min(1).max(500), bedsUsed: count, bedsTotal: count,
-  photoUrl: z.url().max(2000).optional(), coords: latLng.optional(), region: id.optional(),
+  photoUrl, coords: latLng.optional(), region: id.optional(),
 }).refine((p) => p.bedsUsed <= p.bedsTotal, "bedsUsed cannot be more than bedsTotal") satisfies z.ZodType<CapacityPayload>;
 
 export const answerPayload = z.object({
@@ -72,7 +77,7 @@ export const alertPayload = z.object({
 export const incidentPayload = z.object({
   incidentId: id.optional(), kind: z.enum(incidentKinds),
   text, textEn: text, taskId: id.optional(), canContinue: z.boolean(),
-  coords: latLng.optional(), canDeliver: count.optional(), resolved: z.boolean().optional(),
+  coords: latLng.optional(), canDeliver: count.optional(), resolved: z.boolean().optional(), photoUrl,
 }) satisfies z.ZodType<IncidentPayload>;
 
 export const claimPayload = z.object({

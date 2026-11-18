@@ -2,14 +2,15 @@
 // Ids, coordinates, region codes and unknown keys never show. enum: true turns "silent_zone" into "Silent zone".
 import type { EventType } from "@/lib/types";
 
-export interface FieldLabel { label: string; enum?: true; hide?: true }
+export interface FieldLabel { label: string; enum?: true; hide?: true; photo?: true }
 const HIDE = { label: "", hide: true } as const;
+const PHOTO = { label: "Photo", photo: true } as const;
 
 export const FIELDS: Record<EventType, Record<string, FieldLabel>> = {
   report: {
     kind: { label: "Kind", enum: true }, text: HIDE, textEn: HIDE,
     address: { label: "Address" }, coords: HIDE, region: HIDE,
-    peopleCount: { label: "People" }, phoneMasked: HIDE, siteId: HIDE,
+    peopleCount: { label: "People" }, phoneMasked: HIDE, siteId: HIDE, photoUrl: PHOTO,
   },
   need: {
     item: { label: "Item" }, quantity: { label: "Quantity" }, lifeThreatening: { label: "Life-threatening" },
@@ -20,7 +21,7 @@ export const FIELDS: Record<EventType, Record<string, FieldLabel>> = {
   },
   capacity: {
     shelter: { label: "Shelter" }, bedsUsed: { label: "Beds used" }, bedsTotal: { label: "Beds total" },
-    photoUrl: HIDE,
+    photoUrl: PHOTO,
   },
   answer: {
     taskId: HIDE, result: { label: "Answer", enum: true }, note: { label: "Note" }, etaMinutes: { label: "Minutes to arrive" },
@@ -30,7 +31,7 @@ export const FIELDS: Record<EventType, Record<string, FieldLabel>> = {
   incident: {
     incidentId: HIDE, kind: { label: "Kind", enum: true }, text: HIDE,
     textEn: HIDE, taskId: HIDE, canContinue: { label: "Can still finish the task" },
-    coords: HIDE, canDeliver: { label: "Can still deliver" }, resolved: { label: "Resolved" },
+    coords: HIDE, canDeliver: { label: "Can still deliver" }, resolved: { label: "Resolved" }, photoUrl: PHOTO,
   },
   claim: {
     what: { label: "Doing", enum: true }, text: HIDE, textEn: HIDE,
@@ -66,6 +67,15 @@ export function fieldRows(type: EventType, payload: unknown): FieldRow[] {
   const p = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
   const map = FIELDS[type] ?? {};
   const has = (k: string) => p[k] !== undefined && p[k] !== null && p[k] !== "";
-  return Object.keys(map).filter((k) => !map[k].hide && has(k))
+  return Object.keys(map).filter((k) => !map[k].hide && !map[k].photo && has(k))
     .map((k) => ({ key: k, label: map[k].label, value: show(p[k], map[k].enum) }));
+}
+
+// D-0016: the photo a person sent on this event, if the type carries one. Rendered as an image,
+// not as a text row. Empty or absent gives undefined.
+export function photoUrlOf(type: EventType, payload: unknown): string | undefined {
+  if (!FIELDS[type]?.photoUrl?.photo) return undefined;
+  const p = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
+  const v = p.photoUrl;
+  return typeof v === "string" && v ? v : undefined;
 }

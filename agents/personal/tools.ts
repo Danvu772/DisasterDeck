@@ -209,6 +209,13 @@ class ToolInputError extends Error {}
 // checks, then stops short of posting: it returns `pending` and the caller keeps the call to run later.
 const held = new WeakSet<UserContext>();
 export function holdWrites(ctx: UserContext): void { held.add(ctx); }
+
+// D-0016: a photo the person sent this turn, attached to the event for a coordinator, never read by the model.
+const turnPhoto = new WeakMap<UserContext, string>();
+export function setTurnPhoto(ctx: UserContext, photoUrl?: string): void {
+  if (photoUrl) turnPhoto.set(ctx, photoUrl); else turnPhoto.delete(ctx);
+}
+const photo = (ctx: UserContext): string | undefined => turnPhoto.get(ctx);
 const HELD_NOTE = "Held for the person's yes, which the screen asks for after your reply. " +
   "Do not mention confirming, sending, filing or being ready. Reply as if it were on the desk: say what you understood and what they do next, in the present tense.";
 
@@ -278,7 +285,8 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       const p: ReportPayload = { kind: i.kind as ReportPayload["kind"], text: needId(masked(i.text), "text"),
         textEn: masked(i.text_en) ?? "", address: s(i.address), region: s(i.region) ?? u.region,
         peopleCount: n(i.people_count),
-        siteId: u.role !== "public" && siteId && ctx.records.sites.some((x) => x._id === siteId) ? siteId : undefined };
+        siteId: u.role !== "public" && siteId && ctx.records.sites.some((x) => x._id === siteId) ? siteId : undefined,
+        photoUrl: photo(ctx) };
       return post(ctx, "report", p, `Report: ${p.kind}${p.address ? ` at ${p.address}` : ""}`);
     }
 
@@ -291,7 +299,8 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
     case "file_capacity": {
       const used = needId(n(i.beds_used), "beds_used"), total = needId(n(i.beds_total), "beds_total");
       if (used < 0 || total <= 0) throw new ToolInputError("beds_used must be ≥ 0 and beds_total > 0.");
-      const p: CapacityPayload = { shelter: needId(s(i.shelter), "shelter"), bedsUsed: used, bedsTotal: total };
+      const p: CapacityPayload = { shelter: needId(s(i.shelter), "shelter"), bedsUsed: used, bedsTotal: total,
+        photoUrl: photo(ctx) };
       return post(ctx, "capacity", p, `Shelter ${p.shelter}: ${used}/${total}`);
     }
 
@@ -316,7 +325,7 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
       const p: IncidentPayload = { kind: i.kind as IncidentKind, text: needId(masked(i.text), "text"),
         textEn: masked(i.text_en) ?? "", taskId: forTask,
         canContinue: i.can_continue === true, coords: u.coords, canDeliver: n(i.can_deliver),
-        resolved: i.resolved === true ? true : undefined, incidentId };
+        resolved: i.resolved === true ? true : undefined, incidentId, photoUrl: photo(ctx) };
       return post(ctx, "incident", p, p.resolved ? `Problem ${incidentId} resolved` : `Problem: ${p.kind}${p.taskId ? ` on task ${p.taskId}` : ""}`);
     }
 

@@ -7,7 +7,7 @@ import { actorLabel, KIND_WORD } from "../detail/fields";
 import { ageText } from "../encode";
 import { EVENT_ICON, outcome, summary } from "../EventRow";
 import { SOURCE_LABEL } from "../Stamp";
-import { fieldRows } from "./fields";
+import { fieldRows, photoUrlOf } from "./fields";
 import { openHref, recordKind } from "./recordKind";
 import { gapText } from "./timing";
 
@@ -16,6 +16,7 @@ export function EventReport({ e, now, actorName, onBack, demo }: { e: Event & { 
   const s = summary(e);
   const gap = gapText(e);
   const rows = fieldRows(e.type, e.payload);
+  const photo = photoUrlOf(e.type, e.payload);
   const kind = recordKind(e);
   const ids = e.result?.recordIds ?? [];
   const waiting = !demo && (e.status === "pending" || e.status === "working");
@@ -56,6 +57,14 @@ export function EventReport({ e, now, actorName, onBack, demo }: { e: Event & { 
             </div>
           ))}
         </dl>
+      )}
+
+      {photo && (
+        <figure className="mt-4">
+          {/* eslint-disable-next-line @next/next/no-img-element -- the photo is a data URL from the person; no optimization, no external src */}
+          <img src={photo} alt="Photo the person attached to this report" className="max-h-80 w-auto rounded-lg border" />
+          <figcaption className="mt-1 text-xs text-muted-foreground">Attached photo, kept for a coordinator to review.</figcaption>
+        </figure>
       )}
 
       <section className="mt-5">

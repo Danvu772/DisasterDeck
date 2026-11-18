@@ -13,7 +13,7 @@ import { checkSchema, modelFor, send, sendStream, type ChatMessage, type ChatPar
 import { maskPhones } from "../shared/privacy";
 import { stashPending, takePending, type PendingCall } from "./pending";
 import { systemPrompt } from "./prompts";
-import { holdWrites, runTool, toolSchema, toolsFor, type ToolOutcome } from "./tools";
+import { holdWrites, runTool, setTurnPhoto, toolSchema, toolsFor, type ToolOutcome } from "./tools";
 
 export interface TurnInput {
   userId: string;
@@ -48,6 +48,9 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
   if (input.coords) ctx.user = { ...ctx.user, coords: input.coords };
   const said = maskPhones(input.text?.trim() ?? "").text;
   if (!said && !input.image) return { reply: "Say or send something and I will take it from there.", eventIds: [], actions: [] };
+  // D-0016: the photo is attached to the event a coordinator will look at; it never reaches the model.
+  const photoUrl = input.image ? `data:${input.image.mediaType};base64,${input.image.base64}` : undefined;
+  setTurnPhoto(ctx, photoUrl);
 
   const { model, effort } = modelFor("chat");
   if (input.confirm) holdWrites(ctx);
@@ -117,7 +120,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
           : await runTool(name, args ?? {}, ctx)
             .catch((e: Error): ToolOutcome => ({ content: `Tool failed: ${e.message}`, isError: true }));
         if (out.eventId) eventIds.push(out.eventId);
-        if (out.pending) held.push({ name, input: args ?? {}, summary: out.summary ?? name });
+        if (out.pending) held.push({ name, input: args ?? {}, summary: out.summary ?? name, photoUrl });
         if (name !== "ask_desk") actions.push({ tool: name, summary: out.summary ?? out.content.slice(0, 120), ok: !out.isError,
           ...("showMetric" in out && out.showMetric ? { type: "show_metric" as const, id: out.showMetric } : {}),
           ...("showMap" in out && out.showMap ? { type: "show_map" as const, ...out.showMap } : {}) });
@@ -146,7 +149,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
   await d.saveMessage({ userId: ctx.user._id, from: "agent", text: reply, ts: new Date(+now + 1), eventIds });
   // Held writes are not "done": they leave the chips and wait for the person's yes.
   const pending = held.length
-    ? { id: stashPending(ctx.user._id, held.map(({ name, input }) => ({ name, input }))), items: held.map((h) => h.summary) }
+    ? { id: stashPending(ctx.user._id, held.map(({ name, input, photoUrl }) => ({ name, input, photoUrl }))), items: held.map((h) => h.summary) }
     : undefined;
   return { reply, eventIds, actions: pending ? actions.filter((a) => !held.some((h) => h.summary === a.summary && h.name === a.tool)) : actions,
     ...(pending ? { pending } : {}), model: servedBy };
@@ -169,6 +172,7 @@ export async function settlePending(userId: string, id: string, send: boolean): 
   const eventIds: string[] = [];
   const actions: TurnResult["actions"] = [];
   for (const c of calls) {
+    setTurnPhoto(ctx, c.photoUrl);
     const out = await runTool(c.name, c.input, ctx)
       .catch((e: Error): ToolOutcome => ({ content: `Tool failed: ${e.message}`, isError: true }));
     if (out.eventId) eventIds.push(out.eventId);
@@ -209,9 +213,9 @@ function parseArgs(raw: string): Record<string, unknown> | undefined {
 /** Added to a reply the model did not finish (finish_reason "length"). */
 export const CUT_OFF_NOTE = "(My answer was cut off before the end. Ask again, or ask for less at once.)";
 
-// gpt-oss reads text only (D-0003): a photo is not sent to the model. The agent is told one came,
-// so it can ask the person to say what it shows.
-export const PHOTO_NOTE = "(The person attached a photo. You cannot see photos: ask them to say in words what it shows.)";
+// gpt-oss reads text only (D-0003). A photo is not sent to the model: it is attached to the event
+// for a coordinator to look at (D-0016). The agent is told one came, so it can ask what it shows.
+export const PHOTO_NOTE = "(The person attached a photo. You cannot see photos: it is attached to the event for a coordinator to look at. Ask them to say in words what it shows.)";
 
 function userContent(ctx: UserContext, said: string, image: TurnInput["image"], quakes: Quakes): string {
   return [

@@ -21,3 +21,4 @@ Dan decides alone. Template: `# D-NNNN Title`, then Date, Status (proposed, acce
 | [D-0013](0013-sms-offline-deferred.md) | SMS and offline path deferred | accepted |
 | [D-0014](0014-observability-audit.md) | CloudTrail, CloudWatch, app audit log | accepted |
 | [D-0015](0015-ci-github-oidc.md) | CI to AWS: GitHub Actions with OIDC, Secrets Manager | accepted |
+| [D-0016](0016-photos-attach-only.md) | Photos attach to the event; no model reads them | accepted |

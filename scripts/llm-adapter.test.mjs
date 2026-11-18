@@ -446,11 +446,18 @@ test("LLM-5: no prompt or tool description says the agent can see or read photos
     }
   }
   assert.match(systemPrompt("shelter"), /ask (them|the person) for the two numbers/i);
-  // /api/chat does not store photos (app/api/chat/route.ts passes them only to runTurn), so no prompt may say it does.
+  // D-0016: a photo is attached to the event for a coordinator; the model never reads it. Any prompt that says
+  // a photo is kept/attached must say where it goes (a coordinator), not the model and not "nowhere".
   for (const r of ROLES) {
+    const seen = [];
+
     for (const sentence of sentences(systemPrompt(r))) {
-      if (/\bphotos?\b[^.]*\b(kept|saved|stored|attached to)\b/i.test(sentence)) assert.match(sentence, /\bnot (kept|saved|stored)\b/i, `${r}: ${sentence}`);
+      if (/\bphotos?\b[^.]*\b(kept|saved|stored|attached to)\b/i.test(sentence)) {
+        seen.push(sentence);
+        assert.match(sentence, /\bcoordinator\b/i, `${r}: photo storage must name a coordinator: ${sentence}`);
+      }
     }
+    assert.ok(seen.length > 0, `${r} prompt never says a photo is attached`);
   }
   assert.match(PHOTO_NOTE, /cannot see photos/);
 });

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 3.1, 17 Nov 2026 (v3 plus D-0009 to D-0015: every open call decided) |
+| Version | 3.2, 18 Nov 2026 (v3.1 plus D-0016: photos attach-only) |
 | Status | **Locked.** v3 merged 17 Nov (#2). Dan is the only voter |
 | Owner | Dan Vu. He owns the fork and decides alone |
 | Replaces | Multiplayer Disaster Deck v2 (14 Nov) |
@@ -200,6 +200,7 @@ Decided by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reaso
 | 13 | SMS, offline | Deferred; 10DLC when a county signs on; IPAWS on the roadmap | — | [D-0013](decisions/0013-sms-offline-deferred.md) |
 | 14 | Observability | CloudTrail, CloudWatch, app audit log in MongoDB | Health scripts | [D-0014](decisions/0014-observability-audit.md) |
 | 15 | CI to AWS | GitHub Actions with OIDC, Secrets Manager, deploy by tag | Tailscale + rsync | [D-0015](decisions/0015-ci-github-oidc.md) |
+| 16 | Photos | Photos attach to the event (`photoUrl`) and a coordinator looks at them; no model reads image bytes for the pilot | "not kept on the desk" | [D-0016](decisions/0016-photos-attach-only.md) |
 
 **First pilot:** an IU Emergency Management tabletop exercise (no real data, so no compliance paperwork). Monroe County and Maui are on hold.
 

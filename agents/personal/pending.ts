@@ -3,7 +3,7 @@
 // POST /api/chat { approve: id, send: true|false } then sends them, or drops them.
 // In memory, one use, 10 minutes: a restart or a late tap just asks the person to say it again.
 
-export interface PendingCall { name: string; input: Record<string, unknown> }
+export interface PendingCall { name: string; input: Record<string, unknown>; photoUrl?: string }
 interface Batch { userId: string; calls: PendingCall[]; expires: number }
 
 const TTL_MS = 10 * 60_000;
