@@ -14,6 +14,7 @@
 // keeper (the only writers) or posts an event. Every step is a conditional update or a deduped
 // event, so two overlapping ticks, or a restart, handle each task once.
 import { bumpDeskVersion, cols, postEvent } from "../lib/db";
+import { getDemo } from "../lib/demo";
 import { SEEN_WITHIN_MS } from "../lib/rules/assign";
 import type { IncidentPayload } from "../lib/types";
 import { approvalLate, askRoadConfirm, askShelterConfirm, checkIn, offlineTimedOut, proposedExpired, reconcile, redelegate, syncPriority, timedOut } from "./dispatcher";
@@ -42,6 +43,13 @@ let lastPriorityAt: number | null = null;
 
 /** `now` lets a check move time forward. `deskId` limits the tick to one desk (checks use it). */
 export async function tick(now: Date = new Date(), opts: { deskId?: string } = {}): Promise<TickResult> {
+  // The demo is being prepared: do nothing until it is playing.
+  if ((await getDemo())?.state === "prepping") {
+    return {
+      requeued: 0, failed: 0, timedOut: 0, checkins: 0, unreachable: 0, reprioritized: 0, created: 0, reassigned: 0,
+      approvalsLate: 0, offline: 0, sheltersAsked: 0, roadsAsked: 0, needsExpired: 0,
+    };
+  }
   const { events, tasks, users, shelters, roads } = await cols();
   const desk = opts.deskId ? { deskId: opts.deskId } : {};
 

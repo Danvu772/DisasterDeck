@@ -9,6 +9,7 @@ import { hostname } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { bumpDeskVersion, closeDb, cols, markLoop } from "../lib/db";
+import { getDemo } from "../lib/demo";
 import type { Event } from "../lib/types";
 import * as dispatcher from "./dispatcher";
 import { apply, HANDLED } from "./memory-keeper";
@@ -42,6 +43,8 @@ export async function releaseLease(): Promise<void> {
 
 /** Take the next event: lane 0 (people, sweeper) first, then the oldest. Atomic. */
 export async function takeNext(filter: { deskId?: string } = {}): Promise<Event | null> {
+  // The demo is being prepared (Mongo is being wiped): take nothing until it is playing.
+  if ((await getDemo())?.state === "prepping") return null;
   const { events } = await cols();
   return events.findOneAndUpdate(
     { status: "pending", type: { $in: HANDLED }, ...filter },
