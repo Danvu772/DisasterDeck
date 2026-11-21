@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { setTimeout as sleep } from "node:timers/promises";
 import { runOnce } from "../workers/brain";
 import { CHECKIN_GRACE_MINUTES, tick } from "../workers/sweeper";
-import { ANSWER_MINUTES, MAX_TRIES } from "../workers/dispatcher";
+import { ANSWER_MINUTES } from "../workers/dispatcher";
 import { closeDb, cols, newId } from "./db";
 import { demoNow, demoNowFrom, demoSpeed, getDemo } from "./demo";
 import { scored } from "./rules/priority";
