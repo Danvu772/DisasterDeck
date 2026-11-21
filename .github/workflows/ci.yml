@@ -143,6 +143,9 @@ jobs:
       # DEMO-1/2/3/5. Deletes every desk's records, so it needs this throwaway Mongo.
       - name: Demo check
         run: npm run demo:check
+      # #53: plays the 24 demo beats through the real handlers, the Brain and the sweeper on virtual time.
+      - name: Scenario check (#53)
+        run: npm run check:scenario
       - name: Reseed users (the demo check reseeds them; security:check needs them)
         run: npm run db:seed
       - name: Build (for security:check's server)

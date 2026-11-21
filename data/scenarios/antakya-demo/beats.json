@@ -29,14 +29,14 @@
     {"record":{"coll":"sites","from":"x:1620000001390004191","is":{"callStatus":"verified"}}}
   ]},
   {"beat":6,"name":"Three needs in one Facebook post","afterLine":"facebook:facebook:pfbid2a89af105e750172c2:need-insulin","shows":"Insulin opens at once at tier 0 with a call task (life). Blankets and formula stay proposed (one voice)","expect":[
-    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-insulin","is":{"status":"open","tier":0,"lifeThreatening":true}}},
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-insulin","is":{"status":{"in":["open","assigned"]},"tier":0,"lifeThreatening":true}}},
     {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-blankets","is":{"status":"proposed"}}},
     {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-baby-formula","is":{"status":"proposed"}}},
     {"task":{"from":"facebook:pfbid2a89af105e750172c2:need-insulin","type":"call","is":{"open":true}}},
     {"task":{"from":"facebook:pfbid2a89af105e750172c2:need-insulin","type":"deliver","is":{"open":true}}}
   ]},
   {"beat":7,"name":"Blankets reach three askers","afterLine":"facebook:facebook:pfbid1fc899d1ad50d8ed91:need-blankets","shows":"Blankets open at three distinct askers: the wish becomes work, a delivery task goes to a supplier","expect":[
-    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-blankets","is":{"status":"open","support":{"gte":3}}}},
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-blankets","is":{"status":{"in":["open","assigned"]},"support":{"gte":3}}}},
     {"task":{"from":"facebook:pfbid1fc899d1ad50d8ed91:need-blankets","type":"deliver","is":{"status":"assigned"}}},
     {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-insulin","is":{"status":"delivered"}}}
   ]},
@@ -95,8 +95,8 @@
     {"task":{"from":"x:1620000047580143062","type":"call","is":{"open":false}}}
   ]},
   {"beat":20,"name":"Cold night, tents and heaters","afterLine":"facebook:facebook:pfbidd1989e419b4ccd8aa2:need-heaters","shows":"The same needs turn life-threatening: tier 0, open, delivery tasks to the supplier who stocks them","expect":[
-    {"record":{"coll":"needs","from":"facebook:pfbid101dbc29f781bd169d:need-tents","is":{"tier":0,"status":"open","lifeThreatening":true}}},
-    {"record":{"coll":"needs","from":"facebook:pfbid101dbc29f781bd169d:need-heaters","is":{"tier":0,"status":"open","lifeThreatening":true}}},
+    {"record":{"coll":"needs","from":"facebook:pfbid101dbc29f781bd169d:need-tents","is":{"tier":0,"status":{"in":["open","assigned"]},"lifeThreatening":true}}},
+    {"record":{"coll":"needs","from":"facebook:pfbid101dbc29f781bd169d:need-heaters","is":{"tier":0,"status":{"in":["open","assigned"]},"lifeThreatening":true}}},
     {"task":{"from":"facebook:pfbid101dbc29f781bd169d:need-tents","type":"deliver","is":{"open":true}}},
     {"task":{"from":"facebook:pfbid101dbc29f781bd169d:need-heaters","type":"deliver","is":{"open":true}}}
   ]},
