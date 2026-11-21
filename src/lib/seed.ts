@@ -21,7 +21,7 @@ function withDates<T>(doc: Json, fields: string[]): T {
 
 /** The ids are global, so a seed for any other desk gets its ids prefixed with the desk id. */
 export async function seed(desk?: string): Promise<{ deskId: string; users: number }> {
-  const file = JSON.parse(await readFile(new URL("../data/seed.json", import.meta.url), "utf8")) as {
+  const file = JSON.parse(await readFile(new URL("../../data/seed.json", import.meta.url), "utf8")) as {
     deskId: string; users: Json[];
   };
   const target = desk ?? file.deskId;
