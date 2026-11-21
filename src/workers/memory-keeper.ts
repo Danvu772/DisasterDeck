@@ -838,6 +838,9 @@ async function applyClosure(event: Event): Promise<KeeperResult> {
       state: p.state, reason: reason || same.reason, observedAt: later(stamp.observedAt, new Date(same.observedAt)),
       source: event.source, trust, confidence: confidenceOf(trust), ...(!same.coords && p.coords ? { coords: p.coords } : {}),
     };
+    // A firmer word on the same story (hearsay becomes closed, or public becomes confirmed) is news to
+    // whoever works near the road: tell them. A plain repeat at the same confidence tells nobody.
+    if (p.state !== same.state || confidenceOf(trust) !== same.confidence) flags = ["notify"];
   } else {
     note = `${p.state} also reported by ${stamp.who} (${trust}), the stored ${same.state} from ${stored.who ?? "unknown"} (${stored.trust}) stays`;
     set = { observedAt: later(stamp.observedAt, new Date(same.observedAt)) };
