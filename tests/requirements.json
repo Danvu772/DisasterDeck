@@ -312,8 +312,8 @@
     {
       "id": "DEMO-1",
       "section": "§3.1, §4.3 D-0017",
-      "requirement": "Only a signed-in person, in a demo deployment, can start the demo (POST /api/demo/start); agent keys, timers and logged-out calls cannot; the route is the only writer of meta demo",
-      "check": "npm run api:check cases for POST /api/demo/start",
+      "requirement": "Only a signed-in coordinator, in a demo deployment, can start the demo (POST /api/demo/start); other roles, agent keys, timers and logged-out calls cannot; the route is the only writer of meta demo",
+      "check": "npm run api:check cases for POST /api/demo/start, including a volunteer refused",
       "passes": null
     },
     {
