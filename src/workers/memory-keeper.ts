@@ -923,7 +923,7 @@ async function shapeOf(zoneId: string): Promise<Shape | undefined> {
   if (!shapes) {
     shapes = new Map();
     try {
-      const gj = JSON.parse(await readFile(new URL("../public/data/zones.geojson", import.meta.url), "utf8")) as {
+      const gj = JSON.parse(await readFile(new URL("../../public/data/zones.geojson", import.meta.url), "utf8")) as {
         features: { id?: string; properties?: { _id?: string; name?: string; region?: string };
           geometry?: { type: string; coordinates: number[][][] | number[][][][] } }[];
       };

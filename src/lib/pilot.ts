@@ -1,4 +1,4 @@
-import pilot from "../data/pilot.json";
+import pilot from "../../data/pilot.json";
 import type { LatLng } from "./types";
 
 export { pilot };

@@ -8,9 +8,9 @@ const demoBuild = process.env.DEMO_MODE === "1";
 
 const nextConfig: NextConfig = {
   devIndicators: false, // the round "N" badge ends up in demo screenshots
-  // app/uswds.scss loads USWDS 3 from its Sass packages.
+  // src/app/uswds.scss loads USWDS 3 from its Sass packages.
   sassOptions: {
-    includePaths: [path.join(process.cwd(), "node_modules/@uswds/uswds/packages"), path.join(process.cwd(), "app")],
+    includePaths: [path.join(process.cwd(), "node_modules/@uswds/uswds/packages"), path.join(process.cwd(), "src", "app")],
     quietDeps: true,
     silenceDeprecations: ["legacy-js-api", "import", "global-builtin"],
   },
@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
     if (!demoBuild) {
       config.resolve.alias = {
         ...config.resolve.alias,
-        "motion/react$": path.join(process.cwd(), "components/motion/static.tsx"),
+        "motion/react$": path.join(process.cwd(), "src/components/motion/static.tsx"),
       };
     }
     return config;

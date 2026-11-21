@@ -21,7 +21,7 @@ const PRICES: Record<string, { input: number; output: number; cacheRead: number 
 };
 const MOST_EXPENSIVE = { input: 10, output: 50, cacheRead: 1 }; // unknown model: price high, never low
 
-const FILE = process.env.AGENT_USAGE_FILE ?? path.join(process.cwd(), "agents", ".usage", "usage.jsonl");
+const FILE = process.env.AGENT_USAGE_FILE ?? path.join(process.cwd(), "src", "agents", ".usage", "usage.jsonl");
 
 export class BudgetError extends Error {}
 
