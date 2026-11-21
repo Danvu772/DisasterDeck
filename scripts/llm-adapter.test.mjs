@@ -301,7 +301,7 @@ test("runTurn(): a photo is described into text by the vision model first, and t
 });
 
 test("PHO-1: a filed event from a photo turn carries the vision description and the photoUrl (server attaches it, not the model)", async () => {
-  const { runTurn } = await import("../agents/personal/turn.ts");
+  const { runTurn } = await import("../src/agents/personal/turn.ts");
   const description = "A collapsed wall with two people nearby.";
   answers.push(json({ id: "gen-v", model: "google/gemma-4-31b-it", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
   answers.push(completion({ content: null, tool_calls: [{ id: "call_fr", type: "function", function: { name: "file_report", arguments: JSON.stringify({ kind: "trapped", text: description, text_en: description, address: null, region: null, people_count: 2, site_id: null }) } }] }, "tool_calls"));
@@ -319,7 +319,7 @@ test("PHO-1: a filed event from a photo turn carries the vision description and 
 });
 
 test("PHO-1: report_problem (incident) carries the photoUrl the turn attached", async () => {
-  const { runTurn } = await import("../agents/personal/turn.ts");
+  const { runTurn } = await import("../src/agents/personal/turn.ts");
   const description = "A van tipped over on the road, the driver is hurt.";
   answers.push(json({ id: "gen-v", model: "google/gemma-4-31b-it", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
   answers.push(completion({ content: null, tool_calls: [{ id: "call_rp", type: "function", function: { name: "report_problem", arguments: JSON.stringify({ kind: "injury", text: description, text_en: description, task_id: null, can_continue: false, can_deliver: null, resolved: false, incident_id: null }) } }] }, "tool_calls"));
@@ -332,7 +332,7 @@ test("PHO-1: report_problem (incident) carries the photoUrl the turn attached", 
 });
 
 test("PHO-1: file_capacity carries the photoUrl the turn attached", async () => {
-  const { runTurn } = await import("../agents/personal/turn.ts");
+  const { runTurn } = await import("../src/agents/personal/turn.ts");
   const description = "The hall is full, every mat has two people on it.";
   answers.push(json({ id: "gen-v", model: "google/gemma-4-31b-it", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
   answers.push(completion({ content: null, tool_calls: [{ id: "call_fc", type: "function", function: { name: "file_capacity", arguments: JSON.stringify({ shelter: "Mosque Hall", beds_used: 120, beds_total: 80 }) } }] }, "tool_calls"));
@@ -344,7 +344,7 @@ test("PHO-1: file_capacity carries the photoUrl the turn attached", async () => 
 });
 
 test("PHO-1: on the confirm path the photo rides with the pending batch and lands on the event after settlePending approve", async () => {
-  const { runTurn, settlePending } = await import("../agents/personal/turn.ts");
+  const { runTurn, settlePending } = await import("../src/agents/personal/turn.ts");
   const description = "A collapsed wall with two people nearby.";
   answers.push(json({ id: "gen-v", model: "google/gemma-4-31b-it", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: description } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0001 } }));
   answers.push(completion({ content: null, tool_calls: [{ id: "call_fr", type: "function", function: { name: "file_report", arguments: JSON.stringify({ kind: "trapped", text: description, text_en: description, address: null, region: null, people_count: 2, site_id: null }) } }] }, "tool_calls"));
