@@ -14,7 +14,7 @@ Every agent reads this first, whatever tool it runs in. The workflow is Dan's: [
 | Tracker | GitHub Issues on `Danvu772/DisasterDeck`. Always pass `--repo Danvu772/DisasterDeck` (`gh` defaults to the upstream parent on a fork) |
 | Requirements | [`tests/requirements.json`](tests/requirements.json): requirement ID, design section, check, `passes` |
 | State | [`PROGRESS.md`](PROGRESS.md), plus the live [`ORCHESTRATORS.md`](ORCHESTRATORS.md) lanes. Re-read both fresh at session start |
-| Deploy | Promote from `main` only when Dan asks. Today: `git push origin main:prod` to Vultr. After D-0002: AWS, by tag |
+| Deploy | Deploy from `main` only when Dan asks: tag a version (`git tag -a v1.2.3 -m ... && git push origin v1.2.3`) and the workflow ships it to ECS Fargate with OIDC. Details: `docs/agents/deploy.md` |
 
 ### Done check (every issue)
 

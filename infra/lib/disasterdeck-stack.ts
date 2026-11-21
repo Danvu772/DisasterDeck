@@ -2,7 +2,7 @@
 // no `fromLookup`, no SDK calls; secrets are referenced by partial ARN and
 // resolved from pseudo-params (partition/region/account) so the same template
 // redeploys to GovCloud unchanged.
-import { Duration, Stack, type StackProps } from "aws-cdk-lib";
+import { CfnOutput, Duration, Stack, type StackProps } from "aws-cdk-lib";
 import type { Construct } from "constructs";
 import * as cloudtrail from "aws-cdk-lib/aws-cloudtrail";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
@@ -17,7 +17,11 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 
-const IMAGE_TAG = "latest";
+// The CDK-owned task definitions point at an immutable tag, never `latest`. The deploy workflow
+// registers a new revision per release pointing at the commit SHA (docs/agents/deploy.md). Set the
+// tag with `cdk deploy -c imageTag=<sha>`: use the SHA that is live whenever a cdk deploy changes
+// a task definition, or the service falls back to this tag.
+const DEFAULT_IMAGE_TAG = "bootstrap";
 const MONGO_DB = "disaster_desk";
 // Docs/agents/deploy.md: prod data lives under malatya-2023. Override at deploy.
 const DESK_ID = process.env.DESK_ID ?? "malatya-2023";
@@ -61,6 +65,11 @@ exports.handler = async () => {
 export class DisasterDeckStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
+    const IMAGE_TAG = String(this.node.tryGetContext("imageTag") ?? DEFAULT_IMAGE_TAG);
+    if (IMAGE_TAG === "latest") throw new Error("imageTag must be immutable, not latest");
+    // First install: the bootstrap image is not in ECR yet, so the services start empty (desired 0)
+    // and the first tagged deploy workflow sets web 2 / Brain 1 with the first real revision.
+    const firstInstall = IMAGE_TAG === DEFAULT_IMAGE_TAG || String(this.node.tryGetContext("firstInstall")) === "true";
 
     // ----- VPC: two AZs, one public tier (ALB) + one private tier (Fargate) -----
     const vpc = new ec2.Vpc(this, "Vpc", {
@@ -84,20 +93,54 @@ export class DisasterDeckStack extends Stack {
       `arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret:disasterdeck/openrouter/api-key`,
     );
 
+    // Web-only secrets: Auth.js session secret and the SSOJet OIDC client. The Brain never reads them.
+    const secretArn = (name: string) =>
+      `arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret:${name}`;
+    const authSecret = secretsmanager.Secret.fromSecretPartialArn(this, "AuthSecret", secretArn("disasterdeck/auth/secret"));
+    const ssojetClientId = secretsmanager.Secret.fromSecretPartialArn(this, "SsojetClientId", secretArn("disasterdeck/ssojet/client-id"));
+    const ssojetClientSecret = secretsmanager.Secret.fromSecretPartialArn(this, "SsojetClientSecret", secretArn("disasterdeck/ssojet/client-secret"));
+    const ssojetIssuerUrl = secretsmanager.Secret.fromSecretPartialArn(this, "SsojetIssuerUrl", secretArn("disasterdeck/ssojet/issuer-url"));
+
     // ----- Container image (built and pushed by #7's GitHub Actions) -----
     const repo = new ecr.Repository(this, "Repo", {
       repositoryName: "disasterdeck",
       imageScanOnPush: true,
     });
 
+    // ----- GitHub OIDC: no long-lived AWS keys (D-0015 / CD-1) -----
+    // The deploy workflow authenticates by asking GitHub's Actions IdP for a web-identity token,
+    // then AssumeRoleWithWebIdentity into this role. Trust is scoped to version tags of this repo
+    // only, so a tag push from any other repo (or an untagged ref) cannot assume it.
+    const githubOidc = new iam.OpenIdConnectProvider(this, "GitHubOidcProvider", {
+      url: "https://token.actions.githubusercontent.com",
+      clientIds: ["sts.amazonaws.com"],
+      thumbprints: ["6938fd4d98bab03faadb97b34396831e3780aea1"],
+    });
+    const deployRole = new iam.Role(this, "DeployRole", {
+      roleName: "disasterdeck-deploy",
+      assumedBy: new iam.FederatedPrincipal(
+        githubOidc.openIdConnectProviderArn,
+        {
+          StringEquals: {
+            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          },
+          StringLike: {
+            "token.actions.githubusercontent.com:sub": "repo:Danvu772/DisasterDeck:ref:refs/tags/*",
+          },
+        },
+        "sts:AssumeRoleWithWebIdentity",
+      ),
+    });
+
     const cluster = new ecs.Cluster(this, "Cluster", { vpc });
 
-    // One shared execution role (pulls the ECR image, reads the two secrets).
+    // One shared execution role (pulls the ECR image, reads the runtime secrets).
     const executionRole = new iam.Role(this, "ExecutionRole", {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
     });
     mongoUri.grantRead(executionRole);
     openRouterKey.grantRead(executionRole);
+    for (const s of [authSecret, ssojetClientId, ssojetClientSecret, ssojetIssuerUrl]) s.grantRead(executionRole);
 
     const webLogs = new logs.LogGroup(this, "WebLogs", {
       retention: logs.RetentionDays.TWO_WEEKS,
@@ -121,6 +164,10 @@ export class DisasterDeckStack extends Stack {
     });
     webContainer.addSecret("MONGODB_URI", ecs.Secret.fromSecretsManager(mongoUri));
     webContainer.addSecret("OPENROUTER_API_KEY", ecs.Secret.fromSecretsManager(openRouterKey));
+    webContainer.addSecret("AUTH_SECRET", ecs.Secret.fromSecretsManager(authSecret));
+    webContainer.addSecret("SSOJET_CLIENT_ID", ecs.Secret.fromSecretsManager(ssojetClientId));
+    webContainer.addSecret("SSOJET_CLIENT_SECRET", ecs.Secret.fromSecretsManager(ssojetClientSecret));
+    webContainer.addSecret("SSOJET_ISSUER_URL", ecs.Secret.fromSecretsManager(ssojetIssuerUrl));
 
     const webSg = new ec2.SecurityGroup(this, "WebSg", {
       vpc,
@@ -130,9 +177,14 @@ export class DisasterDeckStack extends Stack {
     const webService = new ecs.FargateService(this, "WebService", {
       cluster,
       taskDefinition: webTask,
-      desiredCount: 2,
+      desiredCount: firstInstall ? 0 : 2,
       assignPublicIp: false,
       securityGroups: [webSg],
+      // A deploy whose tasks never pass the ALB health check on /login rolls back automatically:
+      // ECS's circuit breaker stops the rollout and reverts to the previous, healthy revision
+      // (CD-2). The workflow pushes a new image and waits for services-stable; it does not roll
+      // back itself.
+      circuitBreaker: { rollback: true },
     });
 
     // ----- Brain task: single worker, no ALB -----
@@ -153,12 +205,15 @@ export class DisasterDeckStack extends Stack {
     brainContainer.addSecret("MONGODB_URI", ecs.Secret.fromSecretsManager(mongoUri));
     brainContainer.addSecret("OPENROUTER_API_KEY", ecs.Secret.fromSecretsManager(openRouterKey));
 
-    new ecs.FargateService(this, "BrainService", {
+    const brainService = new ecs.FargateService(this, "BrainService", {
       cluster,
       taskDefinition: brainTask,
-      desiredCount: 1,
+      desiredCount: firstInstall ? 0 : 1, // the Brain is never above 1: one per database
       assignPublicIp: false,
       securityGroups: [new ec2.SecurityGroup(this, "BrainSg", { vpc, allowAllOutbound: true, description: "Brain worker" })],
+      // Roll back a deploy whose tasks never reach RUNNING (no ALB here, so no /login signal;
+      // the web service's circuit breaker does the health-check rollback).
+      circuitBreaker: { rollback: true },
     });
 
     // ----- ALB (HTTP only; HTTPS + cert + AUTH_URL land in #7/#12) -----
@@ -171,8 +226,55 @@ export class DisasterDeckStack extends Stack {
       port: 3000,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [webService.loadBalancerTarget({ containerName: "web", containerPort: 3000 })],
-      healthCheck: { path: "/api/health", interval: Duration.seconds(30) },
+      // The login page is the same signal the Vultr release used: 200 means the app answers.
+      // The circuit breaker on WebService keys off this target group's health check.
+      healthCheck: { path: "/login", interval: Duration.seconds(30) },
     });
+
+    // ----- Deploy role permissions: push the image, register task def revisions, roll out both services -----
+    repo.grantPullPush(deployRole);
+    // Read-only describes stay on *. The write (UpdateService) is pinned to the two services, and
+    // ListTasks/DescribeTasks to this cluster.
+    deployRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ["cloudformation:DescribeStacks", "ecs:DescribeServices", "ecs:DescribeClusters", "ecs:DescribeTaskDefinition"],
+        resources: ["*"],
+      }),
+    );
+    deployRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ["ecs:UpdateService"],
+        resources: [webService.serviceArn, brainService.serviceArn],
+      }),
+    );
+    // Registering a revision has no resource-level scoping in IAM, so it is "*". PassRole is pinned to
+    // the three roles the task definitions use, and only to ECS tasks.
+    deployRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({ actions: ["ecs:RegisterTaskDefinition"], resources: ["*"] }),
+    );
+    deployRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ["iam:PassRole"],
+        resources: [executionRole.roleArn, webTask.taskRole.roleArn, brainTask.taskRole.roleArn],
+        conditions: { StringEquals: { "iam:PassedToService": "ecs-tasks.amazonaws.com" } },
+      }),
+    );
+    deployRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ["ecs:ListTasks", "ecs:DescribeTasks"],
+        resources: ["*"],
+        conditions: { ArnEquals: { "ecs:cluster": cluster.clusterArn } },
+      }),
+    );
+
+    // What the deploy workflow reads back from the stack: ECR repo to push, cluster and service
+    // names to roll out. Exposed as outputs rather than hardcoded so the same workflow works in
+    // any account (GovCloud included) without edits.
+    new CfnOutput(this, "RepositoryUri", { value: repo.repositoryUri });
+    new CfnOutput(this, "DeployRoleArn", { value: deployRole.roleArn });
+    new CfnOutput(this, "ClusterName", { value: cluster.clusterName });
+    new CfnOutput(this, "WebServiceName", { value: webService.serviceName });
+    new CfnOutput(this, "BrainServiceName", { value: brainService.serviceName });
 
     // ----- CloudTrail -----
     new cloudtrail.Trail(this, "Trail", {
