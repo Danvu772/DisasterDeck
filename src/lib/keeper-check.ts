@@ -459,6 +459,12 @@ async function main() {
   await drain();
   assert.equal((await c.sites.findOne({ _id: t1._id }))!.peopleTrapped, 2, "a person's rescued report lowers it");
   ok("TRUST-1 control: a vetted (AP) and a person's rescued report still lower peopleTrapped");
+  // Order must not matter: after trusted voices have changed the count, a public post still cannot.
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "x", actor: "x-agent", dedupeKey: "check:cp1:t1-pub-late", payload: rescuedText("late x") });
+  await drain();
+  const t3 = (await c.sites.findOne({ _id: t1._id }))!;
+  assert.equal(t3.peopleTrapped, 2, "a late public rescued post does not lower peopleTrapped either");
+  ok("TRUST-1: a public rescued post after trusted ones still changes nothing");
 
   const pending = await c.events.countDocuments({ deskId: DESK, status: { $in: ["pending", "working"] } });
   assert.equal(pending, 0, "nothing left pending");
