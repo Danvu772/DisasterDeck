@@ -33,7 +33,7 @@
     },
     {
       "_id": "volunteer-mechanic",
-      "name": "Demo Mekanik",
+      "name": "Burak",
       "role": "volunteer",
       "region": "antakya-merkez",
       "status": "available",
@@ -52,7 +52,7 @@
     },
     {
       "_id": "field-alpha",
-      "name": "Saha Ekibi A",
+      "name": "Emre",
       "role": "field",
       "region": "antakya-merkez",
       "status": "available",
@@ -71,7 +71,7 @@
     },
     {
       "_id": "supplier-primary",
-      "name": "Demo Depo A",
+      "name": "Mehmet",
       "role": "supplier",
       "region": "antakya-merkez",
       "status": "available",
@@ -85,13 +85,17 @@
         "vehicle": "truck",
         "skills": [],
         "stock": {
-          "blankets": 200
+          "blankets": 200,
+          "baby formula": 60,
+          "insulin": 20,
+          "tents": 30,
+          "heaters": 40
         }
       }
     },
     {
       "_id": "supplier-backup",
-      "name": "Demo Depo B",
+      "name": "Ayşe",
       "role": "supplier",
       "region": "antakya-merkez",
       "status": "available",
@@ -105,13 +109,17 @@
         "vehicle": "truck",
         "skills": [],
         "stock": {
-          "blankets": 120
+          "blankets": 120,
+          "baby formula": 40,
+          "insulin": 10,
+          "tents": 50,
+          "heaters": 25
         }
       }
     },
     {
       "_id": "shelter-desk",
-      "name": "Demo Barınak Görevlisi",
+      "name": "Hatice",
       "role": "shelter",
       "region": "antakya-merkez",
       "status": "available",
@@ -130,7 +138,7 @@
     },
     {
       "_id": "coordinator-duty",
-      "name": "Demo Nöbetçi Koordinatör",
+      "name": "Selin",
       "role": "coordinator",
       "region": "antakya-merkez",
       "status": "available",
@@ -147,7 +155,7 @@
     },
     {
       "_id": "coordinator-backup",
-      "name": "Demo Yedek Koordinatör",
+      "name": "Kemal",
       "role": "coordinator",
       "region": "antakya-merkez",
       "status": "available",
@@ -164,7 +172,7 @@
     },
     {
       "_id": "public-demo",
-      "name": "Demo Katılımcı",
+      "name": "Citizen",
       "role": "public",
       "region": "antakya-merkez",
       "status": "available",
