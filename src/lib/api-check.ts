@@ -129,6 +129,14 @@ async function main() {
   assert(ev?.observedAt instanceof Date);
   console.log("    actor nasa-agent, lane 1, observedAt stored as a date");
 
+  // D-0017: the origin block survives the round trip, and a bad one is a 400.
+  const origin = { postId: "p-1", author: "@x_user", kind: "story", url: "https://ig.example/p/1", media: [{ type: "image", url: "/demo/x.jpg" }], metrics: { likes: 3 } };
+  const withOrigin = { ...alert, dedupeKey: "check:alert-origin", origin };
+  const o = await expect("an event with an origin block is accepted", post(withOrigin, { key }), 200);
+  assert.deepEqual((await c.events.findOne({ _id: o.id }))?.origin, origin);
+  console.log("    origin stored on the event as sent");
+  await expect("an origin with a javascript: url is refused", post({ ...alert, dedupeKey: "check:alert-bad-origin", origin: { url: "javascript:alert(1)" } }, { key }), 400);
+
   await expect("wrong agent key", post(alert, { key: "nope" }), 401);
   await expect("nobody signed in", post(alert), 401);
   await expect("unknown demo user", post(alert, { user: "ghost" }), 401);

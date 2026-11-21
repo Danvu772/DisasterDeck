@@ -213,7 +213,9 @@ async function applyReport(event: Event): Promise<KeeperResult> {
   if (p.kind === "trapped" || p.kind === "missing") {
     // A repeat of a call says how many are trapped, it does not add more people.
     if (p.kind === "trapped" && p.peopleCount !== undefined) people = Math.max(people, p.peopleCount);
-  } else if (p.kind === "rescued") {
+  } else if (p.kind === "rescued" && (event.source === "person" || isTrusted(thisVoice.trust))) {
+    // §5.2: a public post alone never changes a life-safety record. A person on the desk, a
+    // vetted source or an official one does. The post is still recorded as a source below.
     people = Math.max(0, people - (p.peopleCount ?? 1));
   }
   const firstSeen = observedAt < site.observedAt ? observedAt : site.observedAt;
@@ -636,7 +638,7 @@ async function applyNeed(event: Event): Promise<KeeperResult> {
   if (p.siteId && !site) return reject(`site ${p.siteId} does not exist`);
   const region = p.region ?? site?.region ?? "unknown";
   const item = mask(p.item).trim();
-  const trusted = isTrusted(await trustOf(event.actor));
+  const trusted = isTrusted(await eventTrust(event));
   const now = new Date();
   const observedAt = event.observedAt ?? event.ts;
 
@@ -713,11 +715,11 @@ async function applyClaim(event: Event): Promise<KeeperResult> {
 
 // ---------- group B: roads, shelters, zones, corrections ----------
 
-/** Trust of whoever sent the event: a person's own record, system and nasa official, the sheet vetted, the rest public. */
+/** Trust of whoever sent the event: a person's own record, system and nasa official, the sheet and AP wire copy (source news, D-0017 §5) vetted, the rest public. */
 async function eventTrust(event: Pick<Event, "source" | "actor">): Promise<Trust> {
   if (event.source === "person") return trustOf(event.actor);
   if (SYSTEM_SOURCES.has(event.source)) return "official";
-  return event.source === "sheet" ? "vetted" : "public";
+  return event.source === "sheet" || event.source === "news" ? "vetted" : "public";
 }
 
 const stampOf = (event: Event, trust: Trust): Stamp => ({
@@ -923,7 +925,7 @@ async function shapeOf(zoneId: string): Promise<Shape | undefined> {
   if (!shapes) {
     shapes = new Map();
     try {
-      const gj = JSON.parse(await readFile(new URL("../public/data/zones.geojson", import.meta.url), "utf8")) as {
+      const gj = JSON.parse(await readFile(new URL("../../public/data/zones.geojson", import.meta.url), "utf8")) as {
         features: { id?: string; properties?: { _id?: string; name?: string; region?: string };
           geometry?: { type: string; coordinates: number[][][] | number[][][][] } }[];
       };
@@ -1237,6 +1239,8 @@ const SYSTEM_SOURCES = new Set(["system", "nasa"]);
 async function voiceOf(e: Pick<Event, "_id" | "source" | "actor">, textKey?: string): Promise<Voice> {
   if (e.source === "person") return { key: `person:${e.actor}`, trust: await trustOf(e.actor) };
   if (SYSTEM_SOURCES.has(e.source)) return { key: `${e.source}:${e.actor}`, trust: "official" };
+  // AP wire copy is edited and sourced, and the wire is one voice however many stories it files.
+  if (e.source === "news") return { key: `news:${e.actor}`, trust: "vetted" };
   const text = createHash("sha1").update(textKey ?? e._id ?? "").digest("hex").slice(0, 12);
   return { key: `${e.source}:${text}`, trust: "public" };
 }

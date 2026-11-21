@@ -7,7 +7,7 @@ import type { Event } from "./types";
 
 /**
  * The stored event keeps what was posted (the keeper needs the original text). The feed is read
- * by every screen, so phone numbers are masked on the way out, in every string of the payload.
+ * by every screen, so phone numbers are masked on the way out, in every string of the payload and of the post's origin.
  */
 function maskDeep(value: unknown): unknown {
   if (typeof value === "string") return maskPhones(value).text;
@@ -22,6 +22,7 @@ export function maskEvent<E extends Event>(e: E): E {
   return {
     ...e,
     payload: maskDeep(e.payload),
+    ...(e.origin ? { origin: maskDeep(e.origin) as E["origin"] } : {}),
     ...(e.result ? { result: { ...e.result, reason: maskPhones(e.result.reason).text } } : {}),
   };
 }
