@@ -1,0 +1,5 @@
+{"atS":20,"id":"cast-a-rescue","as":"assignee","do":"accept","task":{"fromEvent":"x:ref-1","type":"rescue"}}
+{"atS":21,"id":"cast-b-call","as":"assignee","do":"accept","task":{"fromEvent":"x:ref-1","type":"call"}}
+{"atS":22,"id":"cast-c-correct","as":"coordinator-duty","do":"correct","payload":{"action":"edit","recordType":"site","recordId":"@record:x:ref-1","fields":{"peopleTrapped":2},"reason":"fixture"}}
+{"atS":23,"id":"cast-d-blocked","as":"assignee","do":"accept","task":{"fromEvent":"x:ref-1","type":"call","status":"blocked"}}
+{"atS":24,"id":"cast-e-ref","as":"coordinator-duty","do":"correct","payload":{"action":"edit","recordType":"site","recordId":"@record:cast-c-correct","fields":{"peopleTrapped":1},"reason":"fixture, ref to a cast line id"}}

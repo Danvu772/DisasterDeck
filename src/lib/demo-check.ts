@@ -218,9 +218,9 @@ async function demo2() {
 
 // ---------- DEMO-3 and DEMO-5 ----------
 /** Posts through the real POST /api/events handler with the agent key, and records what was sent. */
-function playerCtx(sent: string[]): PlayerCtx {
+function playerCtx(sent: string[], dir = FIXTURE): PlayerCtx {
   return {
-    dir: FIXTURE, state: newPlayerState(),
+    dir, state: newPlayerState(),
     post: async (body) => {
       sent.push(String(body.dedupeKey));
       const res = await postEventRoute(new Request("http://localhost/api/events", {
@@ -332,6 +332,41 @@ async function demo3and5() {
   ok("a cast line with no task is dropped after 10 scenario minutes, with a log line");
 }
 
+// ---------- cast conventions: @record references, task type and status ----------
+async function demoRefs() {
+  const c = await cols();
+  const clock = fakeClock();
+  const DUR = 60;
+  const at = (startedAt: Date, sec: number) => startedAt.getTime() + (sec / demoSpeed(DUR)) * 1000;
+  const run = await startDemo({ durationS: DUR, now: clock.now, sleep: clock.sleep });
+  await c.users.updateMany({}, { $set: { lastSeen: new Date() } });
+  const sent: string[] = [];
+  const ctx = playerCtx(sent, join(import.meta.dirname, "..", "..", "scripts", "fixtures", "scenario-refs"));
+  const castKeys = async () => (await c.events.find({ dedupeKey: { $regex: /^cast:/ } }).toArray()).map((e) => e.dedupeKey).sort();
+
+  assert.equal((await tickOnce(at(run.startedAt, 100), ctx)).posted, 1, "the x line posts; every cast line waits for it");
+  assert.deepEqual(await castKeys(), []);
+  ok("cast lines wait while the source record does not exist yet");
+
+  await drain();
+  const siteId = (await c.events.findOne({ dedupeKey: `x:ref-1:${run.runId}` }))!.result!.recordIds[0];
+  const t2 = await tickOnce(at(run.startedAt, 101), ctx);
+  assert.equal(t2.posted, 2, "the call-type accept and the @record correction post");
+  const [b, cEv] = [await c.events.findOne({ dedupeKey: `cast:1:${run.runId}` }), await c.events.findOne({ dedupeKey: `cast:2:${run.runId}` })];
+  assert.equal(b?.type, "answer"); assert.equal(cEv?.type, "correction");
+  assert.equal((cEv!.payload as { recordId: string }).recordId, siteId, "@record:x:ref-1 became the site id");
+  ok(`"@record:<dedupeKey>" in a payload resolves to the record that source line made (${siteId})`);
+  assert.equal(await c.events.countDocuments({ dedupeKey: { $in: [`cast:0:${run.runId}`, `cast:3:${run.runId}`] } }), 0);
+  ok("task type narrows: a rescue line and a status:blocked line keep waiting while only an open call task exists");
+
+  await drain();
+  assert((await c.events.findOne({ dedupeKey: `cast:2:${run.runId}` }))?.result?.recordIds?.length, "the keeper applied the correction");
+  assert.equal((await tickOnce(at(run.startedAt, 102), ctx)).posted, 1);
+  const e = await c.events.findOne({ dedupeKey: `cast:4:${run.runId}` });
+  assert.equal((e!.payload as { recordId: string }).recordId, siteId);
+  ok('"@record:<cast line id>" resolves to what that cast line made');
+}
+
 async function main() {
   assert(isThrowawayMongo(), "demo:check wipes every desk: run it against a local Mongo, or set ALLOW_DEMO_WIPE=1");
   assert(KEY, "set AGENT_KEY in .env.local");
@@ -343,6 +378,7 @@ async function main() {
   await demo1();
   await demo2();
   await demo3and5();
+  await demoRefs();
   console.log(`\nAll ${passed} checks passed.`);
 }
 

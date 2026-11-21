@@ -31,7 +31,7 @@ export const CAST_GIVE_UP_S = 600;
 
 type Json = Record<string, unknown>;
 export interface CastLine {
-  atS: number; as: string; do: string; task?: { fromEvent: string; type?: string }; payload?: Json;
+  atS: number; id?: string; as: string; do: string; task?: { fromEvent: string; type?: string; status?: string }; payload?: Json;
 }
 export interface Line { track: Track; index: number; atS: number; body?: Json; cast?: CastLine }
 
@@ -94,8 +94,38 @@ function castEvent(c: CastLine, taskId: string | undefined): { type: string; pay
       ? { type: "incident", payload: { kind: "other", text: "Sorun var", textEn: "There is a problem", canContinue: false, ...extra, taskId } }
       : null;
   }
+  if (c.do === "correct") return { type: "correction", payload: { ...extra } };
   if (EVENT_TYPES.includes(c.do)) return { type: c.do, payload: { ...(taskId ? { taskId } : {}), ...extra } };
   return null;
+}
+
+const castKey = (index: number, runId: string) => `cast:${index}:${runId}`;
+const WAIT = Symbol("wait");
+
+/** The record id behind a reference key: a source line's dedupeKey, or a cast line's `id` (fallback `cast:<index>`). */
+async function recordOf(key: string, state: PlayerState): Promise<string | undefined> {
+  const { events } = await cols();
+  const castLine = state.lines.find((l) => l.track === "cast" && (l.cast!.id ?? `cast:${l.index}`) === key);
+  const dedupeKey = castLine ? castKey(castLine.index, state.runId!) : `${key}:${state.runId}`;
+  const ev = await events.findOne({ dedupeKey }, { projection: { result: 1 } });
+  return ev?.result?.recordIds?.[0];
+}
+
+/** A copy of `v` with every "@record:<key>" string replaced by its record id, or WAIT when one does not exist yet. */
+async function resolveRefs(v: Json, state: PlayerState): Promise<Json | typeof WAIT> {
+  const walk = async (x: unknown): Promise<unknown> => {
+    if (typeof x === "string" && x.startsWith("@record:")) {
+      const id = await recordOf(x.slice("@record:".length), state);
+      if (!id) throw WAIT;
+      return id;
+    }
+    if (Array.isArray(x)) return Promise.all(x.map(walk));
+    if (x && typeof x === "object") {
+      return Object.fromEntries(await Promise.all(Object.entries(x).map(async ([k, val]) => [k, await walk(val)])));
+    }
+    return x;
+  };
+  try { return (await walk(v)) as Json; } catch (e) { if (e === WAIT) return WAIT; throw e; }
 }
 
 type CastResult = "posted" | "skipped" | "waiting";
@@ -106,13 +136,25 @@ async function playCast(line: Line, state: PlayerState, ctx: PlayerCtx): Promise
   const runId = state.runId!;
   const { events, tasks } = await cols();
 
+  // "@record:<key>" anywhere in the payload: the first record that source line (its dedupeKey) or
+  // cast line (its id, else cast:<lineIndex>) made. Not made yet: the line waits.
+  const payload = c.payload ? await resolveRefs(c.payload, state) : undefined;
+  if (payload === WAIT) return "waiting";
+  const cc: CastLine = { ...c, ...(payload ? { payload } : {}) };
+
   let task: { _id?: string; assignee?: string; deskId: string } | null = null;
   if (c.task?.fromEvent) {
     const from = await events.findOne({ dedupeKey: `${c.task.fromEvent}:${runId}` }, { projection: { result: 1 } });
     const ids = from?.result?.recordIds ?? [];
     if (!ids.length) return "waiting";
+    // The open task by default (one event can yield a call and a rescue task: `type` picks);
+    // status "blocked" picks the blocked one.
     task = await tasks.findOne(
-      { recordId: { $in: ids }, ...(c.task.type ? { type: c.task.type as never } : {}) },
+      {
+        recordId: { $in: ids },
+        ...(c.task.type ? { type: c.task.type as never } : {}),
+        ...(c.task.status ? { status: c.task.status as never } : { open: true }),
+      },
       { sort: { _id: -1 }, projection: { assignee: 1, deskId: 1 } },
     );
     if (!task) return "waiting";
@@ -130,13 +172,13 @@ async function playCast(line: Line, state: PlayerState, ctx: PlayerCtx): Promise
     if (person > 0) return "skipped";
   }
 
-  const ev = castEvent(c, task?._id);
+  const ev = castEvent(cc, task?._id);
   if (!ev) {
     ctx.log?.(`cast line ${line.index} (${c.do}) has nothing to act on, dropped`);
     return "skipped";
   }
   await ctx.post({
-    ...ev, source: "person", actor, dedupeKey: `cast:${line.index}:${runId}`, ...(task ? { deskId: task.deskId } : {}),
+    ...ev, source: "person", actor, dedupeKey: castKey(line.index, runId), ...(task ? { deskId: task.deskId } : {}),
   });
   return "posted";
 }
@@ -172,6 +214,13 @@ export async function tickOnce(nowMs: number, ctx: PlayerCtx): Promise<TickResul
         await ctx.post({ ...line.body, dedupeKey: `${base}:${state.runId}` });
         state.done.add(key);
         out.posted++;
+        continue;
+      }
+      if (line.cast!.do === "go_dark") {
+        // Not an event: it stops the heartbeat for that person (see the report: no heartbeat is written yet).
+        ctx.log?.(`cast line ${line.index} (go_dark ${line.cast!.as}): no heartbeat to stop`);
+        state.done.add(key);
+        out.skipped++;
         continue;
       }
       const r = await playCast(line, state, ctx);
