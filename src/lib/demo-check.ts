@@ -100,9 +100,12 @@ async function demo1() {
   assert(r.json.runId && r.json.startedAt && !Number.isNaN(Date.parse(r.json.startedAt)));
   const doc = await getDemo({ fresh: true });
   assert(doc?.state === "playing" && doc.runId === r.json.runId && doc.durationS === 600);
-  ok(`200 a person starts it: runId ${r.json.runId}, durationS 600`);
+  ok(`200 a coordinator starts it: runId ${r.json.runId}, durationS 600`);
 
-  const r2 = await askStart({ user: "volunteer-callback" });
+  assert.equal((await askStart({ user: "volunteer-callback" })).status, 403, "a volunteer cannot start the demo");
+  ok("403 a volunteer cannot start it (coordinators only, D-0017 amendment 8)");
+
+  const r2 = await askStart({ user: "coordinator-backup" });
   assert.equal(r2.status, 200);
   assert.notEqual(r2.json.runId, r.json.runId);
   assert.equal(((await getDemo({ fresh: true })) as { durationS: number }).durationS, 1800);
