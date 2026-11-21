@@ -1,14 +1,11 @@
 "use client";
 // /talk: one person and their own agent, voice first, laid out like a phone voice mode.
-// A big orb sits at the bottom centre: hold it (or the space bar) and talk, it grows and follows
-// your voice; let go and the note goes to your agent. The conversation flows top to bottom above it.
-// While you talk, your words show live (ElevenLabs Scribe realtime). The agent's answer streams in
-// as it is written, and each finished sentence is read out loud while the next is still coming.
-// Nothing reaches the desk yet: the agent only prepares it, and once the answer has been read a
-// card asks "Send this to the desk?". Send files it, Don't send drops it.
-// Pressing while the agent speaks talks over it. Typing still works. Tasks, the person switcher
-// and the voice settings are small panels at the top. Owner: Role 2.
-import { AnimatePresence, motion } from "motion/react";
+// A big button sits at the bottom centre: hold it (or the space bar) and talk; let go and the note
+// goes to your agent. The conversation flows top to bottom above it. While you talk, your words show
+// live (Amazon Transcribe streaming). The agent's answer streams in as it is written, and each
+// finished sentence is read out loud while the next is still coming. Nothing reaches the desk yet:
+// the agent only prepares it, and once the answer has been read a card asks "Send this to the desk?".
+// Rebuilt on USWDS (D-0001): react-uswds components and usa-* tokens, no shadcn, no motion.
 import {
   ChevronDown, CircleCheck, CircleX, ClipboardList, HeartPulse, Keyboard, Mic, SendHorizontal, Siren,
   SlidersHorizontal, Truck, Volume2, VolumeX, X,
@@ -17,10 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { Tier } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { IntensitySlider } from "@/components/motion/IntensitySlider";
-import { PinnedList, type PinnedItem } from "@/components/motion/PinnedList";
+import { Alert, Button, TextInput } from "@trussworks/react-uswds";
 import { VoiceOrb } from "./VoiceOrb";
 import { useVoice, type VoiceState } from "./useVoice";
 
@@ -32,7 +26,7 @@ interface Turn {
   id: number;
   from: "person" | "agent";
   text: string;
-  voice?: boolean;                       // the person spoke it (ElevenLabs heard it)
+  voice?: boolean;                       // the person spoke it (Transcribe heard it)
   speaking?: boolean;                    // agent: the voice is reading it out right now
   actions?: { tool: string; summary: string; ok: boolean }[];
   // agent: what the desk would get, waiting for the person's yes
@@ -64,29 +58,25 @@ function chipText(summary: string): string {
 }
 
 const initialsOf = (name: string) => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-/** A small panel that drops down from the top bar. */
+
+/** A small panel that drops down from the top bar. No motion (D-0001): it appears and disappears. */
 function Panel({ open, onClose, title, children, align = "left" }: {
   open: boolean; onClose: () => void; title: string; children: React.ReactNode; align?: "left" | "right";
 }) {
+  if (!open) return null;
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div className="fixed inset-0 z-30" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
-          <motion.div role="dialog" aria-label={title}
-            initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 420, damping: 32 }}
-            className={cn("absolute top-12 z-40 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border bg-popover p-3 text-popover-foreground shadow-lg",
-              align === "left" ? "left-0" : "right-0")}>
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground">{title}</p>
-              <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close"><X /></Button>
-            </div>
-            {children}
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    <>
+      <div className="fixed inset-0 z-30" onClick={onClose} />
+      <div role="dialog" aria-label={title}
+        className={cn("absolute top-12 z-40 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-usa-base-lighter bg-usa-white p-3 text-usa-ink shadow-lg",
+          align === "left" ? "left-0" : "right-0")}>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-xs font-medium text-usa-base-dark">{title}</p>
+          <Button type="button" unstyled onClick={onClose} aria-label="Close"><X /></Button>
+        </div>
+        {children}
+      </div>
+    </>
   );
 }
 
@@ -199,13 +189,13 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
     if (s === "thinking" || s === "listening" || !voiceOn) return;
     if (s === "speaking") { talkId.current++; voice.stopPlayback(); stopSpeaking(); }
     holding.current = true;
-    setState("listening");           // the orb grows at once, even while the mic is still opening
+    setState("listening");           // the button lights up at once, even while the mic is still opening
     const ok = await voice.start();
     if (!ok) { holding.current = false; setState("idle"); return; }
     if (!holding.current) {          // let go before the mic was ready: nothing to send
       voice.cancel();
       setState("idle");
-      voice.setError("Hold the orb while you talk.");
+      voice.setError("Hold the button while you talk.");
     }
   }
   async function pressEnd() {
@@ -215,7 +205,7 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
     const got = await voice.stop();
     if (!got) {
       // stop() returns null both for a tap and while the mic is still opening (pressStart handles that).
-      if (stateRef.current === "listening") { setState("idle"); voice.setError("Hold the orb while you talk."); }
+      if (stateRef.current === "listening") { setState("idle"); voice.setError("Hold the button while you talk."); }
       return;
     }
     if ("text" in got) {
@@ -250,7 +240,7 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
     }
   }
 
-  // Space bar: hold to talk, like the orb (not while typing in a field).
+  // Space bar: hold to talk, like the button (not while typing in a field).
   useEffect(() => {
     const inField = (e: KeyboardEvent) => e.target instanceof HTMLElement && e.target.closest("input, textarea, [contenteditable]");
     const down = (e: KeyboardEvent) => {
@@ -269,16 +259,10 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
   });
 
   const fresh = quakes.filter((q) => q.minutesAgo <= 30);
-  const pinned: PinnedItem[] = tasks.map((t, i) => ({
-    id: t.id, title: t.title, note: t.detail, pinned: i === 0,
-    icon: t.tier === 0 ? HeartPulse : t.tier === 1 ? Truck : ClipboardList,
-    tone: t.tier === 0 ? "act" : t.tier === 1 ? "urgent" : "calm",
-  }));
   const status = state === "listening" ? "Listening… let go to send"
     : state === "thinking" ? "Filing it on the desk…"
     : state === "speaking" ? "Your agent is answering · hold to talk over it"
     : voiceOn ? "Hold to talk" : "Voice is off here. Type instead.";
-  const orbAnalyser = state === "speaking" ? voice.agentAnalyser : state === "listening" ? voice.micAnalyser : null;
   const lastFrom = turns.at(-1)?.from;
 
   return (
@@ -286,23 +270,23 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
       {/* Top bar: who you are, your tasks, voice settings */}
       <div className="relative z-20 flex items-center gap-2 pt-3">
         <button type="button" onClick={() => setPanel(panel === "people" ? null : "people")} aria-expanded={panel === "people"}
-          className="flex min-w-0 items-center gap-2 rounded-full border bg-card py-1 pr-3 pl-1 text-left shadow-xs transition-colors hover:bg-accent">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">{initialsOf(me.name)}</span>
+          className="flex min-w-0 items-center gap-2 rounded-full border border-usa-base-lighter bg-usa-white py-1 pr-3 pl-1 text-left shadow-xs transition-colors hover:bg-usa-base-lightest">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-usa-primary text-[10px] font-semibold text-usa-white">{initialsOf(me.name)}</span>
           <span className="min-w-0">
-            <span className="block truncate text-sm leading-tight font-medium">{me.name}</span>
-            <span className="block truncate text-[11px] leading-tight text-muted-foreground">{roleWord(me.role)}</span>
+            <span className="block truncate text-sm leading-tight font-medium text-usa-ink">{me.name}</span>
+            <span className="block truncate text-[11px] leading-tight text-usa-base-dark">{roleWord(me.role)}</span>
           </span>
-          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+          <ChevronDown className="size-3.5 shrink-0 text-usa-base-dark" />
         </button>
         <div className="flex-1" />
-        <Button variant="outline" size="sm" className="rounded-full" onClick={() => setPanel(panel === "tasks" ? null : "tasks")} aria-expanded={panel === "tasks"}>
-          <ClipboardList />Tasks{tasks.length > 0 && <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">{tasks.length}</span>}
+        <Button type="button" outline className="rounded-full" onClick={() => setPanel(panel === "tasks" ? null : "tasks")} aria-expanded={panel === "tasks"}>
+          <ClipboardList />Tasks{tasks.length > 0 && <span className="rounded-full bg-usa-primary px-1.5 text-[10px] text-usa-white">{tasks.length}</span>}
         </Button>
-        <Button variant="ghost" size="icon-sm" aria-pressed={speakReplies} onClick={() => setSpeakReplies((v) => !v)}
+        <Button type="button" unstyled aria-pressed={speakReplies} onClick={() => setSpeakReplies((v) => !v)}
           aria-label={speakReplies ? "Stop reading answers out loud" : "Read answers out loud"} disabled={!voiceOn}>
           {speakReplies && voiceOn ? <Volume2 /> : <VolumeX />}
         </Button>
-        <Button variant="ghost" size="icon-sm" onClick={() => setPanel(panel === "settings" ? null : "settings")} aria-label="Voice settings" disabled={!voiceOn}>
+        <Button type="button" unstyled onClick={() => setPanel(panel === "settings" ? null : "settings")} aria-label="Voice settings" disabled={!voiceOn}>
           <SlidersHorizontal />
         </Button>
 
@@ -310,54 +294,67 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
           <div className="grid grid-cols-2 gap-2">
             {people.map((p) => (
               <a key={p.id} href={`/talk?user=${p.id}`}
-                className={cn("flex items-center gap-2 rounded-lg border p-2 text-sm transition-colors hover:bg-accent", p.id === me.id && "border-primary bg-secondary")}>
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">{initialsOf(p.name)}</span>
+                className={cn("flex items-center gap-2 rounded-md border border-usa-base-lighter p-2 text-sm transition-colors hover:bg-usa-base-lightest", p.id === me.id && "border-usa-primary bg-usa-base-lightest")}>
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-usa-primary text-[10px] font-semibold text-usa-white">{initialsOf(p.name)}</span>
                 <span className="min-w-0">
-                  <span className="block truncate font-medium">{p.name}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{roleWord(p.role)}</span>
+                  <span className="block truncate font-medium text-usa-ink">{p.name}</span>
+                  <span className="block truncate text-[11px] text-usa-base-dark">{roleWord(p.role)}</span>
                 </span>
               </a>
             ))}
           </div>
         </Panel>
         <Panel open={panel === "tasks"} onClose={() => setPanel(null)} title="Your tasks" align="right">
-          <PinnedList items={pinned} title="All tasks" empty="Nothing assigned to you right now." />
+          {tasks.length === 0 ? <p className="text-sm text-usa-base-dark">Nothing assigned to you right now.</p> : (
+            <ul className="space-y-2">
+              {tasks.map((t) => (
+                <li key={t.id} className="flex items-center gap-2 rounded-md border border-usa-base-lighter p-2 text-sm">
+                  <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full",
+                    t.tier === 0 ? "bg-usa-error-lighter text-usa-ink" : t.tier === 1 ? "bg-usa-warning text-usa-ink" : "bg-usa-base-lightest text-usa-base-dark")}>
+                    {t.tier === 0 ? <HeartPulse className="size-4" /> : t.tier === 1 ? <Truck className="size-4" /> : <ClipboardList className="size-4" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-usa-ink">{t.title}</span>
+                    {t.detail && <span className="block truncate text-xs text-usa-base-dark">{t.detail}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
         <Panel open={panel === "settings"} onClose={() => setPanel(null)} title="Voice" align="right">
-          <IntensitySlider label="Voice speed" value={speed} min={0.7} max={1.2} step={0.05}
-            unit="×" format={(v) => v.toFixed(2)} onChange={setSpeed} />
+          <label className="block text-xs font-medium text-usa-base-dark" htmlFor="voice-speed">Voice speed</label>
+          <input id="voice-speed" type="range" min={0.7} max={1.2} step={0.05} value={speed}
+            onChange={(e) => setSpeed(Number(e.target.value))} className="w-full" />
+          <span className="font-mono text-sm font-semibold text-usa-ink">{speed.toFixed(2)}×</span>
         </Panel>
       </div>
 
-      <AnimatePresence>
-        {fresh.length > 0 && (
-          <motion.section role="alert" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="mt-3 rounded-xl border border-destructive/40 bg-destructive-soft p-3">
-            <p className="flex items-center gap-2 text-sm font-semibold text-destructive"><Siren className="size-4" />Aftershock near you</p>
-            {fresh.map((q) => <p key={q.line} className="mt-1 text-xs text-foreground">{q.line}</p>)}
-            <p className="mt-1 text-xs text-foreground">Leave damaged buildings and stay clear until the shaking stops.</p>
-          </motion.section>
-        )}
-      </AnimatePresence>
+      {fresh.length > 0 && (
+        <Alert type="warning" slim role="alert" className="mt-3">
+          <p className="flex items-center gap-2 text-sm font-semibold"><Siren className="size-4" />Aftershock near you</p>
+          {fresh.map((q) => <p key={q.line} className="mt-1 text-xs">{q.line}</p>)}
+          <p className="mt-1 text-xs">Leave damaged buildings and stay clear until the shaking stops.</p>
+        </Alert>
+      )}
       {tasks[0] && turns.length === 0 && (
         <button type="button" onClick={() => setPanel("tasks")}
-          className="mt-3 flex items-center gap-2 self-center rounded-full border bg-card px-3 py-1.5 text-xs shadow-xs transition-colors hover:bg-accent">
-          {tasks[0].tier === 0 ? <HeartPulse className="size-3.5 text-destructive" /> : <ClipboardList className="size-3.5 text-muted-foreground" />}
-          <span className="text-muted-foreground">Top task</span>
-          <span className="max-w-[16rem] truncate font-medium">{tasks[0].title}</span>
+          className="mt-3 flex items-center gap-2 self-center rounded-full border border-usa-base-lighter bg-usa-white px-3 py-1.5 text-xs shadow-xs transition-colors hover:bg-usa-base-lightest">
+          {tasks[0].tier === 0 ? <HeartPulse className="size-3.5 text-usa-error" /> : <ClipboardList className="size-3.5 text-usa-base-dark" />}
+          <span className="text-usa-base-dark">Top task</span>
+          <span className="max-w-[16rem] truncate font-medium text-usa-ink">{tasks[0].title}</span>
         </button>
       )}
 
-      {/* The conversation, top to bottom. Older lines fade out under the top edge. */}
-      <div ref={scroller} aria-live="polite"
-        className="min-h-0 flex-1 overflow-y-auto py-6 [mask-image:linear-gradient(to_bottom,transparent,black_3rem,black_calc(100%-1.5rem),transparent)]">
+      {/* The conversation, top to bottom. */}
+      <div ref={scroller} aria-live="polite" className="min-h-0 flex-1 overflow-y-auto py-6">
         {turns.length === 0 && state !== "listening" && state !== "thinking" ? (
           <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-            <p className="text-balance text-xl font-medium sm:text-2xl">What do you see, or what do you need?</p>
+            <p className="text-balance text-xl font-medium text-usa-ink sm:text-2xl">What do you see, or what do you need?</p>
             <div className="flex flex-wrap justify-center gap-2">
               {SUGGEST.map((s) => (
                 <button key={s} type="button" onClick={() => void submit(s)}
-                  className="rounded-full border bg-card px-3 py-1.5 text-xs transition-colors hover:bg-accent">
+                  className="rounded-full border border-usa-base-lighter bg-usa-white px-3 py-1.5 text-xs text-usa-ink transition-colors hover:bg-usa-base-lightest">
                   {s}
                 </button>
               ))}
@@ -366,90 +363,74 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
         ) : (
           <div className="flex flex-col gap-6">
             {turns.map((t) => (
-              <motion.div key={t.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 260, damping: 28 }}
-                className={cn("flex flex-col gap-2", t.from === "person" && "items-end")}>
+              <div key={t.id} className={cn("flex flex-col gap-2", t.from === "person" && "items-end")}>
                 {t.from === "person" ? (
-                  <p className="max-w-[85%] rounded-3xl rounded-br-lg bg-secondary px-4 py-2.5 text-base text-secondary-foreground">
+                  <p className="max-w-[85%] rounded-md rounded-br-sm bg-usa-base-lightest px-4 py-2.5 text-base text-usa-ink">
                     {t.voice && <Mic className="mr-1.5 mb-0.5 inline size-3.5 opacity-60" />}
                     {t.text}
                   </p>
                 ) : (
-                  <p className="text-lg leading-relaxed text-pretty sm:text-xl">{t.text}</p>
+                  <p className="text-lg leading-relaxed text-pretty text-usa-ink sm:text-xl">{t.text}</p>
                 )}
                 {t.pending && !t.speaking && (
                   <SendCard pending={t.pending} onSend={() => void decide(t.id, t.pending!.id, true)} onDrop={() => void decide(t.id, t.pending!.id, false)} />
                 )}
                 {t.actions && t.actions.length > 0 && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
                     {t.actions.map((a, i) => (
                       <span key={i} title={chipText(a.summary)}
-                        className={cn("inline-flex max-w-full items-center gap-1 rounded-full border bg-card px-2 py-0.5 text-[11px]",
-                          !a.ok && "border-destructive/40 text-destructive")}>
-                        {a.ok ? <CircleCheck className="size-3 shrink-0 text-success" /> : <CircleX className="size-3 shrink-0" />}
-                        <span className="font-medium">{a.ok ? TOOL_WORD[a.tool] ?? "Filed" : "Not filed"}</span>
-                        <span className="truncate text-muted-foreground">{chipText(a.summary)}</span>
+                        className={cn("inline-flex max-w-full items-center gap-1 rounded-full border border-usa-base-lighter bg-usa-white px-2 py-0.5 text-[11px]",
+                          !a.ok && "border-usa-error text-usa-error")}>
+                        {a.ok ? <CircleCheck className="size-3 shrink-0 text-usa-success" /> : <CircleX className="size-3 shrink-0" />}
+                        <span className="font-medium text-usa-ink">{a.ok ? TOOL_WORD[a.tool] ?? "Filed" : "Not filed"}</span>
+                        <span className="truncate text-usa-base-dark">{chipText(a.summary)}</span>
                       </span>
                     ))}
-                  </motion.div>
+                  </div>
                 )}
-              </motion.div>
+              </div>
             ))}
             {/* What is happening now, as the next line */}
-            <AnimatePresence mode="popLayout">
-              {state === "thinking" && lastFrom === "person" && (
-                <motion.p key="thinking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="flex items-center gap-1 text-lg text-muted-foreground">
-                  <Dots />
-                </motion.p>
-              )}
-              {state === "listening" && voice.partial && (
-                <motion.p key="live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="max-w-[85%] self-end rounded-3xl rounded-br-lg bg-secondary/70 px-4 py-2.5 text-base text-secondary-foreground">
-                  <Mic className="mr-1.5 mb-0.5 inline size-3.5 opacity-60" />{voice.partial}
-                </motion.p>
-              )}
-              {state === "thinking" && lastFrom !== "person" && !answering && (
-                <motion.p key="thinking2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="flex items-center gap-1 self-end text-base text-muted-foreground">
-                  Writing down what you said<Dots />
-                </motion.p>
-              )}
-            </AnimatePresence>
+            {state === "thinking" && lastFrom === "person" && (
+              <p className="flex items-center gap-1 text-lg text-usa-base-dark"><Dots /></p>
+            )}
+            {state === "listening" && voice.partial && (
+              <p className="max-w-[85%] self-end rounded-md rounded-br-sm bg-usa-base-lightest/70 px-4 py-2.5 text-base text-usa-ink">
+                <Mic className="mr-1.5 mb-0.5 inline size-3.5 opacity-60" />{voice.partial}
+              </p>
+            )}
+            {state === "thinking" && lastFrom !== "person" && !answering && (
+              <p className="flex items-center gap-1 self-end text-base text-usa-base-dark">Writing down what you said<Dots /></p>
+            )}
           </div>
         )}
       </div>
 
-      {/* The orb, and typing as a fallback */}
+      {/* The button, and typing as a fallback */}
       <div className="flex flex-col items-center pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <VoiceOrb state={state} analyser={orbAnalyser} disabled={!voiceOn || state === "thinking"}
+        <VoiceOrb state={state} disabled={!voiceOn || state === "thinking"}
           onDown={() => void pressStart()} onUp={() => void pressEnd()} />
-        <p className="h-5 text-sm text-muted-foreground" aria-live="polite">{status}</p>
-        <p className="h-4 text-xs text-destructive">{voice.error ?? ""}</p>
+        <p className="h-5 text-sm text-usa-base-dark" aria-live="polite">{status}</p>
+        <p className="h-4 text-xs text-usa-error">{voice.error ?? ""}</p>
         <div className="mt-1 flex w-full items-center justify-center">
-          <AnimatePresence mode="wait" initial={false}>
-            {typing ? (
-              <motion.form key="type" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
-                onSubmit={(e) => { e.preventDefault(); void submit(typed); }} className="flex w-full max-w-md items-center gap-2">
-                <Input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Type it…"
-                  className="h-11 rounded-full px-4" aria-label="Message" />
-                <Button type="submit" size="icon-lg" className="rounded-full" disabled={state === "thinking" || state === "listening" || !typed.trim()} aria-label="Send">
-                  <SendHorizontal />
+          {typing ? (
+            <form onSubmit={(e) => { e.preventDefault(); void submit(typed); }} className="flex w-full max-w-md items-center gap-2">
+              <TextInput id="talk-message" name="talk-message" type="text" autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Type it…"
+                className="h-11 rounded-full px-4" aria-label="Message" />
+              <Button type="submit" className="rounded-full" disabled={state === "thinking" || state === "listening" || !typed.trim()} aria-label="Send">
+                <SendHorizontal />
+              </Button>
+              {voiceOn && (
+                <Button type="button" unstyled className="rounded-full" onClick={() => setTyping(false)} aria-label="Back to voice">
+                  <Mic />
                 </Button>
-                {voiceOn && (
-                  <Button type="button" variant="ghost" size="icon-lg" className="rounded-full" onClick={() => setTyping(false)} aria-label="Back to voice">
-                    <Mic />
-                  </Button>
-                )}
-              </motion.form>
-            ) : (
-              <motion.div key="voice" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground" onClick={() => setTyping(true)}>
-                  <Keyboard />Type instead
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+            </form>
+          ) : (
+            <Button type="button" unstyled className="rounded-full text-usa-base-dark" onClick={() => setTyping(true)}>
+              <Keyboard />Type instead
+            </Button>
+          )}
         </div>
       </div>
     </main>
@@ -459,32 +440,25 @@ export function TalkScreen({ me, people, tasks, quakes, voiceOn }: {
 /** "Send this to the desk?" Shown once the answer has been read. Nothing is sent before the person taps Send. */
 function SendCard({ pending, onSend, onDrop }: { pending: NonNullable<Turn["pending"]>; onSend: () => void; onDrop: () => void }) {
   const { state } = pending;
-  if (state === "sent") return <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><CircleCheck className="size-4 text-success" />Sent to the desk.</p>;
-  if (state === "dropped") return <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><CircleX className="size-4" />Not sent.</p>;
+  if (state === "sent") return <p className="flex items-center gap-1.5 text-sm text-usa-base-dark"><CircleCheck className="size-4 text-usa-success" />Sent to the desk.</p>;
+  if (state === "dropped") return <p className="flex items-center gap-1.5 text-sm text-usa-base-dark"><CircleX className="size-4" />Not sent.</p>;
   const busy = state === "sending";
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} role="group" aria-label="Send this to the desk?"
-      className="w-full rounded-2xl border bg-card p-3 shadow-xs">
-      <p className="text-sm font-medium">Send this to the desk?</p>
-      <ul className="mt-1.5 space-y-0.5 text-sm text-muted-foreground">
+    <div role="group" aria-label="Send this to the desk?"
+      className="w-full rounded-md border border-usa-base-lighter bg-usa-white p-3 shadow-xs">
+      <p className="text-sm font-medium text-usa-ink">Send this to the desk?</p>
+      <ul className="mt-1.5 space-y-0.5 text-sm text-usa-base-dark">
         {pending.items.map((it, i) => <li key={i}>{it.replaceAll("_", " ")}</li>)}
       </ul>
-      {state === "error" && <p className="mt-2 text-xs text-destructive">{pending.error}</p>}
+      {state === "error" && <p className="mt-2 text-xs text-usa-error">{pending.error}</p>}
       <div className="mt-3 flex gap-2">
-        <Button className="flex-1 rounded-full" disabled={busy} onClick={onSend}><SendHorizontal />{busy ? "Sending…" : "Send"}</Button>
-        <Button variant="outline" className="flex-1 rounded-full" disabled={busy} onClick={onDrop}>Don&apos;t send</Button>
+        <Button type="button" className="flex-1" disabled={busy} onClick={onSend}><SendHorizontal />{busy ? "Sending…" : "Send"}</Button>
+        <Button type="button" outline className="flex-1" disabled={busy} onClick={onDrop}>Don&apos;t send</Button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 function Dots() {
-  return (
-    <span className="inline-flex gap-0.5" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <motion.span key={i} className="size-1.5 rounded-full bg-current"
-          animate={{ opacity: [0.25, 1, 0.25] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.18 }} />
-      ))}
-    </span>
-  );
+  return <span className="inline-flex gap-0.5" aria-hidden>{[0, 1, 2].map((i) => <span key={i} className="size-1.5 rounded-full bg-current" />)}</span>;
 }

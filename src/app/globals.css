@@ -193,6 +193,7 @@
   --color-usa-ink: var(--usa-ink);
   --color-usa-white: var(--usa-white);
   --color-usa-error: var(--usa-error);
+  --color-usa-error-dark: var(--usa-error-dark);
   --color-usa-error-lighter: var(--usa-error-lighter);
   --color-usa-warning: var(--usa-warning);
   --color-usa-success: var(--usa-success);

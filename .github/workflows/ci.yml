@@ -63,6 +63,10 @@ jobs:
       - name: Accessibility (axe, UI-1)
         working-directory: e2e
         run: npm run test:a11y
+      # #16 (INV-5, VOX-1): /field and /talk at 360 px, model down, no speech request. Own server on 3101.
+      - name: Phone screens (field and talk, 360 px)
+        working-directory: e2e
+        run: npm run test:phone
       - name: Keep the accessibility report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -71,6 +75,8 @@ jobs:
           path: |
             e2e/report/a11y
             e2e/test-results/a11y
+            e2e/report/phone
+            e2e/test-results/phone
           retention-days: 7
 
   # CI-2: the Mongo-backed checks (keeper, sweeper, api, security) against a throwaway database,
