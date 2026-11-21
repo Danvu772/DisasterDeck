@@ -6,10 +6,15 @@
 // accept, a done, an approval with an assignee, an arrived, a decline, an incident that blocks
 // a task, a need and a claim.
 import assert from "node:assert/strict";
+import { readdir, readFile } from "node:fs/promises";
 import { GET as feed } from "../app/api/events/route";
 import { processEvent } from "../workers/brain";
+import { refreshPriorities } from "../workers/memory-keeper";
+import { maskEvent } from "./feed";
 import { closeDb, cols, getBoard, newId } from "./db";
-import type { Event, EventType, LatLng, NewEvent, ReportPayload, Site, Task, User } from "./types";
+import { demoNowFrom, demoT0, getDemo } from "./demo";
+import { eventBody } from "./schemas";
+import type { Event, EventOrigin, EventType, LatLng, NewEvent, ReportPayload, Site, Task, User } from "./types";
 
 const DESK = "check-cp1";
 let passed = 0;
@@ -27,6 +32,7 @@ async function post<P>(e: NewEvent<P> & { dedupeKey: string }): Promise<string> 
     _id: newId(), deskId: DESK, ts: now, observedAt: e.observedAt ?? now, type: e.type, source: e.source,
     actor: e.actor, lane: e.source === "person" || e.source === "system" ? 0 : 1, payload: e.payload,
     status: "working", lockedAt: now, attempts: 1, dedupeKey: e.dedupeKey,
+    ...(e.origin ? { origin: e.origin } : {}),
   };
   await events.insertOne(doc);
   queued.push(doc);
@@ -68,12 +74,21 @@ function people(): User[] {
   ];
 }
 
+// DEMO-4: the check writes the global demo document, so it puts back what it found.
+let savedDemo: unknown = null;
+async function restoreDemo() {
+  const { meta } = await cols();
+  await meta.deleteOne({ _id: "demo" });
+  if (savedDemo) await meta.insertOne(savedDemo as never);
+  await getDemo({ fresh: true });
+}
+
 async function cleanup() {
   const c = await cols();
   await c.inbox.deleteMany({ userId: { $in: Object.values(U) } });
   await Promise.all([
     c.events.deleteMany({ deskId: DESK }), c.sites.deleteMany({ deskId: DESK }), c.needs.deleteMany({ deskId: DESK }),
-    c.incidents.deleteMany({ deskId: DESK }), c.tasks.deleteMany({ deskId: DESK }), c.users.deleteMany({ deskId: DESK }),
+    c.incidents.deleteMany({ deskId: DESK }), c.roads.deleteMany({ deskId: DESK }), c.tasks.deleteMany({ deskId: DESK }), c.users.deleteMany({ deskId: DESK }),
     c.meta.deleteMany({ _id: { $in: [`cases:${DESK}`, `version:${DESK}`] } }),
   ]);
 }
@@ -329,6 +344,183 @@ async function main() {
   assert.equal(ev.status, "rejected");
   ok(`claim: an accepted assist task for ${U.volA}. A claim that names nothing: rejected with a reason`);
 
+
+  // --- D-0017: origin block (SRC-3) and AP as vetted (SRC-4) ---
+  // Far from every other case above (about 60 km), so nothing here merges into an earlier site.
+  const sourceOf = async (siteId: string) => (await c.sites.findOne({ _id: siteId }))!;
+  const strip = ({ _id, coords, sources, history, caseNo, observedAt, address, posts, supporters, ...rest }: Site) => rest; // eslint-disable-line @typescript-eslint/no-unused-vars
+  const origin: EventOrigin = {
+    postId: "1622018840000000101", author: "@hatay_dayanisma", kind: "post",
+    url: "https://x.example/hatay_dayanisma/status/1622018840000000101", metrics: { reposts: 412 },
+    media: [{ type: "image", url: "/demo/shelter-whiteboard-2.jpg" }],
+  };
+  const o1 = await post<ReportPayload>({
+    deskId: DESK, type: "report", source: "x", actor: "x-agent", dedupeKey: "check:cp1:origin-with", origin,
+    payload: { kind: "trapped", text: "Origin check A: enkaz altında 3 kişi", textEn: "Origin check: 3 under rubble", coords: [36.7, 36.7], region: "antakya-merkez", peopleCount: 3 },
+  });
+  const o2 = await post<ReportPayload>({
+    deskId: DESK, type: "report", source: "x", actor: "x-agent", dedupeKey: "check:cp1:origin-without",
+    payload: { kind: "trapped", text: "Origin check B: enkaz altında 3 kişi", textEn: "Origin check: 3 under rubble", coords: [36.75, 36.75], region: "antakya-merkez", peopleCount: 3 },
+  });
+  await drain();
+  const ev1 = (await c.events.findOne({ _id: o1 }))!, ev2 = (await c.events.findOne({ _id: o2 }))!;
+  assert.deepEqual(ev1.origin, origin, "the origin is stored on the event as sent");
+  assert.equal(ev2.origin, undefined, "no origin sent, none stored");
+  ok("SRC-3 (a): origin stored deep-equal on the event");
+  const s1 = await c.sites.findOne({ "sources.eventId": o1 }), s2 = await c.sites.findOne({ "sources.eventId": o2 });
+  assert(s1 && s2 && s1._id !== s2._id);
+  assert.deepEqual(strip(await sourceOf(s1._id)), strip(await sourceOf(s2._id)), "origin changes no site field");
+  ok("SRC-3 (b): the same report with and without origin gives identical site fields");
+
+  const envelope = (originBlock: unknown) => eventBody.safeParse({
+    type: "report", source: "x", observedAt: "2023-02-06T01:58:00Z", origin: originBlock,
+    payload: { kind: "trapped", text: "t", textEn: "t" },
+  });
+  assert(envelope(origin).success, "a full origin is accepted");
+  assert(envelope({ kind: "wire", slug: "BC-EU--Turkey-Earthquake", urgency: "urgent" }).success, "AP origin is accepted");
+  assert(!envelope({ url: "javascript:alert(1)" }).success, "javascript: url");
+  assert(!envelope({ url: "data:text/html,x" }).success, "data: url");
+  assert(!envelope({ kind: "tweet" }).success, "unknown kind");
+  assert(!envelope({ postId: "1", extra: true }).success, "extra key");
+  assert(!envelope({ postId: "x".repeat(201) }).success, "oversize postId");
+  assert(!envelope({ author: "x".repeat(201) }).success, "oversize author");
+  assert(!envelope({ slug: "x".repeat(201) }).success, "oversize slug");
+  assert(!envelope({ url: `https://x.example/${"a".repeat(2000)}` }).success, "oversize url");
+  assert(!envelope({ media: Array.from({ length: 11 }, () => ({ type: "image", url: "/demo/a.jpg" })) }).success, "11 media");
+  assert(!envelope({ metrics: Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`m${i}`, 1])) }).success, "11 metrics");
+  assert(!envelope({ metrics: { reposts: -1 } }).success, "negative metric");
+  assert(!envelope({ metrics: { reposts: 1.5 } }).success, "fractional metric");
+  assert(envelope({ media: [{ type: "image", url: "/demo/x.jpg" }] }).success, "same-site media path");
+  assert(envelope({ media: [{ type: "video", url: "https://cdn.example/x.mp4" }] }).success, "https media");
+  assert(!envelope({ media: [{ type: "image", url: "//evil.com/x.jpg" }] }).success, "protocol-relative media url");
+  assert(!envelope({ media: [{ type: "image", url: "/\\evil.com/x.jpg" }] }).success, "backslash protocol-relative media url");
+  {
+    const masked = maskEvent({ type: "report", payload: {}, origin: { author: "call 0555 123 45 67", postId: "1" } } as unknown as Event);
+    assert(!/0555 123 45 67/.test(JSON.stringify(masked.origin)), "the feed masks phone numbers inside origin");
+  }
+  assert(!envelope({ media: [{ type: "image", url: "javascript:alert(1)" }] }).success, "javascript: media url");
+  assert(!envelope({ media: [{ type: "audio", url: "/demo/x.mp3" }] }).success, "unknown media type");
+  ok("SRC-3 (c): the schema rejects javascript: urls, unknown kinds, extra keys and oversize fields; accepts /demo/x.jpg, rejects //evil.com");
+
+  const rulesDir = new URL("./rules/", import.meta.url);
+  for (const f of (await readdir(rulesDir)).filter((n) => n.endsWith(".ts"))) {
+    assert(!/\borigin\b/.test(await readFile(new URL(f, rulesDir), "utf8")), `lib/rules/${f} must not read event.origin`);
+  }
+  ok("SRC-3 (d): no file in lib/rules/ mentions origin");
+
+  // SRC-4 (a): a public closure is confirmed by AP on the same road.
+  const roadBody = { road: "Origin Check Caddesi", reason: "bridge down", coords: [36.8, 36.8] as LatLng };
+  await post({ deskId: DESK, type: "closure", source: "x", actor: "x-agent", dedupeKey: "check:cp1:ap-road-x", payload: { ...roadBody, state: "closed" } });
+  await drain();
+  let road = (await c.roads.findOne({ deskId: DESK, road: roadBody.road }))!;
+  assert.equal(road.state, "closed"); assert.equal(road.confidence, "unconfirmed"); assert.equal(road.trust, "public");
+  await post({ deskId: DESK, type: "closure", source: "news", actor: "ap", dedupeKey: "check:cp1:ap-road-ap",
+    origin: { kind: "wire", slug: "BC-EU--Turkey-Earthquake", urgency: "urgent" }, payload: { ...roadBody, state: "closed" } });
+  await drain();
+  road = (await c.roads.findOne({ _id: road._id }))!;
+  assert.equal(road.state, "closed"); assert.equal(road.confidence, "confirmed"); assert.equal(road.trust, "vetted");
+  ok("SRC-4 (a): a public closure is unconfirmed, then an AP closure makes it closed and confirmed (vetted)");
+
+  // SRC-4 (b)/(d): an AP need opens alone, a public x need stays proposed.
+  const needEv = (source: "news" | "x", actor: string, key: string, item: string) =>
+    post({ deskId: DESK, type: "need", source, actor, dedupeKey: `check:cp1:${key}`, payload: { item, quantity: 5, lifeThreatening: false, region: "hatay-ap-check" } });
+  await needEv("news", "ap", "ap-need", "Insulin");
+  await needEv("x", "x-agent", "x-need", "Kerosene stoves");
+  await drain();
+  const apNeed = (await c.needs.findOne({ deskId: DESK, item: "Insulin" }))!;
+  const xNeed = (await c.needs.findOne({ deskId: DESK, item: "Kerosene stoves" }))!;
+  assert.notEqual(apNeed.status, "proposed", "one AP post opens a need on its own"); assert.equal(apNeed.confidence, "confirmed");
+  ok(`SRC-4 (b): one AP need opens alone (${apNeed.status}, confirmed)`);
+  assert.equal(xNeed.status, "proposed"); assert.equal(xNeed.confidence, "unconfirmed");
+  ok("SRC-4 (d): control, a public x need stays proposed");
+
+  // SRC-4 (c): AP is one voice, whatever the text.
+  for (const [i, t] of ["AP: first dispatch on the Cebrail collapse", "AP: second dispatch, rescuers on site"].entries()) {
+    await post<ReportPayload>({ deskId: DESK, type: "report", source: "news", actor: "ap", dedupeKey: `check:cp1:ap-voice-${i}`,
+      payload: { kind: "trapped", text: t, textEn: t, coords: [36.9, 36.9], region: "antakya-merkez", peopleCount: 2 } });
+  }
+  await drain();
+  const apSite = (await c.sites.find({ deskId: DESK, "sources.source": "news", coords: [36.9, 36.9] }).toArray());
+  assert.equal(apSite.length, 1); assert.equal(apSite[0].sources.length, 2);
+  assert.deepEqual(apSite[0].supporters, ["news:ap"]); assert.equal(apSite[0].support, 1);
+  ok("SRC-4 (c): two AP posts with different texts are one voice (news:ap)");
+
+  // --- TRUST-1 (#56): a public rescued post never lowers peopleTrapped ---
+  const R: LatLng = [37.1, 37.1];
+  const rescuedText = (n: string) => ({ kind: "rescued" as const, text: `Rescued ${n}`, textEn: `Rescued ${n}`, coords: R, peopleCount: 1 });
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "x", actor: "x-agent", dedupeKey: "check:cp1:t1-trapped",
+    payload: { kind: "trapped", text: "Trust check: 4 people under the rubble", textEn: "Trust check: 4 trapped", coords: R, region: "antakya-merkez", peopleCount: 4 } });
+  await drain();
+  const t1 = (await c.sites.findOne({ deskId: DESK, coords: R }))!;
+  assert.equal(t1.peopleTrapped, 4);
+  for (const src of ["x", "instagram", "facebook"] as const) {
+    await post<ReportPayload>({ deskId: DESK, type: "report", source: src, actor: `${src}-agent`, dedupeKey: `check:cp1:t1-pub-${src}`, payload: rescuedText(src) });
+  }
+  await drain();
+  const t2 = (await c.sites.findOne({ _id: t1._id }))!;
+  assert.equal(t2.peopleTrapped, 4, "public rescued posts do not lower peopleTrapped");
+  assert.equal(t2.tier, t1.tier); assert.equal(t2.status, t1.status);
+  assert.equal(t2.sources.length, t1.sources.length + 3, "the public posts are still recorded as sources");
+  ok("TRUST-1: public x, instagram and facebook rescued posts leave peopleTrapped 4, tier and status unchanged, and are recorded as sources");
+  // Control: a vetted voice (AP) and a person still lower it.
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "news", actor: "ap", dedupeKey: "check:cp1:t1-ap", payload: rescuedText("ap") });
+  await drain();
+  assert.equal((await c.sites.findOne({ _id: t1._id }))!.peopleTrapped, 3, "a vetted rescued report lowers it");
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "person", actor: U.volA, dedupeKey: "check:cp1:t1-person", payload: rescuedText("person") });
+  await drain();
+  assert.equal((await c.sites.findOne({ _id: t1._id }))!.peopleTrapped, 2, "a person's rescued report lowers it");
+  ok("TRUST-1 control: a vetted (AP) and a person's rescued report still lower peopleTrapped");
+  // Order must not matter: after trusted voices have changed the count, a public post still cannot.
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "x", actor: "x-agent", dedupeKey: "check:cp1:t1-pub-late", payload: rescuedText("late x") });
+  await drain();
+  const t3 = (await c.sites.findOne({ _id: t1._id }))!;
+  assert.equal(t3.peopleTrapped, 2, "a late public rescued post does not lower peopleTrapped either");
+  ok("TRUST-1: a public rescued post after trusted ones still changes nothing");
+
+  // --- DEMO-4: the Brain's ages and stamps are in scenario time while a demo plays ---
+  // startedAt is 10 real seconds ago, 1800 s long: 72x, so the scenario clock reads T0 + 720 s.
+  savedDemo = await c.meta.findOne({ _id: "demo" });
+  const R0 = Date.now();
+  const doc = { state: "playing" as const, runId: "check-demo-4", startedAt: new Date(R0 - 10_000), durationS: 1800 };
+  await c.meta.replaceOne({ _id: "demo" }, doc, { upsert: true });
+  await getDemo({ fresh: true });
+  const T0 = demoT0();
+  assert.equal(demoNowFrom(doc, R0).getTime() - T0, 720_000, "10 real seconds at 72x are 720 scenario seconds");
+  const D: LatLng = [37.3, 37.3];
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "person", actor: U.volA, dedupeKey: "check:cp1:demo4-site",
+    payload: { kind: "trapped", text: "Demo clock check: 2 people under the rubble", textEn: "Demo clock check: 2 trapped", coords: D, region: "antakya-merkez", peopleCount: 2 } });
+  await drain();
+  const ds = (await c.sites.findOne({ deskId: DESK, coords: D }))!;
+  // The event came in just now (event.ts is real and stays real). The site's times are scenario times.
+  const evTs = (await c.events.findOne({ deskId: DESK, dedupeKey: "check:cp1:demo4-site" }))!.ts;
+  assert(Math.abs(evTs.getTime() - R0) < 20_000, "event.ts stays on the real clock");
+  const sinceT0 = (d: Date) => (new Date(d).getTime() - T0) / 1000;
+  assert(sinceT0(ds.observedAt) >= 715 && sinceT0(ds.observedAt) < 2400, `observedAt is scenario time, T0 + ${sinceT0(ds.observedAt)} s`);
+  assert(ds.history.every((h) => sinceT0(h.ts) >= 715 && sinceT0(h.ts) < 2400), "history lines are on the demo clock");
+  const dt = await c.tasks.find({ recordId: ds._id }).toArray();
+  assert(dt.length >= 1, "the dispatcher made a task");
+  assert(dt.every((t) => sinceT0(t.deadline) >= 715 + 60 && sinceT0(t.deadline) < 2400 + 3600), "task deadlines are on the demo clock");
+  assert(dt.every((t) => t.history.every((h) => sinceT0(h.ts) >= 715 && sinceT0(h.ts) < 2400)), "task history is on the demo clock");
+  ok(`DEMO-4: a report at 72x is stamped T0 + ${Math.round(sinceT0(ds.observedAt))} s, its task deadline T0 + ${Math.round(sinceT0(dt[0].deadline))} s (event.ts stays real)`);
+  // Age is measured in scenario time: 30 real seconds later the site has waited about 36 scenario minutes.
+  const later = demoNowFrom(doc, R0 + 30_000);
+  const changed = await refreshPriorities(later, DESK);
+  const waiting = changed.find((x) => x.recordId === ds._id)?.scoreParts.find((p) => p.name === "waiting")?.value;
+  const wantMin = Math.floor((later.getTime() - new Date(ds.observedAt).getTime()) / 60_000);
+  assert(wantMin >= 25 && wantMin <= 60, `${wantMin} scenario minutes`);
+  assert.equal(waiting, wantMin, "the waiting part of the score counts scenario minutes");
+  ok(`DEMO-4: 30 real seconds later the site has waited ${wantMin} scenario minutes (score part "waiting" = ${waiting})`);
+  // Control: with no demo document the same report is stamped on the real clock.
+  await restoreDemo();
+  const D2: LatLng = [37.31, 37.31];
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "person", actor: U.volA, dedupeKey: "check:cp1:demo4-control",
+    payload: { kind: "trapped", text: "Demo clock control: 1 person under the rubble", textEn: "Demo clock control: 1 trapped", coords: D2, region: "antakya-merkez", peopleCount: 1 } });
+  await drain();
+  const dc = (await c.sites.findOne({ deskId: DESK, coords: D2 }))!;
+  assert(Math.abs(new Date(dc.observedAt).getTime() - Date.now()) < 20_000, "no demo document: observedAt is real time");
+  assert(dc.history.every((h) => Math.abs(new Date(h.ts).getTime() - Date.now()) < 20_000), "no demo document: history is real time");
+  ok("DEMO-4 control: with no demo document the stamps are real time");
+
   const pending = await c.events.countDocuments({ deskId: DESK, status: { $in: ["pending", "working"] } });
   assert.equal(pending, 0, "nothing left pending");
   ok("every event on the desk ended done, merged or rejected");
@@ -338,4 +530,4 @@ async function main() {
 
 main()
   .catch((err) => { console.error("\nFAILED:", err instanceof Error ? err.message : err); process.exitCode = 1; })
-  .finally(async () => { await cleanup(); await closeDb(); });
+  .finally(async () => { await cleanup(); await restoreDemo().catch(() => undefined); await closeDb(); });

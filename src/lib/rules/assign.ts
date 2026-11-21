@@ -17,9 +17,23 @@ export const MAX_OPEN_TASKS = 3;
 
 export interface Place { coords?: LatLng; region: string }
 
+/** A stamp may run this far ahead of `now` (clock skew between processes) and still count. */
+export const SEEN_SKEW_MS = 60_000;
+
+/**
+ * Seen within the last 3 minutes of `now`. A stamp from the future does not count: during a demo
+ * `now` is scenario time (2023), and a stamp a real person left on real time (2026) would
+ * otherwise read as "seen" for the whole run (D-0017 amendment 3).
+ */
+export function seenRecently(lastSeen: Date | string | undefined, now: Date): boolean {
+  if (!lastSeen) return false;
+  const ago = now.getTime() - new Date(lastSeen).getTime();
+  return ago >= -SEEN_SKEW_MS && ago <= SEEN_WITHIN_MS;
+}
+
 /** The person's screen read their inbox in the last 3 minutes: they will see a task now. */
 export function isOnline(u: { lastSeen?: Date | string }, now: Date = new Date()): boolean {
-  return Boolean(u.lastSeen) && now.getTime() - new Date(u.lastSeen!).getTime() <= SEEN_WITHIN_MS;
+  return seenRecently(u.lastSeen, now);
 }
 
 export type Pick =
@@ -39,7 +53,7 @@ export function pickPerson(
     if (!need.roles.includes(u.role)) { out.role++; continue; }
     if (need.has && !need.has(u)) { out.has++; continue; }
     if (u.status !== "available") { out.busy++; continue; }
-    if (!u.lastSeen || now.getTime() - new Date(u.lastSeen).getTime() > SEEN_WITHIN_MS) { out.unseen++; continue; }
+    if (!seenRecently(u.lastSeen, now)) { out.unseen++; continue; }
     if ((openTasks.get(u._id) ?? 0) >= MAX_OPEN_TASKS) { out.full++; continue; }
     if (need.exclude.includes(u._id)) { out.tried++; continue; }
     fits.push(u);

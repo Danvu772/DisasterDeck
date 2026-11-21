@@ -124,6 +124,21 @@ export function buildSpec() {
             incidents: recordList("Problems on the ground, newest first"),
             tasks: recordList("Tasks, by tier then priority"),
             health: { $ref: "#/components/schemas/Health" },
+            demo: {
+              description: "The demo run, or null when there is none (D-0017). Read fresh on every call.",
+              oneOf: [
+                { type: "null" },
+                {
+                  type: "object", required: ["state", "startedAt", "durationS"],
+                  properties: {
+                    state: { type: "string", enum: ["prepping", "playing"] },
+                    startedAt: { type: ["string", "null"], format: "date-time" },
+                    durationS: { type: ["integer", "null"] },
+                  },
+                },
+              ],
+            },
+            demoNow: { type: "string", format: "date-time", description: "The demo clock: scenario time while a run plays, else real time" },
           },
         },
         InboxItem: {
@@ -224,6 +239,69 @@ export function buildSpec() {
               content: { "application/json": { schema: { $ref: "#/components/schemas/Board" } } },
             },
             401: errorResponse("Not signed in (only when DEMO_MODE is off)"),
+          },
+        },
+      },
+      "/api/demo/start": {
+        post: {
+          tags: ["desk"],
+          summary: "Start (or restart) the demo",
+          description: [
+            "Only a signed-in person on a demo deployment (`demo: true` in `data/pilot.json`). The agent key gets 403.",
+            "Writes `meta` `demo` as `prepping`, waits up to 10 s for events the Brain is working on, deletes every desk's",
+            "records, reseeds the users from `data/seed.json`, then writes `playing` with a new `runId`. Logins, the Brain",
+            "lease and the audit log are not touched. The player (`npm run player`) posts the scenario from then on.",
+          ].join("\n"),
+          security: [{ session: [] }, { demoUser: [] }],
+          requestBody: {
+            required: false,
+            content: {
+              "application/json": {
+                schema: { type: "object", properties: { durationS: { type: "integer", minimum: 60, maximum: 7200, default: 1800 } } },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: "The new run",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object", required: ["runId", "startedAt"],
+                    properties: { runId: { type: "string" }, startedAt: { type: "string", format: "date-time" } },
+                  },
+                },
+              },
+            },
+            400: errorResponse("durationS is out of range, or the body is not JSON"),
+            401: errorResponse("Not signed in"),
+            403: errorResponse("Called with the agent key, or this deployment is not a demo"),
+            409: errorResponse("A start is already in progress"),
+          },
+        },
+      },
+      "/api/demo/presence": {
+        post: {
+          tags: ["desk"],
+          summary: "The demo's heartbeat",
+          description: [
+            "Agent key only, demo deployments only (`demo: true` in `data/pilot.json`). Stamps `lastSeen` = now on the",
+            "seeded users (the ids in `data/seed.json`, never any other user) so the dispatcher counts them as present.",
+            "`dark` lists seeded users who are not stamped (a `go_dark` line of the scenario). The player calls it every tick.",
+          ].join("\n"),
+          security: [{ agentKey: [] }],
+          requestBody: {
+            required: false,
+            content: { "application/json": { schema: { type: "object", properties: { dark: { type: "array", items: { type: "string" } } } } } },
+          },
+          responses: {
+            200: {
+              description: "How many seeded users were stamped",
+              content: { "application/json": { schema: { type: "object", required: ["stamped"], properties: { stamped: { type: "integer" } } } } },
+            },
+            400: errorResponse("Body is not JSON, or dark is not a list of strings"),
+            401: errorResponse("No or wrong agent key"),
+            403: errorResponse("Called by a signed-in person, or this deployment is not a demo"),
           },
         },
       },

@@ -7,8 +7,11 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { POST } from "../app/api/events/route";
 import { GET as getInbox, POST as postInbox } from "../app/api/inbox/route";
+import { POST as presenceRoute } from "../app/api/demo/presence/route";
+import { POST as startDemoRoute } from "../app/api/demo/start/route";
 import { GET as getUsers } from "../app/api/users/route";
 import { closeDb, cols } from "./db";
+import { isThrowawayMongo } from "./demo";
 import { buildSpec, UNDOCUMENTED } from "./openapi";
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -129,6 +132,14 @@ async function main() {
   assert(ev?.observedAt instanceof Date);
   console.log("    actor nasa-agent, lane 1, observedAt stored as a date");
 
+  // D-0017: the origin block survives the round trip, and a bad one is a 400.
+  const origin = { postId: "p-1", author: "@x_user", kind: "story", url: "https://ig.example/p/1", media: [{ type: "image", url: "/demo/x.jpg" }], metrics: { likes: 3 } };
+  const withOrigin = { ...alert, dedupeKey: "check:alert-origin", origin };
+  const o = await expect("an event with an origin block is accepted", post(withOrigin, { key }), 200);
+  assert.deepEqual((await c.events.findOne({ _id: o.id }))?.origin, origin);
+  console.log("    origin stored on the event as sent");
+  await expect("an origin with a javascript: url is refused", post({ ...alert, dedupeKey: "check:alert-bad-origin", origin: { url: "javascript:alert(1)" } }, { key }), 400);
+
   await expect("wrong agent key", post(alert, { key: "nope" }), 401);
   await expect("nobody signed in", post(alert), 401);
   await expect("unknown demo user", post(alert, { user: "ghost" }), 401);
@@ -229,6 +240,49 @@ async function main() {
   assert(seeded.length >= 9 && seeded.every((u) => !("profile" in u)), "the seeded people, without profile");
   console.log(`    ${seeded.length} people on the real desk, none with profile`);
 
+  // --- demo presence (the heartbeat) ---
+  const presence = (opts: { user?: string; key?: string; body?: string } = {}) =>
+    call(presenceRoute, "/api/demo/presence", { ...opts, method: "POST" });
+  await expectCall("nobody signed in sends presence", presence(), 401);
+  await expectCall("a person sends presence", presence({ user: "coordinator-duty" }), 403);
+  process.env.DEMO_DEPLOYMENT = "0";
+  try { await expectCall("the agent sends presence on a non-demo deployment", presence({ key }), 403); }
+  finally { delete process.env.DEMO_DEPLOYMENT; }
+  await expectCall("dark is not a list", presence({ key, body: JSON.stringify({ dark: "x" }) }), 400);
+  const longAgo = new Date(Date.now() - 3_600_000);
+  await c.users.updateMany({ _id: { $in: ["volunteer-callback", "volunteer-mechanic", PERSON] } }, { $set: { lastSeen: longAgo } });
+  const beat = (await expectCall("the agent sends presence, volunteer-callback dark",
+    presence({ key, body: JSON.stringify({ dark: ["volunteer-callback"] }) }), 200)) as { stamped: number };
+  assert(beat.stamped >= 8, `the seeded people are stamped (${beat.stamped})`);
+  const stampOf = async (id: string) => (await c.users.findOne({ _id: id }))?.lastSeen?.getTime();
+  assert((await stampOf("volunteer-mechanic"))! > longAgo.getTime() + 60_000, "a seeded user is stamped");
+  assert.equal(await stampOf("volunteer-callback"), longAgo.getTime(), "a dark user is not");
+  assert.equal(await stampOf(PERSON), longAgo.getTime(), "a user outside the seed is not");
+  console.log("    seeded users stamped, the dark one and a non-seed user untouched");
+
+  // --- start demo (DEMO-1). Last, because a successful start deletes every desk's records. ---
+  const start = (opts: { user?: string; key?: string; body?: string } = {}) =>
+    call(startDemoRoute, "/api/demo/start", { ...opts, method: "POST" });
+  await expectCall("nobody signed in starts the demo", start(), 401);
+  await expectCall("agent key starts the demo", start({ key }), 403);
+  await expectCall("a volunteer starts the demo", start({ user: "volunteer-callback" }), 403);
+  await expectCall("a supplier starts the demo", start({ user: "supplier-primary" }), 403);
+  process.env.DEMO_DEPLOYMENT = "0";
+  try {
+    await expectCall("a person starts the demo on a non-demo deployment", start({ user: "coordinator-duty" }), 403);
+  } finally { delete process.env.DEMO_DEPLOYMENT; }
+  await expectCall("durationS under 60", start({ user: "coordinator-duty", body: JSON.stringify({ durationS: 10 }) }), 400);
+  if (isThrowawayMongo()) {
+    const run = (await expectCall("a person starts the demo (durationS 60)",
+      start({ user: "coordinator-duty", body: JSON.stringify({ durationS: 60 }) }), 200)) as { runId: string; startedAt: string };
+    assert(run.runId && !Number.isNaN(Date.parse(run.startedAt)));
+    const doc = await c.meta.findOne({ _id: "demo" });
+    assert.equal(doc?.state, "playing"); assert.equal(doc?.runId, run.runId); assert.equal(doc?.durationS, 60);
+    console.log("    meta demo: playing, the new runId, durationS 60");
+  } else {
+    console.log("skip  a person starts the demo: it deletes every desk, so it runs on a local Mongo (or ALLOW_DEMO_WIPE=1) only");
+  }
+
   console.log(`\nAll ${passed} checks passed.`);
 }
 
@@ -242,6 +296,7 @@ main()
     await c.events.deleteMany({ $or: [{ _id: { $in: created } }, { deskId: DESK }] });
     await c.sites.deleteMany({ deskId: DESK }); // a running Brain may have made one from the test report
     await c.tasks.deleteOne({ _id: "check-task" });
+    await c.meta.deleteOne({ _id: "demo" }); // only exists when the start-demo case ran
     await c.inbox.deleteMany({ userId: { $in: [PERSON, OTHER] } });
     await c.users.deleteMany({ _id: { $in: [PERSON, OTHER] }, deskId: DESK });
     await closeDb();

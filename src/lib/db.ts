@@ -81,7 +81,11 @@ export async function cols() {
     messages: db.collection<Message>("messages"),
     // "brain": the loop's heartbeat. "brain-lease": which Brain process may run (only one).
     // "version:<deskId>": a counter bumped after every record write (see bumpDeskVersion).
-    meta: db.collection<{ _id: string; lastLoopAt?: Date; holder?: string; until?: Date; version?: number }>("meta"),
+    // "demo": the demo's state, written only by startDemo() in lib/demo.ts (D-0017).
+    meta: db.collection<{
+      _id: string; lastLoopAt?: Date; holder?: string; until?: Date; version?: number;
+      state?: "prepping" | "playing"; runId?: string; startedAt?: Date; durationS?: number; since?: Date;
+    }>("meta"),
   };
 }
 
@@ -160,6 +164,7 @@ export async function postEvent<P>(e: NewEvent<P>): Promise<string> {
     status: "pending",
     attempts: 0,
     ...(e.dedupeKey ? { dedupeKey: e.dedupeKey } : {}),
+    ...(e.origin ? { origin: withoutUndefined(e.origin) } : {}),
   };
   try {
     await events.insertOne(doc as Event);

@@ -18,6 +18,7 @@
 // inbox item for them. Every approval writes one per coordinator. The one_open_task index keeps
 // one open task per record and type, so a second run of the same event makes nothing new.
 import { cols, newId, MongoServerError, type Filter } from "../lib/db";
+import { demoAtSync, demoNowSync, getDemo } from "../lib/demo";
 import { haversineMeters } from "../lib/geo";
 import { distanceText, isOnline, pickPerson, SEEN_WITHIN_MS, stockOf, type Pick, type Place } from "../lib/rules/assign";
 import { PLAYBOOK } from "../lib/rules/incidents";
@@ -37,8 +38,8 @@ const ROLE_FOR: Record<Task["type"], Role[]> = {
 };
 const log = (...m: unknown[]) => console.log(`[dispatcher ${new Date().toISOString().slice(11, 19)}]`, ...m);
 const entry = (reason: string, by = "dispatcher"): HistoryEntry =>
-  ({ ts: new Date(), by, source: by === "dispatcher" ? "system" : "person", reason });
-const deadline = (from: Date = new Date()) => new Date(from.getTime() + ANSWER_MINUTES * 60_000);
+  ({ ts: demoNowSync(), by, source: by === "dispatcher" ? "system" : "person", reason });
+const deadline = (from: Date = demoNowSync()) => new Date(from.getTime() + ANSWER_MINUTES * 60_000);
 
 export async function react(changes: Change[], actions: TaskAction[] = []): Promise<void> {
   // A failed delivery goes back to open before the replacement takes it: the askers hear "delayed" first.
@@ -104,7 +105,7 @@ export async function reconcile(desk?: string): Promise<{ created: number; desks
  * has been seen after the miss. A task that said no MAX_TRIES times stays escalated for a
  * coordinator. A task on a closed or retracted site is left alone. Returns the desks whose tasks moved.
  */
-export async function redelegate(desk?: string, now: Date = new Date()): Promise<{ moved: number; desks: string[] }> {
+export async function redelegate(desk?: string, now: Date = demoNowSync()): Promise<{ moved: number; desks: string[] }> {
   const { tasks, users } = await cols();
   const q = desk ? { deskId: desk } : {};
   const waiting = await tasks.find({ ...q, status: "escalated", open: true }).toArray();
@@ -158,6 +159,7 @@ function missedAt(t: Task): Map<string, number> {
 // ---------- 1. what the keeper decided about a task ----------
 
 async function act(a: TaskAction): Promise<void> {
+  await getDemo();
   const { tasks } = await cols();
   if (a.kind === "claim") return claimed(a);
   if (a.kind === "cancel") return cancelled(a);
@@ -167,7 +169,7 @@ async function act(a: TaskAction): Promise<void> {
 
   switch (a.kind) {
     case "accept": {
-      const eta = a.etaMinutes !== undefined ? new Date(Date.now() + a.etaMinutes * 60_000) : task.eta;
+      const eta = a.etaMinutes !== undefined ? new Date(demoNowSync().getTime() + a.etaMinutes * 60_000) : task.eta;
       const step = a.progress === "arrived" ? "arrived" : a.progress === "en_route" ? "on the way" : "";
       await tasks.updateOne({ _id: task._id, status: { $in: ["assigned", "accepted"] } }, {
         $set: { status: "accepted", ...(eta ? { eta } : {}), ...(a.progress ? { progress: a.progress } : {}) },
@@ -206,7 +208,7 @@ async function act(a: TaskAction): Promise<void> {
 /** Same task, next person. Never the same person twice, a coordinator after three. */
 async function declined(task: Task, by: string, note?: string): Promise<void> {
   const said = entry(note ? `declined: ${note}` : "declined", by);
-  await handOver(task, by, said, new Date(), { status: { $in: ["assigned", "accepted"] } });
+  await handOver(task, by, said, demoNowSync(), { status: { $in: ["assigned", "accepted"] } });
 }
 
 /**
@@ -218,7 +220,7 @@ async function declined(task: Task, by: string, note?: string): Promise<void> {
  * Staying only renews the deadline (no history line, no new inbox item). A conditional update,
  * so a second tick (or a second Brain) handles each task once.
  */
-export async function timedOut(task: Task, now: Date = new Date()): Promise<void> {
+export async function timedOut(task: Task, now: Date = demoNowSync()): Promise<void> {
   await moveOnSilence(task, now, false);
 }
 
@@ -280,7 +282,7 @@ async function handOver(task: Task, by: string, said: HistoryEntry, now: Date, g
  * heard nothing for a while: one check-in to the assignee, once. The `checkinAt` field is the
  * record of it (and the sweeper's clock for "unreachable").
  */
-export async function checkIn(task: Task, now: Date = new Date(), why: "eta" | "silent" = "eta"): Promise<boolean> {
+export async function checkIn(task: Task, now: Date = demoNowSync(), why: "eta" | "silent" = "eta"): Promise<boolean> {
   if (!task.assignee) return false;
   const { tasks } = await cols();
   const r = await tasks.updateOne(
@@ -312,12 +314,12 @@ export async function syncPriority(changes: { recordId: string; priority: number
  * task moves now, without waiting for its deadline, to someone whose screen is open (§5 sweeper,
  * "person not seen for 3 minutes"). Nobody free: it stays, and the deadline rule takes it from there.
  */
-export async function offlineTimedOut(task: Task, now: Date = new Date()): Promise<boolean> {
+export async function offlineTimedOut(task: Task, now: Date = demoNowSync()): Promise<boolean> {
   return moveOnSilence(task, now, true);
 }
 
 /** An approval nobody answered by its deadline: marked late and sent again to every coordinator. The desk never approves by itself (§5). */
-export async function approvalLate(task: Task, now: Date = new Date()): Promise<boolean> {
+export async function approvalLate(task: Task, now: Date = demoNowSync()): Promise<boolean> {
   const { tasks, inbox: box } = await cols();
   const round = (task.approvalRounds ?? 0) + 1;
   const r = await tasks.updateOne(
@@ -339,7 +341,7 @@ export async function approvalLate(task: Task, now: Date = new Date()): Promise<
 }
 
 /** A shelter's number is older than the sweeper allows: its keepers are asked for the current count, once per number. */
-export async function askShelterConfirm(shelter: Shelter, now: Date = new Date()): Promise<number> {
+export async function askShelterConfirm(shelter: Shelter, now: Date = demoNowSync()): Promise<number> {
   const keepers = (await peopleOn(shelter.deskId, ["shelter"])).filter((u) => sameRegion(u.region, shelter.region));
   return inbox(keepers.map((u) => ({
     userId: u._id, kind: "notice" as const, priority: 30, key: `stale-shelter:${shelter._id}:${new Date(shelter.observedAt).toISOString()}`,
@@ -348,7 +350,7 @@ export async function askShelterConfirm(shelter: Shelter, now: Date = new Date()
 }
 
 /** A road nobody trusted has said anything about for a while: the nearest free field team is asked to look, once per report. */
-export async function askRoadConfirm(road: Road, now: Date = new Date()): Promise<boolean> {
+export async function askRoadConfirm(road: Road, now: Date = demoNowSync()): Promise<boolean> {
   const place: Place = { ...(road.coords ? { coords: road.coords } : {}), region: road.region ?? "unknown" };
   const pick = await pickWith(road.deskId, ["field"], place, [], undefined, undefined, now);
   if (!pick.ok) return false;
@@ -499,7 +501,7 @@ async function replaceDelivery(from: Task, inc: Incident): Promise<{ made: Task 
   const siteNames = (await sites.find({ _id: { $in: need.siteIds } }).toArray()).map((s) => (s.caseNo ? `site ${s.caseNo}` : s.address));
   const where = siteNames.length ? siteNames.join(" and ").replace(/^site (\d+) and site (\d+)$/, "sites $1 and $2") : need.region;
 
-  const fresh = await pickFor(from, from.tried, new Date(), siteCoords ? { coords: siteCoords, region: need.region } : undefined);
+  const fresh = await pickFor(from, from.tried, demoNowSync(), siteCoords ? { coords: siteCoords, region: need.region } : undefined);
   const freshM = fresh.ok && fresh.user.coords && siteCoords ? haversineMeters(fresh.user.coords, siteCoords) : undefined;
   const relay = stopped
     ? await pickWith(from.deskId, ["volunteer", "field"], { coords: stopped, region: need.region }, [...from.tried, inc.reportedBy], hasVehicle, "a vehicle")
@@ -683,7 +685,7 @@ async function claimed(a: Extract<TaskAction, { kind: "claim" }>): Promise<void>
   if (await tasks.findOne({ recordId: a.recordId, type: a.type, open: true }, { projection: { _id: 1 } })) return;
   const rec = await recordOf(a.recordType, a.recordId);
   if (!rec) return;
-  const eta = a.etaMinutes !== undefined ? new Date(Date.now() + a.etaMinutes * 60_000) : undefined;
+  const eta = a.etaMinutes !== undefined ? new Date(demoNowSync().getTime() + a.etaMinutes * 60_000) : undefined;
   await insertTask({
     _id: newId(), type: a.type, recordType: a.recordType, recordId: a.recordId, assignee: a.by,
     tried: [], risk: a.type === "rescue" ? "high" : "low",
@@ -792,7 +794,7 @@ async function tellAskers(needId: string, status: "assigned" | "on_the_way" | "d
   else if (status === "cancelled") how = "closed, nobody else asked for it in 2 hours. Ask again if it is still needed";
   else {
     const eta = (await tasks.findOne({ recordId: need._id, type: "deliver", open: true }, { projection: { eta: 1 } }))?.eta;
-    const min = eta ? Math.max(1, Math.round((new Date(eta).getTime() - Date.now()) / 60_000)) : undefined;
+    const min = eta ? Math.max(1, Math.round((new Date(eta).getTime() - demoNowSync().getTime()) / 60_000)) : undefined;
     how = `on the way${min === undefined ? "" : min < 60 ? `, about ${min} min` : `, about ${Math.round(min / 60)} h`}`;
   }
   await inbox(need.requestedBy.map((userId) => ({
@@ -811,7 +813,7 @@ async function planned(a: Extract<TaskAction, { kind: "plan" }>): Promise<void> 
     const ev = evId ? await events.findOne({ _id: evId }, { projection: { ts: 1, payload: 1 } }) : null;
     const theirs = ((ev?.payload as { zoneExits?: { zoneId: string }[] } | undefined)?.zoneExits ?? []).map((e) => norm(e.zoneId));
     if (ev && !theirs.some((z) => mine.has(z))) continue;
-    if (ev && new Date(ev.ts) > a.ts) return; // this plan is the stale one
+    if (ev && demoAtSync(ev.ts) > a.ts) return; // this plan is the stale one
     const r = await tasks.updateOne({ _id: t._id, status: "waiting_approval" }, {
       $set: { status: "cancelled", open: false },
       $push: { history: entry(`cancelled: a newer evacuation plan replaces it (event ${a.eventId})`) },
@@ -1010,11 +1012,11 @@ async function insertTask(task: Task): Promise<boolean> {
 // ---------- group B: roads, shelters, zones, corrections ----------
 
 const minutesAgo = (d: Date) => {
-  const m = Math.floor((Date.now() - new Date(d).getTime()) / 60_000);
+  const m = Math.floor((demoNowSync().getTime() - new Date(d).getTime()) / 60_000);
   return m < 1 ? "just now" : `${m} min ago`;
 };
 /** "12 min", "3 h", "1373 days": how old a fact is, for questions about it. */
-const ageText = (d: Date, now: Date = new Date()) => {
+const ageText = (d: Date, now: Date = demoNowSync()) => {
   const m = Math.max(0, Math.floor((now.getTime() - new Date(d).getTime()) / 60_000));
   return m < 120 ? `${m} min` : m < 48 * 60 ? `${Math.floor(m / 60)} h` : `${Math.floor(m / 1440)} days`;
 };
@@ -1140,7 +1142,7 @@ async function peopleOn(desk: string, roles: Role[]): Promise<User[]> {
 }
 
 /** The free people of these roles with their open task counts, ranked by pickPerson for one place. */
-async function pickWith(desk: string, roles: Role[], place: Place, exclude: string[], has?: (u: User) => boolean, what?: string, now: Date = new Date()): Promise<Pick> {
+async function pickWith(desk: string, roles: Role[], place: Place, exclude: string[], has?: (u: User) => boolean, what?: string, now: Date = demoNowSync()): Promise<Pick> {
   const { tasks } = await cols();
   const users = await peopleOn(desk, roles);
   const counts = await tasks.aggregate<{ _id: string; n: number }>([
@@ -1150,7 +1152,7 @@ async function pickWith(desk: string, roles: Role[], place: Place, exclude: stri
   return pickPerson(users, new Map(counts.map((c) => [c._id, c.n])), place, { roles, exclude, ...(has ? { has } : {}), ...(what ? { what } : {}) }, now);
 }
 
-async function pickFor(task: Task, tried: string[], now: Date = new Date(), placeOverride?: Place): Promise<Pick> {
+async function pickFor(task: Task, tried: string[], now: Date = demoNowSync(), placeOverride?: Place): Promise<Pick> {
   const { tasks } = await cols();
   const roles = ROLE_FOR[task.type];
   const users = await peopleOn(task.deskId, roles);
@@ -1198,7 +1200,7 @@ async function inbox(items: Omit<InboxItem, "_id" | "status" | "ts">[]): Promise
     fresh.push(i);
   }
   if (!fresh.length) return 0;
-  const ts = new Date();
+  const ts = demoNowSync(); // the desk's clock, like every other stamp the screens age against
   await inbox.insertMany(fresh.map((i) => ({ ...i, _id: newId(), status: "unread" as const, ts })));
   return fresh.length;
 }

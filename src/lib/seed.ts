@@ -3,8 +3,8 @@
 // It does not touch events, tasks or any other record.
 // The desk defaults to seed.json's own; pass --desk <id> or DESK_ID to seed a throwaway desk
 // (ids get prefixed with the desk, so they never collide with the shared desk's).
-import { readFile } from "node:fs/promises";
 import { bumpDeskVersion, closeDb, cols } from "./db";
+import seedFile from "../../data/seed.json"; // imported, not read from disk: this also runs inside the Next bundle
 import type { User } from "./types";
 
 type Json = Record<string, unknown>;
@@ -21,9 +21,7 @@ function withDates<T>(doc: Json, fields: string[]): T {
 
 /** The ids are global, so a seed for any other desk gets its ids prefixed with the desk id. */
 export async function seed(desk?: string): Promise<{ deskId: string; users: number }> {
-  const file = JSON.parse(await readFile(new URL("../../data/seed.json", import.meta.url), "utf8")) as {
-    deskId: string; users: Json[];
-  };
+  const file = seedFile as unknown as { deskId: string; users: Json[] };
   const target = desk ?? file.deskId;
   const id = (raw: unknown) => (target === file.deskId ? String(raw) : `${target}:${raw}`);
   const { users } = await cols();

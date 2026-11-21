@@ -47,6 +47,18 @@ export type EventType = "report" | "need" | "closure" | "capacity"
                       | "correction"     // v2: "the desk has this wrong"
                       | "plan";          // v2: evacuation plan, was missing here
 
+/** Where a post came from (D-0017 §2). Display only: no rule and no worker reads it. */
+export interface EventOrigin {
+  postId?: string;
+  author?: string;
+  kind?: "post" | "repost" | "story" | "group_post" | "wire";
+  url?: string;
+  media?: { type: "image" | "video"; url: string }[];
+  metrics?: Record<string, number>;
+  slug?: string;
+  urgency?: string;
+}
+
 export interface Event<P = unknown> {
   _id?: string;
   deskId: string;         // v2: which disaster, "antakya-2023" or "lahaina-2023"
@@ -62,6 +74,7 @@ export interface Event<P = unknown> {
   status: "pending" | "working" | "done" | "merged" | "rejected"
         | "failed";       // v2
   lockedAt?: Date; attempts?: number;   // v2: so a crashed keeper loses nothing
+  origin?: EventOrigin;   // D-0017: where the post came from. Stored and shown, never read by a rule
   result?: {
     recordIds: string[]; reason: string;
     textKey?: string;     // v2.2: the report's normalized text, so the keeper can spot copies
@@ -266,6 +279,7 @@ export interface NewEvent<P = unknown> {
   deskId?: string;        // default: process.env.DESK_ID
   observedAt?: Date;      // default: now
   dedupeKey?: string;     // e.g. "x:<tweet id>"
+  origin?: EventOrigin;   // D-0017: where the post came from. Stored, never read by a rule
 }
 
 /** One snapshot of the queue, shown in one line at the bottom of the board. */

@@ -11,6 +11,7 @@ import { deskNow, observeBoard } from "@/components/clock";
 import { METRIC_IDS, metric } from "@/components/metrics/registry";
 import type { MetricId } from "@/components/metrics/types";
 import { desk, type NewEvent, type UserContext } from "../desk";
+import { demoPlayingSync } from "@/lib/demo";
 import { haversineMeters } from "@/lib/geo";
 import { age, askDesk, distance, topicsFor, type Topic } from "../desk/view";
 import type { FunctionTool } from "../shared/llm";
@@ -236,7 +237,7 @@ function needId<T>(v: T | undefined, what: string): T {
 async function post(ctx: UserContext, type: NewEvent["type"], payload: unknown, summary: string): Promise<ToolOutcome> {
   if (held.has(ctx)) return { content: `Ready: ${summary}. ${HELD_NOTE}`, summary, pending: true };
   const id = await desk().postEvent({ deskId: ctx.user.deskId, type, source: "person", actor: ctx.user._id, payload,
-    observedAt: new Date().toISOString() });
+    observedAt: new Date(ctx.now).toISOString() }); // ctx.now is the demo clock (D-0017)
   return { content: `Filed as event ${id}. ${summary}. The desk processes it in a few seconds.`, eventId: id, summary };
 }
 
@@ -434,7 +435,8 @@ async function run(name: string, i: Record<string, unknown>, ctx: UserContext): 
           return order === "earliest" ? x - y : y - x;
         });
       } else if (from) found = found.sort((a, c) => dist(a) - dist(c));
-      const now = new Date(deskNow());
+      // While a demo plays, "now" is the demo clock; otherwise the board-derived desk clock, as before.
+      const now = demoPlayingSync() ? new Date(ctx.now) : new Date(deskNow());
       const ids = found.slice(0, 50).map((h) => h.id);
       const shown = found.slice(0, 8).map((h) =>
         `${h.line}${order ? `, first reported ${age(h.first, now)}` : ""}${from ? `, ${distance(dist(h))} away` : ""}`);

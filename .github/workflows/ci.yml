@@ -140,6 +140,11 @@ jobs:
         run: npm run sweeper:check
       - name: API check
         run: npm run api:check
+      # DEMO-1/2/3/5. Deletes every desk's records, so it needs this throwaway Mongo.
+      - name: Demo check
+        run: npm run demo:check
+      - name: Reseed users (the demo check reseeds them; security:check needs them)
+        run: npm run db:seed
       - name: Build (for security:check's server)
         run: npx next build
       - name: Security check (next start, DEMO_MODE=1)
