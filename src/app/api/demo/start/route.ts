@@ -1,5 +1,6 @@
 // POST /api/demo/start: start (or restart) the one global demo (D-0017).
-// Only a signed-in person, only on a demo deployment. An agent key, a timer or a worker cannot.
+// Only a signed-in coordinator, only on a demo deployment (D-0017 amendment 8): it wipes the whole
+// database, so a volunteer or supplier on the public demo site must not. An agent key, a timer or a worker cannot.
 // The route preps Mongo itself (startDemo in lib/demo.ts) and is the only writer of meta "demo".
 import { resolveCaller } from "@/lib/auth";
 import { DemoBusyError, MAX_DURATION_S, MIN_DURATION_S, startDemo } from "@/lib/demo";
@@ -15,6 +16,7 @@ export async function POST(req: Request): Promise<Response> {
     const who = await resolveCaller(req);
     if (!who.ok) return json(who.status, { error: who.error });
     if (who.caller.kind !== "person") return json(403, { error: "only a signed-in person can start the demo" });
+    if (who.caller.user.role !== "coordinator") return json(403, { error: "only a coordinator can start the demo" });
     if (!isDemoDeployment()) return json(403, { error: "this deployment is not a demo" });
 
     let durationS: number | undefined;

@@ -265,6 +265,8 @@ async function main() {
     call(startDemoRoute, "/api/demo/start", { ...opts, method: "POST" });
   await expectCall("nobody signed in starts the demo", start(), 401);
   await expectCall("agent key starts the demo", start({ key }), 403);
+  await expectCall("a volunteer starts the demo", start({ user: "volunteer-callback" }), 403);
+  await expectCall("a supplier starts the demo", start({ user: "supplier-primary" }), 403);
   process.env.DEMO_DEPLOYMENT = "0";
   try {
     await expectCall("a person starts the demo on a non-demo deployment", start({ user: "coordinator-duty" }), 403);
