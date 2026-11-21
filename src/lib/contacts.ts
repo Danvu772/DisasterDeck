@@ -6,7 +6,7 @@
 // so they are shown plain (unlike event text, which is masked). This file is demo data;
 // a county signs on and the desk gets its real directory per desk in the pilot.
 
-import directory from "../data/contacts.json";
+import directory from "../../data/contacts.json";
 import type { IncidentKind } from "./types";
 
 export const CONTACT_CATEGORIES = ["tow", "tire", "fuel", "pharmacy"] as const;

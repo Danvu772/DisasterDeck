@@ -86,7 +86,7 @@ gone. Server values live in Secrets Manager.
 - One Brain per database. The Brain Fargate service runs it; never start a laptop Brain against the
   shared Atlas cluster or the service's task waits on the lease and the board stops moving.
 - `?user=` demo identity must stay refused in production: `DEMO_MODE=0` and the middleware in
-  `lib/localDemo.ts` refuse it. A production build cannot enable it.
+  `src/lib/localDemo.ts` refuse it. A production build cannot enable it.
 - A new `NEXT_PUBLIC_*` variable must be passed at image-build time (a `docker build` arg) and, if
   secret, moved into Secrets Manager rather than a container env.
 - Production runs with `DEMO_MODE=0`. Keep it that way.

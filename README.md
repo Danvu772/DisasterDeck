@@ -6,7 +6,7 @@ Current pilot: **Antakya, Türkiye, February 2023**. Users, reports, shelters an
 
 ## Field voice
 
-The field phone (`/field`) has hold to talk. It only dictates: the phone's own speech recognition (Web Speech API) types what the person says into the prompt box, and no audio leaves the phone. **Send** asks the agent exactly as the agents tab does (`components/agent/askDesk.ts`), and the same chart space shows the metric cards and map answers at the bottom of the screen. Talking needs HTTPS or localhost and a browser with speech recognition. Typing works everywhere.
+The field phone (`/field`) has hold to talk. It only dictates: the phone's own speech recognition (Web Speech API) types what the person says into the prompt box, and no audio leaves the phone. **Send** asks the agent exactly as the agents tab does (`src/components/agent/askDesk.ts`), and the same chart space shows the metric cards and map answers at the bottom of the screen. Talking needs HTTPS or localhost and a browser with speech recognition. Typing works everywhere.
 
 ## Run the map on your workstation
 

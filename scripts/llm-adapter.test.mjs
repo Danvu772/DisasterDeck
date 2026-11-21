@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
+const SRC = join(root, "src");
 const dir = mkdtempSync(join(tmpdir(), "llm-test-"));
 const ledger = join(dir, "usage.jsonl");
 process.env.AGENT_USAGE_FILE = ledger;
@@ -22,9 +23,9 @@ process.env.DESK_BACKEND = "fixture";
 process.env.OPENROUTER_API_KEY = "test-key";
 for (const k of Object.keys(process.env)) if (/^OPENROUTER_(MODEL|EFFORT)_|^OPENROUTER_BASE_URL$/.test(k)) delete process.env[k];
 
-const llm = await import("../agents/shared/llm.ts");
-const cost = await import("../agents/shared/cost.ts");
-const { toolsFor } = await import("../agents/personal/tools.ts");
+const llm = await import("../src/agents/shared/llm.ts");
+const cost = await import("../src/agents/shared/cost.ts");
+const { toolsFor } = await import("../src/agents/personal/tools.ts");
 
 // ── fake fetch ────────────────────────────────────────────────────────────────────────────────
 const realFetch = globalThis.fetch;
@@ -232,7 +233,7 @@ test("LLM-3 toolsFor(): strict OpenAI functions per role, the per-role allowlist
 });
 
 test("LLM-3 runTurn(): tool call → schema check → tool result → final answer, all via OpenRouter", async () => {
-  const { runTurn } = await import("../agents/personal/turn.ts");
+  const { runTurn } = await import("../src/agents/personal/turn.ts");
   answers.push(
     completion({ content: null, tool_calls: [
       { id: "call_a", type: "function", function: { name: "ask_desk", arguments: JSON.stringify({ topic: "summary", region: null, page: 0 }) } },
@@ -268,7 +269,7 @@ test("LLM-3 runTurn(): tool call → schema check → tool result → final answ
 });
 
 test("LLM-3 runTurn(): a tool outside the role's allowlist is refused, not run", async () => {
-  const { runTurn } = await import("../agents/personal/turn.ts");
+  const { runTurn } = await import("../src/agents/personal/turn.ts");
   answers.push(
     completion({ content: null, tool_calls: [{ id: "x1", type: "function", function: { name: "decide_approval",
       arguments: JSON.stringify({ task_id: "t1", approved: true, reason: "ok" }) } }] }, "tool_calls"),
@@ -281,7 +282,7 @@ test("LLM-3 runTurn(): a tool outside the role's allowlist is refused, not run",
 });
 
 test("runTurn(): a photo is not sent to the text-only model; the agent is told one came", async () => {
-  const { runTurn, PHOTO_NOTE } = await import("../agents/personal/turn.ts");
+  const { runTurn, PHOTO_NOTE } = await import("../src/agents/personal/turn.ts");
   answers.push(completion({ content: "What does the photo show?" }));
   await runTurn({ userId: "field-alpha", text: "look", image: { mediaType: "image/png", base64: "iVBORw0KGgo=" } });
   const last = modelCalls()[0].body.messages.at(-1);
@@ -291,7 +292,7 @@ test("runTurn(): a photo is not sent to the text-only model; the agent is told o
 });
 
 test("summary: the shift handoff goes to gpt-oss-120b at medium effort", async () => {
-  const { writeHandoff } = await import("../agents/personal/handoff.ts");
+  const { writeHandoff } = await import("../src/agents/personal/handoff.ts");
   answers.push(completion({ content: "1. Nothing on the desk." }));
   const h = await writeHandoff("antakya-2023", new Date());
   assert.equal(h.ok, true);
@@ -309,8 +310,9 @@ function files(d, out = []) {
   }
   return out;
 }
-const code = [...["agents", "app", "components", "lib", "workers", "scripts"].flatMap((d) => files(join(root, d))),
-  ...readdirSync(root).filter((n) => /\.(ts|mjs|js)$/.test(n)).map((n) => join(root, n))];
+const code = [...["agents", "app", "components", "lib", "workers"].flatMap((d) => files(join(SRC, d))), ...files(join(root, "scripts")),
+  ...readdirSync(root).filter((n) => /\.(ts|mjs|js)$/.test(n)).map((n) => join(root, n)),
+  ...readdirSync(SRC).filter((n) => /\.(ts|mjs|js)$/.test(n)).map((n) => join(SRC, n))];
 
 test("LLM-2: no @anthropic-ai/sdk in package.json or any import; no ANTHROPIC_ key in .env.example", () => {
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -352,7 +354,7 @@ test("LLM-1: no other model host or model SDK anywhere outside agents/shared/llm
 // with "./" and "@/" (tsconfig paths) resolved. Bare package names are not followed.
 const EXTS = ["", ".ts", ".tsx", ".mjs", ".js", "/index.ts", "/index.tsx"];
 function resolveImport(from, spec) {
-  const base = spec.startsWith("@/") ? join(root, spec.slice(2)) : spec.startsWith(".") ? join(dirname(from), spec) : null;
+  const base = spec.startsWith("@/data/") ? join(root, spec.slice(2)) : spec.startsWith("@/") ? join(SRC, spec.slice(2)) : spec.startsWith(".") ? join(dirname(from), spec) : null;
   if (!base) return null;
   for (const e of EXTS) { const p = base + e; if (existsSync(p) && statSync(p).isFile()) return p; }
   return null;
@@ -376,22 +378,22 @@ function chainTo(starts, target) {
   }
   if (!prev.has(target)) return null;
   const chain = [];
-  for (let c = target; c; c = prev.get(c)) chain.unshift(c.slice(root.length));
+  for (let c = target; c; c = prev.get(c)) chain.unshift(c.slice(SRC.length + 1));
   return chain;
 }
-const LLM_FILE = join(root, "agents", "shared", "llm.ts");
+const LLM_FILE = join(SRC, "agents", "shared", "llm.ts");
 
 test("INV-3: rules, dispatcher, sweeper and memory keeper never reach agents/shared/llm.ts through any import chain", () => {
   const ruled = [
-    ...files(join(root, "lib", "rules")),
-    join(root, "workers", "dispatcher.ts"), join(root, "workers", "sweeper.ts"), join(root, "workers", "memory-keeper.ts"),
+    ...files(join(SRC, "lib", "rules")),
+    join(SRC, "workers", "dispatcher.ts"), join(SRC, "workers", "sweeper.ts"), join(SRC, "workers", "memory-keeper.ts"),
   ];
   assert.ok(ruled.length >= 4 && ruled.every((f) => existsSync(f)));
   assert.equal(chainTo(ruled, LLM_FILE), null, `reachable: ${chainTo(ruled, LLM_FILE)?.join(" -> ")}`);
   // The walk itself works: the personal agent's turn does reach the adapter, through "../shared/llm".
-  assert.deepEqual(chainTo([join(root, "agents", "personal", "turn.ts")], LLM_FILE), ["agents/personal/turn.ts", "agents/shared/llm.ts"]);
+  assert.deepEqual(chainTo([join(SRC, "agents", "personal", "turn.ts")], LLM_FILE), ["agents/personal/turn.ts", "agents/shared/llm.ts"]);
   // ...and through an "@/" alias and a second hop (route → agents/personal/turn → shared/llm).
-  assert.ok(chainTo([join(root, "app", "api", "chat", "route.ts")], LLM_FILE)?.length >= 3);
+  assert.ok(chainTo([join(SRC, "app", "api", "chat", "route.ts")], LLM_FILE)?.length >= 3);
 });
 
 // ── Evaluation round 1 fixes ──────────────────────────────────────────────────────────────────
@@ -401,7 +403,7 @@ const ALL_TOOLS = new Set([...ROLES.flatMap((r) => toolsFor(ctxFor(r)).map((t) =
 const sentences = (p) => p.split(/(?<=[.!?])\s+|\n+/);
 
 test("LLM-5: a prompt names a tool only if the role has it, or gates it with \"if/when you have\"", async () => {
-  const { systemPrompt } = await import("../agents/personal/prompts.ts");
+  const { systemPrompt } = await import("../src/agents/personal/prompts.ts");
   for (const role of ROLES) {
     const has = new Set(toolsFor(ctxFor(role)).map((t) => t.function.name));
     for (const sentence of sentences(systemPrompt(role))) {
@@ -417,7 +419,7 @@ test("LLM-5: a prompt names a tool only if the role has it, or gates it with \"i
 });
 
 test("LLM-5: no prompt tells the agent to search the web while no search tool is defined", async () => {
-  const { systemPrompt } = await import("../agents/personal/prompts.ts");
+  const { systemPrompt } = await import("../src/agents/personal/prompts.ts");
   for (const role of ROLES) {
     if (toolsFor(ctxFor(role)).some((t) => /search/i.test(t.function.name))) continue;
     assert.ok(!/search (the )?(web|internet|online)|web search|look (it )?up online|google (it|search)/i.test(systemPrompt(role)), `${role} prompt mentions web search`);
@@ -427,8 +429,8 @@ test("LLM-5: no prompt tells the agent to search the web while no search tool is
 });
 
 test("LLM-5: no prompt or tool description says the agent can see or read photos (the models are text-only)", async () => {
-  const { systemPrompt } = await import("../agents/personal/prompts.ts");
-  const { PHOTO_NOTE } = await import("../agents/personal/turn.ts");
+  const { systemPrompt } = await import("../src/agents/personal/prompts.ts");
+  const { PHOTO_NOTE } = await import("../src/agents/personal/turn.ts");
   const texts = [...ROLES.map((r) => [r, systemPrompt(r)]), ...ROLES.flatMap((r) => toolsFor(ctxFor(r)).map((t) => [`${r}/${t.function.name}`, t.function.description]))];
   for (const [where, text] of texts) {
     for (const sentence of sentences(text)) {
@@ -484,7 +486,7 @@ test("send(): finish_reason error throws LlmError (non-streamed and streamed)", 
 for (const streamed of [false, true]) {
   const how = streamed ? "streamed" : "non-streamed";
   test(`runTurn() ${how}: finish_reason error is a failure, not an answer`, async () => {
-    const { runTurn } = await import("../agents/personal/turn.ts");
+    const { runTurn } = await import("../src/agents/personal/turn.ts");
     answers.push(streamed
       ? sse([{ choices: [{ index: 0, delta: { content: "Half an ans" } }] }, { choices: [{ index: 0, delta: {}, finish_reason: "error" }] }])
       : completion({ content: "Half an ans" }, "error"));
@@ -492,7 +494,7 @@ for (const streamed of [false, true]) {
   });
 
   test(`runTurn() ${how}: a length cut-off is said to be cut off, not saved as complete`, async () => {
-    const { runTurn, CUT_OFF_NOTE } = await import("../agents/personal/turn.ts");
+    const { runTurn, CUT_OFF_NOTE } = await import("../src/agents/personal/turn.ts");
     const spoken = [];
     answers.push(streamed
       ? sse([{ choices: [{ index: 0, delta: { content: "The nearest shelter is" } }] }, { choices: [{ index: 0, delta: {}, finish_reason: "length" }], usage: { prompt_tokens: 1, completion_tokens: 1, cost: 0 } }])
@@ -615,9 +617,9 @@ test("LLM-1: in production, any base URL whose host is not us.openrouter.ai is r
 });
 
 test("LLM-1: the server refuses to start in production with another model host (exit 1 at startup)", async (t) => {
-  const { startupCheck } = await import("../agents/shared/model-host.ts");
-  const { register } = await import("../instrumentation.ts");
-  const src = readFileSync(join(root, "instrumentation.ts"), "utf8");
+  const { startupCheck } = await import("../src/agents/shared/model-host.ts");
+  const { register } = await import("../src/instrumentation.ts");
+  const src = readFileSync(join(SRC, "instrumentation.ts"), "utf8");
   assert.match(src, /startupCheck\(\(code\) => process\.exit\(code\)\)/);
   const old = { env: process.env.NODE_ENV, rt: process.env.NEXT_RUNTIME };
   t.mock.method(console, "error", () => {});
@@ -653,15 +655,15 @@ test("LLM-1: modelInfo() for /api/health reports the host and the model ids, and
 });
 
 test("LLM-1: GET /api/health carries the model block next to the queue health", async () => {
-  const src = readFileSync(join(root, "app", "api", "health", "route.ts"), "utf8");
+  const src = readFileSync(join(SRC, "app", "api", "health", "route.ts"), "utf8");
   assert.match(src, /healthBody\(\)/);
   assert.match(src, /from "@\/lib\/health-body"/);
-  const { healthBody } = await import("../lib/health-body.ts");
+  const { healthBody } = await import("../src/lib/health-body.ts");
   const body = await healthBody(async () => ({ pending: 1, oldestPendingSeconds: 2, failed: 0, lastLoopAt: null }));
   assert.deepEqual(body, { pending: 1, oldestPendingSeconds: 2, failed: 0, lastLoopAt: null, model: llm.modelInfo() });
   assert.equal(body.model.host, "us.openrouter.ai");
   // Still reported when the queue cannot be read (no MongoDB): the 500 body carries it too.
   assert.match(src, /error: "server error", model: modelBlock\(\)/);
-  const { modelBlock } = await import("../lib/health-body.ts");
+  const { modelBlock } = await import("../src/lib/health-body.ts");
   assert.deepEqual(modelBlock(), llm.modelInfo());
 });
