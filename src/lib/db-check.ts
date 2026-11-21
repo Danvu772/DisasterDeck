@@ -12,6 +12,7 @@ const DESK = "check-db";
 async function cleanup() {
   const c = await cols();
   await c.events.deleteMany({ deskId: DESK });
+  await c.shelters.deleteMany({ deskId: DESK });
 }
 
 async function main() {
@@ -55,6 +56,15 @@ async function main() {
   const board = await getBoard(DESK);
   const ctx = await getUserContext("nobody");
   const hits = await searchMemory({ deskId: DESK, collection: "shelters", text: "a" });
+  // Ages use the caller's clock: on the demo clock a 2023 record is a minute old, not three years (D-0017).
+  {
+    const at = new Date("2023-02-06T06:00:00Z");
+    await c.shelters.insertOne({ _id: "check-db-shelter", deskId: DESK, name: "Check Barınak", region: "antakya-merkez",
+      bedsUsed: 1, bedsTotal: 10, observedAt: at, updated: at, history: [] } as never);
+    const [hit] = await searchMemory({ deskId: DESK, collection: "shelters", text: "Check Barınak" }, new Date(at.getTime() + 60_000));
+    assert.equal(hit?.ageSeconds, 60, "searchMemory ages are measured on the caller's clock");
+    console.log("ok  searchMemory: age on the caller's (demo) clock");
+  }
   // Not "pending >= 2": a Brain running against the same database may already have taken them.
   const h = board.health;
   assert(Number.isInteger(h.pending) && Number.isInteger(h.failed) && Number.isInteger(h.oldestPendingSeconds),

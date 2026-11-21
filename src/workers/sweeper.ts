@@ -14,8 +14,8 @@
 // keeper (the only writers) or posts an event. Every step is a conditional update or a deduped
 // event, so two overlapping ticks, or a restart, handle each task once.
 import { bumpDeskVersion, cols, postEvent } from "../lib/db";
-import { getDemo } from "../lib/demo";
-import { SEEN_WITHIN_MS } from "../lib/rules/assign";
+import { demoNowFrom, getDemo } from "../lib/demo";
+import { seenRecently } from "../lib/rules/assign";
 import type { IncidentPayload } from "../lib/types";
 import { approvalLate, askRoadConfirm, askShelterConfirm, checkIn, offlineTimedOut, proposedExpired, reconcile, redelegate, syncPriority, timedOut } from "./dispatcher";
 import { expireProposed, refreshPriorities } from "./memory-keeper";
@@ -41,10 +41,20 @@ export interface TickResult {
 
 let lastPriorityAt: number | null = null;
 
-/** `now` lets a check move time forward. `deskId` limits the tick to one desk (checks use it). */
-export async function tick(now: Date = new Date(), opts: { deskId?: string } = {}): Promise<TickResult> {
+/**
+ * `at` lets a check move time forward: it is then both clocks. Without it the world clock is the
+ * demo clock (D-0017; real time when no demo runs) and the process clock is real time.
+ * `opts.realNow` injects the real clock (checks fake a 10 s wait without sleeping). `deskId` limits
+ * the tick to one desk (checks use it).
+ */
+export async function tick(at?: Date, opts: { deskId?: string; realNow?: Date } = {}): Promise<TickResult> {
+  const demo = await getDemo(opts.realNow ? { nowMs: opts.realNow.getTime() } : {});
+  // Process time: when a Brain turn was locked. A crashed turn is a fault in real time, whatever the scenario says.
+  const real = opts.realNow ?? at ?? new Date();
+  // World time: every timer about people, tasks and facts.
+  const now = at ?? demoNowFrom(demo, real.getTime());
   // The demo is being prepared: do nothing until it is playing.
-  if ((await getDemo())?.state === "prepping") {
+  if (demo?.state === "prepping") {
     return {
       requeued: 0, failed: 0, timedOut: 0, checkins: 0, unreachable: 0, reprioritized: 0, created: 0, reassigned: 0,
       approvalsLate: 0, offline: 0, sheltersAsked: 0, roadsAsked: 0, needsExpired: 0,
@@ -53,7 +63,7 @@ export async function tick(now: Date = new Date(), opts: { deskId?: string } = {
   const { events, tasks, users, shelters, roads } = await cols();
   const desk = opts.deskId ? { deskId: opts.deskId } : {};
 
-  const stuck = { ...desk, status: "working" as const, lockedAt: { $lt: new Date(now.getTime() - STUCK_AFTER_MS) } };
+  const stuck = { ...desk, status: "working" as const, lockedAt: { $lt: new Date(real.getTime() - STUCK_AFTER_MS) } };
   const failed = await events.updateMany(
     { ...stuck, attempts: { $gte: MAX_ATTEMPTS } },
     { $set: { status: "failed", result: { recordIds: [], reason: `stuck in working ${MAX_ATTEMPTS} times` } }, $unset: { lockedAt: "" } },
@@ -79,7 +89,7 @@ export async function tick(now: Date = new Date(), opts: { deskId?: string } = {
       .map((u) => [u._id, u.lastSeen]));
     for (const t of assigned) {
       const at = seen.get(t.assignee!);
-      if (at && now.getTime() - new Date(at).getTime() <= SEEN_WITHIN_MS) continue;
+      if (seenRecently(at, now)) continue;
       if (await offlineTimedOut(t, now)) { offline++; touched.add(t.deskId); }
     }
   }

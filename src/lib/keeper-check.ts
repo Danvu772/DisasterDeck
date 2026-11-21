@@ -9,8 +9,10 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { GET as feed } from "../app/api/events/route";
 import { processEvent } from "../workers/brain";
+import { refreshPriorities } from "../workers/memory-keeper";
 import { maskEvent } from "./feed";
 import { closeDb, cols, getBoard, newId } from "./db";
+import { demoNowFrom, demoT0, getDemo } from "./demo";
 import { eventBody } from "./schemas";
 import type { Event, EventOrigin, EventType, LatLng, NewEvent, ReportPayload, Site, Task, User } from "./types";
 
@@ -70,6 +72,15 @@ function people(): User[] {
     { ...base, _id: U.coord2, name: "Check coordinator 2", role: "coordinator", trust: "official" },
     { ...base, _id: U.supplier, name: "Check supplier", role: "supplier", trust: "vetted", coords: [36.234, 36.237], profile: { stock: { blankets: 50 }, vehicle: "truck" } },
   ];
+}
+
+// DEMO-4: the check writes the global demo document, so it puts back what it found.
+let savedDemo: unknown = null;
+async function restoreDemo() {
+  const { meta } = await cols();
+  await meta.deleteOne({ _id: "demo" });
+  if (savedDemo) await meta.insertOne(savedDemo as never);
+  await getDemo({ fresh: true });
 }
 
 async function cleanup() {
@@ -466,6 +477,50 @@ async function main() {
   assert.equal(t3.peopleTrapped, 2, "a late public rescued post does not lower peopleTrapped either");
   ok("TRUST-1: a public rescued post after trusted ones still changes nothing");
 
+  // --- DEMO-4: the Brain's ages and stamps are in scenario time while a demo plays ---
+  // startedAt is 10 real seconds ago, 1800 s long: 72x, so the scenario clock reads T0 + 720 s.
+  savedDemo = await c.meta.findOne({ _id: "demo" });
+  const R0 = Date.now();
+  const doc = { state: "playing" as const, runId: "check-demo-4", startedAt: new Date(R0 - 10_000), durationS: 1800 };
+  await c.meta.replaceOne({ _id: "demo" }, doc, { upsert: true });
+  await getDemo({ fresh: true });
+  const T0 = demoT0();
+  assert.equal(demoNowFrom(doc, R0).getTime() - T0, 720_000, "10 real seconds at 72x are 720 scenario seconds");
+  const D: LatLng = [37.3, 37.3];
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "person", actor: U.volA, dedupeKey: "check:cp1:demo4-site",
+    payload: { kind: "trapped", text: "Demo clock check: 2 people under the rubble", textEn: "Demo clock check: 2 trapped", coords: D, region: "antakya-merkez", peopleCount: 2 } });
+  await drain();
+  const ds = (await c.sites.findOne({ deskId: DESK, coords: D }))!;
+  // The event came in just now (event.ts is real and stays real). The site's times are scenario times.
+  const evTs = (await c.events.findOne({ deskId: DESK, dedupeKey: "check:cp1:demo4-site" }))!.ts;
+  assert(Math.abs(evTs.getTime() - R0) < 20_000, "event.ts stays on the real clock");
+  const sinceT0 = (d: Date) => (new Date(d).getTime() - T0) / 1000;
+  assert(sinceT0(ds.observedAt) >= 715 && sinceT0(ds.observedAt) < 2400, `observedAt is scenario time, T0 + ${sinceT0(ds.observedAt)} s`);
+  assert(ds.history.every((h) => sinceT0(h.ts) >= 715 && sinceT0(h.ts) < 2400), "history lines are on the demo clock");
+  const dt = await c.tasks.find({ recordId: ds._id }).toArray();
+  assert(dt.length >= 1, "the dispatcher made a task");
+  assert(dt.every((t) => sinceT0(t.deadline) >= 715 + 60 && sinceT0(t.deadline) < 2400 + 3600), "task deadlines are on the demo clock");
+  assert(dt.every((t) => t.history.every((h) => sinceT0(h.ts) >= 715 && sinceT0(h.ts) < 2400)), "task history is on the demo clock");
+  ok(`DEMO-4: a report at 72x is stamped T0 + ${Math.round(sinceT0(ds.observedAt))} s, its task deadline T0 + ${Math.round(sinceT0(dt[0].deadline))} s (event.ts stays real)`);
+  // Age is measured in scenario time: 30 real seconds later the site has waited about 36 scenario minutes.
+  const later = demoNowFrom(doc, R0 + 30_000);
+  const changed = await refreshPriorities(later, DESK);
+  const waiting = changed.find((x) => x.recordId === ds._id)?.scoreParts.find((p) => p.name === "waiting")?.value;
+  const wantMin = Math.floor((later.getTime() - new Date(ds.observedAt).getTime()) / 60_000);
+  assert(wantMin >= 25 && wantMin <= 60, `${wantMin} scenario minutes`);
+  assert.equal(waiting, wantMin, "the waiting part of the score counts scenario minutes");
+  ok(`DEMO-4: 30 real seconds later the site has waited ${wantMin} scenario minutes (score part "waiting" = ${waiting})`);
+  // Control: with no demo document the same report is stamped on the real clock.
+  await restoreDemo();
+  const D2: LatLng = [37.31, 37.31];
+  await post<ReportPayload>({ deskId: DESK, type: "report", source: "person", actor: U.volA, dedupeKey: "check:cp1:demo4-control",
+    payload: { kind: "trapped", text: "Demo clock control: 1 person under the rubble", textEn: "Demo clock control: 1 trapped", coords: D2, region: "antakya-merkez", peopleCount: 1 } });
+  await drain();
+  const dc = (await c.sites.findOne({ deskId: DESK, coords: D2 }))!;
+  assert(Math.abs(new Date(dc.observedAt).getTime() - Date.now()) < 20_000, "no demo document: observedAt is real time");
+  assert(dc.history.every((h) => Math.abs(new Date(h.ts).getTime() - Date.now()) < 20_000), "no demo document: history is real time");
+  ok("DEMO-4 control: with no demo document the stamps are real time");
+
   const pending = await c.events.countDocuments({ deskId: DESK, status: { $in: ["pending", "working"] } });
   assert.equal(pending, 0, "nothing left pending");
   ok("every event on the desk ended done, merged or rejected");
@@ -475,4 +530,4 @@ async function main() {
 
 main()
   .catch((err) => { console.error("\nFAILED:", err instanceof Error ? err.message : err); process.exitCode = 1; })
-  .finally(async () => { await cleanup(); await closeDb(); });
+  .finally(async () => { await cleanup(); await restoreDemo().catch(() => undefined); await closeDb(); });

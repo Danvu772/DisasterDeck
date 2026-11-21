@@ -5,8 +5,9 @@ import assert from "node:assert/strict";
 import { setTimeout as sleep } from "node:timers/promises";
 import { runOnce } from "../workers/brain";
 import { CHECKIN_GRACE_MINUTES, tick } from "../workers/sweeper";
-import { ANSWER_MINUTES, MAX_TRIES } from "../workers/dispatcher";
+import { ANSWER_MINUTES } from "../workers/dispatcher";
 import { closeDb, cols, newId } from "./db";
+import { demoNow, demoNowFrom, demoSpeed, getDemo } from "./demo";
 import { scored } from "./rules/priority";
 import type { Need, Site, Task, User } from "./types";
 
@@ -27,6 +28,15 @@ function people(): User[] {
     { ...base, _id: U.c1, name: "Sweep coordinator 1", role: "coordinator", trust: "official" },
     { ...base, _id: U.c2, name: "Sweep coordinator 2", role: "coordinator", trust: "official" },
   ];
+}
+
+// DEMO-4: the check writes the global demo document, so it puts back what it found.
+let savedDemo: unknown = null;
+async function restoreDemo() {
+  const { meta } = await cols();
+  await meta.deleteOne({ _id: "demo" });
+  if (savedDemo) await meta.insertOne(savedDemo as never);
+  await getDemo({ fresh: true });
 }
 
 async function cleanup() {
@@ -67,6 +77,16 @@ async function settle() {
 }
 
 async function main() {
+  {
+    const { seenRecently } = await import("./rules/assign");
+    const demo = new Date("2023-02-06T06:00:00Z");
+    assert(!seenRecently(new Date("2026-11-21T04:00:00Z"), demo), "a real-time stamp from the future is not seen on the demo clock");
+    assert(seenRecently(new Date(demo.getTime() - 60_000), demo), "a stamp a minute ago is seen");
+    assert(!seenRecently(new Date(demo.getTime() - 4 * 60_000), demo), "a stamp four minutes ago is not");
+    console.log("ok  a lastSeen from the future does not count as seen (demo clock behind real time)");
+    passed++;
+  }
+
   await cleanup();
   const c = await cols();
   await c.users.insertMany(people());
@@ -192,9 +212,86 @@ async function main() {
   assert.equal(JSON.stringify([await c.sites.find({ deskId: DESK }).sort({ _id: 1 }).toArray(), await c.needs.find({ deskId: DESK }).toArray()]), snap);
   ok("a repeat tick writes no records whose value did not change");
 
+  // --- 6. DEMO-4: the timers run on the demo clock, the process timers on the real one ---
+  // The real clock is injected (R0 + n seconds), nothing sleeps. startedAt is R0 - 10 s, 1800 s long:
+  // 72x, scenario time T0 + 720 s at R0.
+  await c.tasks.deleteMany({ deskId: DESK }); await c.inbox.deleteMany({ userId: { $in: ids } });
+  // Earlier cases left people busy or seen: start from available people nobody has seen.
+  await c.users.updateMany({ deskId: DESK }, { $set: { status: "available" }, $unset: { lastSeen: "" } });
+  savedDemo = await c.meta.findOne({ _id: "demo" });
+  const R0 = new Date();
+  const doc = { state: "playing" as const, runId: "check-demo-4", startedAt: new Date(R0.getTime() - 10_000), durationS: 1800 };
+  await c.meta.replaceOne({ _id: "demo" }, doc, { upsert: true });
+  await getDemo({ fresh: true });
+  assert.equal(demoSpeed(1800), 72);
+  const realAt = (s: number) => new Date(R0.getTime() + s * 1000);
+  const worldAt = (s: number) => demoNowFrom(doc, realAt(s).getTime());
+  // What POST /api/demo/presence does: lastSeen = demoNow(), at the real moment of the beat.
+  const present = (userId: string, s: number) => demoNow(realAt(s).getTime()).then((t) => c.users.updateOne({ _id: userId }, { $set: { lastSeen: t } }));
+  // Every site is called, so reconcile makes no task of its own.
+  await c.sites.deleteMany({ deskId: DESK });
+  await c.sites.insertMany(["d1", "d2"].map((id) => ({ ...site(id, worldAt(0)), callStatus: "called" as const })));
+  const d1 = task("d1", { assignee: U.v1, deadline: new Date(worldAt(0).getTime() + 10 * 60_000), history: [] });
+  await c.tasks.insertOne(d1);
+
+  // 10 scenario minutes are 600 / 72 = 8.33 real seconds.
+  await present(U.v1, 8);
+  const early = await tick(undefined, { deskId: DESK, realNow: realAt(8) });
+  assert.equal(early.timedOut, 0, "at 8.0 real s (576 scenario s) the 10-minute deadline has not passed");
+  assert.equal(+(await c.tasks.findOne({ _id: d1._id }))!.deadline, +d1.deadline);
+  await present(U.v1, 8.5);
+  const lateTick = await tick(undefined, { deskId: DESK, realNow: realAt(8.5) });
+  assert.equal(lateTick.timedOut, 1, "at 8.5 real s (612 scenario s) it has");
+  const renewed = (await c.tasks.findOne({ _id: d1._id }))!;
+  assert.equal(renewed.assignee, U.v1, "their screen is open: the task stays");
+  assert.equal(+renewed.deadline - +worldAt(8.5), ANSWER_MINUTES * 60_000, "the new deadline is ANSWER_MINUTES of scenario time ahead");
+  ok(`DEMO-4: a 10-minute no-answer timeout at 72x fires after 8.33 real seconds (not at 8.0, yes at 8.5), the new deadline is on the demo clock`);
+
+  // A person stamped by presence counts as seen on the demo clock; one never stamped does not.
+  await c.tasks.deleteMany({ deskId: DESK });
+  const d2 = task("d2", { assignee: U.v4, deadline: new Date(worldAt(20).getTime() - 60_000) });
+  await c.tasks.insertOne(d2);
+  await present(U.v2, 20);
+  const moved = await tick(undefined, { deskId: DESK, realNow: realAt(20) });
+  assert.equal(moved.timedOut, 1);
+  const d2n = (await c.tasks.findOne({ _id: d2._id }))!;
+  assert.equal(d2n.assignee, U.v2, "the person presence stamped is seen: the task moves to them");
+  assert.deepEqual(d2n.tried, [], "silence is not a no");
+  // Three scenario minutes are 2.5 real seconds: three real seconds later the stamp is old.
+  await c.tasks.deleteMany({ deskId: DESK });
+  const d3 = task("d2", { assignee: U.v2, deadline: new Date(worldAt(23).getTime() - 60_000) });
+  await c.tasks.insertOne(d3);
+  await present(U.v3, 23);
+  const offline = await tick(undefined, { deskId: DESK, realNow: realAt(23) });
+  assert.equal((await c.tasks.findOne({ _id: d3._id }))!.assignee, U.v3, "v2's stamp is 3 real s (216 scenario s) old: offline, the task moves to the one seen now");
+  assert(offline.timedOut === 1);
+  ok("DEMO-4: presence stamped on the demo clock counts as seen; 3 real seconds later it has aged out (3 scenario minutes = 2.5 s)");
+
+  // Process faults stay on the real clock: an event locked 20 real seconds ago is not stuck (30 s), though 20 s is 24 scenario minutes.
+  const stuckId = newId();
+  await c.events.insertOne({ _id: stuckId, deskId: DESK, ts: R0, observedAt: R0, type: "report", source: "system", actor: "sweeper", lane: 0,
+    status: "working", lockedAt: new Date(R0.getTime()), attempts: 1, payload: {} } as never);
+  await tick(undefined, { deskId: DESK, realNow: realAt(20) });
+  assert.equal((await c.events.findOne({ _id: stuckId }))!.status, "working", "20 real s locked: not stuck");
+  await tick(undefined, { deskId: DESK, realNow: realAt(31) });
+  assert.equal((await c.events.findOne({ _id: stuckId }))!.status, "pending", "31 real s locked: requeued");
+  await c.events.deleteOne({ _id: stuckId });
+  ok("DEMO-4: the stuck-event timer stays on the real clock (30 real seconds, not scenario time)");
+
+  // Control: no demo document, the sweeper's own clock is real time.
+  await restoreDemo();
+  await c.tasks.deleteMany({ deskId: DESK });
+  const c1 = task("d1", { assignee: U.v1, deadline: new Date(Date.now() - 1000) });
+  await c.tasks.insertOne(c1);
+  await c.users.updateOne({ _id: U.v1 }, { $set: { lastSeen: new Date() } });
+  const real = await tick(undefined, { deskId: DESK });
+  assert.equal(real.timedOut, 1, "no demo document: a deadline one real second ago has passed");
+  assert(Math.abs(+(await c.tasks.findOne({ _id: c1._id }))!.deadline - (Date.now() + ANSWER_MINUTES * 60_000)) < 20_000, "and the new deadline is real time");
+  ok("DEMO-4 control: with no demo document the timers read real time");
+
   console.log(`\nAll ${passed} checks passed.`);
 }
 
 main()
   .catch((err) => { console.error("\nFAILED:", err instanceof Error ? err.stack ?? err.message : err); process.exitCode = 1; })
-  .finally(async () => { await cleanup(); await closeDb(); });
+  .finally(async () => { await cleanup(); await restoreDemo().catch(() => undefined); await closeDb(); });

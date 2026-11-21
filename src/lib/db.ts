@@ -317,7 +317,11 @@ function escapeRegex(s: string): string {
 }
 
 /** Read only. Behind the personal agents' ask_desk tool. Every hit says how old the fact is. */
-export async function searchMemory(q: SearchQuery): Promise<SearchHit[]> {
+/**
+ * `now` is the caller's clock: pass demoNow() during a demo, where records are stamped on the
+ * scenario clock (D-0017 amendment 3). db.ts cannot import demo.ts itself (demo.ts imports db.ts).
+ */
+export async function searchMemory(q: SearchQuery, now: Date = new Date()): Promise<SearchHit[]> {
   const db = await getDb();
   const filter: Document = { deskId: q.deskId || deskId() };
   if (q.region) filter.region = q.region;
@@ -332,13 +336,13 @@ export async function searchMemory(q: SearchQuery): Promise<SearchHit[]> {
     .limit(Math.min(Math.max(q.limit ?? 20, 1), 100))
     .toArray();
 
-  const now = Date.now();
+  const at = now.getTime();
   return docs.map((d) => {
     const lastHistory = Array.isArray(d.history) ? d.history.at(-1)?.ts : undefined;
     const when: Date | undefined = d.observedAt ?? d.updated ?? lastHistory;
     return {
       record: d as unknown as SearchHit["record"],
-      ageSeconds: when instanceof Date ? Math.round((now - when.getTime()) / 1000) : null,
+      ageSeconds: when instanceof Date ? Math.round((at - when.getTime()) / 1000) : null,
     };
   });
 }

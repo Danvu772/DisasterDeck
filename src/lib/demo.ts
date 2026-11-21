@@ -71,6 +71,26 @@ export async function demoNow(nowMs: number = Date.now()): Promise<Date> {
   return demoNowFrom(await getDemo({ nowMs }), nowMs);
 }
 
+/**
+ * The same clock without a database read, for code that stamps a time deep inside a handler. It
+ * uses the last copy getDemo() took, however old: a copy only goes wrong when the run itself
+ * changes, and every entry point (the Brain's turn, the sweeper tick, an API call) calls getDemo()
+ * first. With no copy, or no playing run, it is real time.
+ */
+export function demoNowSync(nowMs: number = Date.now()): Date {
+  return demoNowFrom(g.__demoDoc?.doc ?? null, nowMs);
+}
+
+/** True while a demo run is playing (from the last copy, like demoNowSync). */
+export function demoPlayingSync(): boolean {
+  return g.__demoDoc?.doc?.state === "playing";
+}
+
+/** A real receive time (event.ts) as scenario time, so it can be compared with demo-clock stamps. */
+export function demoAtSync(t: Date | string | number): Date {
+  return demoNowFrom(g.__demoDoc?.doc ?? null, new Date(t).getTime());
+}
+
 /** Seconds into the scenario (0 at T0) for a playing run, else null. */
 export function scenarioSecond(doc: DemoDoc | null, nowMs: number): number | null {
   if (doc?.state !== "playing") return null;

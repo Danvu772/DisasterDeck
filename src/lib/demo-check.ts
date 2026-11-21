@@ -16,7 +16,7 @@ import { runOnce } from "../workers/brain";
 import { newPlayerState, tickOnce, type PlayerCtx } from "../workers/player";
 import * as sweeper from "../workers/sweeper";
 import { closeDb, cols, getDb } from "./db";
-import { DEFAULT_T0, demoNowFrom, demoSpeed, getDemo, isThrowawayMongo, startDemo } from "./demo";
+import { DEFAULT_T0, demoNow, demoNowFrom, demoSpeed, getDemo, isThrowawayMongo, startDemo } from "./demo";
 import { configuredDeskId as deskId } from "./pilot";
 
 const FIXTURE = join(import.meta.dirname, "..", "..", "scripts", "fixtures", "scenario-mini");
@@ -373,6 +373,10 @@ async function demoRefs() {
   assert.equal(await lastSeen("volunteer-callback"), zBefore, "go_dark: the dark person is no longer stamped");
   assert((await lastSeen("volunteer-mechanic")) > bBefore, "everyone else still is");
   ok("the player's presence call stamps the seeded people each tick; a go_dark line stops it for that person");
+  // DEMO-4: the stamp is on the demo clock, which is what the dispatcher compares it with.
+  const sinceStamp = Math.abs((await lastSeen("volunteer-mechanic")) - (await demoNow()).getTime());
+  assert(sinceStamp < 300_000, `lastSeen is demoNow() (off by ${sinceStamp} ms), not real time`);
+  ok("DEMO-4: POST /api/demo/presence stamps lastSeen = demoNow()");
   const e = await c.events.findOne({ dedupeKey: `cast:4:${run.runId}` });
   assert.equal((e!.payload as { recordId: string }).recordId, siteId);
   ok('"@record:<cast line id>" resolves to what that cast line made');
