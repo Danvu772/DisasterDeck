@@ -53,7 +53,7 @@ Rebuilt from scratch by D-0017. Everything that fed the queue before (X agent, n
 | Synthetic sources | `data/scenarios/antakya-demo/{x,instagram,facebook,ap}.jsonl` | not built | One track per source, shaped like the real platform. Each line is a `POST /api/events` body at a scenario time. Posts arrive already extracted; no LLM below the queue |
 | Cast | `data/scenarios/antakya-demo/cast.jsonl` | not built | Scripted taps by the seeded people (accept, on the way, done, problem, approve), acting as whoever the rules assigned. A signed-in person takes over by acting first |
 | Beats | `data/scenarios/antakya-demo/beats.json`, `docs/demo-scenario.md` | not built | 24 beats, each with the board state it must produce. Also the CI test |
-| Start demo | header button, `POST /api/demo/start` | not built | Global. Any signed-in person, in a demo deployment. The route wipes every desk's records, reseeds users and writes `meta` `demo` |
+| Start demo | header button, `POST /api/demo/start` | not built | Global. A signed-in coordinator, in a demo deployment. The route wipes every desk's records, reseeds users and writes `meta` `demo` |
 | Demo player | `src/workers/player.ts` | not built | Stateless. Reads `meta` `demo` and posts due lines through `POST /api/events` |
 | Real connectors | — | later | One per source, emitting the same bodies as its synthetic track. Live mode returns with the first one |
 
@@ -99,7 +99,7 @@ The TypeScript in `src/lib/types.ts` and the runtime checks in `src/lib/schemas.
 | `events` | Anyone, insert only, through `postEvent()`. The keeper changes status |
 | `sites`, `needs`, `roads`, `shelters`, `zones`, `incidents` | Memory keeper |
 | `tasks`, `inbox` | Dispatcher (playbook and sweeper are part of it) |
-| `users`, `messages` | The app's API (login, heartbeat, chat). Chat memory folds `messages` |
+| `users`, `messages` | The app's API (login, heartbeat, chat, demo presence). Chat memory folds `messages` |
 | `meta` | Brain (lease, desk version, loop time). `POST /api/demo/start`, only the `demo` document (D-0017) |
 
 Every document carries `deskId`. Every record keeps a `history` (who, when, source, reason).
@@ -111,7 +111,8 @@ Every document carries `deskId`. Every record keeps a `history` (who, when, sour
 | `POST /api/events` | Signed-in person (as themselves, source `person`) or a worker with `x-agent-key` |
 | `GET /api/board`, `/api/inbox`, `/api/users`, `/api/events?since=` | Signed-in person by role, or agent key |
 | `POST /api/chat`, `GET /api/chat/token` | Signed-in person |
-| `POST /api/demo/start` | Any signed-in person, only in a demo deployment: wipe, reseed users, start the demo from zero (D-0017) |
+| `POST /api/demo/start` | A signed-in coordinator, only in a demo deployment: wipe, reseed users, start the demo from zero (D-0017) |
+| `POST /api/demo/presence` | Agent key only, only in a demo deployment, only for seeded users: marks the cast as seen now (`lastSeen`), except the users the scenario sent dark. The demo player calls it every tick (D-0017) |
 | `GET /api/health` | Open, counts only |
 | `/api/docs`, `/api/openapi.json` | Open spec (`src/lib/openapi.ts`) |
 
