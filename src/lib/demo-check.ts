@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { POST as postEventRoute } from "../app/api/events/route";
+import { POST as presenceRoute } from "../app/api/demo/presence/route";
 import { POST as startRoute } from "../app/api/demo/start/route";
 import { GET as boardRoute } from "../app/api/board/route";
 import { runOnce } from "../workers/brain";
@@ -221,6 +222,13 @@ async function demo2() {
 function playerCtx(sent: string[], dir = FIXTURE): PlayerCtx {
   return {
     dir, state: newPlayerState(),
+    presence: async (dark) => {
+      const res = await presenceRoute(new Request("http://localhost/api/demo/presence", {
+        method: "POST", headers: { "content-type": "application/json", "x-agent-key": KEY }, body: JSON.stringify({ dark }),
+      }));
+      if (!res.ok) throw new Error(`presence ${res.status}`);
+      return res.json();
+    },
     post: async (body) => {
       sent.push(String(body.dedupeKey));
       const res = await postEventRoute(new Request("http://localhost/api/events", {
@@ -240,11 +248,7 @@ async function demo3and5() {
   const DUR = 60; // 2160x: scenario second s is s/2160 real seconds
   const at = (startedAt: Date, sec: number) => startedAt.getTime() + (sec / demoSpeed(DUR)) * 1000;
 
-  // --- DEMO-3 ---
-  // Reseeded people carry no lastSeen, so the dispatcher counts them as away. Here they are "at their phones".
-  const present = () => c.users.updateMany({}, { $set: { lastSeen: new Date() } });
   const run1 = await startDemo({ durationS: DUR, now: clock.now, sleep: clock.sleep });
-  await present();
   const sent: string[] = [];
   const ctx = playerCtx(sent);
   assert.deepEqual(await tickOnce(at(run1.startedAt, 5), ctx), { posted: 0, skipped: 0, waiting: 0 });
@@ -292,7 +296,6 @@ async function demo3and5() {
 
   // --- Pressing Start again: a fresh runId and a fresh set ---
   const run2 = await startDemo({ durationS: DUR, now: clock.now, sleep: clock.sleep });
-  await present();
   assert.notEqual(run2.runId, run1.runId);
   assert.equal(await c.events.countDocuments({}), 0);
   const t5 = await tickOnce(at(run2.startedAt, 100), ctx); // same ctx, same state object: the run id changed
@@ -339,7 +342,6 @@ async function demoRefs() {
   const DUR = 60;
   const at = (startedAt: Date, sec: number) => startedAt.getTime() + (sec / demoSpeed(DUR)) * 1000;
   const run = await startDemo({ durationS: DUR, now: clock.now, sleep: clock.sleep });
-  await c.users.updateMany({}, { $set: { lastSeen: new Date() } });
   const sent: string[] = [];
   const ctx = playerCtx(sent, join(import.meta.dirname, "..", "..", "scripts", "fixtures", "scenario-refs"));
   const castKeys = async () => (await c.events.find({ dedupeKey: { $regex: /^cast:/ } }).toArray()).map((e) => e.dedupeKey).sort();
@@ -361,7 +363,13 @@ async function demoRefs() {
 
   await drain();
   assert((await c.events.findOne({ dedupeKey: `cast:2:${run.runId}` }))?.result?.recordIds?.length, "the keeper applied the correction");
+  const lastSeen = async (id: string) => (await c.users.findOne({ _id: id }))!.lastSeen!.getTime();
+  const [zBefore, bBefore] = [await lastSeen("volunteer-callback"), await lastSeen("volunteer-mechanic")];
+  await new Promise((r) => setTimeout(r, 20));
   assert.equal((await tickOnce(at(run.startedAt, 102), ctx)).posted, 1);
+  assert.equal(await lastSeen("volunteer-callback"), zBefore, "go_dark: the dark person is no longer stamped");
+  assert((await lastSeen("volunteer-mechanic")) > bBefore, "everyone else still is");
+  ok("the player's presence call stamps the seeded people each tick; a go_dark line stops it for that person");
   const e = await c.events.findOne({ dedupeKey: `cast:4:${run.runId}` });
   assert.equal((e!.payload as { recordId: string }).recordId, siteId);
   ok('"@record:<cast line id>" resolves to what that cast line made');

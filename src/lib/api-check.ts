@@ -7,6 +7,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { POST } from "../app/api/events/route";
 import { GET as getInbox, POST as postInbox } from "../app/api/inbox/route";
+import { POST as presenceRoute } from "../app/api/demo/presence/route";
 import { POST as startDemoRoute } from "../app/api/demo/start/route";
 import { GET as getUsers } from "../app/api/users/route";
 import { closeDb, cols } from "./db";
@@ -230,6 +231,26 @@ async function main() {
     call(getUsers, "/api/users", { user: "coordinator-duty" }), 200)) as Record<string, unknown>[];
   assert(seeded.length >= 9 && seeded.every((u) => !("profile" in u)), "the seeded people, without profile");
   console.log(`    ${seeded.length} people on the real desk, none with profile`);
+
+  // --- demo presence (the heartbeat) ---
+  const presence = (opts: { user?: string; key?: string; body?: string } = {}) =>
+    call(presenceRoute, "/api/demo/presence", { ...opts, method: "POST" });
+  await expectCall("nobody signed in sends presence", presence(), 401);
+  await expectCall("a person sends presence", presence({ user: "coordinator-duty" }), 403);
+  process.env.DEMO_DEPLOYMENT = "0";
+  try { await expectCall("the agent sends presence on a non-demo deployment", presence({ key }), 403); }
+  finally { delete process.env.DEMO_DEPLOYMENT; }
+  await expectCall("dark is not a list", presence({ key, body: JSON.stringify({ dark: "x" }) }), 400);
+  const longAgo = new Date(Date.now() - 3_600_000);
+  await c.users.updateMany({ _id: { $in: ["volunteer-callback", "volunteer-mechanic", PERSON] } }, { $set: { lastSeen: longAgo } });
+  const beat = (await expectCall("the agent sends presence, volunteer-callback dark",
+    presence({ key, body: JSON.stringify({ dark: ["volunteer-callback"] }) }), 200)) as { stamped: number };
+  assert(beat.stamped >= 8, `the seeded people are stamped (${beat.stamped})`);
+  const stampOf = async (id: string) => (await c.users.findOne({ _id: id }))?.lastSeen?.getTime();
+  assert((await stampOf("volunteer-mechanic"))! > longAgo.getTime() + 60_000, "a seeded user is stamped");
+  assert.equal(await stampOf("volunteer-callback"), longAgo.getTime(), "a dark user is not");
+  assert.equal(await stampOf(PERSON), longAgo.getTime(), "a user outside the seed is not");
+  console.log("    seeded users stamped, the dark one and a non-seed user untouched");
 
   // --- start demo (DEMO-1). Last, because a successful start deletes every desk's records. ---
   const start = (opts: { user?: string; key?: string; body?: string } = {}) =>

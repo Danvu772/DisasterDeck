@@ -35,16 +35,18 @@ export interface CastLine {
 }
 export interface Line { track: Track; index: number; atS: number; body?: Json; cast?: CastLine }
 
-export interface PlayerState { runId: string | null; lines: Line[]; done: Set<string> }
+export interface PlayerState { runId: string | null; lines: Line[]; done: Set<string>; /** users whose go_dark line has played this run */ dark: Set<string> }
 export interface PlayerCtx {
   /** The scenario folder. */
   dir: string;
   /** Posts one event body through POST /api/events. */
   post: (body: Json) => Promise<unknown>;
   state: PlayerState;
+  /** The heartbeat: POST /api/demo/presence with the people who have gone dark. */
+  presence?: (dark: string[]) => Promise<unknown>;
   log?: (msg: string) => void;
 }
-export const newPlayerState = (): PlayerState => ({ runId: null, lines: [], done: new Set() });
+export const newPlayerState = (): PlayerState => ({ runId: null, lines: [], done: new Set(), dark: new Set() });
 
 /** Every track of the scenario folder merged by atS (ties: track order, then file order). Missing files are empty tracks. */
 export async function loadScenario(dir: string): Promise<Line[]> {
@@ -199,10 +201,15 @@ export async function tickOnce(nowMs: number, ctx: PlayerCtx): Promise<TickResul
   if (state.runId !== doc.runId) {
     state.runId = doc.runId;
     state.done = new Set();
+    state.dark = new Set();
     state.lines = await loadScenario(ctx.dir);
     ctx.log?.(`run ${doc.runId}: ${state.lines.length} lines`);
   }
   const sec = scenarioSecond(doc, nowMs)!;
+  // Every tick: the seeded people are "seen", so the dispatcher picks them. Not those who went dark.
+  if (ctx.presence) {
+    try { await ctx.presence([...state.dark]); } catch (err) { ctx.log?.(`presence failed: ${err instanceof Error ? err.message : String(err)}`); }
+  }
 
   for (const line of state.lines) {
     if (line.atS > sec) break;
@@ -217,10 +224,10 @@ export async function tickOnce(nowMs: number, ctx: PlayerCtx): Promise<TickResul
         continue;
       }
       if (line.cast!.do === "go_dark") {
-        // Not an event: it stops the heartbeat for that person (see the report: no heartbeat is written yet).
-        ctx.log?.(`cast line ${line.index} (go_dark ${line.cast!.as}): no heartbeat to stop`);
+        // Not an event: the heartbeat stops stamping that person for the rest of the run.
+        state.dark.add(line.cast!.as);
+        ctx.log?.(`${line.cast!.as} goes dark`);
         state.done.add(key);
-        out.skipped++;
         continue;
       }
       const r = await playCast(line, state, ctx);
@@ -248,6 +255,7 @@ async function main() {
   const dir = process.env.SCENARIO_DIR || join(import.meta.dirname, "..", "..", "data", "scenarios", "antakya-demo");
   const ctx: PlayerCtx = {
     dir, state: newPlayerState(), log,
+    presence: (dark) => requestJson({ url: `${base}/api/demo/presence`, agentKey, method: "POST", body: { dark } as never }),
     post: (body) => requestJson({ url: `${base}/api/events`, agentKey, method: "POST", body: body as never }),
   };
   let stopping = false;

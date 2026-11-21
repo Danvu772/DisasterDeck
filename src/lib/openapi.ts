@@ -280,6 +280,31 @@ export function buildSpec() {
           },
         },
       },
+      "/api/demo/presence": {
+        post: {
+          tags: ["desk"],
+          summary: "The demo's heartbeat",
+          description: [
+            "Agent key only, demo deployments only (`demo: true` in `data/pilot.json`). Stamps `lastSeen` = now on the",
+            "seeded users (the ids in `data/seed.json`, never any other user) so the dispatcher counts them as present.",
+            "`dark` lists seeded users who are not stamped (a `go_dark` line of the scenario). The player calls it every tick.",
+          ].join("\n"),
+          security: [{ agentKey: [] }],
+          requestBody: {
+            required: false,
+            content: { "application/json": { schema: { type: "object", properties: { dark: { type: "array", items: { type: "string" } } } } } },
+          },
+          responses: {
+            200: {
+              description: "How many seeded users were stamped",
+              content: { "application/json": { schema: { type: "object", required: ["stamped"], properties: { stamped: { type: "integer" } } } } },
+            },
+            400: errorResponse("Body is not JSON, or dark is not a list of strings"),
+            401: errorResponse("No or wrong agent key"),
+            403: errorResponse("Called by a signed-in person, or this deployment is not a demo"),
+          },
+        },
+      },
       "/api/health": {
         get: {
           tags: ["desk"],
