@@ -196,7 +196,7 @@ async function main() {
   const base = (process.env.DEMO_API_URL || "http://localhost:3000").replace(/\/$/, "");
   const agentKey = process.env.AGENT_KEY ?? "";
   if (!agentKey) throw new Error("AGENT_KEY is not set");
-  const dir = process.env.SCENARIO_DIR || join(import.meta.dirname, "..", "data", "scenarios", "antakya-demo");
+  const dir = process.env.SCENARIO_DIR || join(import.meta.dirname, "..", "..", "data", "scenarios", "antakya-demo");
   const ctx: PlayerCtx = {
     dir, state: newPlayerState(), log,
     post: (body) => requestJson({ url: `${base}/api/events`, agentKey, method: "POST", body: body as never }),

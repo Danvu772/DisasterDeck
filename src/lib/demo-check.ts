@@ -41,15 +41,15 @@ async function askStart(opts: { user?: string; key?: string; body?: string } = {
 
 /** Every file that writes or even names the meta "demo" document, other than startDemo and the checks. */
 async function otherDemoWriters(): Promise<string[]> {
-  const root = join(import.meta.dirname, "..");
+  const root = join(import.meta.dirname, "..", "..");
   const found: string[] = [];
-  for (const dir of ["app", "lib", "workers", "scripts", "components", "agents", "auth.ts", "middleware.ts", "instrumentation.ts"]) {
+  for (const dir of ["src", "scripts"]) {
     let files: string[];
     try { files = (await readdir(join(root, dir), { recursive: true })) as string[]; } catch { files = [""]; }
     for (const f of files) {
       if (!/\.(ts|tsx|mjs|js)$/.test(f || dir)) continue;
       const rel = f ? join(dir, f) : dir;
-      if (rel === join("lib", "demo.ts") || /-check\.ts$/.test(rel) || rel.includes("node_modules")) continue;
+      if (rel === join("src", "lib", "demo.ts") || /-check\.ts$/.test(rel) || rel.includes("node_modules")) continue;
       const src = await readFile(join(root, rel), "utf8");
       if (/_id:\s*["']demo["']/.test(src)) found.push(rel);
     }
