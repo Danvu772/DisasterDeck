@@ -99,7 +99,7 @@ The TypeScript in `src/lib/types.ts` and the runtime checks in `src/lib/schemas.
 | `events` | Anyone, insert only, through `postEvent()`. The keeper changes status |
 | `sites`, `needs`, `roads`, `shelters`, `zones`, `incidents` | Memory keeper |
 | `tasks`, `inbox` | Dispatcher (playbook and sweeper are part of it) |
-| `users`, `messages` | The app's API (login, heartbeat, chat). Chat memory folds `messages` |
+| `users`, `messages` | The app's API (login, heartbeat, chat, demo presence). Chat memory folds `messages` |
 | `meta` | Brain (lease, desk version, loop time). `POST /api/demo/start`, only the `demo` document (D-0017) |
 
 Every document carries `deskId`. Every record keeps a `history` (who, when, source, reason).
@@ -112,6 +112,7 @@ Every document carries `deskId`. Every record keeps a `history` (who, when, sour
 | `GET /api/board`, `/api/inbox`, `/api/users`, `/api/events?since=` | Signed-in person by role, or agent key |
 | `POST /api/chat`, `GET /api/chat/token` | Signed-in person |
 | `POST /api/demo/start` | Any signed-in person, only in a demo deployment: wipe, reseed users, start the demo from zero (D-0017) |
+| `POST /api/demo/presence` | Agent key only, only in a demo deployment, only for seeded users: marks the cast as seen now (`lastSeen`), except the users the scenario sent dark. The demo player calls it every tick (D-0017) |
 | `GET /api/health` | Open, counts only |
 | `/api/docs`, `/api/openapi.json` | Open spec (`src/lib/openapi.ts`) |
 
