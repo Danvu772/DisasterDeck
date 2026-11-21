@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { setTimeout as delay } from "node:timers/promises";
 
-/** @typedef {Omit<import('../lib/types').NewEvent, 'deskId' | 'actor' | 'observedAt'> & {deskId: string, actor?: string, observedAt: string}} WorkerEvent */
+/** @typedef {Omit<import('../src/lib/types').NewEvent, 'deskId' | 'actor' | 'observedAt'> & {deskId: string, actor?: string, observedAt: string}} WorkerEvent */
 
 /**
  * @param {{url: string, agentKey: string, method?: 'GET' | 'POST', body?: WorkerEvent}} options

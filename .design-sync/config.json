@@ -4,7 +4,7 @@
   "pkg": "disaster-deck",
   "globalName": "DisasterDeck",
   "buildCmd": "node .design-sync/build-css.mjs && ./.design-sync/build-types.sh",
-  "srcDir": "components",
+  "srcDir": "src/components",
   "tsconfig": ".design-sync/tsconfig.json",
   "cssEntry": ".design-sync/.cache/ds.css",
   "guidelinesGlob": [
