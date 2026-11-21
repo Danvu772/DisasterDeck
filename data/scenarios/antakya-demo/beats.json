@@ -1,0 +1,118 @@
+[
+  {"beat":0,"name":"Start demo","afterLine":null,"shows":"Global start, demo clock in the header","expect":[
+    {"count":{"coll":"sites","where":{},"eq":0}},
+    {"count":{"coll":"needs","where":{},"eq":0}},
+    {"count":{"coll":"tasks","where":{},"eq":0}},
+    {"count":{"coll":"shelters","where":{},"eq":0}}
+  ]},
+  {"beat":1,"name":"AP: the quake","afterLine":"ap:news:ap-001","shows":"A wire item with no site stays in the feed and invents nothing","expect":[
+    {"event":{"key":"news:ap-001","status":"rejected"}},
+    {"count":{"coll":"sites","where":{},"eq":0}}
+  ]},
+  {"beat":2,"name":"Yıldız Apt., six posts, three voices","afterLine":"x:x:1620000003150009506","shows":"One site, six sources, three voices. Copies are one voice; the site is corroborated","expect":[
+    {"count":{"coll":"sites","where":{"status":"open"},"eq":1}},
+    {"record":{"coll":"sites","from":"x:1620000001390004191","is":{"peopleTrapped":4,"support":3,"confidence":"corroborated","tier":0}}},
+    {"task":{"from":"x:1620000001390004191","type":"call","is":{"status":"assigned","assignee":{"in":["volunteer-callback","volunteer-mechanic"]}}}}
+  ]},
+  {"beat":3,"name":"The aunt with no address","afterLine":"x:x:1620000004380013210","shows":"Danger to life with no place: a verify call task goes out at once","expect":[
+    {"count":{"coll":"sites","where":{"status":"open"},"eq":2}},
+    {"record":{"coll":"sites","from":"x:1620000004380013210","is":{"address":"address unknown","callStatus":"not_called","tier":0}}},
+    {"task":{"from":"x:1620000004380013210","type":"call","is":{"status":"assigned","assignee":{"in":["volunteer-callback","volunteer-mechanic"]}}}}
+  ]},
+  {"beat":4,"name":"The volunteer corrects the record","afterLine":"cast:cast-b4-done","shows":"A person's correction edits the record; history keeps both","expect":[
+    {"record":{"coll":"sites","from":"x:1620000004380013210","is":{"address":"Cebrail Mah. 5. Sokak No:7","peopleTrapped":2,"callStatus":"verified"}}},
+    {"count":{"coll":"sites","where":{"status":"open"},"eq":2}}
+  ]},
+  {"beat":5,"name":"Rescue waits for a coordinator","afterLine":"cast:cast-b5-call","shows":"waiting_approval with Emre proposed; nothing moves until a coordinator approves","expect":[
+    {"task":{"from":"x:1620000001390004191","type":"rescue","is":{"status":"waiting_approval","risk":"high"}}},
+    {"inbox":{"user":"coordinator-duty","match":"Approve","min":1}},
+    {"record":{"coll":"sites","from":"x:1620000001390004191","is":{"callStatus":"verified"}}}
+  ]},
+  {"beat":6,"name":"Three needs in one Facebook post","afterLine":"facebook:facebook:pfbid2a89af105e750172c2:need-insulin","shows":"Insulin opens at once at tier 0 with a call task (life). Blankets and formula stay proposed (one voice)","expect":[
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-insulin","is":{"status":"open","tier":0,"lifeThreatening":true}}},
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-blankets","is":{"status":"proposed"}}},
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-baby-formula","is":{"status":"proposed"}}},
+    {"task":{"from":"facebook:pfbid2a89af105e750172c2:need-insulin","type":"call","is":{"open":true}}},
+    {"task":{"from":"facebook:pfbid2a89af105e750172c2:need-insulin","type":"deliver","is":{"open":true}}}
+  ]},
+  {"beat":7,"name":"Blankets reach three askers","afterLine":"facebook:facebook:pfbid1fc899d1ad50d8ed91:need-blankets","shows":"Blankets open at three distinct askers: the wish becomes work, a delivery task goes to a supplier","expect":[
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-blankets","is":{"status":"open","support":{"gte":3}}}},
+    {"task":{"from":"facebook:pfbid1fc899d1ad50d8ed91:need-blankets","type":"deliver","is":{"status":"assigned"}}},
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-insulin","is":{"status":"delivered"}}}
+  ]},
+  {"beat":8,"name":"A shelter from a story","afterLine":"instagram:instagram:CZws0kwwHEH","shows":"A shelter appears on the map from a post","expect":[
+    {"record":{"coll":"shelters","from":"instagram:CZws0kwwHEH","is":{"bedsUsed":38,"bedsTotal":50}}},
+    {"count":{"coll":"shelters","where":{},"eq":1}}
+  ]},
+  {"beat":9,"name":"Bridge rumour","afterLine":"x:x:1620000021840065660","shows":"Road unconfirmed. Hearsay is labelled as hearsay","expect":[
+    {"record":{"coll":"roads","from":"x:1620000021480064573","is":{"state":"unconfirmed","confidence":"unconfirmed"}}},
+    {"count":{"coll":"roads","where":{},"eq":1}}
+  ]},
+  {"beat":10,"name":"AP confirms the bridge","afterLine":"ap:news:ap-003","shows":"Road closed, confirmed. Vetted beats public. Open tasks within 1.5 km carry a road warning and their people are told","expect":[
+    {"record":{"coll":"roads","from":"news:ap-003","is":{"state":"closed","confidence":"confirmed"}}},
+    {"inbox":{"user":"field-alpha","match":"Asi Köprüsü","min":1}}
+  ]},
+  {"beat":11,"name":"Supplier on the way","afterLine":"cast:cast-b11-accept","shows":"Dispatch by rule, need on_the_way, ETA to whoever asked","expect":[
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-blankets","is":{"status":"on_the_way"}}},
+    {"task":{"from":"facebook:pfbid1fc899d1ad50d8ed91:need-blankets","type":"deliver","is":{"status":"accepted"}}}
+  ]},
+  {"beat":12,"name":"The truck breaks down","afterLine":"cast:cast-b12-breakdown","settleS":120,"shows":"Help desk playbook: task blocked, need reopened, a replacement (relay or fresh) and an assist task. The supplier's agent shows tow contacts from the directory","expect":[
+    {"count":{"coll":"incidents","where":{"kind":"vehicle_breakdown"},"eq":1}},
+    {"count":{"coll":"tasks","where":{"status":"blocked"},"eq":1}},
+    {"count":{"coll":"tasks","where":{"type":"assist","open":true},"gte":1}},
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-blankets","is":{"status":{"in":["open","assigned"]}}}}
+  ]},
+  {"beat":13,"name":"Zeynep goes dark","afterLine":"cast:cast-b13-dark","settleS":600,"shows":"The sweeper, on the desk clock, moves the task to Burak, who is online. Silence alone never escalates","expect":[
+    {"task":{"from":"x:1620000030480091594","type":"call","is":{"status":"assigned","assignee":"volunteer-mechanic"}}},
+    {"count":{"coll":"sites","where":{"status":"open"},"gte":3}}
+  ]},
+  {"beat":14,"name":"Second quake, the surge","afterLine":"facebook:facebook:pfbid14a7cdad555d9f56fc","shows":"Surge: new sites, and the top list re-ranks by score live","expect":[
+    {"count":{"coll":"sites","where":{"status":"open"},"gte":11}},
+    {"record":{"coll":"sites","from":"x:1620000032890098831","is":{"support":{"gte":2}}}},
+    {"count":{"coll":"tasks","where":{"type":"call","recordType":"site"},"gte":10}}
+  ]},
+  {"beat":15,"name":"A public \"rescued\" post","afterLine":"facebook:facebook:pfbid08a6281cc1cda29dba","shows":"A social post alone changes nothing: the site stays open, people trapped unchanged, the rescue stays with Emre","expect":[
+    {"record":{"coll":"sites","from":"x:1620000001390004191","is":{"status":"open","peopleTrapped":4}}},
+    {"task":{"from":"x:1620000001390004191","type":"rescue","is":{"assignee":"field-alpha","open":true}}}
+  ]},
+  {"beat":16,"name":"Old reposts, Emre closes it","afterLine":"x:x:1620000042015126339","shows":"Old reposts count as copies and don't reopen the site. The site closes on Emre's word","expect":[
+    {"record":{"coll":"sites","from":"x:1620000001390004191","is":{"status":"closed"}}},
+    {"task":{"from":"x:1620000001390004191","type":"rescue","is":{"status":"done"}}}
+  ]},
+  {"beat":17,"name":"Prompt injection","afterLine":"x:x:1620000044580134055","shows":"Outside text is data. Rejected into the feed, board unchanged","expect":[
+    {"event":{"key":"x:1620000044580134055","status":"rejected"}},
+    {"count":{"coll":"sites","where":{"status":"closed"},"eq":1}},
+    {"count":{"coll":"sites","where":{"status":"retracted"},"eq":0}}
+  ]},
+  {"beat":18,"name":"Gas-leak rumour","afterLine":"x:x:1620000049260148165","shows":"A hazard flag on that site from public voices; whoever is assigned nearby is told","expect":[
+    {"record":{"coll":"sites","from":"x:1620000047580143062","is":{"hazard":"gas leak","status":"open"}}},
+    {"task":{"from":"x:1620000047580143062","type":"call","is":{"assignee":"volunteer-mechanic","open":true}}},
+    {"inbox":{"user":"volunteer-mechanic","match":"gas leak","min":1}}
+  ]},
+  {"beat":19,"name":"AP denies, Kemal retracts","afterLine":"cast:cast-b19-retract","shows":"A coordinator's correction retracts it; the reason and the posts stay in history","expect":[
+    {"record":{"coll":"sites","from":"x:1620000047580143062","is":{"status":"retracted"}}},
+    {"count":{"coll":"sites","where":{"status":"retracted"},"eq":1}},
+    {"task":{"from":"x:1620000047580143062","type":"call","is":{"open":false}}}
+  ]},
+  {"beat":20,"name":"Cold night, tents and heaters","afterLine":"facebook:facebook:pfbidd1989e419b4ccd8aa2:need-heaters","shows":"The same needs turn life-threatening: tier 0, open, delivery tasks to the supplier who stocks them","expect":[
+    {"record":{"coll":"needs","from":"facebook:pfbid101dbc29f781bd169d:need-tents","is":{"tier":0,"status":"open","lifeThreatening":true}}},
+    {"record":{"coll":"needs","from":"facebook:pfbid101dbc29f781bd169d:need-heaters","is":{"tier":0,"status":"open","lifeThreatening":true}}},
+    {"task":{"from":"facebook:pfbid101dbc29f781bd169d:need-tents","type":"deliver","is":{"open":true}}},
+    {"task":{"from":"facebook:pfbid101dbc29f781bd169d:need-heaters","type":"deliver","is":{"open":true}}}
+  ]},
+  {"beat":21,"name":"Stadium full","afterLine":"instagram:instagram:C8pbdxpsd6H","shows":"Shelter full. Volunteers are told where to send new arrivals","expect":[
+    {"record":{"coll":"shelters","from":"instagram:C8pbdxpsd6H","is":{"bedsUsed":50,"bedsTotal":50}}},
+    {"inbox":{"user":"volunteer-callback","match":"Antakya Lisesi Spor Salonu","min":1}},
+    {"inbox":{"user":"volunteer-mechanic","match":"Antakya Lisesi Spor Salonu","min":1}}
+  ]},
+  {"beat":22,"name":"Day two trickle","afterLine":"x:x:1620000120780362942:need-tents","settleS":60,"shows":"Metrics fill: time to first task, open vs done, voices per site","expect":[
+    {"count":{"coll":"needs","where":{"status":"delivered"},"gte":4}},
+    {"count":{"coll":"tasks","where":{"status":"done"},"gte":12}},
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-baby-formula","is":{"status":"cancelled"}}},
+    {"record":{"coll":"roads","from":"news:ap-003","is":{"state":"open"}}},
+    {"count":{"coll":"incidents","where":{"status":"resolved"},"eq":1}}
+  ]},
+  {"beat":23,"name":"AP day-two summary","afterLine":"ap:news:ap-010","shows":"End. The desk stays put for questions","expect":[
+    {"event":{"key":"news:ap-010","status":"rejected"}}
+  ]}
+]

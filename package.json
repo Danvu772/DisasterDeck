@@ -32,7 +32,8 @@
     "check:pilot": "node scripts/validate-demo-data.mjs && node scripts/check-antakya.mjs",
     "check:contacts": "node --import tsx --test scripts/contacts.test.mjs",
     "check:llm": "node --import tsx --test scripts/llm-adapter.test.mjs",
-    "check:bundle": "node scripts/check-bundle.mjs"
+    "check:bundle": "node scripts/check-bundle.mjs",
+    "check:scenario-lint": "tsx src/lib/scenario-lint.ts"
   },
   "dependencies": {
     "@elevenlabs/client": "1.32.1",

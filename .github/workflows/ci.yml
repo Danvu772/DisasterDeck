@@ -38,6 +38,8 @@ jobs:
         run: npm run check:contacts
       - name: Model adapter (OpenRouter, mocked; no key)
         run: npm run check:llm
+      - name: Demo scenario lint (#53)
+        run: npm run check:scenario-lint
       - name: Lint
         run: npx eslint
       - name: Product name is Disaster Deck
