@@ -8,7 +8,7 @@
 import { z } from "zod";
 import type {
   AlertPayload, AnswerPayload, ApprovalPayload, CapacityPayload, ClaimPayload, ClosurePayload,
-  CorrectionPayload, EventType, IncidentKind, IncidentPayload, LatLng, NeedPayload, PlanPayload,
+  CorrectionPayload, EventOrigin, EventType, IncidentKind, IncidentPayload, LatLng, NeedPayload, PlanPayload,
   RecordType, ReportPayload, Source,
 } from "./types";
 
@@ -105,7 +105,25 @@ const when = z.union([
   z.string().max(64).refine((s) => !Number.isNaN(Date.parse(s)), "not a date").transform((s) => new Date(s)),
 ]);
 
+// Where a post came from (D-0017 §2). Strict and size-capped: it is shown to people, so a url is
+// http(s) only (never javascript:), and a media url may also be a same-site path like /demo/x.jpg.
+const short = z.string().max(200);
+const webUrl = z.string().max(2000).regex(/^https?:\/\/\S+$/i, "must be an http(s) url");
+const mediaUrl = z.string().max(2000).regex(/^(https?:\/\/\S+|\/(?![\/\\])[^\s\\]*)$/i, "must be an http(s) url or a same-site path");
+export const eventOrigin = z.object({
+  postId: short.optional(),
+  author: short.optional(),
+  kind: z.enum(["post", "repost", "story", "group_post", "wire"]).optional(),
+  url: webUrl.optional(),
+  media: z.array(z.object({ type: z.enum(["image", "video"]), url: mediaUrl }).strict()).max(10).optional(),
+  metrics: z.record(z.string().max(50), z.number().int().min(0).max(1_000_000_000))
+    .refine((m) => Object.keys(m).length <= 10, "at most 10 metrics").optional(),
+  slug: short.optional(),
+  urgency: z.string().max(40).optional(),
+}).strict() satisfies z.ZodType<EventOrigin>;
+
 const envelope = {
+  origin: eventOrigin.optional(),
   source: z.enum(sources),
   deskId: id.optional(),
   observedAt: when.optional(),

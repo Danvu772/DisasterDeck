@@ -164,6 +164,7 @@ export async function postEvent<P>(e: NewEvent<P>): Promise<string> {
     status: "pending",
     attempts: 0,
     ...(e.dedupeKey ? { dedupeKey: e.dedupeKey } : {}),
+    ...(e.origin ? { origin: withoutUndefined(e.origin) } : {}),
   };
   try {
     await events.insertOne(doc as Event);
