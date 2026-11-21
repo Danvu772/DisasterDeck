@@ -6,10 +6,13 @@
 // accept, a done, an approval with an assignee, an arrived, a decline, an incident that blocks
 // a task, a need and a claim.
 import assert from "node:assert/strict";
+import { readdir, readFile } from "node:fs/promises";
 import { GET as feed } from "../app/api/events/route";
 import { processEvent } from "../workers/brain";
+import { maskEvent } from "./feed";
 import { closeDb, cols, getBoard, newId } from "./db";
-import type { Event, EventType, LatLng, NewEvent, ReportPayload, Site, Task, User } from "./types";
+import { eventBody } from "./schemas";
+import type { Event, EventOrigin, EventType, LatLng, NewEvent, ReportPayload, Site, Task, User } from "./types";
 
 const DESK = "check-cp1";
 let passed = 0;
@@ -27,6 +30,7 @@ async function post<P>(e: NewEvent<P> & { dedupeKey: string }): Promise<string> 
     _id: newId(), deskId: DESK, ts: now, observedAt: e.observedAt ?? now, type: e.type, source: e.source,
     actor: e.actor, lane: e.source === "person" || e.source === "system" ? 0 : 1, payload: e.payload,
     status: "working", lockedAt: now, attempts: 1, dedupeKey: e.dedupeKey,
+    ...(e.origin ? { origin: e.origin } : {}),
   };
   await events.insertOne(doc);
   queued.push(doc);
@@ -73,7 +77,7 @@ async function cleanup() {
   await c.inbox.deleteMany({ userId: { $in: Object.values(U) } });
   await Promise.all([
     c.events.deleteMany({ deskId: DESK }), c.sites.deleteMany({ deskId: DESK }), c.needs.deleteMany({ deskId: DESK }),
-    c.incidents.deleteMany({ deskId: DESK }), c.tasks.deleteMany({ deskId: DESK }), c.users.deleteMany({ deskId: DESK }),
+    c.incidents.deleteMany({ deskId: DESK }), c.roads.deleteMany({ deskId: DESK }), c.tasks.deleteMany({ deskId: DESK }), c.users.deleteMany({ deskId: DESK }),
     c.meta.deleteMany({ _id: { $in: [`cases:${DESK}`, `version:${DESK}`] } }),
   ]);
 }
@@ -328,6 +332,107 @@ async function main() {
   ev = await say("claim-none", "claim", U.volA, { what: "deliver", text: "su", textEn: "water to the school" });
   assert.equal(ev.status, "rejected");
   ok(`claim: an accepted assist task for ${U.volA}. A claim that names nothing: rejected with a reason`);
+
+
+  // --- D-0017: origin block (SRC-3) and AP as vetted (SRC-4) ---
+  // Far from every other case above (about 60 km), so nothing here merges into an earlier site.
+  const sourceOf = async (siteId: string) => (await c.sites.findOne({ _id: siteId }))!;
+  const strip = ({ _id, coords, sources, history, caseNo, observedAt, address, posts, supporters, ...rest }: Site) => rest; // eslint-disable-line @typescript-eslint/no-unused-vars
+  const origin: EventOrigin = {
+    postId: "1622018840000000101", author: "@hatay_dayanisma", kind: "post",
+    url: "https://x.example/hatay_dayanisma/status/1622018840000000101", metrics: { reposts: 412 },
+    media: [{ type: "image", url: "/demo/shelter-whiteboard-2.jpg" }],
+  };
+  const o1 = await post<ReportPayload>({
+    deskId: DESK, type: "report", source: "x", actor: "x-agent", dedupeKey: "check:cp1:origin-with", origin,
+    payload: { kind: "trapped", text: "Origin check A: enkaz altında 3 kişi", textEn: "Origin check: 3 under rubble", coords: [36.7, 36.7], region: "antakya-merkez", peopleCount: 3 },
+  });
+  const o2 = await post<ReportPayload>({
+    deskId: DESK, type: "report", source: "x", actor: "x-agent", dedupeKey: "check:cp1:origin-without",
+    payload: { kind: "trapped", text: "Origin check B: enkaz altında 3 kişi", textEn: "Origin check: 3 under rubble", coords: [36.75, 36.75], region: "antakya-merkez", peopleCount: 3 },
+  });
+  await drain();
+  const ev1 = (await c.events.findOne({ _id: o1 }))!, ev2 = (await c.events.findOne({ _id: o2 }))!;
+  assert.deepEqual(ev1.origin, origin, "the origin is stored on the event as sent");
+  assert.equal(ev2.origin, undefined, "no origin sent, none stored");
+  ok("SRC-3 (a): origin stored deep-equal on the event");
+  const s1 = await c.sites.findOne({ "sources.eventId": o1 }), s2 = await c.sites.findOne({ "sources.eventId": o2 });
+  assert(s1 && s2 && s1._id !== s2._id);
+  assert.deepEqual(strip(await sourceOf(s1._id)), strip(await sourceOf(s2._id)), "origin changes no site field");
+  ok("SRC-3 (b): the same report with and without origin gives identical site fields");
+
+  const envelope = (originBlock: unknown) => eventBody.safeParse({
+    type: "report", source: "x", observedAt: "2023-02-06T01:58:00Z", origin: originBlock,
+    payload: { kind: "trapped", text: "t", textEn: "t" },
+  });
+  assert(envelope(origin).success, "a full origin is accepted");
+  assert(envelope({ kind: "wire", slug: "BC-EU--Turkey-Earthquake", urgency: "urgent" }).success, "AP origin is accepted");
+  assert(!envelope({ url: "javascript:alert(1)" }).success, "javascript: url");
+  assert(!envelope({ url: "data:text/html,x" }).success, "data: url");
+  assert(!envelope({ kind: "tweet" }).success, "unknown kind");
+  assert(!envelope({ postId: "1", extra: true }).success, "extra key");
+  assert(!envelope({ postId: "x".repeat(201) }).success, "oversize postId");
+  assert(!envelope({ author: "x".repeat(201) }).success, "oversize author");
+  assert(!envelope({ slug: "x".repeat(201) }).success, "oversize slug");
+  assert(!envelope({ url: `https://x.example/${"a".repeat(2000)}` }).success, "oversize url");
+  assert(!envelope({ media: Array.from({ length: 11 }, () => ({ type: "image", url: "/demo/a.jpg" })) }).success, "11 media");
+  assert(!envelope({ metrics: Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`m${i}`, 1])) }).success, "11 metrics");
+  assert(!envelope({ metrics: { reposts: -1 } }).success, "negative metric");
+  assert(!envelope({ metrics: { reposts: 1.5 } }).success, "fractional metric");
+  assert(envelope({ media: [{ type: "image", url: "/demo/x.jpg" }] }).success, "same-site media path");
+  assert(envelope({ media: [{ type: "video", url: "https://cdn.example/x.mp4" }] }).success, "https media");
+  assert(!envelope({ media: [{ type: "image", url: "//evil.com/x.jpg" }] }).success, "protocol-relative media url");
+  assert(!envelope({ media: [{ type: "image", url: "/\\evil.com/x.jpg" }] }).success, "backslash protocol-relative media url");
+  {
+    const masked = maskEvent({ type: "report", payload: {}, origin: { author: "call 0555 123 45 67", postId: "1" } } as unknown as Event);
+    assert(!/0555 123 45 67/.test(JSON.stringify(masked.origin)), "the feed masks phone numbers inside origin");
+  }
+  assert(!envelope({ media: [{ type: "image", url: "javascript:alert(1)" }] }).success, "javascript: media url");
+  assert(!envelope({ media: [{ type: "audio", url: "/demo/x.mp3" }] }).success, "unknown media type");
+  ok("SRC-3 (c): the schema rejects javascript: urls, unknown kinds, extra keys and oversize fields; accepts /demo/x.jpg, rejects //evil.com");
+
+  const rulesDir = new URL("./rules/", import.meta.url);
+  for (const f of (await readdir(rulesDir)).filter((n) => n.endsWith(".ts"))) {
+    assert(!/\borigin\b/.test(await readFile(new URL(f, rulesDir), "utf8")), `lib/rules/${f} must not read event.origin`);
+  }
+  ok("SRC-3 (d): no file in lib/rules/ mentions origin");
+
+  // SRC-4 (a): a public closure is confirmed by AP on the same road.
+  const roadBody = { road: "Origin Check Caddesi", reason: "bridge down", coords: [36.8, 36.8] as LatLng };
+  await post({ deskId: DESK, type: "closure", source: "x", actor: "x-agent", dedupeKey: "check:cp1:ap-road-x", payload: { ...roadBody, state: "closed" } });
+  await drain();
+  let road = (await c.roads.findOne({ deskId: DESK, road: roadBody.road }))!;
+  assert.equal(road.state, "closed"); assert.equal(road.confidence, "unconfirmed"); assert.equal(road.trust, "public");
+  await post({ deskId: DESK, type: "closure", source: "news", actor: "ap", dedupeKey: "check:cp1:ap-road-ap",
+    origin: { kind: "wire", slug: "BC-EU--Turkey-Earthquake", urgency: "urgent" }, payload: { ...roadBody, state: "closed" } });
+  await drain();
+  road = (await c.roads.findOne({ _id: road._id }))!;
+  assert.equal(road.state, "closed"); assert.equal(road.confidence, "confirmed"); assert.equal(road.trust, "vetted");
+  ok("SRC-4 (a): a public closure is unconfirmed, then an AP closure makes it closed and confirmed (vetted)");
+
+  // SRC-4 (b)/(d): an AP need opens alone, a public x need stays proposed.
+  const needEv = (source: "news" | "x", actor: string, key: string, item: string) =>
+    post({ deskId: DESK, type: "need", source, actor, dedupeKey: `check:cp1:${key}`, payload: { item, quantity: 5, lifeThreatening: false, region: "hatay-ap-check" } });
+  await needEv("news", "ap", "ap-need", "Insulin");
+  await needEv("x", "x-agent", "x-need", "Kerosene stoves");
+  await drain();
+  const apNeed = (await c.needs.findOne({ deskId: DESK, item: "Insulin" }))!;
+  const xNeed = (await c.needs.findOne({ deskId: DESK, item: "Kerosene stoves" }))!;
+  assert.notEqual(apNeed.status, "proposed", "one AP post opens a need on its own"); assert.equal(apNeed.confidence, "confirmed");
+  ok(`SRC-4 (b): one AP need opens alone (${apNeed.status}, confirmed)`);
+  assert.equal(xNeed.status, "proposed"); assert.equal(xNeed.confidence, "unconfirmed");
+  ok("SRC-4 (d): control, a public x need stays proposed");
+
+  // SRC-4 (c): AP is one voice, whatever the text.
+  for (const [i, t] of ["AP: first dispatch on the Cebrail collapse", "AP: second dispatch, rescuers on site"].entries()) {
+    await post<ReportPayload>({ deskId: DESK, type: "report", source: "news", actor: "ap", dedupeKey: `check:cp1:ap-voice-${i}`,
+      payload: { kind: "trapped", text: t, textEn: t, coords: [36.9, 36.9], region: "antakya-merkez", peopleCount: 2 } });
+  }
+  await drain();
+  const apSite = (await c.sites.find({ deskId: DESK, "sources.source": "news", coords: [36.9, 36.9] }).toArray());
+  assert.equal(apSite.length, 1); assert.equal(apSite[0].sources.length, 2);
+  assert.deepEqual(apSite[0].supporters, ["news:ap"]); assert.equal(apSite[0].support, 1);
+  ok("SRC-4 (c): two AP posts with different texts are one voice (news:ap)");
 
   const pending = await c.events.countDocuments({ deskId: DESK, status: { $in: ["pending", "working"] } });
   assert.equal(pending, 0, "nothing left pending");
