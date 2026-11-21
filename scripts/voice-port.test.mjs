@@ -14,9 +14,9 @@ import test from "node:test";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
-const voice = await import("../agents/shared/voice.ts");
-const voiceIndex = await import("../agents/shared/voice/index.ts");
-const { presignWebSocket } = await import("../agents/shared/voice/sigv4.ts");
+const voice = await import("../src/agents/shared/voice.ts");
+const voiceIndex = await import("../src/agents/shared/voice/index.ts");
+const { presignWebSocket } = await import("../src/agents/shared/voice/sigv4.ts");
 
 // ── VOX-2: the port abstracts the provider, and one config value swaps it ─────────────────────
 test("VOX-2: providerName defaults to aws and VOICE_PROVIDER=elevenlabs alone flips it", () => {
@@ -105,7 +105,7 @@ test("VOX-2: the presigner omits the session token when the role gave none, and 
 
 // ── VOX-1: dictation is on-device only ─────────────────────────────────────────────────────────
 test("VOX-1: useDictation sets processLocally and never writes audio to the network", () => {
-  const src = readFileSync(join(root, "components", "field", "useDictation.ts"), "utf8");
+  const src = readFileSync(join(root, "src", "components", "field", "useDictation.ts"), "utf8");
   assert.match(src, /processLocally\s*=\s*true/);
   // Dictation only ever hands text back; there is no fetch/websocket/audio-send in this module.
   assert.ok(!/fetch\(|WebSocket|XMLHttpRequest|navigator\.sendBeacon|FormData/.test(src));
@@ -125,9 +125,9 @@ const code = files(root).map((f) => f.slice(root.length));
 
 test("VOX-2: every @aws-sdk import lives in the voice port (or the one client the port targets)", () => {
   const allowed = [
-    "agents/shared/voice/aws.ts",          // Transcribe batch + Polly behind the port
-    "agents/shared/voice/sigv4.ts",        // the presigner (no SDK import, but listed for clarity)
-    "components/talk/useVoice.ts",         // the browser frames AudioEvents with the eventstream marshaller
+    "src/agents/shared/voice/aws.ts",          // Transcribe batch + Polly behind the port
+    "src/agents/shared/voice/sigv4.ts",        // the presigner (no SDK import, but listed for clarity)
+    "src/components/talk/useVoice.ts",         // the browser frames AudioEvents with the eventstream marshaller
     "scripts/voice-port.test.mjs",
   ];
   for (const f of code) {
@@ -142,17 +142,17 @@ test("VOX-2: every @aws-sdk import lives in the voice port (or the one client th
 
 test("VOX-2: no route or field component imports the AWS SDK or reads AWS_ keys", () => {
   for (const f of code) {
-    if (!/^app\//.test(f) && !/^components\/field\//.test(f)) continue;
+    if (!/^src\/app\//.test(f) && !/^src\/components\/field\//.test(f)) continue;
     const text = readFileSync(join(root, f), "utf8");
     assert.ok(!/@aws-sdk\//.test(text), `${f} imports @aws-sdk`);
   }
   // No AWS_ACCESS_KEY / AWS_SECRET anywhere in the code; only the default chain is used.
-  const pkgsrc = readFileSync(join(root, "agents/shared/voice/aws.ts"), "utf8");
+  const pkgsrc = readFileSync(join(root, "src/agents/shared/voice/aws.ts"), "utf8");
   assert.ok(!/AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AccessKeyId\s*:\s*"/.test(pkgsrc));
 });
 
 test("VOX-2: Transcribe and Polly cover English and Spanish (the coverage note), and the voice map is per-language", () => {
-  const aws = readFileSync(join(root, "agents/shared/voice/aws.ts"), "utf8");
+  const aws = readFileSync(join(root, "src/agents/shared/voice/aws.ts"), "utf8");
   assert.match(aws, /TTS_VOICES/);
   assert.match(aws, /en:\s*"Joanna"/);
   assert.match(aws, /es:\s*"Mia"/);
