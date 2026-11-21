@@ -53,7 +53,7 @@
     {
       "id": "CI-1",
       "section": "AGENTS.md done check",
-      "requirement": "Typecheck, lint, build, replay tests and token checks pass",
+      "requirement": "Typecheck, lint, build, scenario test and token checks pass",
       "check": ".github/workflows/ci.yml",
       "passes": null
     },
@@ -172,15 +172,15 @@
     {
       "id": "WS-2",
       "section": "§6 D-0009, §3.1",
-      "requirement": "The news agent turns NWS, FEMA and USGS feeds into schema-checked events with a dedupeKey",
-      "check": "Replay of saved feed fixtures posts the expected events once each (npm run check:feeds)",
-      "passes": true
+      "requirement": "Retired by D-0017: the news agent is deleted. AP wire copy arrives as a synthetic source",
+      "check": "None",
+      "passes": null
     },
     {
       "id": "WS-3",
       "section": "§6 D-0009, §5.4",
       "requirement": "A supplier or field team with an open incident gets matching contacts from the desk's directory",
-      "check": "API test: vehicle_breakdown incident returns tow and tire contacts for that desk (npm run check:feeds)",
+      "check": "API test: vehicle_breakdown incident returns tow and tire contacts for that desk (npm run check:contacts)",
       "passes": true
     },
     {
@@ -271,7 +271,7 @@
       "id": "PIL-1",
       "section": "§6 pilot",
       "requirement": "An IU tabletop scenario runs end to end through the event API: a call, a dispatch with approval, a breakdown and its re-plan",
-      "check": "scenario-player run on the IU scenario reaches the expected board state",
+      "check": "npm run check:scenario (D-0017): the demo scenario's beats 5, 11 and 12 reach their expected board state",
       "passes": false
     },
     {
@@ -280,6 +280,90 @@
       "requirement": "A photo sent through /api/chat is described into text by the vision model (a `vision` purpose behind modelFor()), and the description, not raw image bytes, is what the agent acts on and files; the photo still attaches to the event",
       "check": "check:llm test: vision purpose routes to the vision model on the US host; a mocked image input yields a text description the agent files; photoUrl stays on the event",
       "passes": false
+    },
+    {
+      "id": "SRC-1",
+      "section": "§3.1 D-0017",
+      "requirement": "Nothing below the event queue survives from before D-0017: no input worker, agents/research/, input data file or screen fixture import remains",
+      "check": "Evaluator review plus grep of the production build for fixtures/ imports outside tests",
+      "passes": null
+    },
+    {
+      "id": "SRC-2",
+      "section": "§3.1, §4.1 D-0017",
+      "requirement": "Every line in the four source tracks and the cast is a valid POST /api/events body (eventBody), with a unique dedupeKey and coordinates inside the pilot bbox",
+      "check": "npm run check:scenario (lint step)",
+      "passes": null
+    },
+    {
+      "id": "SRC-3",
+      "section": "§4.1 D-0017",
+      "requirement": "An event may carry an origin block; the keeper stores it and no rule reads it",
+      "check": "npm run keeper:check origin case, plus import review of lib/rules/",
+      "passes": null
+    },
+    {
+      "id": "SRC-4",
+      "section": "§5.2 D-0017",
+      "requirement": "AP wire copy (source news) counts as vetted: it confirms a public closure and opens a need on its own",
+      "check": "npm run keeper:check news trust cases",
+      "passes": null
+    },
+    {
+      "id": "DEMO-1",
+      "section": "§3.1, §4.3 D-0017",
+      "requirement": "Only a signed-in person, in a demo deployment, can start the demo (POST /api/demo/start); agent keys, timers and logged-out calls cannot; the route is the only writer of meta demo",
+      "check": "npm run api:check cases for POST /api/demo/start",
+      "passes": null
+    },
+    {
+      "id": "DEMO-2",
+      "section": "§3.1 D-0017",
+      "requirement": "Starting the demo deletes every desk's records, reseeds users from seed.json, and leaves logins, the Brain lease and the audit log untouched; the Brain does nothing while prepping",
+      "check": "Mongo-backed check: records on two desks are gone, users reseeded, lease and audit rows unchanged",
+      "passes": null
+    },
+    {
+      "id": "DEMO-3",
+      "section": "§3.1 D-0017",
+      "requirement": "The stateless player posts every due line once through POST /api/events, in atS order; a restart of the player posts nothing twice; pressing Start again posts a fresh run",
+      "check": "Mongo-backed check at high speed",
+      "passes": null
+    },
+    {
+      "id": "DEMO-4",
+      "section": "§3.2 D-0017",
+      "requirement": "Keeper scoring and ages, dispatcher deadlines and ETAs, sweeper timers and personal agents read demoNow(); with no demo document they behave exactly as before",
+      "check": "npm run sweeper:check and keeper:check with a 72x demo clock, plus a control run on real time",
+      "passes": null
+    },
+    {
+      "id": "DEMO-5",
+      "section": "§3.1 D-0017",
+      "requirement": "A cast line acts as the task's assignee and is skipped when a signed-in person has already acted on that task",
+      "check": "Mongo-backed check: act as Mehmet before beat 11, cast line is skipped",
+      "passes": null
+    },
+    {
+      "id": "DEMO-6",
+      "section": "§3.1 D-0017",
+      "requirement": "Every beat in beats.json produces its expected board state, in order",
+      "check": "npm run check:scenario on virtual time (V = T0 + atS) on a throwaway desk, in CI",
+      "passes": null
+    },
+    {
+      "id": "DEMO-7",
+      "section": "§3.3 D-0017",
+      "requirement": "Every screen's header shows the Start demo button and, during a run, scenario time and progress; an empty desk renders the empty state",
+      "check": "e2e on an empty desk and during a run",
+      "passes": null
+    },
+    {
+      "id": "TRUST-1",
+      "section": "§5.2 D-0017 amendment",
+      "requirement": "A public (untrusted) rescued report never changes a site's peopleTrapped, tier or status",
+      "check": "npm run keeper:check: a public rescued post leaves the site unchanged; a vetted or person rescued post still updates it",
+      "passes": null
     }
   ]
 }

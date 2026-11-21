@@ -14,10 +14,11 @@
     "outDir": "../dist/types",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["../*"],
+      "@/data/*": ["../data/*"],
+      "@/*": ["../src/*"],
       "next/link": ["./shims/next-link.tsx"],
       "next/navigation": ["./shims/next-navigation.ts"]
     }
   },
-  "include": ["../components", "../lib", "./shims"]
+  "include": ["../src/components", "../src/lib", "./shims"]
 }

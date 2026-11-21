@@ -3,10 +3,10 @@
 // and every other non-GET call to /api is refused here, so no click can reach the real desk.
 // /api/health and /api/inbox stay live, they only read.
 import type { Page } from "@playwright/test";
-import { makeBoard } from "../../fixtures/board";
-import { makeCoordinatorTasks } from "../../fixtures/coordinator";
-import { makeEvents, users } from "../../fixtures/desk";
-import { makeFieldBoard } from "../../fixtures/field";
+import { makeBoard } from "../../src/fixtures/board";
+import { makeCoordinatorTasks } from "../../src/fixtures/coordinator";
+import { makeEvents, users } from "../../src/fixtures/desk";
+import { makeFieldBoard } from "../../src/fixtures/field";
 
 const BOARDS = {
   board: (now: number) => makeBoard(now),

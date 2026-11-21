@@ -217,9 +217,9 @@ def main():
     seed = load_json(ROOT / "data/seed.json")
     if {zone["id"] for zone in CONFIG["zones"]} != {key for region in seed["regions"] for key in region["zoneIds"]}:
         raise ValueError("Zone IDs disagree with seed metadata")
-    replay = load_json(ROOT / "data/tweets_replay.json")
-    if set(CONFIG["reportOrigins"]) != {post["id"] for post in replay}:
-        raise ValueError("Update report provenance for the changed replay")
+    # D-0017 removed the replay file this step counted zone calls from; calls reach the desk through
+    # the event queue now. Rework this step before regenerating public/data/zones.geojson.
+    raise SystemExit("prepare-nasa.py: the replay input was removed (D-0017); zone call counts need a new source")
     aria, before, after = [read_image(name) for name in ["aria-antakya.png", "lights-before.png", "lights-after.png"]]
     features = []
     for zone in CONFIG["zones"]:
