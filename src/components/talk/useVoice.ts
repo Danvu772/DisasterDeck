@@ -3,24 +3,27 @@
 // the orb can follow. The context is created on the first press (a user gesture), which is
 // also what lets the reply play later without the browser's autoplay block.
 //
-// Live transcription: while the person holds the orb, the microphone streams to ElevenLabs Scribe
-// realtime (a single-use token from GET /api/chat/token, fetched ahead of time), and the words
-// show as they are said. Audio from the moment of the press is kept and sent once the socket is
-// open, so the first word is not lost. When they let go, the text is already there: no upload,
-// no wait. Without a token (no ElevenLabs key) it falls back to recording a voice note.
+// Live transcription: while the person holds the orb, the microphone streams to Amazon Transcribe
+// streaming over a presigned WebSocket (the token from GET /api/chat/token is the signed URL), and
+// the words show as they are said. Audio from the moment of the press is kept and sent once the
+// socket is open, so the first word is not lost. Each 100 ms of 16 kHz PCM is wrapped in an
+// event-stream AudioEvent by @aws-sdk/eventstream-marshaller and sent as a binary frame. When they
+// let go, the text is already there: no upload, no wait. Without a token (no AWS role) it falls
+// back to recording a voice note.
 //
 // The reply arrives sentence by sentence (one mp3 each); they are queued back to back.
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { RealtimeConnection } from "@elevenlabs/client";
 
-// The Scribe client is most of /talk's JavaScript: load it after the page is up, not with it
-// (speed, 15 Nov). prefetch() starts the download, so the first press does not wait for it.
-let scribeLib: Promise<typeof import("@elevenlabs/client")> | undefined;
-const loadScribe = () => (scribeLib ??= import("@elevenlabs/client"));
+type EventStreamMarshaller = import("@aws-sdk/eventstream-marshaller").EventStreamMarshaller;
+
+// The marshaller is most of /talk's JavaScript: load it after the page is up, not with it
+// (speed). prefetch() starts the download, so the first press does not wait for it.
+let marshallerLib: Promise<typeof import("@aws-sdk/eventstream-marshaller")> | undefined;
+const loadMarshaller = () => (marshallerLib ??= import("@aws-sdk/eventstream-marshaller"));
 
 export type VoiceState = "idle" | "listening" | "thinking" | "speaking";
 
-const RATE = 16000;          // what Scribe realtime gets: 16 kHz, 16-bit mono PCM
+const RATE = 16000;          // what Transcribe streaming gets: 16 kHz, 16-bit mono PCM
 const CHUNK = 1600;          // 100 ms per message
 const COMMIT_WAIT_MS = 2500; // after letting go, how long to wait for the last words
 
@@ -29,13 +32,6 @@ const WORKLET = `class DeskCapture extends AudioWorkletProcessor {
   process(inputs) { const ch = inputs[0] && inputs[0][0]; if (ch) this.port.postMessage(ch.slice(0)); return true; }
 }
 registerProcessor("desk-capture", DeskCapture);`;
-
-function toBase64(pcm: Int16Array): string {
-  const bytes = new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength);
-  let s = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
-}
 
 /** Float samples at the context's rate → 16 kHz Int16, keeping the fractional position between blocks. */
 function makeResampler(fromRate: number) {
@@ -56,15 +52,16 @@ function makeResampler(fromRate: number) {
 }
 
 interface Live {
-  conn: RealtimeConnection;
+  socket: WebSocket;
+  marshaller: EventStreamMarshaller;
   open: boolean;
-  queued: string[];        // base64 chunks waiting for the socket
-  pcm: number[];           // samples not yet sent
+  queued: Uint8Array[];     // framed audio frames waiting for the socket
+  pcm: number[];            // samples not yet sent
   committed: string[];
   partial: string;
   node: AudioWorkletNode;
   source: MediaStreamAudioSourceNode;
-  done?: () => void;       // resolves stop() when the last committed transcript arrives
+  done?: () => void;        // resolves stop() when the last committed transcript arrives
 }
 
 export function useVoice(userId: string) {
@@ -97,17 +94,17 @@ export function useVoice(userId: string) {
     return a;
   };
 
-  /** Get a token now, so pressing the orb does not wait for one. A token works once, for 15 minutes. */
+  /** Get the stream URL now, so pressing the orb does not wait for one. A grant works once. */
   const prefetch = useCallback(async () => {
     if (!liveOk.current) return;
-    loadScribe().catch(() => { scribeLib = undefined; });
+    loadMarshaller().catch(() => { marshallerLib = undefined; });
     if (token.current && Date.now() - token.current.at < 10 * 60_000) return;
     try {
       const r = await fetch(`/api/chat/token?user=${encodeURIComponent(userId)}`, { cache: "no-store" });
       if (r.status === 404) { liveOk.current = false; return; }
       if (!r.ok) return;
       const j = (await r.json()) as { token?: string; modelId?: string };
-      if (j.token) token.current = { token: j.token, modelId: j.modelId ?? "scribe_v3_live", at: Date.now() };
+      if (j.token) token.current = { token: j.token, modelId: j.modelId ?? "en-US", at: Date.now() };
     } catch { /* the press tries again, or records a note */ }
   }, [userId]);
   useEffect(() => { void prefetch(); }, [prefetch]);
@@ -117,7 +114,7 @@ export function useVoice(userId: string) {
     if (l) {
       l.node.port.onmessage = null;
       try { l.source.disconnect(); l.node.disconnect(); } catch { /* already gone */ }
-      try { l.conn.close(); } catch { /* already closed */ }
+      try { l.socket.close(); } catch { /* already closed */ }
       liveRef.current = null;
     }
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -126,7 +123,35 @@ export function useVoice(userId: string) {
     setMicAnalyser(null);
   }, []);
 
-  /** Live path: stream the microphone to Scribe realtime. False if there is no token. */
+  /** An audio chunk of PCM, framed as a Transcribe AudioEvent binary message. */
+  const frameChunk = (marshaller: EventStreamMarshaller, pcm: Int16Array): Uint8Array => {
+    const body = new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength);
+    return marshaller.marshall({
+      headers: {
+        ":content-type": { type: "string", value: "application/octet-stream" },
+        ":event-type": { type: "string", value: "AudioEvent" },
+        ":message-type": { type: "string", value: "event" },
+      },
+      body,
+    });
+  };
+
+  /** Parse one binary frame from Transcribe; updates `live` and calls `show`. */
+  const onMessage = (marshaller: EventStreamMarshaller, live: Live, show: () => void, data: ArrayBuffer) => {
+    const evt = marshaller.unmarshall(new Uint8Array(data));
+    if (evt.headers[":message-type"]?.value !== "event") return;
+    let body: { Transcript?: { Results?: { Alternatives?: { Transcript?: string }[]; IsPartial?: boolean }[] } };
+    try { body = JSON.parse(new TextDecoder().decode(evt.body)) as never; } catch { return; }
+    const result = body.Transcript?.Results?.[0];
+    const text = result?.Alternatives?.[0]?.Transcript ?? "";
+    if (result?.IsPartial) { live.partial = text; show(); return; }
+    if (text.trim()) live.committed.push(text.trim());
+    live.partial = "";
+    show();
+    live.done?.();
+  };
+
+  /** Live path: stream the microphone to Transcribe streaming. False if there is no grant. */
   const startLive = useCallback(async (ctx: AudioContext, stream: MediaStream): Promise<boolean> => {
     if (!token.current) await prefetch();
     const t = token.current;
@@ -134,38 +159,36 @@ export function useVoice(userId: string) {
     if (!t) return false;
     workletReady.current ??= ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: "text/javascript" })));
     await workletReady.current;
-    const { AudioFormat, RealtimeEvents, Scribe } = await loadScribe();
+    const { EventStreamMarshaller } = await loadMarshaller();
+    const marshaller = new EventStreamMarshaller(
+      (b: Uint8Array) => new TextDecoder().decode(b),
+      (s: string) => new TextEncoder().encode(s),
+    );
 
-    const conn = Scribe.connect({ token: t.token, modelId: t.modelId, audioFormat: AudioFormat.PCM_16000, sampleRate: RATE });
+    const socket = new WebSocket(t.token);
+    socket.binaryType = "arraybuffer";
     const source = ctx.createMediaStreamSource(stream);
     const node = new AudioWorkletNode(ctx, "desk-capture");
-    const live: Live = { conn, open: false, queued: [], pcm: [], committed: [], partial: "", node, source };
+    const live: Live = { socket, marshaller, open: false, queued: [], pcm: [], committed: [], partial: "", node, source };
     liveRef.current = live;
     const show = () => setPartial([...live.committed, live.partial].join(" ").replace(/\s+/g, " ").trim());
 
-    conn.on(RealtimeEvents.OPEN, () => {
+    socket.onopen = () => {
       live.open = true;
-      for (const b of live.queued.splice(0)) conn.send({ audioBase64: b });
-    });
-    conn.on(RealtimeEvents.PARTIAL_TRANSCRIPT, (m) => { live.partial = m.text ?? ""; show(); });
-    conn.on(RealtimeEvents.COMMITTED_TRANSCRIPT, (m) => {
-      if (m.text?.trim()) live.committed.push(m.text.trim());
-      live.partial = "";
-      show();
-      live.done?.();
-    });
+      for (const b of live.queued.splice(0)) socket.send(b);
+    };
+    socket.onmessage = (e: MessageEvent<ArrayBuffer>) => onMessage(marshaller, live, show, e.data);
     const fail = () => { live.done?.(); };
-    conn.on(RealtimeEvents.ERROR, fail);
-    conn.on(RealtimeEvents.AUTH_ERROR, fail);
-    conn.on(RealtimeEvents.CLOSE, fail);
+    socket.onerror = fail;
+    socket.onclose = fail;
 
     const resample = makeResampler(ctx.sampleRate);
     node.port.onmessage = (e: MessageEvent<Float32Array>) => {
       const pcm = resample(e.data);
       for (let i = 0; i < pcm.length; i++) live.pcm.push(pcm[i]);
       while (live.pcm.length >= CHUNK) {
-        const b = toBase64(Int16Array.from(live.pcm.splice(0, CHUNK)));
-        if (live.open) { try { conn.send({ audioBase64: b }); } catch { /* closed */ } } else live.queued.push(b);
+        const b = frameChunk(marshaller, Int16Array.from(live.pcm.splice(0, CHUNK)));
+        if (live.open) { try { socket.send(b); } catch { /* closed */ } } else live.queued.push(b);
       }
     };
     source.connect(node);
@@ -213,10 +236,10 @@ export function useVoice(userId: string) {
   const stop = useCallback(async (): Promise<{ text: string } | { note: string } | null> => {
     const live = liveRef.current;
     if (live) {
-      // Send the last samples, ask for the final words, and wait a moment for them.
-      if (live.pcm.length && live.open) { try { live.conn.send({ audioBase64: toBase64(Int16Array.from(live.pcm.splice(0))) }); } catch { /* closed */ } }
+      // Send the last samples and an empty audio event to mark the end, then wait a moment.
+      if (live.pcm.length && live.open) { try { live.socket.send(frameChunk(live.marshaller, Int16Array.from(live.pcm.splice(0)))); } catch { /* closed */ } }
       const last = new Promise<void>((r) => { live.done = r; setTimeout(r, COMMIT_WAIT_MS); });
-      if (live.open) { try { live.conn.commit(); } catch { live.done?.(); } } else live.done?.();
+      if (live.open) { try { live.socket.close(); } catch { live.done?.(); } } else live.done?.();
       await last;
       const text = [...live.committed, live.partial].join(" ").replace(/\s+/g, " ").trim();
       release();

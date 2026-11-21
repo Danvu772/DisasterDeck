@@ -32,10 +32,15 @@
     "check:pilot": "node scripts/validate-demo-data.mjs && node scripts/check-antakya.mjs",
     "check:contacts": "node --import tsx --test scripts/contacts.test.mjs",
     "check:llm": "node --import tsx --test scripts/llm-adapter.test.mjs",
+    "check:voice": "node --import tsx --test scripts/voice-port.test.mjs",
     "check:bundle": "node scripts/check-bundle.mjs"
   },
   "dependencies": {
-    "@elevenlabs/client": "1.32.1",
+    "@aws-sdk/client-polly": "^3.1171.0",
+    "@aws-sdk/client-s3": "^3.1171.0",
+    "@aws-sdk/client-transcribe": "^3.1171.0",
+    "@aws-sdk/credential-providers": "^3.1171.0",
+    "@aws-sdk/eventstream-marshaller": "^3.118.1",
     "@trussworks/react-uswds": "13.0.1",
     "@uswds/uswds": "3.14.0",
     "class-variance-authority": "0.7.1",
