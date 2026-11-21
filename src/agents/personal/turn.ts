@@ -8,11 +8,11 @@ import {
   age, countBy, incidentLine, NEAR_ROAD_METERS, needLine, roadLine, roadsNear, shelterLine, sheltersFor, siteLine, taskLine, type Place,
 } from "../desk/view";
 import { BudgetError } from "../shared/cost";
-import { checkSchema, modelFor, send, sendStream, type ChatMessage, type ChatParams } from "../shared/llm";
+import { checkSchema, describeImage, modelFor, send, sendStream, type ChatMessage, type ChatParams } from "../shared/llm";
 import { maskPhones } from "../shared/privacy";
 import { stashPending, takePending, type PendingCall } from "./pending";
 import { systemPrompt } from "./prompts";
-import { holdWrites, runTool, toolSchema, toolsFor, type ToolOutcome } from "./tools";
+import { attachPhoto, holdWrites, runTool, toolSchema, toolsFor, type ToolOutcome } from "./tools";
 import { contactsForIncident, contactsLine } from "@/lib/contacts";
 import type { IncidentKind } from "@/lib/types";
 
@@ -52,13 +52,17 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
 
   const { model, effort } = modelFor("chat");
   if (input.confirm) holdWrites(ctx);
+  // D-0016: the photo the person attached rides onto whatever event the agent files this turn.
+  // It is a data URL here; the model only ever sees the vision model's text description of it.
+  const photo = input.image ? `data:${input.image.mediaType};base64,${input.image.base64}` : undefined;
+  if (photo) attachPhoto(ctx, photo);
   const held: (PendingCall & { summary: string })[] = [];
   const tools = toolsFor(ctx);
   // System prompt first, stable per role: providers cache the shared prefix automatically.
   const messages: Msg[] = [
     { role: "system", content: systemPrompt(ctx.user.role) },
     ...history(ctx),
-    { role: "user", content: userContent(ctx, said, input.image) },
+    { role: "user", content: await userContent(ctx, said, input.image, describeImage) },
   ];
 
   const eventIds: string[] = [];
@@ -145,7 +149,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
   await d.saveMessage({ userId: ctx.user._id, from: "agent", text: reply, ts: new Date(+now + 1), eventIds });
   // Held writes are not "done": they leave the chips and wait for the person's yes.
   const pending = held.length
-    ? { id: stashPending(ctx.user._id, held.map(({ name, input }) => ({ name, input }))), items: held.map((h) => h.summary) }
+    ? { id: stashPending(ctx.user._id, held.map(({ name, input }) => ({ name, input })), photo), items: held.map((h) => h.summary) }
     : undefined;
   return { reply, eventIds, actions: pending ? actions.filter((a) => !held.some((h) => h.summary === a.summary && h.name === a.tool)) : actions,
     ...(pending ? { pending } : {}), model: servedBy };
@@ -156,8 +160,9 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
  * so every check runs again on the desk as it is now. Returns null when nothing is waiting any more.
  */
 export async function settlePending(userId: string, id: string, send: boolean): Promise<Pick<TurnResult, "eventIds" | "actions"> & { sent: boolean } | null> {
-  const calls = takePending(id, userId);
-  if (!calls) return null;
+  const taken = takePending(id, userId);
+  if (!taken) return null;
+  const { calls, photo } = taken;
   const d = desk();
   const now = new Date();
   if (!send) {
@@ -165,6 +170,7 @@ export async function settlePending(userId: string, id: string, send: boolean): 
     return { sent: false, eventIds: [], actions: [] };
   }
   const ctx = await d.getUserContext(userId);
+  if (photo) attachPhoto(ctx, photo);   // a fresh ctx: the photo came back with the batch, not from the model
   const eventIds: string[] = [];
   const actions: TurnResult["actions"] = [];
   for (const c of calls) {
@@ -206,14 +212,21 @@ function parseArgs(raw: string): Record<string, unknown> | undefined {
 /** Added to a reply the model did not finish (finish_reason "length"). */
 export const CUT_OFF_NOTE = "(My answer was cut off before the end. Ask again, or ask for less at once.)";
 
-// gpt-oss reads text only (D-0003): a photo is not sent to the model. The agent is told one came,
-// so it can ask the person to say what it shows.
-export const PHOTO_NOTE = "(The person attached a photo. You cannot see photos: ask them to say in words what it shows.)";
+// gpt-oss reads text only (D-0003). D-0016 changes this: a photo is described into text by a
+// vision model behind the same port, and the description is what the text-only agent reads.
+export const PHOTO_NOTE = "(The person attached a photo. I could not read it; ask them to say in words what it shows.)";
 
-function userContent(ctx: UserContext, said: string, image: TurnInput["image"]): string {
+async function userContent(ctx: UserContext, said: string, image: TurnInput["image"], describeImageFn: typeof describeImage): Promise<string> {
+  let photoLine = "";
+  if (image) {
+    const desc = await describeImageFn({ mediaType: image.mediaType, base64: image.base64 }).catch(() => undefined);
+    photoLine = desc
+      ? `(The person attached a photo. A vision model described it as: "${desc}")`
+      : PHOTO_NOTE;
+  }
   return [
     contextBlock(ctx),
-    ...(image ? [PHOTO_NOTE] : []),
+    ...(photoLine ? [photoLine] : []),
     `${ctx.user.name} says: ${said || "(sent a photo, no text)"}`,
   ].join("\n\n");
 }

@@ -333,6 +333,24 @@ async function main() {
   assert.equal(ev.status, "rejected");
   ok(`claim: an accepted assist task for ${U.volA}. A claim that names nothing: rejected with a reason`);
 
+  // --- PHO-1: a photo that came through /api/chat is a data URL of a megabyte or more ---
+  const bigPhoto = `data:image/jpeg;base64,${"A".repeat(1_100_000)}`;
+  // Each case runs twice: a control without the photo must be applied first, so a rejection of the
+  // photo version can only be the photo's fault. Every case runs; failures are collected, not thrown.
+  const photoCases: [EventType, Record<string, unknown>][] = [
+    ["report", { kind: "trapped", text: "duvar yıkıldı, 1 kişi", textEn: "A wall collapsed, 1 person", coords: [36.2041, 36.1601], region: "antakya-merkez", peopleCount: 1 }],
+    ["incident", { kind: "unsafe", text: "tehlike", textEn: "Unsafe wall", canContinue: true }],
+    ["capacity", { shelter: "Check photo shelter", bedsUsed: 10, bedsTotal: 20, region: "antakya-merkez" }],
+  ];
+  const photoFails: string[] = [];
+  for (const [type, payload] of photoCases) {
+    const control = await say(`photo-control-${type}`, type, U.field1, payload);
+    if (control.status === "rejected") { photoFails.push(`${type} control (no photo) rejected: ${control.result?.reason}`); continue; }
+    const withPhoto = await say(`photo-${type}`, type, U.field1, { ...payload, photoUrl: bigPhoto });
+    if (withPhoto.status === "rejected") photoFails.push(`${type} with a 1 MB photo rejected: ${withPhoto.result?.reason}`);
+  }
+  assert.deepEqual(photoFails, [], `PHO-1: ${photoFails.join("; ")}`);
+  ok("PHO-1: report, incident and capacity events carrying a 1.1 MB photo data URL are applied, not rejected (controls applied too)");
 
   // --- D-0017: origin block (SRC-3) and AP as vetted (SRC-4) ---
   // Far from every other case above (about 60 km), so nothing here merges into an earlier site.

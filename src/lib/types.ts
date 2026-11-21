@@ -87,6 +87,7 @@ export interface ReportPayload {
   address?: string; coords?: LatLng; region?: string;
   peopleCount?: number; phoneMasked?: string; siteId?: string;
   hazard?: string;                       // v2.5: a danger at the place (gas, fire, a wall still falling) → Site.hazard
+  photoUrl?: string;                     // D-0016: the photo that came with it (a data URL for the pilot)
 }
 export interface NeedPayload {
   item: string; quantity: number; lifeThreatening: boolean;
@@ -127,6 +128,7 @@ export interface IncidentPayload {
   coords?: LatLng;
   canDeliver?: number;      // short_supply: how many they can still bring
   resolved?: boolean;       // update: the problem is over
+  photoUrl?: string;        // D-0016: the photo that came with it (a data URL for the pilot)
 }
 
 // v2: "I am already taking water to the school"
