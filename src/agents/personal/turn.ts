@@ -13,6 +13,7 @@ import { maskPhones } from "../shared/privacy";
 import { stashPending, takePending, type PendingCall } from "./pending";
 import { systemPrompt } from "./prompts";
 import { holdWrites, runTool, toolSchema, toolsFor, type ToolOutcome } from "./tools";
+import { demoAtSync } from "@/lib/demo";
 import { contactsForIncident, contactsLine } from "@/lib/contacts";
 import type { IncidentKind } from "@/lib/types";
 
@@ -140,7 +141,7 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     const done = actions.filter((a) => a.ok).map((a) => a.summary);
     reply = done.length ? `${held.length ? "Ready to send" : "Filed"}: ${done.join("; ")}.` : "Sorry, I could not finish that. Try again in a moment.";
   }
-  const now = new Date();
+  const now = new Date(ctx.now); // the demo clock (D-0017)
   await d.saveMessage({ userId: ctx.user._id, from: "user", text: said || "(photo)", ts: now });
   await d.saveMessage({ userId: ctx.user._id, from: "agent", text: reply, ts: new Date(+now + 1), eventIds });
   // Held writes are not "done": they leave the chips and wait for the person's yes.
@@ -159,12 +160,12 @@ export async function settlePending(userId: string, id: string, send: boolean): 
   const calls = takePending(id, userId);
   if (!calls) return null;
   const d = desk();
-  const now = new Date();
+  const ctx = await d.getUserContext(userId);
+  const now = new Date(ctx.now); // the demo clock (D-0017)
   if (!send) {
     await d.saveMessage({ userId, from: "user", text: "(did not send it)", ts: now });
     return { sent: false, eventIds: [], actions: [] };
   }
-  const ctx = await d.getUserContext(userId);
   const eventIds: string[] = [];
   const actions: TurnResult["actions"] = [];
   for (const c of calls) {
@@ -318,7 +319,7 @@ export function contextBlock(ctx: UserContext): string {
   section("Unread inbox", ctx.inbox, (i) => `${i.kind} · ${i.message}${i.taskId ? ` (task ${i.taskId})` : ""} · ${age(i.ts, now)}`, 8,
     (more) => countBy(more, (i) => i.kind));
   section("Already filed this session by this agent", ctx.postedThisSession, (e) =>
-    `${e.type} ${e._id} · ${JSON.stringify(e.payload).slice(0, 140)} · ${age(e.ts, now)}`, 6);
+    `${e.type} ${e._id} · ${JSON.stringify(e.payload).slice(0, 140)} · ${age(demoAtSync(e.ts), now)}`, 6); // event.ts is receive time (real): put it on the demo clock
   if (ctx.chatSummary) {
     lines.push(`Earlier in this chat, summarized (the lines after it are word for word): ${ctx.chatSummary}`);
   }

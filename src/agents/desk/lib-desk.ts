@@ -9,6 +9,7 @@
 // still shows Role 3's fixture people (zeynep, team-4, …); they are found in the fixtures as a
 // fallback so the chat answers, but the real database has no tasks for them.
 
+import { demoNow } from "../../lib/demo";
 import { closeDb, cols, getBoard, getDeskVersion, newId, postEvent } from "../../lib/db";
 import { eventBody } from "../../lib/schemas";
 import type { Event, User } from "../../lib/types";
@@ -96,7 +97,7 @@ export const libDesk: DeskPort = {
       loadChat(userId),
       events.find({ actor: userId }).sort({ ts: -1 }).limit(10).toArray(),
     ]);
-    const ctx = composeContext({ user, board, inbox: unread, messages: chat.lines, posted, now: new Date() });
+    const ctx = composeContext({ user, board, inbox: unread, messages: chat.lines, posted, now: await demoNow() }); // the demo clock (D-0017); real time with no demo run
     return { ...ctx, messages: chat.lines, chatSummary: chat.summary };
   },
 

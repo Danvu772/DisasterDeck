@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { maskPhones } from "../agents/shared/privacy";
 import { cols, getDb, MongoServerError, type Filter } from "../lib/db";
+import { demoAtSync, demoNowSync, getDemo } from "../lib/demo";
 import { haversineMeters, normalizeAddress, normalizeText, pointInPolygon } from "../lib/geo";
 import { conflictNote, resolveConflict, trustedClash, trustRank, type Stamp } from "../lib/rules/conflict";
 import { blocks, PLAYBOOK, severity } from "../lib/rules/incidents";
@@ -73,6 +74,8 @@ export interface KeeperResult {
 }
 
 export async function apply(event: Event): Promise<KeeperResult> {
+  // D-0017: every time this handler stamps or measures is the demo clock (real time when no demo runs).
+  await getDemo();
   switch (event.type) {
     case "report": return applyReport(event);
     case "answer": return applyAnswer(event);
@@ -147,8 +150,8 @@ async function applyReport(event: Event): Promise<KeeperResult> {
   });
   if (decision.action === "reject") return reject(decision.reason, textKey);
 
-  const now = new Date();
-  const observedAt = event.observedAt ?? event.ts;
+  const now = demoNowSync();
+  const observedAt = observedOf(event);
   const entry: HistoryEntry = {
     ts: now, by: event.actor, source: event.source,
     reason: `${p.kind}${p.peopleCount ? ` (${p.peopleCount} people)` : ""}: ${decision.reason}`,
@@ -256,7 +259,17 @@ async function applyReport(event: Event): Promise<KeeperResult> {
 
 // ---------- answers: a person says yes, no, or done ----------
 
-const historyOf = (event: Event, reason: string): HistoryEntry => ({ ts: new Date(), by: event.actor, source: event.source, reason });
+/**
+ * When a fact was true, in scenario time. postEvent() stamps observedAt = receive time when the
+ * sender gave none, and that is real time; the demo clock reads it as the scenario moment the
+ * event arrived. A sender's own observedAt is kept as given.
+ */
+const observedOf = (event: Pick<Event, "ts" | "observedAt">): Date =>
+  !event.observedAt || +new Date(event.observedAt) === +new Date(event.ts) ? demoAtSync(event.ts) : new Date(event.observedAt);
+
+// History lines are "when this became true in the world", so they carry the demo clock; the sweeper
+// compares them with it (silence, proposed-need expiry). event.ts stays real: it is when the desk got it.
+const historyOf = (event: Event, reason: string): HistoryEntry => ({ ts: demoNowSync(), by: event.actor, source: event.source, reason });
 
 /** Move a record one step, only from the status it is in now. Returns the change, or none. */
 async function moveSite(event: Event, siteId: string, from: Filter<Site>, set: Partial<Site>, reason: string): Promise<Change[]> {
@@ -404,7 +417,7 @@ async function applyPlan(event: Event): Promise<KeeperResult> {
   return done([...known.values()].map((z) => z._id),
     `evacuation plan for ${exits.length} zone${exits.length === 1 ? "" : "s"}, ${known.size} known: ${exits.map((e) => `${e.zoneId} → ${e.exit}`).join(", ")}`,
     changes, [{
-      kind: "plan", eventId, deskId: event.deskId, by: event.actor, ts: event.ts, reason,
+      kind: "plan", eventId, deskId: event.deskId, by: event.actor, ts: demoAtSync(event.ts), reason,
       exits: exits.map((e) => ({ zoneId: e.zoneId, ...(known.get(e.zoneId) ? { zone: known.get(e.zoneId)!._id } : {}), name: known.get(e.zoneId)?.name ?? prettyZone(e.zoneId), exit: e.exit })),
     }]);
 }
@@ -442,7 +455,7 @@ async function applyIncident(event: Event): Promise<KeeperResult> {
   const eventId = event._id!;
   const c = await cols();
   const textEn = mask(p.textEn || p.text);
-  const now = new Date();
+  const now = demoNowSync();
 
   if (p.incidentId) {
     const inc = await c.incidents.findOne({ _id: p.incidentId, deskId: event.deskId });
@@ -499,7 +512,7 @@ async function applyIncident(event: Event): Promise<KeeperResult> {
   // The record side effects run once, for the event that opened the incident (a re-run adds nothing).
   if (fresh) {
     const step = (what: string, taskId?: string) =>
-      c.incidents.updateOne({ _id: id }, { $push: { actions: { ts: new Date(), what, ...(taskId ? { taskId } : {}) } } });
+      c.incidents.updateOne({ _id: id }, { $push: { actions: { ts: demoNowSync(), what, ...(taskId ? { taskId } : {}) } } });
     if (task && plan.hazard && task.recordType === "site") {
       changes.push(...await moveSite(event, task.recordId, {}, { hazard: textEn }, `hazard: ${p.kind}`));
       await step(`site flagged as a hazard: ${textEn}`);
@@ -577,7 +590,7 @@ async function splitNeed(event: Event, incidentId: string, need: Need, canDelive
     moved.unshift({ ...(keep[i].siteId ? { siteId: keep[i].siteId } : {}), quantity: take });
   }
   const kept = keep.filter((l) => l.quantity > 0);
-  const now = new Date();
+  const now = demoNowSync();
   const sites = [...new Set(moved.map((l) => l.siteId).filter((s): s is string => Boolean(s)))];
   const second: Need = {
     _id: restId, item: need.item, quantity: rest, region: need.region, siteIds: sites.length ? sites : need.siteIds,
@@ -639,8 +652,8 @@ async function applyNeed(event: Event): Promise<KeeperResult> {
   const region = p.region ?? site?.region ?? "unknown";
   const item = mask(p.item).trim();
   const trusted = isTrusted(await eventTrust(event));
-  const now = new Date();
-  const observedAt = event.observedAt ?? event.ts;
+  const now = demoNowSync();
+  const observedAt = observedOf(event);
 
   const live = await c.needs.find({ deskId: event.deskId, status: { $nin: ["delivered", "cancelled"] } }).toArray();
   const same = matchNeed(live, item, region, p.siteId);
@@ -723,7 +736,7 @@ async function eventTrust(event: Pick<Event, "source" | "actor">): Promise<Trust
 }
 
 const stampOf = (event: Event, trust: Trust): Stamp => ({
-  trust, observedAt: event.observedAt ?? event.ts, source: event.source,
+  trust, observedAt: observedOf(event), source: event.source,
   who: event.source === "person" ? event.actor : event.source,
 });
 const storedStamp = (r: { trust?: Trust; observedAt: Date; source?: Source }): Stamp => ({
@@ -872,7 +885,7 @@ async function applyCapacity(event: Event): Promise<KeeperResult> {
       const shelter: Shelter = {
         _id: id, name, region: p.region ?? (await regionFor(event, p.coords)) ?? "unknown",
         ...(p.coords ? { coords: p.coords } : {}), bedsUsed: p.bedsUsed, bedsTotal: p.bedsTotal,
-        updated: new Date(), observedAt: stamp.observedAt, source: event.source, trust,
+        updated: demoNowSync(), observedAt: stamp.observedAt, source: event.source, trust,
         history: [withEvent(event, `${value} beds from ${stamp.who} (${trust})`)], deskId: event.deskId,
       };
       await insertOnce(() => c.shelters.insertOne(shelter));
@@ -896,13 +909,13 @@ async function applyCapacity(event: Event): Promise<KeeperResult> {
       clash = `${same.name}: ${stored.who ?? "one source"} (${stored.trust}) says ${storedValue}, ${stamp.who} (${trust}) says ${value}. Please confirm the real number.`;
     }
     if (verdict.winner === "incoming") {
-      set = { bedsUsed: p.bedsUsed, bedsTotal: p.bedsTotal, observedAt: stamp.observedAt, updated: new Date(), source: event.source, trust };
+      set = { bedsUsed: p.bedsUsed, bedsTotal: p.bedsTotal, observedAt: stamp.observedAt, updated: demoNowSync(), source: event.source, trust };
       if (full(p.bedsUsed, p.bedsTotal) && !full(same.bedsUsed, same.bedsTotal)) flags.push("full");
     }
   } else {
     note = `${value} confirmed by ${stamp.who} (${trust})`;
     if (trustRank(trust) >= trustRank(stored.trust)) {
-      set = { observedAt: later(stamp.observedAt, new Date(same.observedAt)), updated: new Date(), source: event.source, trust };
+      set = { observedAt: later(stamp.observedAt, new Date(same.observedAt)), updated: demoNowSync(), source: event.source, trust };
     }
   }
   // Where it is: filled in when the record does not know, never overwritten (v2.5).
@@ -952,7 +965,7 @@ async function applyAlert(event: Event): Promise<KeeperResult> {
   const p = parsed.data;
   const eventId = event._id!;
   const c = await cols();
-  const now = new Date();
+  const now = demoNowSync();
   const shape = await shapeOf(p.zoneId);
 
   // The zone id is global in the collection. Another desk with the same id keeps its own zone.
@@ -1083,9 +1096,9 @@ async function applyCorrection(event: Event): Promise<KeeperResult> {
     const status = (rec as Site | Need).status;
     if (["closed", "retracted", "delivered", "cancelled"].includes(status)) return reject(`${p.recordType} ${rec._id} is ${status}, there is nothing to rank`);
     if ((rec.pin?.dir ?? null) === dir) return done([rec._id], "nothing to change, the pin is already like that", [], [], "merged");
-    const pin: Pin | undefined = dir ? { dir, by: event.actor, reason: why, ts: new Date() } : undefined;
-    const since = p.recordType === "site" ? new Date((rec as Site).observedAt) : new Date((rec as Need).history[0]?.ts ?? new Date());
-    const next = scored({ support: rec.support, waitingSince: since, ...kept({ scoreParts: rec.scoreParts, pin }) }, new Date());
+    const pin: Pin | undefined = dir ? { dir, by: event.actor, reason: why, ts: demoNowSync() } : undefined;
+    const since = p.recordType === "site" ? new Date((rec as Site).observedAt) : new Date((rec as Need).history[0]?.ts ?? demoNowSync());
+    const next = scored({ support: rec.support, waitingSince: since, ...kept({ scoreParts: rec.scoreParts, pin }) }, demoNowSync());
     const said = dir === "top" ? `pinned to the top of tier ${rec.tier}` : dir === "down" ? `pushed down in tier ${rec.tier}` : "pin removed";
     const entry = withEvent(event, `${said} by ${event.actor}: ${why}`);
     const update = { $set: { ...next, ...(pin ? { pin } : {}) }, ...(pin ? {} : { $unset: { pin: "" as const } }), $push: { history: entry } };
@@ -1133,7 +1146,7 @@ async function applyCorrection(event: Event): Promise<KeeperResult> {
 export async function noteNeedResumed(needId: string, taskId: string): Promise<boolean> {
   const { needs } = await cols();
   const r = await needs.updateOne({ _id: needId, status: { $in: ["open", "assigned"] } }, {
-    $set: { status: "on_the_way" }, $push: { history: { ts: new Date(), by: "dispatcher", source: "system", reason: `on the way again: task ${taskId} carries on` } },
+    $set: { status: "on_the_way" }, $push: { history: { ts: demoNowSync(), by: "dispatcher", source: "system", reason: `on the way again: task ${taskId} carries on` } },
   });
   return r.modifiedCount > 0;
 }
@@ -1143,7 +1156,7 @@ export async function noteNeedAssigned(needId: string, taskId: string, assignee:
   const { needs } = await cols();
   const r = await needs.updateOne({ _id: needId, status: "open" }, {
     $set: { status: "assigned" },
-    $push: { history: { ts: new Date(), by: "dispatcher", source: "system", reason: `task ${taskId} to ${assignee}` } },
+    $push: { history: { ts: demoNowSync(), by: "dispatcher", source: "system", reason: `task ${taskId} to ${assignee}` } },
   });
   return r.modifiedCount > 0;
 }
@@ -1166,7 +1179,7 @@ export async function noteIncidentOutcome(incidentId: string, status: "helping" 
   const { incidents } = await cols();
   await incidents.updateOne({ _id: incidentId, status: "open" }, {
     $set: { status },
-    $push: { actions: { ts: new Date(), what, ...(taskId ? { taskId } : {}) } },
+    $push: { actions: { ts: demoNowSync(), what, ...(taskId ? { taskId } : {}) } },
   });
 }
 
@@ -1174,7 +1187,7 @@ export async function noteIncidentOutcome(incidentId: string, status: "helping" 
 export async function noteIncidentStep(incidentId: string, what: string, taskId?: string): Promise<void> {
   const { incidents } = await cols();
   await incidents.updateOne({ _id: incidentId, "actions.what": { $ne: what } }, {
-    $push: { actions: { ts: new Date(), what, ...(taskId ? { taskId } : {}) } },
+    $push: { actions: { ts: demoNowSync(), what, ...(taskId ? { taskId } : {}) } },
   });
 }
 

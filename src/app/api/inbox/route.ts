@@ -5,6 +5,7 @@
 // An inbox belongs to a person, so an agent key gets 400.
 import { resolveCaller } from "@/lib/auth";
 import { cols, getInbox } from "@/lib/db";
+import { demoNow, getDemo } from "@/lib/demo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,10 +32,14 @@ export async function GET(req: Request): Promise<Response> {
     const { users } = await cols();
     // Polled every few seconds by the person's screen, so this doubles as "is this person there?"
     // One write per person per LAST_SEEN_MS is enough for "is this person there?" (speed, 15 Nov).
+    // lastSeen is on the demo clock (D-0017, DEMO-4: the dispatcher compares it with demoNow(); real time
+    // when no demo plays). While a demo plays 3 minutes of scenario are 2.5 s at 72x, so the 30 s write
+    // throttle (a real-time cost limit) would leave a person "unseen" most of the time: write on every poll.
+    const playing = (await getDemo())?.state === "playing";
     const last = lastSeenAt.get(p.userId) ?? 0;
-    if (Date.now() - last > LAST_SEEN_MS) {
+    if (playing || Date.now() - last > LAST_SEEN_MS) {
       lastSeenAt.set(p.userId, Date.now());
-      await users.updateOne({ _id: p.userId }, { $set: { lastSeen: new Date() } });
+      await users.updateOne({ _id: p.userId }, { $set: { lastSeen: await demoNow() } });
     }
     return json(200, await getInbox(p.userId));
   } catch (err) {
