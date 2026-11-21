@@ -7,8 +7,10 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { POST } from "../app/api/events/route";
 import { GET as getInbox, POST as postInbox } from "../app/api/inbox/route";
+import { POST as startDemoRoute } from "../app/api/demo/start/route";
 import { GET as getUsers } from "../app/api/users/route";
 import { closeDb, cols } from "./db";
+import { isThrowawayMongo } from "./demo";
 import { buildSpec, UNDOCUMENTED } from "./openapi";
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -229,6 +231,27 @@ async function main() {
   assert(seeded.length >= 9 && seeded.every((u) => !("profile" in u)), "the seeded people, without profile");
   console.log(`    ${seeded.length} people on the real desk, none with profile`);
 
+  // --- start demo (DEMO-1). Last, because a successful start deletes every desk's records. ---
+  const start = (opts: { user?: string; key?: string; body?: string } = {}) =>
+    call(startDemoRoute, "/api/demo/start", { ...opts, method: "POST" });
+  await expectCall("nobody signed in starts the demo", start(), 401);
+  await expectCall("agent key starts the demo", start({ key }), 403);
+  process.env.DEMO_DEPLOYMENT = "0";
+  try {
+    await expectCall("a person starts the demo on a non-demo deployment", start({ user: "coordinator-duty" }), 403);
+  } finally { delete process.env.DEMO_DEPLOYMENT; }
+  await expectCall("durationS under 60", start({ user: "coordinator-duty", body: JSON.stringify({ durationS: 10 }) }), 400);
+  if (isThrowawayMongo()) {
+    const run = (await expectCall("a person starts the demo (durationS 60)",
+      start({ user: "coordinator-duty", body: JSON.stringify({ durationS: 60 }) }), 200)) as { runId: string; startedAt: string };
+    assert(run.runId && !Number.isNaN(Date.parse(run.startedAt)));
+    const doc = await c.meta.findOne({ _id: "demo" });
+    assert.equal(doc?.state, "playing"); assert.equal(doc?.runId, run.runId); assert.equal(doc?.durationS, 60);
+    console.log("    meta demo: playing, the new runId, durationS 60");
+  } else {
+    console.log("skip  a person starts the demo: it deletes every desk, so it runs on a local Mongo (or ALLOW_DEMO_WIPE=1) only");
+  }
+
   console.log(`\nAll ${passed} checks passed.`);
 }
 
@@ -242,6 +265,7 @@ main()
     await c.events.deleteMany({ $or: [{ _id: { $in: created } }, { deskId: DESK }] });
     await c.sites.deleteMany({ deskId: DESK }); // a running Brain may have made one from the test report
     await c.tasks.deleteOne({ _id: "check-task" });
+    await c.meta.deleteOne({ _id: "demo" }); // only exists when the start-demo case ran
     await c.inbox.deleteMany({ userId: { $in: [PERSON, OTHER] } });
     await c.users.deleteMany({ _id: { $in: [PERSON, OTHER] }, deskId: DESK });
     await closeDb();

@@ -25,6 +25,8 @@
     "gap:check": "tsx --env-file=.env.local lib/gap-check.ts",
     "security:check": "tsx --env-file=.env.local lib/security-check.ts",
     "brain": "tsx --env-file=.env.local workers/brain.ts",
+    "player": "tsx --env-file=.env.local workers/player.ts",
+    "demo:check": "tsx --env-file=.env.local lib/demo-check.ts",
     "check:name": "node scripts/check-name.mjs",
     "env:push": "bash deploy/vultr/push-env.sh",
     "check:tokens": "! grep -rnE \"#[0-9a-fA-F]{3,8}\\b|(bg|text|border|fill|stroke|ring|from|to)-(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone|black|white)\\b|font-serif\\b\" app components --include=*.ts --include=*.tsx --include=*.css --exclude=globals.css --exclude-dir=api --exclude-dir=v2",
