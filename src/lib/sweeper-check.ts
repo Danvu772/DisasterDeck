@@ -77,6 +77,16 @@ async function settle() {
 }
 
 async function main() {
+  {
+    const { seenRecently } = await import("./rules/assign");
+    const demo = new Date("2023-02-06T06:00:00Z");
+    assert(!seenRecently(new Date("2026-11-21T04:00:00Z"), demo), "a real-time stamp from the future is not seen on the demo clock");
+    assert(seenRecently(new Date(demo.getTime() - 60_000), demo), "a stamp a minute ago is seen");
+    assert(!seenRecently(new Date(demo.getTime() - 4 * 60_000), demo), "a stamp four minutes ago is not");
+    console.log("ok  a lastSeen from the future does not count as seen (demo clock behind real time)");
+    passed++;
+  }
+
   await cleanup();
   const c = await cols();
   await c.users.insertMany(people());

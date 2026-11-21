@@ -15,7 +15,7 @@
 // event, so two overlapping ticks, or a restart, handle each task once.
 import { bumpDeskVersion, cols, postEvent } from "../lib/db";
 import { demoNowFrom, getDemo } from "../lib/demo";
-import { SEEN_WITHIN_MS } from "../lib/rules/assign";
+import { seenRecently } from "../lib/rules/assign";
 import type { IncidentPayload } from "../lib/types";
 import { approvalLate, askRoadConfirm, askShelterConfirm, checkIn, offlineTimedOut, proposedExpired, reconcile, redelegate, syncPriority, timedOut } from "./dispatcher";
 import { expireProposed, refreshPriorities } from "./memory-keeper";
@@ -89,7 +89,7 @@ export async function tick(at?: Date, opts: { deskId?: string; realNow?: Date } 
       .map((u) => [u._id, u.lastSeen]));
     for (const t of assigned) {
       const at = seen.get(t.assignee!);
-      if (at && now.getTime() - new Date(at).getTime() <= SEEN_WITHIN_MS) continue;
+      if (seenRecently(at, now)) continue;
       if (await offlineTimedOut(t, now)) { offline++; touched.add(t.deskId); }
     }
   }
