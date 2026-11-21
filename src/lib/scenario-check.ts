@@ -164,7 +164,7 @@ async function evalExpect(e: Json, runId: string): Promise<{ ok: boolean; text: 
   if (op === "inbox") {
     const re = String(v.match).toLowerCase();
     const items = (await c.inbox.find({ userId: v.user }).toArray()).filter((i) => String(i.message).toLowerCase().includes(re));
-    return { ok: items.length >= Number(v.min ?? 1), text: `inbox of ${v.user} with "${v.match}": ${items.length}, wanted >= ${v.min ?? 1}` };
+    return { ok: items.length >= Number(v.min ?? 1), text: `inbox of ${v.user} with "${v.match}": ${items.length}, wanted >= ${v.min ?? 1}${items[0] ? ` (${String(items[0].kind)}: "${String(items[0].message).slice(0, 90)}")` : ""}` };
   }
   return { ok: false, text: `unknown operator ${op}` };
 }
@@ -176,7 +176,8 @@ async function dump() {
     const src = await (await cols()).events.findOne({ "result.recordIds.0": t.recordId }, { projection: { dedupeKey: 1 } });
     console.log(`       task ${t.type} ${t.status} ${t.assignee ?? "-"} ${String(src?.dedupeKey).replace(/:[^:]*$/, "")} tried=[${t.tried}] ${t.title.slice(0, 50)}`);
   }
-  const { sites } = await cols();
+  const { sites, needs } = await cols();
+  for (const n of await needs.find({}).toArray()) console.log(`       need ${n.item} x${n.quantity} ${n.status} tier=${n.tier} support=${n.support} ${n.history.at(-1)?.reason ?? ""}`);
   for (const st of await sites.find({ hazard: { $exists: true } }).toArray()) {
     for (const t of await tasks.find({ recordId: st._id }).toArray()) console.log(`       hazard-site task ${t.type} ${t.status} ${t.assignee ?? "-"} open=${t.open}: ${t.history.map((h) => h.reason).join(" / ")}`);
     console.log(`       hazard-site ${st._id} ${st.status} ${st.address} ${JSON.stringify(st.coords)}`);

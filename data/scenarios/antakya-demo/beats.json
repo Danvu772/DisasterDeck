@@ -50,11 +50,12 @@
   ]},
   {"beat":10,"name":"AP confirms the bridge","afterLine":"ap:news:ap-003","shows":"Road closed, confirmed. Vetted beats public. Open tasks within 1.5 km carry a road warning and their people are told","expect":[
     {"record":{"coll":"roads","from":"news:ap-003","is":{"state":"closed","confidence":"confirmed"}}},
-    {"inbox":{"user":"field-alpha","match":"Asi Köprüsü","min":1}}
+    {"inbox":{"user":"field-alpha","match":"Asi Köprüsü is closed (confirmed","min":1}}
   ]},
   {"beat":11,"name":"Supplier on the way","afterLine":"cast:cast-b11-accept","shows":"Dispatch by rule, need on_the_way, ETA to whoever asked","expect":[
     {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-blankets","is":{"status":"on_the_way"}}},
-    {"task":{"from":"facebook:pfbid1fc899d1ad50d8ed91:need-blankets","type":"deliver","is":{"status":"accepted"}}}
+    {"task":{"from":"facebook:pfbid1fc899d1ad50d8ed91:need-blankets","type":"deliver","is":{"status":"accepted"}}},
+    {"inbox":{"user":"facebook:cebrail-mahallesi-dayanisma","match":"on the way","min":1}}
   ]},
   {"beat":12,"name":"The truck breaks down","afterLine":"cast:cast-b12-breakdown","settleS":120,"shows":"Help desk playbook: task blocked, need reopened, a replacement (relay or fresh) and an assist task. The supplier's agent shows tow contacts from the directory","expect":[
     {"count":{"coll":"incidents","where":{"kind":"vehicle_breakdown"},"eq":1}},
@@ -106,7 +107,8 @@
     {"inbox":{"user":"volunteer-mechanic","match":"Antakya Lisesi Spor Salonu","min":1}}
   ]},
   {"beat":22,"name":"Day two trickle","afterLine":"x:x:1620000120780362942:need-tents","settleS":60,"shows":"Metrics fill: time to first task, open vs done, voices per site","expect":[
-    {"count":{"coll":"needs","where":{"status":"delivered"},"gte":4}},
+    {"count":{"coll":"needs","where":{"status":"delivered"},"gte":3}},
+    {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-blankets","is":{"status":"open"}}},
     {"count":{"coll":"tasks","where":{"status":"done"},"gte":12}},
     {"record":{"coll":"needs","from":"facebook:pfbid2a89af105e750172c2:need-baby-formula","is":{"status":"cancelled"}}},
     {"record":{"coll":"roads","from":"news:ap-003","is":{"state":"open"}}},

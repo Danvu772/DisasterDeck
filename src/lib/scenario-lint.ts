@@ -261,7 +261,8 @@ let lastAt = -1;
       if (!EV_STATUS.includes(String(v.status))) fail(`${w}: event status`);
     } else if (op === "inbox") {
       onlyKeys(v, ["user", "match", "min"], w);
-      if (!users.has(String(v.user)) || typeof v.match !== "string" || !(Number(v.min) >= 1)) fail(`${w}: inbox needs a seeded user, match and min`);
+      const asker = lines.some((l) => l.body.actor === v.user); // a social asker (needs notices go to the actor id)
+      if (!(users.has(String(v.user)) || asker) || typeof v.match !== "string" || !(Number(v.min) >= 1)) fail(`${w}: inbox needs a seeded user or a line actor, match and min`);
     } else if (op === "task") {
       onlyKeys(v, ["from", "type", "is"], w);
       if (!isObj(v.is) || (v.type !== undefined && !TASK_TYPES.includes(String(v.type)))) fail(`${w}: task needs is, and a valid type`);
