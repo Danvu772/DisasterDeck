@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { BUDGET_USD } from "../shared/cost";
 
-const file = path.join(process.cwd(), "agents", ".usage", "usage.jsonl");
+const file = path.join(process.cwd(), "src", "agents", ".usage", "usage.jsonl");
 if (!existsSync(file)) { console.log("No spend recorded yet."); process.exit(0); }
 
 const rows = readFileSync(file, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));

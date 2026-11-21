@@ -146,7 +146,7 @@ export class DisasterDeckStack extends Stack {
     });
     const brainContainer = brainTask.addContainer("brain", {
       image: ecs.ContainerImage.fromEcrRepository(repo, IMAGE_TAG),
-      command: ["npx", "tsx", "workers/brain.ts"],
+      command: ["npx", "tsx", "src/workers/brain.ts"],
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "brain", logGroup: brainLogs }),
       environment: { MONGODB_DB: MONGO_DB, DESK_ID, DEMO_MODE: "0" },
     });
