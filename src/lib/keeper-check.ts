@@ -414,12 +414,21 @@ async function main() {
   await drain();
   let road = (await c.roads.findOne({ deskId: DESK, road: roadBody.road }))!;
   assert.equal(road.state, "closed"); assert.equal(road.confidence, "unconfirmed"); assert.equal(road.trust, "public");
+  // Someone is working near that road, so AP's confirmation must reach them (demo beat 10).
+  await c.sites.insertOne({ _id: "check-cp1-road-site", deskId: DESK, address: "Origin Check 1", region: "antakya-merkez",
+    coords: [36.801, 36.801], status: "open", history: [] } as never);
+  await c.tasks.insertOne({ _id: "check-cp1-road-task", deskId: DESK, type: "call", status: "assigned", open: true,
+    assignee: U.field1, recordType: "site", recordId: "check-cp1-road-site", tried: [], history: [] } as never);
   await post({ deskId: DESK, type: "closure", source: "news", actor: "ap", dedupeKey: "check:cp1:ap-road-ap",
     origin: { kind: "wire", slug: "BC-EU--Turkey-Earthquake", urgency: "urgent" }, payload: { ...roadBody, state: "closed" } });
   await drain();
   road = (await c.roads.findOne({ _id: road._id }))!;
   assert.equal(road.state, "closed"); assert.equal(road.confidence, "confirmed"); assert.equal(road.trust, "vetted");
   ok("SRC-4 (a): a public closure is unconfirmed, then an AP closure makes it closed and confirmed (vetted)");
+  const told = await c.inbox.findOne({ userId: U.field1, message: { $regex: "Origin Check Caddesi is closed \\(confirmed" } });
+  assert(told, "the confirmation reaches whoever is working near the road");
+  await c.tasks.deleteOne({ _id: "check-cp1-road-task" }); await c.sites.deleteOne({ _id: "check-cp1-road-site" });
+  ok("a vetted confirmation of a closure tells the people working near the road");
 
   // SRC-4 (b)/(d): an AP need opens alone, a public x need stays proposed.
   const needEv = (source: "news" | "x", actor: string, key: string, item: string) =>
