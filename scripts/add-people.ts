@@ -4,10 +4,10 @@
 // same list works on any seeded desk. Only people who are not there yet are
 // written: an existing person, their position and their lastSeen are never touched. Never seen,
 // so the dispatcher does not pick them by itself (R1-1). A coordinator can still send them.
-import { configuredDeskId } from "../lib/pilot";
+import { configuredDeskId } from "../src/lib/pilot";
 import { pathToFileURL } from "node:url";
-import { bumpDeskVersion, closeDb, cols } from "../lib/db";
-import type { LatLng, User } from "../lib/types";
+import { bumpDeskVersion, closeDb, cols } from "../src/lib/db";
+import type { LatLng, User } from "../src/lib/types";
 
 type Person = Omit<User, "deskId" | "region" | "coords" | "lastSeen"> & { north: number; east: number };
 
