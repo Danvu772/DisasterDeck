@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { GET as feed } from "../app/api/events/route";
 import { processEvent } from "../workers/brain";
+import { maskEvent } from "./feed";
 import { closeDb, cols, getBoard, newId } from "./db";
 import { eventBody } from "./schemas";
 import type { Event, EventOrigin, EventType, LatLng, NewEvent, ReportPayload, Site, Task, User } from "./types";
@@ -381,6 +382,11 @@ async function main() {
   assert(envelope({ media: [{ type: "image", url: "/demo/x.jpg" }] }).success, "same-site media path");
   assert(envelope({ media: [{ type: "video", url: "https://cdn.example/x.mp4" }] }).success, "https media");
   assert(!envelope({ media: [{ type: "image", url: "//evil.com/x.jpg" }] }).success, "protocol-relative media url");
+  assert(!envelope({ media: [{ type: "image", url: "/\\evil.com/x.jpg" }] }).success, "backslash protocol-relative media url");
+  {
+    const masked = maskEvent({ type: "report", payload: {}, origin: { author: "call 0555 123 45 67", postId: "1" } } as unknown as Event);
+    assert(!/0555 123 45 67/.test(JSON.stringify(masked.origin)), "the feed masks phone numbers inside origin");
+  }
   assert(!envelope({ media: [{ type: "image", url: "javascript:alert(1)" }] }).success, "javascript: media url");
   assert(!envelope({ media: [{ type: "audio", url: "/demo/x.mp3" }] }).success, "unknown media type");
   ok("SRC-3 (c): the schema rejects javascript: urls, unknown kinds, extra keys and oversize fields; accepts /demo/x.jpg, rejects //evil.com");

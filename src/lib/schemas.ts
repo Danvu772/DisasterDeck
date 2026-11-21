@@ -109,7 +109,7 @@ const when = z.union([
 // http(s) only (never javascript:), and a media url may also be a same-site path like /demo/x.jpg.
 const short = z.string().max(200);
 const webUrl = z.string().max(2000).regex(/^https?:\/\/\S+$/i, "must be an http(s) url");
-const mediaUrl = z.string().max(2000).regex(/^(https?:\/\/\S+|\/(?!\/)\S*)$/i, "must be an http(s) url or a same-site path");
+const mediaUrl = z.string().max(2000).regex(/^(https?:\/\/\S+|\/(?![\/\\])[^\s\\]*)$/i, "must be an http(s) url or a same-site path");
 export const eventOrigin = z.object({
   postId: short.optional(),
   author: short.optional(),
