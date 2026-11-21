@@ -22,7 +22,7 @@ import { pathToFileURL } from "node:url";
 import { closeDb, cols } from "../lib/db";
 import { getDemo, scenarioSecond } from "../lib/demo";
 import { isDemoDeployment } from "../lib/pilot";
-import { requestJson } from "../scripts/event-api.mjs";
+import { requestJson } from "../../scripts/event-api.mjs";
 
 export const TRACKS = ["x", "instagram", "facebook", "ap", "cast"] as const;
 export type Track = (typeof TRACKS)[number];

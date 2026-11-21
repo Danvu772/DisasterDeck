@@ -195,7 +195,6 @@ function history(ctx: UserContext): Msg[] {
   return out;
 }
 
-
 /** Arguments of a tool call: a JSON object, or undefined when the text is not one. */
 function parseArgs(raw: string): Record<string, unknown> | undefined {
   try {

@@ -18,7 +18,7 @@ import { closeDb, cols, getDb } from "./db";
 import { DEFAULT_T0, demoNowFrom, demoSpeed, getDemo, isThrowawayMongo, startDemo } from "./demo";
 import { configuredDeskId as deskId } from "./pilot";
 
-const FIXTURE = join(import.meta.dirname, "..", "scripts", "fixtures", "scenario-mini");
+const FIXTURE = join(import.meta.dirname, "..", "..", "scripts", "fixtures", "scenario-mini");
 const A = "check-demo-a";
 const B = "check-demo-b";
 const KEY = process.env.AGENT_KEY ?? "";

@@ -6,12 +6,12 @@
 // --seed-need posts one need (20 blankets) for the supplier. Running it twice changes nothing
 // (the one_open_task index, dedupe keys). Only DESK_ID is touched. Nothing is deleted.
 import { pathToFileURL } from "node:url";
-import { closeDb, cols, postEvent } from "../lib/db";
-import { haversineMeters } from "../lib/geo";
-import { pickPerson } from "../lib/rules/assign";
-import type { CorrectionPayload, Need, NeedPayload, Site, Task, User } from "../lib/types";
-import { react } from "../workers/dispatcher";
-import type { Change } from "../workers/memory-keeper";
+import { closeDb, cols, postEvent } from "../src/lib/db";
+import { haversineMeters } from "../src/lib/geo";
+import { pickPerson } from "../src/lib/rules/assign";
+import type { CorrectionPayload, Need, NeedPayload, Site, Task, User } from "../src/lib/types";
+import { react } from "../src/workers/dispatcher";
+import type { Change } from "../src/workers/memory-keeper";
 
 const RETRACT_REASON = "Test record from db:check, not a real report (#31)";
 const SEED_KEY = "demo:need:blankets:1";

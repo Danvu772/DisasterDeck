@@ -4,7 +4,7 @@
 // The desk defaults to seed.json's own; pass --desk <id> or DESK_ID to seed a throwaway desk
 // (ids get prefixed with the desk, so they never collide with the shared desk's).
 import { bumpDeskVersion, closeDb, cols } from "./db";
-import seedFile from "../data/seed.json"; // imported, not read from disk: this also runs inside the Next bundle
+import seedFile from "../../data/seed.json"; // imported, not read from disk: this also runs inside the Next bundle
 import type { User } from "./types";
 
 type Json = Record<string, unknown>;
