@@ -1,5 +1,5 @@
 # One image, two entrypoints. The web service runs `npm run start` (next start) and the Brain
-# service runs `npx tsx workers/brain.ts`. Both need the full source, node_modules and the .next
+# service runs `npx tsx src/workers/brain.ts`. Both need the full source, node_modules and the .next
 # build, so this is a full-app image, not a standalone-server output.
 #
 # The Brain runs `tsx` at runtime and `next build` needs typescript, so dev dependencies stay in:
@@ -25,7 +25,7 @@ RUN AUTH_SECRET=ci-build-placeholder-not-a-secret npx next build
 ENV NODE_ENV=production
 
 # `next start` serves on :3000 and is the web service's command; the Brain overrides CMD with
-# `npx tsx workers/brain.ts` in the task definition.
+# `npx tsx src/workers/brain.ts` in the task definition.
 EXPOSE 3000
 
 CMD ["npm", "run", "start"]
