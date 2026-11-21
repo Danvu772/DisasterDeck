@@ -2,27 +2,11 @@
 
 [![CI](https://github.com/DarshalShetty/HackTheNest26/actions/workflows/ci.yml/badge.svg)](https://github.com/DarshalShetty/HackTheNest26/actions/workflows/ci.yml)
 
-Current pilot: **Antakya, Türkiye, February 2023**. The deterministic rehearsal reports, users, shelters and logistics are synthetic. A separate real-data replay contains 43 archived social posts. Satellite imagery, NASA measurements and the separately credited HOT/OSM reference building database are historical real data.
+Current pilot: **Antakya, Türkiye, February 2023**. Users, reports, shelters and logistics are synthetic and arrive through the event queue (D-0017). Satellite imagery, NASA measurements and the separately credited HOT/OSM reference building database are historical real data.
 
 ## Field voice
 
-The field phone (`/field`) has hold to talk. It only dictates: the phone's own speech recognition (Web Speech API with `processLocally: true`, so recognition runs on-device and no audio or text goes to Google) types what the person says into the prompt box. Where on-device recognition is unavailable the hold-to-talk button is off and typing is the fallback. **Send** asks the agent exactly as the agents tab does (`components/agent/askDesk.ts`), and the same chart space shows the metric cards and map answers at the bottom of the screen. Talking needs HTTPS or localhost and a browser with on-device speech recognition (Chrome). Typing works everywhere.
-
-## Replay real historical posts
-
-```sh
-npm run replay:real -- --dry-run --mock --limit 5
-```
-
-This previews the committed real dataset without database writes or paid model calls. The mock extractor is Turkish-only and skips this mainly English archive sample. For actual language extraction and ingestion, configure the model key and the MongoDB/HTTP destination in `.env.local`, then run:
-
-```sh
-npm run replay:real -- --limit 5
-```
-
-This command refuses a fixture-only destination, checks board access first, and preserves the 2023 publication times. It is a retrospective replay, not live emergency monitoring. See [real-tweet source findings and pipeline setup](docs/real-tweets.md). The five-post synthetic rehearsal remains available with `npm run replay:synthetic`.
-
-The bare X worker also defaults to this real archive now; restart an old running worker after pulling.
+The field phone (`/field`) has hold to talk. It only dictates: the phone's own speech recognition (Web Speech API with `processLocally: true`, so recognition runs on-device and no audio or text goes to Google) types what the person says into the prompt box. Where on-device recognition is unavailable the hold-to-talk button is off and typing is the fallback. **Send** asks the agent exactly as the agents tab does (`src/components/agent/askDesk.ts`), and the same chart space shows the metric cards and map answers at the bottom of the screen. Talking needs HTTPS or localhost and a browser with on-device speech recognition (Chrome). Typing works everywhere.
 
 ## Run the map on your workstation
 
@@ -61,7 +45,7 @@ npm run db:seed
 npm run brain
 ```
 
-Run the [X replay agent](workers/x-agent.ts) in another terminal and use the [scenario runbook](docs/scenario-player.md). `db:seed` updates the shared synthetic user/shelter IDs and does not erase old Malatya cases or events. Coordinate a shared seed/reset with the team; separate deployments can use a separate `MONGODB_DB`. Upstream now includes core person-event handlers, dispatcher tasks and inbox APIs. NASA alerts, capacity/road handling, interruption recovery and live acceptance still need the work listed in the [updated pipeline completion plan](docs/completion-plan.md).
+Every input is posted to `POST /api/events` (D-0017); there are no input workers in this repo yet. `db:seed` updates the shared synthetic user IDs and does not erase old Malatya cases or events. Coordinate a shared seed/reset with the team; separate deployments can use a separate `MONGODB_DB`. Upstream now includes core person-event handlers, dispatcher tasks and inbox APIs. NASA alerts, capacity/road handling, interruption recovery and live acceptance still need the work listed in the [updated pipeline completion plan](docs/completion-plan.md).
 
 ## Data and implementation details
 

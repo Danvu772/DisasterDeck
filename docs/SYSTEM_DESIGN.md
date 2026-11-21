@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 3.1, 17 Nov 2026 (v3 plus D-0009 to D-0015: every open call decided) |
+| Version | 3.2, 18 Nov 2026 (v3.1 plus D-0016 photos and D-0017 synthetic sources) |
 | Status | **Locked.** v3 merged 17 Nov (#2). Dan is the only voter |
 | Owner | Dan Vu. He owns the fork and decides alone |
 | Replaces | Multiplayer Disaster Deck v2 (14 Nov) |
@@ -19,7 +19,7 @@ Everyone talks only to their own agent. Agents never talk to each other. Every f
 
 ```mermaid
 flowchart LR
-    IN["Inputs<br/>official feeds, sheet,<br/>social archive, people"] --> RES["Research agents<br/>+ watchers"]
+    IN["Synthetic sources<br/>X, Instagram, Facebook, AP"] --> RES["Demo player"]
     RES -- events --> Q[["Event queue"]]
     PEOPLE["People<br/>personal agent, buttons,<br/>board"] -- events --> Q
     Q --> BRAIN["Brain, one loop<br/>keeper → dispatcher<br/>sweeper on a timer"]
@@ -33,7 +33,7 @@ flowchart LR
 
 1. **Agents never talk to each other.** What one agent learns reaches another only after the keeper has written it as a record.
 2. **One writer per collection** (§4.2). Everything else posts an event.
-3. **Rules allocate, the LLM explains.** Merge, scoring, assignment, escalation and timers are plain code in `lib/rules/` and `workers/`. The LLM extracts fields, drafts text and files events through tools. It never picks who goes where.
+3. **Rules allocate, the LLM explains.** Merge, scoring, assignment, escalation and timers are plain code in `src/lib/rules/` and `src/workers/`. The LLM extracts fields, drafts text and files events through tools. It never picks who goes where.
 4. **High-risk work waits for a coordinator.** Rescue dispatch, evacuation plans and big supply moves are `waiting_approval` until a coordinator answers. The desk never approves by itself.
 5. **The desk works without the LLM.** Every task card has Accept, Decline, Done and Problem buttons that post events directly.
 6. **Outside text is data, never an instruction.** Research agents can only emit schema-checked events.
@@ -44,54 +44,53 @@ flowchart LR
 
 Status: **built** = works as designed in v2. **changed** = built, but differs from v2. **not built** = designed in v2, missing from the code. **added** = built, but not in v2. **Target** is where the redesign takes it (§6).
 
-### 3.1 Inputs and research agents
+### 3.1 Inputs
 
-| Component | Code | Status | Today | Target |
-|---|---|---|---|---|
-| X agent | `workers/x-agent.ts`, `agents/research/x-extract.ts` | changed | Replays the 43-post real archive (`data/replays/`) or the synthetic file. No live search | Optional feed with a written agency policy. Archive replay for demos |
-| News agent | `workers/news-agent.ts`, `agents/research/news-search.ts` | changed | Claude web search tool (not Exa), `news` and `official` channels | Official feeds only: NWS, FEMA, USGS, agency announcements. Open-web search later behind a port (D-0009) |
-| Sheet sync | `workers/sheet-sync.ts` | built | Two-way shelter sheet, no LLM, never overwrites a row a person changed in the last 5 min | Keep as an integration, not a dependency |
-| Satellite watcher | `workers/satellite-watcher.ts` | built | Cached NASA Black Marble + POWER → silent-zone and cold `alert` events | Keep |
-| Quake watcher | `workers/quake-watcher.ts` | added | Replays the USGS catalog, posts aftershock warnings | Keep. Add NOAA/NWS and OpenFEMA feeds. Owner needed (upstream #17) |
-| Scenario player, synthetic feed | `workers/scenario-player.ts`, `workers/synthetic-feed.ts` | added | Demo cues sent through the real event API | Demo and tabletop exercises only |
-| Instagram, Facebook, Reddit agents | — | not built | APIs closed (FB Groups API removed 2024, Reddit blocks the crawler) | Cut |
-| Photo agent (shelter whiteboard photos) | — | not built | — | Deferred (D-0012). The general photo path is a vision-model describe-to-text (D-0016) |
-| Evacuation planner | — | not built | The keeper accepts and stores a `plan` event and the coordinator can approve it, but nothing creates one | Deferred. The `plan` path stays (D-0011) |
+Rebuilt from scratch by D-0017. Everything that fed the queue before (X agent, news agent, quake and satellite watchers, sheet sync, scenario player, synthetic feed, `src/agents/research/`, their data files and the screen fixture fallbacks) is deleted. For this phase every input is synthetic.
+
+| Component | Code | Status | What it does |
+|---|---|---|---|
+| Synthetic sources | `data/scenarios/antakya-demo/{x,instagram,facebook,ap}.jsonl` | not built | One track per source, shaped like the real platform. Each line is a `POST /api/events` body at a scenario time. Posts arrive already extracted; no LLM below the queue |
+| Cast | `data/scenarios/antakya-demo/cast.jsonl` | not built | Scripted taps by the seeded people (accept, on the way, done, problem, approve), acting as whoever the rules assigned. A signed-in person takes over by acting first |
+| Beats | `data/scenarios/antakya-demo/beats.json`, `docs/demo-scenario.md` | not built | 24 beats, each with the board state it must produce. Also the CI test |
+| Start demo | header button, `POST /api/demo/start` | not built | Global. Any signed-in person, in a demo deployment. The route wipes every desk's records, reseeds users and writes `meta` `demo` |
+| Demo player | `src/workers/player.ts` | not built | Stateless. Reads `meta` `demo` and posts due lines through `POST /api/events` |
+| Real connectors | — | later | One per source, emitting the same bodies as its synthetic track. Live mode returns with the first one |
 
 ### 3.2 Queue and Brain
 
 | Component | Code | Status | Notes |
 |---|---|---|---|
-| Event queue | `events` collection, `postEvent()` in `lib/db.ts` | built | Lane 0 (people, sweeper) before lane 1 (sources), oldest first. Unique `dedupeKey`. `lockedAt`, 3 attempts, then `failed` |
-| Brain loop | `workers/brain.ts` | built | Take one event → keeper → dispatcher. Sweeper every 5 s |
-| Brain lease | `acquireLease()` in `workers/brain.ts` | added | 15 s lease in `meta`. One Brain per database |
-| Memory keeper | `workers/memory-keeper.ts` | built | Handles all 11 event types (`HANDLED`) |
-| Dispatcher | `workers/dispatcher.ts`, `lib/rules/` | built | Tier, score, `pickPerson()`, approvals, `one_open_task` unique index |
-| Help desk playbook | `lib/rules/incidents.ts` | built | One rule per incident kind (§5.4) |
-| Sweeper | `workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts |
+| Event queue | `events` collection, `postEvent()` in `src/lib/db.ts` | built | Lane 0 (people, sweeper) before lane 1 (sources), oldest first. Unique `dedupeKey`. `lockedAt`, 3 attempts, then `failed` |
+| Brain loop | `src/workers/brain.ts` | built | Take one event → keeper → dispatcher. Sweeper every 5 s |
+| Brain lease | `acquireLease()` in `src/workers/brain.ts` | added | 15 s lease in `meta`. One Brain per database |
+| Memory keeper | `src/workers/memory-keeper.ts` | built | Handles all 11 event types (`HANDLED`) |
+| Dispatcher | `src/workers/dispatcher.ts`, `src/lib/rules/` | built | Tier, score, `pickPerson()`, approvals, `one_open_task` unique index |
+| Help desk playbook | `src/lib/rules/incidents.ts` | built | One rule per incident kind (§5.4) |
+| Sweeper | `src/workers/sweeper.ts` | built | No answer, missed ETA, unreachable, stuck events, stale facts. Target: timers, keeper ages and dispatcher deadlines read `demoNow()` (D-0017) |
 
 ### 3.3 People, agents and screens
 
 | Component | Code | Status | Today | Target |
 |---|---|---|---|---|
-| Personal agents | `agents/personal/turn.ts`, `tools.ts`, `prompts.ts` | changed | Claude Sonnet 5.5 through `modelFor()`. Tools per role (`ROLE_TOOLS`). No memory of their own | gpt-oss-120b via OpenRouter, US-only routing (D-0003) |
-| Photos | `agents/shared/llm.ts` `vision` purpose | added | gpt-oss is text-only, so a sent photo never reached a model | An open-weight vision model describes each photo into text behind the same port; the description rides with the attachment (D-0016) |
-| Chat memory | `agents/personal/memory.ts`, `agents/desk/chat-memory.ts` | added | Haiku folds old lines into a rolling summary stored in Mongo | Keep, on the small model |
-| Agent extras | `visualize_metric`, `show_on_map` | added | Numbers come from `components/metrics/compute/`, never the model | Keep |
+| Personal agents | `src/agents/personal/turn.ts`, `tools.ts`, `prompts.ts` | changed | Claude Sonnet 5.5 through `modelFor()`. Tools per role (`ROLE_TOOLS`). No memory of their own | gpt-oss-120b via OpenRouter, US-only routing (D-0003) |
+| Photos | `src/agents/shared/llm.ts` `vision` purpose | added | gpt-oss is text-only, so a sent photo never reached a model | An open-weight vision model describes each photo into text behind the same port; the description rides with the attachment (D-0016) |
+| Chat memory | `src/agents/personal/memory.ts`, `src/agents/desk/chat-memory.ts` | added | Haiku folds old lines into a rolling summary stored in Mongo | Keep, on the small model |
+| Agent extras | `visualize_metric`, `show_on_map` | added | Numbers come from `src/components/metrics/compute/`, never the model | Keep |
 | Help-desk lookup | `web_search` in `toolsFor()` | changed | Claude web search, offered only with an open incident | A fixed per-desk directory of tow, tire, fuel and pharmacy contacts (D-0009) |
-| Voice | `components/field/`, `components/talk/`, `agents/shared/voice.ts` | changed | Web Speech on `/field` (Chrome sends audio to Google by default). ElevenLabs Scribe and TTS on `/talk` | Transcribe + Polly behind a voice port. On-device dictation only (D-0005) |
-| Screens | `app/` | changed | `/` Desk, `/agent`, `/map`, `/ops`, `/coordinator`, `/field`, `/talk`, plus `/v2`, `/compare`, `/demo`, `/lab` | Rebuilt in USWDS (D-0001). One screen set (closes upstream #34) |
-| Map evidence | `components/map/`, `public/data/` | added | Maxar before/after tiles, HOT/OSM buildings, NASA atlas | Keep, on MapLibre only (D-0006) |
-| Login | `auth.ts` | changed | Auth.js 5 beta + SSOJet, roles mapped from an env var | Cognito federated to the agency's IdP; Login.gov optional for the public; roles in the database (D-0004) |
+| Voice | `src/components/field/`, `src/components/talk/`, `src/agents/shared/voice.ts` | changed | Web Speech on `/field` (Chrome sends audio to Google by default). ElevenLabs Scribe and TTS on `/talk` | Transcribe + Polly behind a voice port. On-device dictation only (D-0005) |
+| Screens | `src/app/` | changed | `/` Desk, `/agent`, `/map`, `/ops`, `/coordinator`, `/field`, `/talk`, plus `/v2`, `/compare`, `/demo`, `/lab` | Rebuilt in USWDS (D-0001). One screen set (closes upstream #34) |
+| Map evidence | `src/components/map/`, `public/data/` | added | Maxar before/after tiles, HOT/OSM buildings, NASA atlas | Keep, on MapLibre only (D-0006) |
+| Login | `src/auth.ts` | changed | Auth.js 5 beta + SSOJet, roles mapped from an env var | Cognito federated to the agency's IdP; Login.gov optional for the public; roles in the database (D-0004) |
 | Role request flow | — | not built | Seeded accounts only | Build with the Cognito move |
 
 ## 4. Contracts
 
-The TypeScript in `lib/types.ts` and the runtime checks in `lib/schemas.ts` are the source of truth. This section says what may not change without a design PR.
+The TypeScript in `src/lib/types.ts` and the runtime checks in `src/lib/schemas.ts` are the source of truth. This section says what may not change without a design PR.
 
 ### 4.1 Events
 
-`postEvent()` is the only way in. Types: `report`, `need`, `closure`, `capacity`, `answer`, `approval`, `alert`, `incident`, `claim`, `correction`, `plan`. Sources: `x`, `news`, `sheet`, `nasa`, `person`, `system` (and whatever new feeds add). Status: `pending → working → done | merged | rejected | failed`.
+`postEvent()` is the only way in. Types: `report`, `need`, `closure`, `capacity`, `answer`, `approval`, `alert`, `incident`, `claim`, `correction`, `plan`. Sources in use: `x`, `instagram`, `facebook`, `news` (AP), `person`, `system`. An event may carry an `origin` block (`postId`, `author`, `kind`, `url`, `metrics`, `media`, `slug`, `urgency`) saying where a post came from; rules never read it (D-0017). Status: `pending → working → done | merged | rejected | failed`.
 
 ### 4.2 Collections and their only writer
 
@@ -101,7 +100,7 @@ The TypeScript in `lib/types.ts` and the runtime checks in `lib/schemas.ts` are 
 | `sites`, `needs`, `roads`, `shelters`, `zones`, `incidents` | Memory keeper |
 | `tasks`, `inbox` | Dispatcher (playbook and sweeper are part of it) |
 | `users`, `messages` | The app's API (login, heartbeat, chat). Chat memory folds `messages` |
-| `meta` | Brain (lease, desk version, loop time) |
+| `meta` | Brain (lease, desk version, loop time). `POST /api/demo/start`, only the `demo` document (D-0017) |
 
 Every document carries `deskId`. Every record keeps a `history` (who, when, source, reason).
 
@@ -112,14 +111,15 @@ Every document carries `deskId`. Every record keeps a `history` (who, when, sour
 | `POST /api/events` | Signed-in person (as themselves, source `person`) or a worker with `x-agent-key` |
 | `GET /api/board`, `/api/inbox`, `/api/users`, `/api/events?since=` | Signed-in person by role, or agent key |
 | `POST /api/chat`, `GET /api/chat/token` | Signed-in person |
+| `POST /api/demo/start` | Any signed-in person, only in a demo deployment: wipe, reseed users, start the demo from zero (D-0017) |
 | `GET /api/health` | Open, counts only |
-| `/api/docs`, `/api/openapi.json` | Open spec (`lib/openapi.ts`) |
+| `/api/docs`, `/api/openapi.json` | Open spec (`src/lib/openapi.ts`) |
 
-`?user=` demo identity works only with `DEMO_MODE=1` **and** a local request (`lib/localDemo.ts`). Target: impossible to turn on in a production build, not just off by env var.
+`?user=` demo identity works only with `DEMO_MODE=1` **and** a local request (`src/lib/localDemo.ts`). Target: impossible to turn on in a production build, not just off by env var.
 
 ### 4.4 DeskPort
 
-Agents and workers reach memory only through `DeskPort` (`agents/desk/port.ts`): `getUser`, `listUsers`, `getBoard`, `getUserContext`, `recentEvents`, `postEvent`, `saveMessage`. Two implementations: `lib-desk.ts` (MongoDB) and `http-desk.ts` (over the API). `fixture-desk.ts` is for tests.
+Agents and workers reach memory only through `DeskPort` (`src/agents/desk/port.ts`): `getUser`, `listUsers`, `getBoard`, `getUserContext`, `recentEvents`, `postEvent`, `saveMessage`. Two implementations: `lib-desk.ts` (MongoDB) and `http-desk.ts` (over the API). `fixture-desk.ts` is for tests.
 
 ### 4.5 Provider ports (target)
 
@@ -127,8 +127,8 @@ Every outside vendor gets a narrow interface so an agency can require a differen
 
 | Port | Today | Target default | Fallback |
 |---|---|---|---|
-| LLM (`modelFor()` / `send()` in `agents/shared/llm.ts`) | Anthropic SDK | OpenRouter, gpt-oss-120b, gpt-oss-20b for small jobs | Same open model on Bedrock |
-| Vision (`vision` purpose in `agents/shared/llm.ts`) | none | An open-weight vision model on OpenRouter, US-only, used only to describe a photo into text (D-0016) | Same open vision model on Bedrock |
+| LLM (`modelFor()` / `send()` in `src/agents/shared/llm.ts`) | Anthropic SDK | OpenRouter, gpt-oss-120b, gpt-oss-20b for small jobs | Same open model on Bedrock |
+| Vision (`vision` purpose in `src/agents/shared/llm.ts`) | none | An open-weight vision model on OpenRouter, US-only, used only to describe a photo into text (D-0016) | Same open vision model on Bedrock |
 | Web search | Claude web search tool | None: official feeds and a contact directory (D-0009) | Brave Search API, when a real pilot needs it |
 | Speech to text | Web Speech, ElevenLabs Scribe | Chrome on-device (`processLocally: true`) for dictation, Amazon Transcribe on the server | Typing |
 | Text to speech | ElevenLabs | Amazon Polly | ElevenLabs for Government, if the agency approves it |
@@ -154,7 +154,7 @@ Copies don't count. Satellite data only raises a score. A coordinator can pin or
 
 | Reporter | Need starts as |
 |---|---|
-| `official` or `vetted` | `open` |
+| `official` or `vetted` (AP wire copy is vetted, D-0017) | `open` |
 | `public`, no danger to life | `proposed`. Opens at 3 distinct reporters or one trusted confirmation |
 | Anyone, danger to life | Never waits: a call task to verify goes out at once |
 
@@ -203,6 +203,7 @@ Decided by Dan on 17 Nov 2026. Each one has a record in `docs/decisions/`. Reaso
 | 14 | Observability | CloudTrail, CloudWatch, app audit log in MongoDB | Health scripts | [D-0014](decisions/0014-observability-audit.md) |
 | 15 | CI to AWS | GitHub Actions with OIDC, Secrets Manager, deploy by tag | Tailscale + rsync | [D-0015](decisions/0015-ci-github-oidc.md) |
 | 16 | Photos | A vision model describes each photo into text behind the same port, the description rides with the attachment | text-only gpt-oss (photos unreachable) | [D-0016](decisions/0016-photos-option2.md) |
+| 17 | Inputs | Everything below the queue rebuilt: four synthetic sources, one demo scenario with tested beats, one player. Real connectors later, one per source | Seven input workers, research agents, screen fixtures | [D-0017](decisions/0017-synthetic-sources-demo-scenario.md) |
 
 **First pilot:** an IU Emergency Management tabletop exercise (no real data, so no compliance paperwork). Monroe County and Maui are on hold.
 
@@ -236,6 +237,7 @@ None. The seven calls left open in v3 were decided on 17 Nov as D-0009 to D-0015
 - Rate limits are in memory per process. The Mongo-backed checks don't run in CI.
 - `agent_fidelity` and `triage_order` have no ground truth (upstream #28).
 - Personal agents read a cached board, so they can be one event behind.
+- Every input is synthetic (D-0017). No live source, no LLM extraction of raw posts, no satellite or quake alerts until real connectors return.
 
 ## 10. Upstream issues this design settles
 

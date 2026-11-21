@@ -1,13 +1,13 @@
 // WS-3: a supplier or field team with an open incident gets matching contacts from the desk's
 // directory (D-0009). Offline: the directory is static data, and the API is exercised with the
-// agent key (no database).   npm run check:feeds
+// agent key (no database).   npm run check:contacts
 import assert from "node:assert/strict";
 import test from "node:test";
 
 process.env.AGENT_KEY = "offline-contacts-test-agent-key";
 process.env.AUTH_SECRET = "offline-contacts-test-auth-secret";
 
-const { contactsFor, contactsForIncident, categoriesForIncident } = await import("../lib/contacts.ts");
+const { contactsFor, contactsForIncident, categoriesForIncident } = await import("../src/lib/contacts.ts");
 
 test("a vehicle_breakdown returns tow and tire contacts for that desk", () => {
   assert.deepEqual(categoriesForIncident("vehicle_breakdown", "flat tire"), ["tow", "tire", "fuel"]);
@@ -32,7 +32,7 @@ test("an incident the directory does not cover returns no contacts", () => {
 });
 
 test("GET /api/contacts returns vehicle_breakdown contacts for the desk (agent key)", async () => {
-  const { GET } = await import("../app/api/contacts/route.ts");
+  const { GET } = await import("../src/app/api/contacts/route.ts");
   const res = await GET(new Request("http://localhost/api/contacts?desk=antakya-2023&kind=vehicle_breakdown", {
     headers: { "x-agent-key": process.env.AGENT_KEY },
   }));
@@ -45,7 +45,7 @@ test("GET /api/contacts returns vehicle_breakdown contacts for the desk (agent k
 });
 
 test("GET /api/contacts rejects an unknown caller", async () => {
-  const { GET } = await import("../app/api/contacts/route.ts");
+  const { GET } = await import("../src/app/api/contacts/route.ts");
   const res = await GET(new Request("http://localhost/api/contacts?desk=antakya-2023"));
   assert.equal(res.status, 401);
 });

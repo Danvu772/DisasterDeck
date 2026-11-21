@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { pilot, pilotCenter, configuredDeskId } from "../lib/pilot.ts";
-import { makeOpsPosts } from "../fixtures/opsPosts.ts";
-import { fromEvents, summarize } from "../components/ops/opsModel.ts";
-import { fixtureDesk } from "../agents/desk/fixture-desk.ts";
+import { pilot, pilotCenter, configuredDeskId } from "../src/lib/pilot.ts";
+import { makeOpsPosts } from "../src/fixtures/opsPosts.ts";
+import { fromEvents, summarize } from "../src/components/ops/opsModel.ts";
+import { fixtureDesk } from "../src/agents/desk/fixture-desk.ts";
 
 test("exercise posts stay inside the Antakya pilot and shelter pins stay stable", () => {
   const [west, south, east, north] = pilot.bbox;
